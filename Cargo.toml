@@ -12,6 +12,6 @@ Sentry (getsentry.com) Service for rust ;)
 """
 
 [dependencies]
-hyper = "*"
-time = "*"
-chrono = "*"
+hyper = "0.9.5"
+time = "0.1.35"
+chrono = "0.2.22"
