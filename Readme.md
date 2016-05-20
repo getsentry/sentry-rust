@@ -3,7 +3,6 @@ Rust Sentry Lib
 
 [Sentry Service](https://www.getsentry.com/) now available for rust ;)
 
-
 ## Usage
 
 Add this to your `Cargo.toml`:
