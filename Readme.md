@@ -1,7 +1,11 @@
 Rust Sentry Lib
 ==========
 
+[![Build Status](https://travis-ci.org/aagahi/rust-sentry.svg?branch=master)](https://travis-ci.org/aagahi/rust-sentry)
+
 [Sentry Service](https://www.getsentry.com/) now available for rust ;)
+
+
 
 ## Usage
 
