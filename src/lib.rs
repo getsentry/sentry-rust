@@ -40,12 +40,12 @@ impl<'a> Drop for ThreadState<'a> {
 pub trait WorkerClosure<T, P>: Fn(&P, T) -> () + Send + Sync {}
 impl<T, F, P> WorkerClosure<T, P> for F where F: Fn(&P, T) -> () + Send + Sync {}
 
-#[derive(Clone)]
+
 pub struct SingleWorker<T: 'static + Send, P: Clone + Send> {
     parameters: P,
     f: Arc<Box<WorkerClosure<T, P, Output = ()>>>,
     receiver: Arc<Mutex<Receiver<T>>>,
-    sender: Sender<T>,
+    sender: Mutex<Sender<T>>,
     alive: Arc<AtomicBool>,
 }
 
@@ -57,7 +57,7 @@ impl<T: 'static + Debug + Send, P: 'static + Clone + Send> SingleWorker<T, P> {
             parameters: parameters,
             f: Arc::new(f),
             receiver: Arc::new(Mutex::new(receiver)),
-            sender: sender,
+            sender: Mutex::new(sender), /* too bad sender is not sync -- suboptimal.... see https://github.com/rust-lang/rfcs/pull/1299/files */
             alive: Arc::new(AtomicBool::new(true)),
         };
         SingleWorker::spawn_thread(&worker);
@@ -101,7 +101,13 @@ impl<T: 'static + Debug + Send, P: 'static + Clone + Send> SingleWorker<T, P> {
         if !alive {
             SingleWorker::spawn_thread(self);
         }
-        let _ = self.sender.send(msg);
+
+        let lock = match self.sender.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+
+        let _ = lock.send(msg);
     }
 }
 
@@ -264,7 +270,7 @@ pub struct Sentry {
     server_name: String,
     release: String,
     environment: String,
-    worker: SingleWorker<Event, SentryCrediential>,
+    worker: Arc<SingleWorker<Event, SentryCrediential>>,
 }
 
 header! { (XSentryAuth, "X-Sentry-Auth") => [String] }
@@ -283,7 +289,7 @@ impl Sentry {
             server_name: server_name,
             release: release,
             environment: environment,
-            worker: worker,
+            worker: Arc::new(worker),
         }
     }
 
@@ -340,12 +346,12 @@ impl Sentry {
 
     #[cfg(all(feature = "nightly"))]
     pub fn register_panic_handler(&self) {
-        // too bad sender is not sync -- suboptimal.... see https://github.com/rust-lang/rfcs/pull/1299/files
-        let w = Mutex::new(self.worker.clone());
 
         let server_name = self.server_name.clone();
         let release = self.release.clone();
         let environment = self.environment.clone();
+
+        let worker = self.worker.clone();
 
         std::panic::set_handler(move |info| {
 
@@ -361,6 +367,7 @@ impl Sentry {
                     }
                 }
             };
+
             let e = Event::new(&location,
                                "fatal",
                                msg,
@@ -368,13 +375,7 @@ impl Sentry {
                                Some(&server_name),
                                Some(&release),
                                Some(&environment));
-
-            let lock = match w.lock() {
-                Ok(guard) => guard,
-                Err(poisoned) => poisoned.into_inner(),
-            };
-
-            let _ = lock.work_with(e.clone());
+            let _ = worker.work_with(e.clone());
         });
     }
     #[cfg(all(feature = "nightly"))]
@@ -416,7 +417,7 @@ mod tests {
     use super::Sentry;
     use super::SentryCrediential;
 
-    use std::sync::Mutex;
+    use std::sync::{Arc, Mutex};
     use std::sync::mpsc::channel;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::thread;
@@ -498,6 +499,30 @@ mod tests {
         sentry.unregister_panic_handler();
 
     }
+
+    #[test]
+    fn it_share_sentry_accross_threads() {
+        let sentry = Arc::new(Sentry::new("Server Name".to_string(),
+                                          "release".to_string(),
+                                          "test_env".to_string(),
+                                          SentryCrediential {
+                                              key: "xx".to_string(),
+                                              secret: "xx".to_string(),
+                                              project_id: "xx".to_string(),
+                                          }));
+
+        let sentry1 = sentry.clone();
+        let t1 = thread::spawn(move || sentry1.server_name.clone());
+        let sentry2 = sentry.clone();
+        let t2 = thread::spawn(move || sentry2.server_name.clone());
+
+        let r1 = t1.join().unwrap();
+        let r2 = t2.join().unwrap();
+
+        assert!(r1 == sentry.server_name);
+        assert!(r2 == sentry.server_name);
+    }
+
 
     // #[test]
     // fn it_post_sentry_event() {
