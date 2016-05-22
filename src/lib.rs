@@ -342,22 +342,44 @@ impl Sentry {
     pub fn register_panic_handler(&self) {
         // too bad sender is not sync -- suboptimal.... see https://github.com/rust-lang/rfcs/pull/1299/files
         let w = Mutex::new(self.worker.clone());
-        let e = Event::new("logger",
-                           "level",
-                           "message",
-                           None,
-                           Some(&self.server_name),
-                           Some(&self.release),
-                           Some(&self.environment));
+
+        let server_name = self.server_name.clone();
+        let release = self.release.clone();
+        let environment = self.environment.clone();
 
         std::panic::set_handler(move |info| {
+
+            let location = info.location()
+                .map(|l| format!("{}: {}", l.file(), l.line()))
+                .unwrap_or("NA".to_string());
+            let msg = match info.payload().downcast_ref::<&'static str>() {
+                Some(s) => *s,
+                None => {
+                    match info.payload().downcast_ref::<String>() {
+                        Some(s) => &s[..],
+                        None => "Box<Any>",
+                    }
+                }
+            };
+            let e = Event::new(&location,
+                               "fatal",
+                               msg,
+                               None,
+                               Some(&server_name),
+                               Some(&release),
+                               Some(&environment));
 
             let lock = match w.lock() {
                 Ok(guard) => guard,
                 Err(poisoned) => poisoned.into_inner(),
             };
+
             let _ = lock.work_with(e.clone());
         });
+    }
+    #[cfg(all(feature = "nightly"))]
+    pub fn unregister_panic_handler(&self) {
+        let _ = std::panic::take_handler();
     }
 
     // fatal, error, warning, info, debug
@@ -458,6 +480,22 @@ mod tests {
         assert!(recv_v1 == Some(v1));
         assert!(recv_v2 == Some(v2));
         assert!(recv_v3 == Some(v3));
+
+    }
+
+    #[cfg(all(feature = "nightly"))]
+    #[test]
+    fn it_post_sentry_event() {
+        let sentry = Sentry::new("Server Name".to_string(),
+                                 "release".to_string(),
+                                 "test_env".to_string(),
+                                 SentryCrediential {
+                                     key: "xx".to_string(),
+                                     secret: "xx".to_string(),
+                                     project_id: "xx".to_string(),
+                                 });
+        sentry.register_panic_handler();
+        sentry.unregister_panic_handler();
 
     }
 
