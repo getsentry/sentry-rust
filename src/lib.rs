@@ -1,16 +1,16 @@
+#![cfg_attr(feature = "nightly", feature(panic_handler))]
+
 extern crate time;
 
 use std::thread;
-use std::sync::mpsc::channel;
-use std::sync::mpsc::Sender;
-use std::sync::mpsc::Receiver;
+use std::sync::mpsc::{channel, Sender, Receiver};
 use std::sync::{Arc, Mutex};
-use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::fmt::Debug;
 use std::time::Duration;
 use std::io::Read;
 use std::env;
+
 
 #[macro_use]
 extern crate hyper;
@@ -19,6 +19,9 @@ use hyper::header::{Headers, ContentType};
 
 extern crate chrono;
 use chrono::offset::utc::UTC;
+
+
+
 
 struct ThreadState<'a> {
     alive: &'a mut Arc<AtomicBool>,
@@ -335,7 +338,27 @@ impl Sentry {
         println!("Sentry Response {}", body);
     }
 
+    #[cfg(all(feature = "nightly"))]
+    pub fn register_panic_handler(&self) {
+        // too bad sender is not sync -- suboptimal.... see https://github.com/rust-lang/rfcs/pull/1299/files
+        let w = Mutex::new(self.worker.clone());
+        let e = Event::new("logger",
+                           "level",
+                           "message",
+                           None,
+                           Some(&self.server_name),
+                           Some(&self.release),
+                           Some(&self.environment));
 
+        std::panic::set_handler(move |info| {
+
+            let lock = match w.lock() {
+                Ok(guard) => guard,
+                Err(poisoned) => poisoned.into_inner(),
+            };
+            let _ = lock.work_with(e.clone());
+        });
+    }
 
     // fatal, error, warning, info, debug
     pub fn fatal(&self, logger: &str, message: &str, culprit: Option<&str>) {
