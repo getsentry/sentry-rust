@@ -1,5 +1,3 @@
-#![cfg_attr(feature = "nightly", feature(panic_handler))]
-
 extern crate time;
 
 use std::thread;
@@ -353,7 +351,7 @@ impl Sentry {
 
         let worker = self.worker.clone();
 
-        std::panic::set_handler(move |info| {
+        std::panic::set_hook(Box::new(move |info: &std::panic::PanicInfo| {
 
             let location = info.location()
                 .map(|l| format!("{}: {}", l.file(), l.line()))
@@ -376,11 +374,11 @@ impl Sentry {
                                Some(&release),
                                Some(&environment));
             let _ = worker.work_with(e.clone());
-        });
+        }));
     }
     #[cfg(all(feature = "nightly"))]
     pub fn unregister_panic_handler(&self) {
-        let _ = std::panic::take_handler();
+        let _ = std::panic::take_hook();
     }
 
     // fatal, error, warning, info, debug
@@ -422,7 +420,7 @@ mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::thread;
 
-    use std::time::Duration;
+    // use std::time::Duration;
 
     #[test]
     fn it_should_pass_value_to_worker_thread() {

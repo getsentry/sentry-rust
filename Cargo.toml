@@ -1,6 +1,6 @@
 [package]
 name = "sentry"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Alexis Agahi <aagahi@prefetch.com>"]
 license = "MIT/Apache-2.0"
 readme = "README.md"
