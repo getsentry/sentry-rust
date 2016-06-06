@@ -2,6 +2,9 @@ Rust Sentry Lib
 ==========
 
 [![Build Status](https://travis-ci.org/aagahi/rust-sentry.svg?branch=master)](https://travis-ci.org/aagahi/rust-sentry)
+[![Crates.io](https://img.shields.io/crates/v/sentry.svg?style=flat)](https://crates.io/crates/sentry)
+
+
 
 [Sentry Service](https://www.getsentry.com/) now available for rust ;)
 

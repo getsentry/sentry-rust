@@ -1,24 +1,39 @@
 language: rust
+
+# necessary for `travis-cargo coveralls --no-sudo`
+addons:
+  apt:
+    packages:
+      - libcurl4-openssl-dev
+      - libelf-dev
+      - libdw-dev
+
 rust:
   - stable
   - beta
   - nightly
+
 sudo: false
+
+# load travis-cargo
+before_script:
+  - |
+      pip install 'travis-cargo<0.2' --user &&
+      export PATH=$HOME/.local/bin:$PATH
+
 script:
   - cargo test
   - rustdoc --test Readme.md -L target/debug/deps -L target/debug
   - cargo doc --no-deps
+
 notifications:
   email:
     on_success: never
-after_success: |
-  [ $TRAVIS_BRANCH = master ] &&
-  [ $TRAVIS_PULL_REQUEST = false ] &&
-  [ $TRAVIS_RUST_VERSION = nightly ] &&
-  echo '<meta http-equiv=refresh content=0;url=backtrace/index.html>' > target/doc/index.html &&
-  pip install ghp-import --user $USER &&
-  $HOME/.local/bin/ghp-import -n target/doc &&
-  git push -qf https://${TOKEN}@github.com/${TRAVIS_REPO_SLUG}.git gh-pages
+
+after_success:
+  - travis-cargo --only stable doc-upload
+  - travis-cargo --only stable coveralls --no-sudo
+
 env:
   global:
     secure:
