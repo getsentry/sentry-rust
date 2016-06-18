@@ -23,7 +23,7 @@ before_script:
 
 script:
   - cargo test
-  - rustdoc --test Readme.md -L target/debug/deps -L target/debug
+  # - rustdoc --test Readme.md -L target/debug/deps -L target/debug
   - cargo doc --no-deps
 
 notifications:
