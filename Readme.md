@@ -8,6 +8,9 @@ Rust Sentry Lib
 
 [Sentry Service](https://www.getsentry.com/) now available for rust ;)
 
+Rust 1.10 should include register_panic_handler and btw bring more value to this lib ;)
+This implementation use one thread listening incoming messages from dedicaded channel and sending those messages to sentry server.
+If this thread panic, a new one is created.
 
 
 ## Usage
@@ -24,6 +27,30 @@ and this to your crate root:
 ```rust
 extern crate sentry;
 ```
+
+## Examples
+
+```rust
+let credential = SentryCrediential { key: "xx".to_string(), secret: "xx".to_string(), project_id: "xx".to_string() };
+let sentry = Sentry::new( "Server Name".to_string(), "release".to_string(), "test_env".to_string(), credential );
+sentry.info("test.logger", "Test Message", None);
+```
+
+you can share sentry accross threads
+
+```rust
+let sentry = Arc::new(Sentry::new( "Server Name".to_string(), "release".to_string(), "test_env".to_string(), credential ));
+let sentry1 = sentry.clone();
+thread::spawn(move || sentry1.info("test.logger", "Test Message", None));
+```
+
+with rust 1.10 or nightly you can register panic handler
+
+```rust
+sentry.register_panic_handler();
+sentry.unregister_panic_handler();
+```
+
 
 ## License
 
