@@ -262,6 +262,7 @@ impl Device {
 pub struct SentryCrediential {
     pub key: String,
     pub secret: String,
+    pub host: String,
     pub project_id: String,
 }
 pub struct Sentry {
@@ -327,7 +328,7 @@ impl Sentry {
         let url = format!("https://{}:{}@{}/api/{}/store/",
                           credential.key,
                           credential.secret,
-                          "app.getsentry.com",
+                          credential.host,
                           credential.project_id);
 
         let mut res = client.post(&url)
@@ -530,6 +531,7 @@ mod tests {
     //                              SentryCrediential {
     //                                  key: "xx".to_string(),
     //                                  secret: "xx".to_string(),
+    //                                  host: "app.getsentry.com".to_string(),
     //                                  project_id: "xx".to_string(),
     //                              });
     //

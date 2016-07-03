@@ -19,7 +19,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-sentry = "0.1.2"
+sentry = "0.1.3"
 ```
 
 and this to your crate root:
@@ -31,7 +31,7 @@ extern crate sentry;
 ## Examples
 
 ```rust
-let credential = SentryCrediential { key: "xx".to_string(), secret: "xx".to_string(), project_id: "xx".to_string() };
+let credential = SentryCrediential { key: "xx".to_string(), secret: "xx".to_string(), host: "app.getsentry.com".to_string(), project_id: "xx".to_string() };
 let sentry = Sentry::new( "Server Name".to_string(), "release".to_string(), "test_env".to_string(), credential );
 sentry.info("test.logger", "Test Message", None);
 ```
