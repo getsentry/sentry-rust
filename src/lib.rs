@@ -492,6 +492,7 @@ mod tests {
                                  SentryCrediential {
                                      key: "xx".to_string(),
                                      secret: "xx".to_string(),
+                                     host: "app.getsentry.com".to_string(),
                                      project_id: "xx".to_string(),
                                  });
         sentry.register_panic_handler();
@@ -507,6 +508,7 @@ mod tests {
                                           SentryCrediential {
                                               key: "xx".to_string(),
                                               secret: "xx".to_string(),
+                                              host: "app.getsentry.com".to_string(),
                                               project_id: "xx".to_string(),
                                           }));
 
