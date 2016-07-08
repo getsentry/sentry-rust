@@ -343,7 +343,6 @@ impl Sentry {
         println!("Sentry Response {}", body);
     }
 
-    #[cfg(all(feature = "nightly"))]
     pub fn register_panic_handler(&self) {
 
         let server_name = self.server_name.clone();
@@ -377,7 +376,6 @@ impl Sentry {
             let _ = worker.work_with(e.clone());
         }));
     }
-    #[cfg(all(feature = "nightly"))]
     pub fn unregister_panic_handler(&self) {
         let _ = std::panic::take_hook();
     }
@@ -483,7 +481,6 @@ mod tests {
 
     }
 
-    #[cfg(all(feature = "nightly"))]
     #[test]
     fn it_post_sentry_event() {
         let sentry = Sentry::new("Server Name".to_string(),
