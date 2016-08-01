@@ -137,7 +137,8 @@ impl Event {
         let mut s = String::new();
         s.push_str("{");
         s.push_str(&format!("\"event_id\":\"{}\",", self.event_id));
-        s.push_str(&format!("\"message\":\"{}\",", self.message.replace("\"", "\\\"")));
+        s.push_str(&format!("\"message\":\"{}\",",
+                            self.message.replace("\"", "\\\"").replace("\n", "\\\n")));
         s.push_str(&format!("\"timestamp\":\"{}\",", self.timestamp));
         s.push_str(&format!("\"level\":\"{}\",", self.level));
         s.push_str(&format!("\"logger\":\"{}\",", self.logger));
