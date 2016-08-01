@@ -137,7 +137,7 @@ impl Event {
         let mut s = String::new();
         s.push_str("{");
         s.push_str(&format!("\"event_id\":\"{}\",", self.event_id));
-        s.push_str(&format!("\"message\":\"{}\",", self.message));
+        s.push_str(&format!("\"message\":\"{}\",", self.message.replace("\"", "\\\"")));
         s.push_str(&format!("\"timestamp\":\"{}\",", self.timestamp));
         s.push_str(&format!("\"level\":\"{}\",", self.level));
         s.push_str(&format!("\"logger\":\"{}\",", self.logger));
@@ -146,7 +146,7 @@ impl Event {
         s.push_str(&format!("\"device\": {}", self.device.to_json_string()));
 
         if let Some(ref culprit) = self.culprit {
-            s.push_str(&format!(",\"culprit\":\"{}\"", culprit));
+            s.push_str(&format!(",\"culprit\":\"{}\"", culprit.replace("\"", "\\\"")));
         }
         if let Some(ref server_name) = self.server_name {
             s.push_str(&format!(",\"server_name\":\"{}\"", server_name));
@@ -181,7 +181,7 @@ impl Event {
         if self.fingerprint.len() > 0 {
             s.push_str(",\"fingerprint\":\"[");
             for fingerprint in self.fingerprint.iter() {
-                s.push_str(&format!("\"{}\"", fingerprint));
+                s.push_str(&format!("\"{}\"", fingerprint.replace("\"", "\\\"")));
             }
             s.push_str("]");
         }
