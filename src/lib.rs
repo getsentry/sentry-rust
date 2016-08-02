@@ -8,7 +8,7 @@ use std::fmt::Debug;
 use std::time::Duration;
 use std::io::Read;
 use std::env;
-use std::io::Write;
+// use std::io::Write;
 
 #[macro_use]
 extern crate hyper;
@@ -369,7 +369,7 @@ impl Sentry {
     // Content-Type: application/json
     //
     fn post(credential: &SentryCrediential, e: &Event) {
-        writeln!(&mut ::std::io::stderr(), "SENTRY: {}", e.to_json_string());
+        // writeln!(&mut ::std::io::stderr(), "SENTRY: {}", e.to_json_string());
 
         let mut headers = Headers::new();
 
