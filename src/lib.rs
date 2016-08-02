@@ -110,6 +110,75 @@ impl<T: 'static + Debug + Send, P: 'static + Clone + Send> SingleWorker<T, P> {
 }
 
 
+pub trait ToJsonString {
+    fn to_json_string(&self) -> String;
+}
+
+impl ToJsonString for String {
+    // adapted from rustc_serialize json.rs
+    fn to_json_string(&self) -> String {
+        let mut s = String::new();
+        s.push_str("\"");
+
+        let mut start = 0;
+
+        for (i, byte) in self.bytes().enumerate() {
+            let escaped = match byte {
+                b'"' => "\\\"",
+                b'\\' => "\\\\",
+                b'\x00' => "\\u0000",
+                b'\x01' => "\\u0001",
+                b'\x02' => "\\u0002",
+                b'\x03' => "\\u0003",
+                b'\x04' => "\\u0004",
+                b'\x05' => "\\u0005",
+                b'\x06' => "\\u0006",
+                b'\x07' => "\\u0007",
+                b'\x08' => "\\b",
+                b'\t' => "\\t",
+                b'\n' => "\\n",
+                b'\x0b' => "\\u000b",
+                b'\x0c' => "\\f",
+                b'\r' => "\\r",
+                b'\x0e' => "\\u000e",
+                b'\x0f' => "\\u000f",
+                b'\x10' => "\\u0010",
+                b'\x11' => "\\u0011",
+                b'\x12' => "\\u0012",
+                b'\x13' => "\\u0013",
+                b'\x14' => "\\u0014",
+                b'\x15' => "\\u0015",
+                b'\x16' => "\\u0016",
+                b'\x17' => "\\u0017",
+                b'\x18' => "\\u0018",
+                b'\x19' => "\\u0019",
+                b'\x1a' => "\\u001a",
+                b'\x1b' => "\\u001b",
+                b'\x1c' => "\\u001c",
+                b'\x1d' => "\\u001d",
+                b'\x1e' => "\\u001e",
+                b'\x1f' => "\\u001f",
+                b'\x7f' => "\\u007f",
+                _ => {
+                    continue;
+                }
+            };
+
+
+            if start < i {
+                s.push_str(&self[start..i]);
+            }
+
+            s.push_str(escaped);
+
+            start = i + 1;
+        }
+
+        s.push_str("\"");
+        s
+    }
+}
+
 // see https://docs.getsentry.com/hosted/clientdev/attributes/
 #[derive(Debug,Clone)]
 pub struct Event {
@@ -133,12 +202,52 @@ pub struct Event {
     fingerprint: Vec<String>, // An array of strings used to dictate the deduplicating for this event.
 }
 impl Event {
-    pub fn to_json_string(&self) -> String {
+    pub fn new(logger: &str,
+               level: &str,
+               message: &str,
+               culprit: Option<&str>,
+               server_name: Option<&str>,
+               release: Option<&str>,
+               environment: Option<&str>)
+               -> Event {
+
+
+        Event {
+            event_id: "".to_string(),
+            message: message.to_owned(),
+            timestamp: UTC::now().format("%Y-%m-%dT%H:%M:%S").to_string(), /* ISO 8601 format, without a timezone ex: "2011-05-02T17:41:36" */
+            level: level.to_owned(),
+            logger: logger.to_owned(),
+            platform: "other".to_string(),
+            sdk: SDK {
+                name: "rust-sentry".to_string(),
+                version: env!("CARGO_PKG_VERSION").to_string(),
+            },
+            device: Device {
+                name: env::var_os("OSTYPE")
+                    .and_then(|cs| cs.into_string().ok())
+                    .unwrap_or("".to_string()),
+                version: "".to_string(),
+                build: "".to_string(),
+            },
+            culprit: culprit.map(|c| c.to_owned()),
+            server_name: server_name.map(|c| c.to_owned()),
+            release: release.map(|c| c.to_owned()),
+            tags: vec![],
+            environment: environment.map(|c| c.to_owned()),
+            modules: vec![],
+            extra: vec![],
+            fingerprint: vec![],
+        }
+    }
+}
+
+impl ToJsonString for Event {
+    fn to_json_string(&self) -> String {
         let mut s = String::new();
         s.push_str("{");
-        s.push_str(&format!("\"event_id\":\"{}\",", self.event_id));
-        s.push_str(&format!("\"message\":\"{}\",",
-                            self.message.replace("\"", "\\\"").replace("\n", "\\\n")));
+        s.push_str(&format!("\"event_id\":{},", self.event_id.to_json_string()));
+        s.push_str(&format!("\"message\":{},", self.message.to_json_string()));
         s.push_str(&format!("\"timestamp\":\"{}\",", self.timestamp));
         s.push_str(&format!("\"level\":\"{}\",", self.level));
         s.push_str(&format!("\"logger\":\"{}\",", self.logger));
@@ -182,52 +291,13 @@ impl Event {
         if self.fingerprint.len() > 0 {
             s.push_str(",\"fingerprint\":\"[");
             for fingerprint in self.fingerprint.iter() {
-                s.push_str(&format!("\"{}\"", fingerprint.replace("\"", "\\\"")));
+                s.push_str(&fingerprint.to_json_string());
             }
             s.push_str("]");
         }
 
         s.push_str("}");
         s
-    }
-
-    pub fn new(logger: &str,
-               level: &str,
-               message: &str,
-               culprit: Option<&str>,
-               server_name: Option<&str>,
-               release: Option<&str>,
-               environment: Option<&str>)
-               -> Event {
-
-
-        Event {
-            event_id: "".to_string(),
-            message: message.to_owned(),
-            timestamp: UTC::now().format("%Y-%m-%dT%H:%M:%S").to_string(), /* ISO 8601 format, without a timezone ex: "2011-05-02T17:41:36" */
-            level: level.to_owned(),
-            logger: logger.to_owned(),
-            platform: "other".to_string(),
-            sdk: SDK {
-                name: "rust-sentry".to_string(),
-                version: env!("CARGO_PKG_VERSION").to_string(),
-            },
-            device: Device {
-                name: env::var_os("OSTYPE")
-                    .and_then(|cs| cs.into_string().ok())
-                    .unwrap_or("".to_string()),
-                version: "".to_string(),
-                build: "".to_string(),
-            },
-            culprit: culprit.map(|c| c.to_owned()),
-            server_name: server_name.map(|c| c.to_owned()),
-            release: release.map(|c| c.to_owned()),
-            tags: vec![],
-            environment: environment.map(|c| c.to_owned()),
-            modules: vec![],
-            extra: vec![],
-            fingerprint: vec![],
-        }
     }
 }
 
@@ -236,8 +306,8 @@ pub struct SDK {
     name: String,
     version: String,
 }
-impl SDK {
-    pub fn to_json_string(&self) -> String {
+impl ToJsonString for SDK {
+    fn to_json_string(&self) -> String {
         format!("{{\"name\":\"{}\",\"version\":\"{}\"}}",
                 self.name,
                 self.version)
@@ -249,8 +319,8 @@ pub struct Device {
     version: String,
     build: String,
 }
-impl Device {
-    pub fn to_json_string(&self) -> String {
+impl ToJsonString for Device {
+    fn to_json_string(&self) -> String {
         format!("{{\"name\":\"{}\",\"version\":\"{}\",\"build\":\"{}\"}}",
                 self.name,
                 self.version,
@@ -485,7 +555,7 @@ mod tests {
     }
 
     #[test]
-    fn it_post_sentry_event() {
+    fn it_registrer_panic_handler() {
         let sentry = Sentry::new("Server Name".to_string(),
                                  "release".to_string(),
                                  "test_env".to_string(),
@@ -537,7 +607,9 @@ mod tests {
     //                                  project_id: "xx".to_string(),
     //                              });
     //
-    //     sentry.info("test.logger", "Test Message", None);
+    //     sentry.info("test.logger",
+    //                 "Test Message\nThis \"Message\" is nice\\cool!\nEnd",
+    //                 None);
     //
     //     thread::sleep(Duration::new(5, 0));
     //
