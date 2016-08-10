@@ -174,6 +174,10 @@ impl ToJsonString for String {
             start = i + 1;
         }
 
+        if start != self.len() {
+            s.push_str(&self[start..]);
+        }
+
         s.push_str("\"");
         s
     }
@@ -486,6 +490,7 @@ mod tests {
     use super::SingleWorker;
     use super::Sentry;
     use super::SentryCrediential;
+    use super::ToJsonString;
 
     use std::sync::{Arc, Mutex};
     use std::sync::mpsc::channel;
@@ -493,6 +498,21 @@ mod tests {
     use std::thread;
 
     // use std::time::Duration;
+
+    #[test]
+    fn test_to_json_string_for_string() {
+        let uut1 = "".to_owned();
+        assert_eq!(uut1.to_json_string(), "\"\"");
+
+        let uut2 = "plain_string".to_owned();
+        assert_eq!(uut2.to_json_string(), "\"plain_string\"");
+
+        let uut3 = "string\"with escapes\"".to_owned();
+        assert_eq!(uut3.to_json_string(), "\"string\\\"with escapes\\\"\"");
+
+        let uut4 = "string with null\x00".to_owned();
+        assert_eq!(uut4.to_json_string(), "\"string with null\\u0000\"");
+    }
 
     #[test]
     fn it_should_pass_value_to_worker_thread() {
