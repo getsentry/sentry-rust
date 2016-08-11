@@ -439,10 +439,10 @@ impl Sentry {
                 }
             };
 
-            let e = Event::new(&location,
+            let e = Event::new("panic",
                                "fatal",
                                msg,
-                               None,
+                               Some(&location),
                                Some(&server_name),
                                Some(&release),
                                Some(&environment));
