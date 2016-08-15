@@ -1,6 +1,6 @@
 [package]
 name = "sentry"
-version = "0.1.5"
+version = "0.1.6"
 authors = ["Alexis Agahi <aagahi@prefetch.com>"]
 license = "MIT/Apache-2.0"
 readme = "Readme.md"
@@ -8,7 +8,7 @@ repository = "https://github.com/aagahi/rust-sentry"
 homepage = "https://github.com/aagahi/rust-sentry"
 documentation = "https://github.com/aagahi/rust-sentry"
 description = """
-Sentry (getsentry.com) Service for rust ;)
+Sentry (getsentry.com) client for rust ;)
 """
 
 
