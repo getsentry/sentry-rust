@@ -334,7 +334,7 @@ impl ToJsonString for Device {
 
 
 #[derive(Debug,Clone)]
-pub struct SentryCrediential {
+pub struct SentryCredential {
     pub key: String,
     pub secret: String,
     pub host: String,
@@ -344,7 +344,7 @@ pub struct Sentry {
     server_name: String,
     release: String,
     environment: String,
-    worker: Arc<SingleWorker<Event, SentryCrediential>>,
+    worker: Arc<SingleWorker<Event, SentryCredential>>,
 }
 
 header! { (XSentryAuth, "X-Sentry-Auth") => [String] }
@@ -353,7 +353,7 @@ impl Sentry {
     pub fn new(server_name: String,
                release: String,
                environment: String,
-               credential: SentryCrediential)
+               credential: SentryCredential)
                -> Sentry {
         let worker = SingleWorker::new(credential,
                                        Box::new(move |credential, e| -> () {
@@ -372,7 +372,7 @@ impl Sentry {
     // POST /api/1/store/ HTTP/1.1
     // Content-Type: application/json
     //
-    fn post(credential: &SentryCrediential, e: &Event) {
+    fn post(credential: &SentryCredential, e: &Event) {
         // writeln!(&mut ::std::io::stderr(), "SENTRY: {}", e.to_json_string());
 
         let mut headers = Headers::new();
@@ -489,8 +489,8 @@ impl Sentry {
 mod tests {
     use super::SingleWorker;
     use super::Sentry;
-    use super::SentryCrediential;
     use super::ToJsonString;
+    use super::SentryCredential;
 
     use std::sync::{Arc, Mutex};
     use std::sync::mpsc::channel;
@@ -579,7 +579,7 @@ mod tests {
         let sentry = Sentry::new("Server Name".to_string(),
                                  "release".to_string(),
                                  "test_env".to_string(),
-                                 SentryCrediential {
+                                 SentryCredential {
                                      key: "xx".to_string(),
                                      secret: "xx".to_string(),
                                      host: "app.getsentry.com".to_string(),
@@ -595,7 +595,7 @@ mod tests {
         let sentry = Arc::new(Sentry::new("Server Name".to_string(),
                                           "release".to_string(),
                                           "test_env".to_string(),
-                                          SentryCrediential {
+                                          SentryCredential {
                                               key: "xx".to_string(),
                                               secret: "xx".to_string(),
                                               host: "app.getsentry.com".to_string(),
@@ -620,7 +620,7 @@ mod tests {
     //     let sentry = Sentry::new("Server Name".to_string(),
     //                              "release".to_string(),
     //                              "test_env".to_string(),
-    //                              SentryCrediential {
+    //                              SentryCredential {
     //                                  key: "xx".to_string(),
     //                                  secret: "xx".to_string(),
     //                                  host: "app.getsentry.com".to_string(),
