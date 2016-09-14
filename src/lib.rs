@@ -210,6 +210,7 @@ impl Event {
                level: &str,
                message: &str,
                culprit: Option<&str>,
+               fingerprint: Option<Vec<String>>,
                server_name: Option<&str>,
                release: Option<&str>,
                environment: Option<&str>)
@@ -241,7 +242,7 @@ impl Event {
             environment: environment.map(|c| c.to_owned()),
             modules: vec![],
             extra: vec![],
-            fingerprint: vec![],
+            fingerprint: fingerprint.unwrap_or(vec![]),
         }
     }
 }
@@ -447,6 +448,7 @@ impl Sentry {
                                "fatal",
                                msg,
                                Some(&location),
+                               None,
                                Some(&server_name),
                                Some(&release),
                                Some(&environment));
@@ -459,26 +461,40 @@ impl Sentry {
 
     // fatal, error, warning, info, debug
     pub fn fatal(&self, logger: &str, message: &str, culprit: Option<&str>) {
-        self.log(logger, "fatal", message, culprit);
+        self.log(logger, "fatal", message, culprit, None);
     }
     pub fn error(&self, logger: &str, message: &str, culprit: Option<&str>) {
-        self.log(logger, "error", message, culprit);
+        self.log(logger, "error", message, culprit, None);
     }
     pub fn warning(&self, logger: &str, message: &str, culprit: Option<&str>) {
-        self.log(logger, "warning", message, culprit);
+        self.log(logger, "warning", message, culprit, None);
     }
     pub fn info(&self, logger: &str, message: &str, culprit: Option<&str>) {
-        self.log(logger, "info", message, culprit);
+        self.log(logger, "info", message, culprit, None);
     }
     pub fn debug(&self, logger: &str, message: &str, culprit: Option<&str>) {
-        self.log(logger, "debug", message, culprit);
+        self.log(logger, "debug", message, culprit, None);
     }
 
-    fn log(&self, logger: &str, level: &str, message: &str, culprit: Option<&str>) {
+    fn log(&self,
+           logger: &str,
+           level: &str,
+           message: &str,
+           culprit: Option<&str>,
+           fingerprint: Option<Vec<String>>) {
+        let fpr = match fingerprint {
+            Some(f) => f,
+            None => {
+                vec![logger.to_string(),
+                     level.to_string(),
+                     culprit.map(|c| c.to_string()).unwrap_or(message.to_string())]
+            }
+        };
         self.worker.work_with(Event::new(logger,
                                          level,
                                          message,
                                          culprit,
+                                         Some(fpr),
                                          Some(&self.server_name),
                                          Some(&self.release),
                                          Some(&self.environment)));
