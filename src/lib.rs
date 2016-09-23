@@ -261,7 +261,7 @@ impl ToJsonString for Event {
         s.push_str(&format!("\"device\": {}", self.device.to_json_string()));
 
         if let Some(ref culprit) = self.culprit {
-            s.push_str(&format!(",\"culprit\":\"{}\"", culprit.replace("\"", "\\\"")));
+            s.push_str(&format!(",\"culprit\":\"{}\"", culprit.to_json_string()));
         }
         if let Some(ref server_name) = self.server_name {
             s.push_str(&format!(",\"server_name\":\"{}\"", server_name));
@@ -487,7 +487,7 @@ impl Sentry {
             None => {
                 vec![logger.to_string(),
                      level.to_string(),
-                     culprit.map(|c| c.to_string()).unwrap_or(message.to_string())]
+                     culprit.map(|c| c.to_string()).unwrap_or("".to_string())]
             }
         };
         self.worker.work_with(Event::new(logger,
