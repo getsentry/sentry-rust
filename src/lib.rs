@@ -294,7 +294,7 @@ impl ToJsonString for Event {
             s.push_str("}");
         }
         if self.fingerprint.len() > 0 {
-            s.push_str(",\"fingerprint\":\"[");
+            s.push_str(",\"fingerprint\":[");
             let mut comma = false;
             for fingerprint in self.fingerprint.iter() {
                 if comma {
