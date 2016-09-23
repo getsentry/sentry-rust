@@ -261,7 +261,7 @@ impl ToJsonString for Event {
         s.push_str(&format!("\"device\": {}", self.device.to_json_string()));
 
         if let Some(ref culprit) = self.culprit {
-            s.push_str(&format!(",\"culprit\":\"{}\"", culprit.to_json_string()));
+            s.push_str(&format!(",\"culprit\": {}", culprit.to_json_string()));
         }
         if let Some(ref server_name) = self.server_name {
             s.push_str(&format!(",\"server_name\":\"{}\"", server_name));
