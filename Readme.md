@@ -19,7 +19,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-sentry = "0.1.6"
+sentry = "0.1.7"
 ```
 
 and this to your crate root:
