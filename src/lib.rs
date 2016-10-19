@@ -454,7 +454,9 @@ impl Sentry {
         println!("Sentry Response {}", body);
     }
 
-    pub fn register_panic_handler(&self) {
+    pub fn register_panic_handler<F>(&self, maybe_f: Option<F>)
+        where F: Fn(&std::panic::PanicInfo) + 'static + Sync + Send
+    {
 
         let server_name = self.server_name.clone();
         let release = self.release.clone();
@@ -463,7 +465,6 @@ impl Sentry {
         let worker = self.worker.clone();
 
         std::panic::set_hook(Box::new(move |info: &std::panic::PanicInfo| {
-
             let location = info.location()
                 .map(|l| format!("{}: {}", l.file(), l.line()))
                 .unwrap_or("NA".to_string());
@@ -508,6 +509,9 @@ impl Sentry {
                                Some(&release),
                                Some(&environment));
             let _ = worker.work_with(e.clone());
+            if let Some(ref f) = maybe_f {
+                f(info);
+            }
         }));
     }
     pub fn unregister_panic_handler(&self) {
