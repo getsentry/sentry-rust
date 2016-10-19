@@ -13,6 +13,7 @@ Sentry (getsentry.com) client for rust ;)
 
 
 [dependencies]
+backtrace = "0.2"
 hyper = "0.9.5"
 time = "0.1.35"
 chrono = "0.2.22"
