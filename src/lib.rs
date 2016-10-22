@@ -572,6 +572,7 @@ mod tests {
     use std::sync::mpsc::channel;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::thread;
+    use std::panic::PanicInfo;
 
     // use std::time::Duration;
 
@@ -661,7 +662,9 @@ mod tests {
                                      host: "app.getsentry.com".to_string(),
                                      project_id: "xx".to_string(),
                                  });
-        sentry.register_panic_handler();
+        sentry.register_panic_handler(Some(|panic_info: &PanicInfo| -> () {
+            println!("Panic: {:?}", panic_info.payload())
+        }));
         sentry.unregister_panic_handler();
 
     }
