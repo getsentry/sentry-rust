@@ -390,7 +390,7 @@ impl Sentry {
                credential: SentryCredential)
                -> Sentry {
         let worker = SingleWorker::new(credential,
-                                       Box::new(move |credential, e| -> () {
+                                       Box::new(move |credential, e| {
                                            Sentry::post(credential, &e);
                                        }));
         Sentry {
@@ -480,25 +480,22 @@ impl Sentry {
             };
 
             let mut frames = vec![];
-            {
-                let frames = &mut frames;
-                backtrace::trace(|frame: &backtrace::Frame| {
-                    backtrace::resolve(frame.ip(), |symbol| {
-                        let name = symbol.name()
-                            .map_or(format!("unresolved symbol"), |name| name.to_string());
-                        let filename = symbol.filename()
-                            .map_or(String::from(""), |sym| format!("{:?}", sym));
-                        let lineno = symbol.lineno().unwrap_or(0);
-                        frames.push(StackFrame {
-                            filename: filename,
-                            function: name,
-                            lineno: lineno,
-                        });
+            backtrace::trace(|frame: &backtrace::Frame| {
+                backtrace::resolve(frame.ip(), |symbol| {
+                    let name = symbol.name()
+                        .map_or("unresolved symbol".to_string(), |name| name.to_string());
+                    let filename = symbol.filename()
+                        .map_or("".to_string(), |sym| format!("{:?}", sym));
+                    let lineno = symbol.lineno().unwrap_or(0);
+                    frames.push(StackFrame {
+                        filename: filename,
+                        function: name,
+                        lineno: lineno,
                     });
-
-                    true // keep going to the next frame
                 });
-            }
+
+                true // keep going to the next frame
+            });
 
             let e = Event::new("panic",
                                "fatal",
@@ -570,10 +567,11 @@ mod tests {
     use super::SentryCredential;
 
     use std::sync::{Arc, Mutex};
-    use std::sync::mpsc::channel;
     use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::mpsc::channel;
     use std::thread;
     use std::panic::PanicInfo;
+
 
     // use std::time::Duration;
 
@@ -663,9 +661,25 @@ mod tests {
                                      host: "app.getsentry.com".to_string(),
                                      project_id: "xx".to_string(),
                                  });
-        sentry.register_panic_handler(Some(|panic_info: &PanicInfo| -> () {
-            println!("Panic: {:?}", panic_info.payload())
+
+        let (sender, receiver) = channel();
+        let s = Mutex::new(sender);
+
+        sentry.register_panic_handler(Some(move |p: &PanicInfo| -> () {
+            let lock = match s.lock() {
+                Ok(guard) => guard,
+                Err(poisoned) => poisoned.into_inner(),
+            };
+            let _ = lock.send(true);
         }));
+
+        let t1 = thread::spawn(|| {
+            panic!("Panic Handler Testing");
+        });
+        let _ = t1.join();
+
+
+        assert_eq!(receiver.recv().unwrap(), true);
         sentry.unregister_panic_handler();
 
     }
