@@ -418,8 +418,9 @@ impl Sentry {
         // sentry_secret=<secret api key>
         //
         let timestamp = time::get_time().sec.to_string();
-        let xsentryauth = format!("Sentry sentry_version=7,sentry_client=rust-sentry/0.1.0,\
+        let xsentryauth = format!("Sentry sentry_version=7,sentry_client=rust-sentry/{},\
                                    sentry_timestamp={},sentry_key={},sentry_secret={}",
+                                  env!("CARGO_PKG_VERSION"),
                                   timestamp,
                                   credential.key,
                                   credential.secret);
