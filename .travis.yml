@@ -1,5 +1,8 @@
 language: rust
 cache: cargo
+dist: trusty
+sudo: false
+group: beta
 
 # necessary for `travis-cargo coveralls --no-sudo`
 addons:
@@ -14,7 +17,6 @@ rust:
   - beta
   - nightly
 
-sudo: false
 
 # load travis-cargo
 before_script:
