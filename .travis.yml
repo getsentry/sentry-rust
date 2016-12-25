@@ -17,13 +17,14 @@ rust:
   - beta
   - nightly
 
-install:
-  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew install openssl --force; fi
+matrix:
+  include:
+    - os: osx
+      before_install:
+        - export OPENSSL_INCLUDE_DIR=`brew --prefix openssl`/include
+        - export OPENSSL_LIB_DIR=`brew --prefix openssl`/lib
 
 script:
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export LIBRARY_PATH="$LIBRARY_PATH:/usr/local/lib"         ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export OPENSSL_INCLUDE_DIR=`brew --prefix openssl`/include ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export OPENSSL_LIB_DIR=`brew --prefix openssl`/lib         ; fi
 
   - cargo test
   # - rustdoc --test Readme.md -L target/debug/deps -L target/debug
