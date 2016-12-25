@@ -24,8 +24,10 @@ matrix:
         - export OPENSSL_INCLUDE_DIR=`brew --prefix openssl`/include
         - export OPENSSL_LIB_DIR=`brew --prefix openssl`/lib
 
-script:
+before_script:
+  - pip install 'travis-cargo<0.2' --user && export PATH=$HOME/.local/bin:$PATH
 
+script:
   - cargo test
   # - rustdoc --test Readme.md -L target/debug/deps -L target/debug
   - cargo doc --no-deps
