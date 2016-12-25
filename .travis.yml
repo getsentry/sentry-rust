@@ -20,13 +20,6 @@ rust:
 install:
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew install openssl --force; fi
 
-
-# load travis-cargo
-before_script:
-  - |
-      pip install 'travis-cargo<0.2' --user &&
-      export PATH=$HOME/.local/bin:$PATH
-
 script:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export LIBRARY_PATH="$LIBRARY_PATH:/usr/local/lib"         ; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export OPENSSL_INCLUDE_DIR=`brew --prefix openssl`/include ; fi
