@@ -256,6 +256,10 @@ impl Event {
             fingerprint: fingerprint.unwrap_or(vec![]),
         }
     }
+
+    pub fn push_tag(&mut self, key: String, value: String) {
+        self.tags.push((key, value));
+    }
 }
 
 impl ToJsonString for Event {
@@ -281,9 +285,13 @@ impl ToJsonString for Event {
             s.push_str(&format!(",\"release\":\"{}\"", release));
         }
         if self.tags.len() > 0 {
-            s.push_str(",\"tags\":\"{");
-            for tag in self.tags.iter() {
+            let last_index = self.tags.len() - 1;
+            s.push_str(",\"tags\":{");
+            for (index, tag) in self.tags.iter().enumerate() {
                 s.push_str(&format!("\"{}\":\"{}\"", tag.0, tag.1));
+                if index != last_index {
+                    s.push_str(",");
+                }
             }
             s.push_str("}");
         }
@@ -453,6 +461,10 @@ impl Sentry {
         let mut body = String::new();
         res.read_to_string(&mut body).unwrap();
         println!("Sentry Response {}", body);
+    }
+
+    pub fn log_event(&self, e: Event) {
+        self.worker.work_with(e);
     }
 
     pub fn register_panic_handler<F>(&self, maybe_f: Option<F>)
