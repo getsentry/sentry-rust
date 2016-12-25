@@ -677,7 +677,7 @@ mod tests {
         let (sender, receiver) = channel();
         let s = Mutex::new(sender);
 
-        sentry.register_panic_handler(Some(move |p: &PanicInfo| -> () {
+        sentry.register_panic_handler(Some(move |_: &PanicInfo| -> () {
             let lock = match s.lock() {
                 Ok(guard) => guard,
                 Err(poisoned) => poisoned.into_inner(),

@@ -41,6 +41,15 @@ env:
   global:
     secure:
 
+matrix:
+  include:
+    # osx 32/64
+    - os: osx
+      env: TARGET=x86_64-apple-darwin
+      install: brew install openssl
+
+
+
 os:
   - linux
   - osx
