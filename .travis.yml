@@ -2,7 +2,7 @@ language: rust
 cache: cargo
 dist: xenial
 sudo: false
-group: beta
+
 
 # necessary for `travis-cargo coveralls --no-sudo`
 addons:
@@ -36,7 +36,6 @@ before_script:
 
 
 script:
-  - echo $OPENSSL_INCLUDE_DIR
   - cargo test
   # - rustdoc --test Readme.md -L target/debug/deps -L target/debug
   - cargo doc --no-deps
@@ -57,4 +56,4 @@ env:
 
 os:
   - linux
-  - osx
+  # - osx
