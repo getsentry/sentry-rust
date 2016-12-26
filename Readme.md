@@ -51,6 +51,10 @@ sentry.register_panic_handler(Some(|panic_info: &PanicInfo| -> () {}));
 sentry.unregister_panic_handler();
 ```
 
+## OpenSSL
+
+Check [OpenSSL setup](https://github.com/sfackler/rust-openssl/blob/b8fb29db5c246175a096260eacca38180cd77dd0/README.md)
+for OSX if you have some issue while building OpenSSL.
 
 ## License
 

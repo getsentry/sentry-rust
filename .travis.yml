@@ -17,12 +17,6 @@ rust:
   - beta
   - nightly
 
-matrix:
-  include:
-    - os: osx
-      before_install:
-        - export OPENSSL_INCLUDE_DIR=`brew --prefix openssl`/include
-        - export OPENSSL_LIB_DIR=`brew --prefix openssl`/lib
 
 before_script:
   # load travis-cargo
@@ -35,9 +29,6 @@ before_script:
       fi
   - |
       if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-        brew unlink openssl && \
-        brew install --force openssl && \
-        brew link --force openssl  && \
         export OPENSSL_INCLUDE_DIR=`brew --prefix openssl`/include && \
         export OPENSSL_LIB_DIR=`brew --prefix openssl`/lib && \
         echo "Installed openssl for osx."
@@ -45,6 +36,7 @@ before_script:
 
 
 script:
+  - echo $OPENSSL_INCLUDE_DIR
   - cargo test
   # - rustdoc --test Readme.md -L target/debug/deps -L target/debug
   - cargo doc --no-deps
