@@ -35,13 +35,14 @@ before_script:
       fi
   - |
       if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-        brew install openssl && \
+        brew unlink openssl && \
+        brew install --force openssl && \
         export OPENSSL_INCLUDE_DIR=`brew --prefix openssl`/include && \
         export OPENSSL_LIB_DIR=`brew --prefix openssl`/lib && \
         echo "Installed openssl for osx."
       fi
 
-      
+
 script:
   - cargo test
   # - rustdoc --test Readme.md -L target/debug/deps -L target/debug
