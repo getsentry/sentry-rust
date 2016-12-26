@@ -25,8 +25,23 @@ matrix:
         - export OPENSSL_LIB_DIR=`brew --prefix openssl`/lib
 
 before_script:
-  - pip install 'travis-cargo<0.2' --user && export PATH=$HOME/.local/bin:$PATH
+  # load travis-cargo
+  - |
+      pip install 'travis-cargo<0.2' --user &&
+      if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+        export PATH=$HOME/.local/bin/:$PATH
+      else
+        export PATH=$HOME/Library/Python/2.7/bin:$PATH
+      fi
+  - |
+      if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+        brew install openssl && \
+        export OPENSSL_INCLUDE_DIR=`brew --prefix openssl`/include && \
+        export OPENSSL_LIB_DIR=`brew --prefix openssl`/lib && \
+        echo "Installed openssl for osx."
+      fi
 
+      
 script:
   - cargo test
   # - rustdoc --test Readme.md -L target/debug/deps -L target/debug
