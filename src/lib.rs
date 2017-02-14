@@ -14,7 +14,11 @@ use std::env;
 #[macro_use]
 extern crate hyper;
 use hyper::Client;
+use hyper::net::HttpsConnector;
 use hyper::header::{Headers, ContentType};
+
+extern crate hyper_native_tls;
+use hyper_native_tls::NativeTlsClient;
 
 extern crate chrono;
 use chrono::offset::utc::UTC;
@@ -440,7 +444,9 @@ impl Sentry {
         let body = e.to_json_string();
         println!("Sentry body {}", body);
 
-        let mut client = Client::new();
+        let ssl = NativeTlsClient::new().unwrap();
+        let connector = HttpsConnector::new(ssl);
+        let mut client = Client::with_connector(connector);
         client.set_read_timeout(Some(Duration::new(5, 0)));
         client.set_write_timeout(Some(Duration::new(5, 0)));
 
