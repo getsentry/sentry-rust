@@ -6,6 +6,7 @@ use std::sync::mpsc::{channel, Sender, Receiver};
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::fmt::Debug;
+use std::default::Default;
 use std::time::Duration;
 use std::io::Read;
 use std::env;
@@ -222,6 +223,7 @@ impl Event {
     pub fn new(logger: &str,
                level: &str,
                message: &str,
+               device: &Device,
                culprit: Option<&str>,
                fingerprint: Option<Vec<String>>,
                server_name: Option<&str>,
@@ -242,13 +244,7 @@ impl Event {
                 name: "rust-sentry".to_string(),
                 version: env!("CARGO_PKG_VERSION").to_string(),
             },
-            device: Device {
-                name: env::var_os("OSTYPE")
-                    .and_then(|cs| cs.into_string().ok())
-                    .unwrap_or("".to_string()),
-                version: "".to_string(),
-                build: "".to_string(),
-            },
+            device: device.to_owned(),
             culprit: culprit.map(|c| c.to_owned()),
             server_name: server_name.map(|c| c.to_owned()),
             stack_trace: stack_trace,
@@ -363,12 +359,35 @@ impl ToJsonString for SDK {
                 self.version)
     }
 }
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Device {
     name: String,
     version: String,
     build: String,
 }
+
+impl Device {
+  pub fn new(name: String, version: String, build: String) -> Device {
+    Device {
+      name: name,
+      version: version,
+      build: build
+    }
+  }
+}
+
+impl Default for Device {
+    fn default() -> Device {
+        Device {
+            name: env::var_os("OSTYPE")
+                .and_then(|cs| cs.into_string().ok())
+                .unwrap_or("".to_string()),
+            version: "".to_string(),
+            build: "".to_string()
+        }
+    }
+}
+
 impl ToJsonString for Device {
     fn to_json_string(&self) -> String {
         format!("{{\"name\":\"{}\",\"version\":\"{}\",\"build\":\"{}\"}}",
@@ -386,11 +405,65 @@ pub struct SentryCredential {
     pub host: String,
     pub project_id: String,
 }
+
 pub struct Sentry {
+    settings: Settings,
+    worker: Arc<SingleWorker<Event, SentryCredential>>,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Settings {
     server_name: String,
     release: String,
     environment: String,
-    worker: Arc<SingleWorker<Event, SentryCredential>>,
+    device: Device
+}
+
+pub struct SettingsBuilder {
+    server_name: Option<String>,
+    release: Option<String>,
+    environment: Option<String>,
+    device: Option<Device>
+}
+
+impl SettingsBuilder {
+    pub fn new() -> SettingsBuilder {
+        SettingsBuilder {
+            server_name: None,
+            release: None,
+            environment: None,
+            device: None
+        }
+    }
+
+    pub fn with_server_name(mut self, server_name: String) -> SettingsBuilder {
+        self.server_name = Some(server_name);
+        self
+    }
+
+    pub fn with_release(mut self, release: String) -> SettingsBuilder {
+        self.release = Some(release);
+        self
+    }
+
+    pub fn with_environment(mut self, environment: String) -> SettingsBuilder {
+        self.environment = Some(environment);
+        self
+    }
+
+    pub fn with_device(mut self, device: Device) -> SettingsBuilder {
+        self.device = Some(device);
+        self
+    }
+
+    pub fn build(self) -> Settings {
+      Settings {
+        server_name: self.server_name.unwrap_or_default(),
+        release: self.release.unwrap_or_default(),
+        environment: self.environment.unwrap_or_default(),
+        device: self.device.unwrap_or_default()
+      }
+    }
 }
 
 header! { (XSentryAuth, "X-Sentry-Auth") => [String] }
@@ -401,15 +474,22 @@ impl Sentry {
                environment: String,
                credential: SentryCredential)
                -> Sentry {
+        let settings = SettingsBuilder::new()
+            .with_server_name(server_name)
+            .with_release(release)
+            .with_environment(environment)
+            .build();
+        Sentry::from_settings(settings, credential)
+    }
+
+    pub fn from_settings(settings: Settings, credential: SentryCredential) -> Sentry {
         let worker = SingleWorker::new(credential,
                                        Box::new(move |credential, e| {
                                            Sentry::post(credential, &e);
                                        }));
         Sentry {
-            server_name: server_name,
-            release: release,
-            environment: environment,
-            worker: Arc::new(worker),
+            settings: settings,
+            worker: Arc::new(worker)
         }
     }
 
@@ -477,9 +557,10 @@ impl Sentry {
         where F: Fn(&std::panic::PanicInfo) + 'static + Sync + Send
     {
 
-        let server_name = self.server_name.clone();
-        let release = self.release.clone();
-        let environment = self.environment.clone();
+        let device = self.settings.device.clone();
+        let server_name = self.settings.server_name.clone();
+        let release = self.settings.release.clone();
+        let environment = self.settings.environment.clone();
 
         let worker = self.worker.clone();
 
@@ -518,6 +599,7 @@ impl Sentry {
             let e = Event::new("panic",
                                "fatal",
                                msg,
+                               &device,
                                Some(&location),
                                None,
                                Some(&server_name),
@@ -568,22 +650,19 @@ impl Sentry {
         self.worker.work_with(Event::new(logger,
                                          level,
                                          message,
+                                         &self.settings.device,
                                          culprit,
                                          Some(fpr),
-                                         Some(&self.server_name),
+                                         Some(&self.settings.server_name),
                                          None,
-                                         Some(&self.release),
-                                         Some(&self.environment)));
+                                         Some(&self.settings.release),
+                                         Some(&self.settings.environment)));
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::SingleWorker;
-    use super::Sentry;
-    use super::ToJsonString;
-    use super::SentryCredential;
-
+    use super::{Device, Sentry, SentryCredential, SingleWorker, ToJsonString, SettingsBuilder};
     use std::sync::{Arc, Mutex};
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::mpsc::channel;
@@ -715,17 +794,57 @@ mod tests {
                                           }));
 
         let sentry1 = sentry.clone();
-        let t1 = thread::spawn(move || sentry1.server_name.clone());
+        let t1 = thread::spawn(move || sentry1.settings.server_name.clone());
         let sentry2 = sentry.clone();
-        let t2 = thread::spawn(move || sentry2.server_name.clone());
+        let t2 = thread::spawn(move || sentry2.settings.server_name.clone());
 
         let r1 = t1.join().unwrap();
         let r2 = t2.join().unwrap();
 
-        assert!(r1 == sentry.server_name);
-        assert!(r2 == sentry.server_name);
+        assert!(r1 == sentry.settings.server_name);
+        assert!(r2 == sentry.settings.server_name);
     }
 
+    #[test]
+    fn test_empty_settings_constructor_matches_empty_new_constructor() {
+        let creds = SentryCredential {
+            key: "xx".to_string(),
+            secret: "xx".to_string(),
+            host: "app.getsentry.com".to_string(),
+            project_id: "xx".to_string(),
+        };
+
+        let from_settings = Sentry::from_settings(SettingsBuilder::new().build(), creds.clone());
+        let from_new = Sentry::new("".to_string(), "".to_string(), "".to_string(), creds);
+        assert_eq!(from_settings.settings, from_new.settings);
+    }
+
+    #[test]
+    fn test_full_settings_constructor_overrides_all_settings() {
+        let creds = SentryCredential {
+            key: "xx".to_string(),
+            secret: "xx".to_string(),
+            host: "app.getsentry.com".to_string(),
+            project_id: "xx".to_string(),
+        };
+
+        let server_name = "server_name".to_string();
+        let release = "release".to_string();
+        let environment = "environment".to_string();
+        let device = Device::new("device_name".to_string(), "version".to_string(), "build".to_string());
+        let settings = SettingsBuilder::new()
+          .with_server_name(server_name.clone())
+          .with_release(release.clone())
+          .with_environment(environment.clone())
+          .with_device(device.clone())
+          .build();
+
+        let from_settings = Sentry::from_settings(settings, creds);
+        assert_eq!(from_settings.settings.server_name, server_name);
+        assert_eq!(from_settings.settings.release, release);
+        assert_eq!(from_settings.settings.environment, environment);
+        assert_eq!(from_settings.settings.device, device);
+    }
 
     // #[test]
     // fn it_post_sentry_event() {
