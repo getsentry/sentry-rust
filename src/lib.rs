@@ -408,13 +408,13 @@ impl FromStr for SentryCredential {
         regex::Regex::new("https://(?P<public_key>.+):(?P<private_key>.+)@(?P<host>.+)/(?P<project_id>.+)")
             .ok()
             .and_then(|re| re.captures(s))
-            .map(|captures| Ok(SentryCredential {
+            .map(|captures| SentryCredential {
                 key: captures["public_key"].to_string(),
                 secret: captures["private_key"].to_string(),
                 host: captures["host"].to_string(),
                 project_id: captures["project_id"].to_string()
-            }))
-            .unwrap_or_else(|| Err(CredentialParseError {}))
+            })
+            .ok_or_else(|| CredentialParseError {})
     }
 }
 
