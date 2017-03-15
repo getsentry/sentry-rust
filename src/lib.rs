@@ -1,14 +1,17 @@
 extern crate backtrace;
 extern crate time;
+extern crate regex;
 
 use std::thread;
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::fmt::Debug;
+use std::fmt::{self, Debug};
 use std::time::Duration;
 use std::io::Read;
 use std::env;
+use std::error::Error;
+use std::str::FromStr;
 // use std::io::Write;
 
 #[macro_use]
@@ -22,9 +25,6 @@ use hyper_native_tls::NativeTlsClient;
 
 extern crate chrono;
 use chrono::offset::utc::UTC;
-
-
-
 
 struct ThreadState<'a> {
     alive: &'a mut Arc<AtomicBool>,
@@ -379,13 +379,45 @@ impl ToJsonString for Device {
 }
 
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SentryCredential {
     pub key: String,
     pub secret: String,
     pub host: String,
     pub project_id: String,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CredentialParseError {}
+
+impl fmt::Display for CredentialParseError {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.write_str(self.description())
+    }
+}
+
+impl Error for CredentialParseError {
+    fn description(&self) -> &str {
+        "Invalid Sentry DSN syntax. Expected the form `https://{public key}:{private key}@{host}/{project id}`"
+    }
+}
+
+impl FromStr for SentryCredential {
+    type Err = CredentialParseError;
+    fn from_str(s: &str) -> Result<SentryCredential, CredentialParseError> {
+        regex::Regex::new("https://(?P<public_key>.+):(?P<private_key>.+)@(?P<host>.+)/(?P<project_id>.+)")
+            .ok()
+            .and_then(|re| re.captures(s))
+            .map(|captures| Ok(SentryCredential {
+                key: captures["public_key"].to_string(),
+                secret: captures["private_key"].to_string(),
+                host: captures["host"].to_string(),
+                project_id: captures["project_id"].to_string()
+            }))
+            .unwrap_or_else(|| Err(CredentialParseError {}))
+    }
+}
+
 pub struct Sentry {
     server_name: String,
     release: String,
@@ -726,6 +758,35 @@ mod tests {
         assert!(r2 == sentry.server_name);
     }
 
+    #[test]
+    fn test_parsing_dsn_when_valid() {
+        let parsed_creds: SentryCredential = "https://mypublickey:myprivatekey@myhost/myprojectid".parse().unwrap();
+        let manual_creds = SentryCredential {
+            key: "mypublickey".to_string(),
+            secret: "myprivatekey".to_string(),
+            host: "myhost".to_string(),
+            project_id: "myprojectid".to_string()
+        };
+        assert_eq!(parsed_creds, manual_creds);
+    }
+
+    #[test]
+    fn test_parsing_dsn_when_lacking_project_id() {
+        let parsed_creds = "https://mypublickey:myprivatekey@myhost/".parse::<SentryCredential>();
+        assert!(parsed_creds.is_err());
+    }
+
+    #[test]
+    fn test_parsing_dsn_when_lacking_private_key() {
+        let parsed_creds = "https://mypublickey@myhost/myprojectid".parse::<SentryCredential>();
+        assert!(parsed_creds.is_err());
+    }
+
+    #[test]
+    fn test_parsing_dsn_when_lacking_protocol() {
+        let parsed_creds = "mypublickey:myprivatekey@myhost/myprojectid".parse::<SentryCredential>();
+        assert!(parsed_creds.is_err());
+    }
 
     // #[test]
     // fn it_post_sentry_event() {
