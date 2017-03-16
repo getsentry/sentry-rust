@@ -1,6 +1,6 @@
 extern crate backtrace;
 extern crate time;
-extern crate regex;
+extern crate url;
 
 use std::thread;
 use std::sync::mpsc::{channel, Sender, Receiver};
@@ -405,14 +405,31 @@ impl Error for CredentialParseError {
 impl FromStr for SentryCredential {
     type Err = CredentialParseError;
     fn from_str(s: &str) -> Result<SentryCredential, CredentialParseError> {
-        regex::Regex::new("https://(?P<public_key>.+):(?P<private_key>.+)@(?P<host>.+)/(?P<project_id>.+)")
-            .ok()
-            .and_then(|re| re.captures(s))
-            .map(|captures| SentryCredential {
-                key: captures["public_key"].to_string(),
-                secret: captures["private_key"].to_string(),
-                host: captures["host"].to_string(),
-                project_id: captures["project_id"].to_string()
+        url::Url::parse(s).ok()
+            .and_then(|url| {
+                let username = url.username().to_string();
+                if !username.is_empty() { Some((url, username)) } else { None }
+            })
+            .and_then(|(url, username)| {
+                let password = url.password().map(str::to_string);
+                password.map(|pw| (url, username, pw))
+            })
+            .and_then(|(url, username, pw)| {
+                let host = url.host_str().map(str::to_string);
+                host.map(|host| (url, username, pw, host))
+            })
+            .and_then(|(url, username, pw, host)| {
+                url.path_segments()
+                    .and_then(|paths| paths.last().map(str::to_string))
+                    .and_then(|path| if !path.is_empty() { Some((username, pw, host, path)) } else { None })
+            })
+            .map(|(username, pw, host, path)| {
+                SentryCredential {
+                    key: username,
+                    secret: pw,
+                    host: host,
+                    project_id: path
+                }
             })
             .ok_or_else(|| CredentialParseError {})
     }
@@ -761,6 +778,18 @@ mod tests {
     #[test]
     fn test_parsing_dsn_when_valid() {
         let parsed_creds: SentryCredential = "https://mypublickey:myprivatekey@myhost/myprojectid".parse().unwrap();
+        let manual_creds = SentryCredential {
+            key: "mypublickey".to_string(),
+            secret: "myprivatekey".to_string(),
+            host: "myhost".to_string(),
+            project_id: "myprojectid".to_string()
+        };
+        assert_eq!(parsed_creds, manual_creds);
+    }
+
+    #[test]
+    fn test_parsing_dsn_with_nested_project_id() {
+        let parsed_creds: SentryCredential = "https://mypublickey:myprivatekey@myhost/foo/bar/myprojectid".parse().unwrap();
         let manual_creds = SentryCredential {
             key: "mypublickey".to_string(),
             secret: "myprivatekey".to_string(),
