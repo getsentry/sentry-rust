@@ -51,6 +51,14 @@ let sentry = Sentry::from_settings(settings, credential);
 sentry.info("test.logger", "Test Message", None);
 ```
 
+you can also create credentials by parsing a full sentry dsn string:
+
+```rust
+let credential: SentryCredential = "https://mypublickey:myprivatekey@mysentryhost/myprojectid".parse().unwrap();
+let sentry = Sentry::new( "Server Name".to_string(), "release".to_string(), "test_env".to_string(), credential );
+sentry.info("test.logger", "Test Message", None);
+```
+
 you can share sentry accross threads
 
 ```rust
