@@ -36,17 +36,15 @@ let sentry = Sentry::new( "Server Name".to_string(), "release".to_string(), "tes
 sentry.info("test.logger", "Test Message", None);
 ```
 
-alternatively, you can specify optional settings such as device information with a SettingsBuilder
+alternatively, you can specify optional settings such as device information
 
 ```rust
 let credential = SentryCredential { key: "xx".to_string(), secret: "xx".to_string(), host: "app.getsentry.com".to_string(), project_id: "xx".to_string() };
 let device = Device::new("device_name".to_string(), "version".to_string(), "build".to_string());
-let settings = SettingsBuilder::new()
-    .with_server_name("server_name".to_string()) // Defaults to "" if omitted
-    .with_release("release".to_string()) // Defaults to "" if omitted
-    .with_environment("environment".to_string()) // Defaults to "" if omitted
-    .with_device(device) // Defaults to a best-guess device type from the OSTYPE environment variable if omitted
-    .build();
+let settings = Settings {
+    device: device,
+    ..Settings::default()
+};
 let sentry = Sentry::from_settings(settings, credential);
 sentry.info("test.logger", "Test Message", None);
 ```

@@ -459,58 +459,22 @@ pub struct Sentry {
     worker: Arc<SingleWorker<Event, SentryCredential>>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Default)]
 pub struct Settings {
-    server_name: String,
-    release: String,
-    environment: String,
-    device: Device
+    pub server_name: String,
+    pub release: String,
+    pub environment: String,
+    pub device: Device
 }
 
-pub struct SettingsBuilder {
-    server_name: Option<String>,
-    release: Option<String>,
-    environment: Option<String>,
-    device: Option<Device>
-}
-
-impl SettingsBuilder {
-    pub fn new() -> SettingsBuilder {
-        SettingsBuilder {
-            server_name: None,
-            release: None,
-            environment: None,
-            device: None
+impl Settings {
+    pub fn new(server_name: String, release: String, environment: String, device: Device) -> Settings {
+        Settings {
+            server_name: server_name,
+            release: release,
+            environment: environment,
+            device: device
         }
-    }
-
-    pub fn with_server_name(mut self, server_name: String) -> SettingsBuilder {
-        self.server_name = Some(server_name);
-        self
-    }
-
-    pub fn with_release(mut self, release: String) -> SettingsBuilder {
-        self.release = Some(release);
-        self
-    }
-
-    pub fn with_environment(mut self, environment: String) -> SettingsBuilder {
-        self.environment = Some(environment);
-        self
-    }
-
-    pub fn with_device(mut self, device: Device) -> SettingsBuilder {
-        self.device = Some(device);
-        self
-    }
-
-    pub fn build(self) -> Settings {
-      Settings {
-        server_name: self.server_name.unwrap_or_default(),
-        release: self.release.unwrap_or_default(),
-        environment: self.environment.unwrap_or_default(),
-        device: self.device.unwrap_or_default()
-      }
     }
 }
 
@@ -522,11 +486,13 @@ impl Sentry {
                environment: String,
                credential: SentryCredential)
                -> Sentry {
-        let settings = SettingsBuilder::new()
-            .with_server_name(server_name)
-            .with_release(release)
-            .with_environment(environment)
-            .build();
+        let settings = Settings {
+            server_name: server_name,
+            release: release,
+            environment: environment,
+            ..Settings::default()
+        };
+
         Sentry::from_settings(settings, credential)
     }
 
@@ -570,7 +536,6 @@ impl Sentry {
         headers.set(ContentType::json());
 
         let body = e.to_json_string();
-        println!("Sentry body {}", body);
 
         let ssl = NativeTlsClient::new().unwrap();
         let connector = HttpsConnector::new(ssl);
@@ -594,7 +559,6 @@ impl Sentry {
         // Read the Response.
         let mut body = String::new();
         res.read_to_string(&mut body).unwrap();
-        println!("Sentry Response {}", body);
     }
 
     pub fn log_event(&self, e: Event) {
@@ -710,7 +674,7 @@ impl Sentry {
 
 #[cfg(test)]
 mod tests {
-    use super::{Device, Sentry, SentryCredential, SingleWorker, ToJsonString, SettingsBuilder};
+    use super::{Device, Sentry, SentryCredential, Settings, SingleWorker, ToJsonString};
     use std::sync::{Arc, Mutex};
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::mpsc::channel;
@@ -932,6 +896,34 @@ mod tests {
     fn test_parsing_dsn_when_lacking_protocol() {
         let parsed_creds = "mypublickey:myprivatekey@myhost/myprojectid".parse::<SentryCredential>();
         assert!(parsed_creds.is_err());
+    }
+
+    #[test]
+    fn test_empty_settings_constructor_matches_empty_new_constructor() {
+        let creds = "https://mypublickey:myprivatekey@myhost/myprojectid".parse::<SentryCredential>().unwrap();
+        let from_settings = Sentry::from_settings(Settings::default(), creds.clone());
+        let from_new = Sentry::new("".to_string(), "".to_string(), "".to_string(), creds);
+        assert_eq!(from_settings.settings, from_new.settings);
+    }
+
+    #[test]
+    fn test_full_settings_constructor_overrides_all_settings() {
+        let creds = "https://mypublickey:myprivatekey@myhost/myprojectid".parse::<SentryCredential>().unwrap();
+        let server_name = "server_name".to_string();
+        let release = "release".to_string();
+        let environment = "environment".to_string();
+        let device = Device::new("device_name".to_string(), "version".to_string(), "build".to_string());
+        let settings = Settings {
+            server_name: server_name.clone(),
+            release: release.clone(),
+            environment: environment.clone(),
+            device: device.clone()
+        };
+        let from_settings = Sentry::from_settings(settings, creds);
+        assert_eq!(from_settings.settings.server_name, server_name);
+        assert_eq!(from_settings.settings.release, release);
+        assert_eq!(from_settings.settings.environment, environment);
+        assert_eq!(from_settings.settings.device, device);
     }
 
     // #[test]
