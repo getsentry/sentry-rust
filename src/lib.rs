@@ -536,6 +536,7 @@ impl Sentry {
         headers.set(ContentType::json());
 
         let body = e.to_json_string();
+        println!("Sentry body {}", body);
 
         let ssl = NativeTlsClient::new().unwrap();
         let connector = HttpsConnector::new(ssl);
@@ -559,6 +560,7 @@ impl Sentry {
         // Read the Response.
         let mut body = String::new();
         res.read_to_string(&mut body).unwrap();
+        println!("Sentry Response {}", body);
     }
 
     pub fn log_event(&self, e: Event) {
@@ -818,45 +820,6 @@ mod tests {
     }
 
     #[test]
-    fn test_empty_settings_constructor_matches_empty_new_constructor() {
-        let creds = SentryCredential {
-            key: "xx".to_string(),
-            secret: "xx".to_string(),
-            host: "app.getsentry.com".to_string(),
-            project_id: "xx".to_string(),
-        };
-
-        let from_settings = Sentry::from_settings(SettingsBuilder::new().build(), creds.clone());
-        let from_new = Sentry::new("".to_string(), "".to_string(), "".to_string(), creds);
-        assert_eq!(from_settings.settings, from_new.settings);
-    }
-
-    #[test]
-    fn test_full_settings_constructor_overrides_all_settings() {
-        let creds = SentryCredential {
-            key: "xx".to_string(),
-            secret: "xx".to_string(),
-            host: "app.getsentry.com".to_string(),
-            project_id: "xx".to_string(),
-        };
-
-        let server_name = "server_name".to_string();
-        let release = "release".to_string();
-        let environment = "environment".to_string();
-        let device = Device::new("device_name".to_string(), "version".to_string(), "build".to_string());
-        let settings = SettingsBuilder::new()
-            .with_server_name(server_name.clone())
-            .with_release(release.clone())
-            .with_environment(environment.clone())
-            .with_device(device.clone())
-            .build();
-
-        let from_settings = Sentry::from_settings(settings, creds);
-        assert_eq!(from_settings.settings.server_name, server_name);
-        assert_eq!(from_settings.settings.release, release);
-        assert_eq!(from_settings.settings.environment, environment);
-        assert_eq!(from_settings.settings.device, device);
-
     fn test_parsing_dsn_when_valid() {
         let parsed_creds: SentryCredential = "https://mypublickey:myprivatekey@myhost/myprojectid".parse().unwrap();
         let manual_creds = SentryCredential {
