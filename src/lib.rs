@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate log;
+
 extern crate backtrace;
 extern crate time;
 extern crate url;
@@ -536,7 +539,7 @@ impl Sentry {
         headers.set(ContentType::json());
 
         let body = e.to_json_string();
-        println!("Sentry body {}", body);
+        trace!("Sentry body {}", body);
 
         let ssl = NativeTlsClient::new().unwrap();
         let connector = HttpsConnector::new(ssl);
@@ -560,7 +563,7 @@ impl Sentry {
         // Read the Response.
         let mut body = String::new();
         res.read_to_string(&mut body).unwrap();
-        println!("Sentry Response {}", body);
+        trace!("Sentry Response {}", body);
     }
 
     pub fn log_event(&self, e: Event) {
