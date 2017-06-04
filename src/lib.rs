@@ -601,7 +601,7 @@ impl Sentry {
                     let name = symbol.name()
                         .map_or("unresolved symbol".to_string(), |name| name.to_string());
                     let filename = symbol.filename()
-                        .map_or("".to_string(), |sym| format!("{:?}", sym));
+                        .map_or("".to_string(), |sym| sym.to_string_lossy().into_owned());
                     let lineno = symbol.lineno().unwrap_or(0);
                     frames.push(StackFrame {
                         filename: filename,
