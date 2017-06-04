@@ -1,12 +1,12 @@
 [package]
 name = "sentry"
-version = "0.1.9"
+version = "0.1.10"
 authors = ["Alexis Agahi <aagahi@prefetch.com>"]
 license = "MIT/Apache-2.0"
 readme = "Readme.md"
-repository = "https://github.com/aagahi/rust-sentry"
-homepage = "https://github.com/aagahi/rust-sentry"
-documentation = "https://github.com/aagahi/rust-sentry"
+repository = "https://github.com/getsentry/sentry-rust"
+homepage = "https://github.com/getsentry/sentry-rust"
+documentation = "https://github.com/getsentry/sentry-rust"
 description = """
 Sentry (getsentry.com) client for rust ;)
 """
@@ -15,7 +15,7 @@ Sentry (getsentry.com) client for rust ;)
 [dependencies]
 backtrace = "0.3"
 hyper = "0.10"
-hyper-native-tls = "0.2.2"
+hyper-native-tls = "0.2.3"
 time = "0.1"
 chrono = "0.3"
 url = "1"
