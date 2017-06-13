@@ -1,9 +1,9 @@
 Rust Sentry Lib
 ==========
 
-[![Build Status](https://travis-ci.org/getsentry/rust-sentry.svg?branch=master)](https://travis-ci.org/getsentry/rust-sentry)
+[![Build Status](https://travis-ci.org/getsentry/sentry-rust.svg?branch=master)](https://travis-ci.org/getsentry/sentry-rust)
 [![Crates.io](https://img.shields.io/crates/v/sentry.svg?style=flat)](https://crates.io/crates/sentry)
-[![Coverage Status](https://coveralls.io/repos/github/getsentry/rust-sentry/badge.svg?branch=master)](https://coveralls.io/github/getsentry/rust-sentry?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/getsentry/sentry-rust/badge.svg?branch=master)](https://coveralls.io/github/getsentry/sentry-rust?branch=master)
 
 
 [Sentry Service](https://www.getsentry.com/) now available for rust ;)
