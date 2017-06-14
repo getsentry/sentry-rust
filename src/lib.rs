@@ -1,6 +1,9 @@
 #[macro_use]
 extern crate log;
 
+#[macro_use]
+extern crate error_chain;
+
 extern crate backtrace;
 extern crate time;
 extern crate url;
@@ -17,6 +20,8 @@ use std::env;
 use std::error::Error;
 use std::str::FromStr;
 // use std::io::Write;
+mod errors;
+pub use self::errors::*;
 
 #[macro_use]
 extern crate hyper;
@@ -426,7 +431,7 @@ impl Error for CredentialParseError {
 
 impl FromStr for SentryCredential {
     type Err = CredentialParseError;
-    fn from_str(s: &str) -> Result<SentryCredential, CredentialParseError> {
+    fn from_str(s: &str) -> std::result::Result<SentryCredential, CredentialParseError> {
         url::Url::parse(s).ok()
             .and_then(|url| {
                 let username = url.username().to_string();
@@ -502,7 +507,7 @@ impl Sentry {
     pub fn from_settings(settings: Settings, credential: SentryCredential) -> Sentry {
         let worker = SingleWorker::new(credential,
                                        Box::new(move |credential, e| {
-                                           Sentry::post(credential, &e);
+                                           let _ = Sentry::post(credential, &e);
                                        }));
         Sentry {
             settings: settings,
@@ -515,7 +520,7 @@ impl Sentry {
     // POST /api/1/store/ HTTP/1.1
     // Content-Type: application/json
     //
-    fn post(credential: &SentryCredential, e: &Event) {
+    fn post(credential: &SentryCredential, e: &Event) -> Result<()> {
         // writeln!(&mut ::std::io::stderr(), "SENTRY: {}", e.to_json_string());
 
         let mut headers = Headers::new();
@@ -557,13 +562,13 @@ impl Sentry {
         let mut res = client.post(&url)
             .headers(headers)
             .body(&body)
-            .send()
-            .unwrap();
+            .send()?;
 
         // Read the Response.
         let mut body = String::new();
-        res.read_to_string(&mut body).unwrap();
+        res.read_to_string(&mut body)?;
         trace!("Sentry Response {}", body);
+        Ok(())
     }
 
     pub fn log_event(&self, e: Event) {
