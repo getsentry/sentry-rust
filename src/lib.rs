@@ -237,7 +237,10 @@ impl Event {
                server_name: Option<&str>,
                stack_trace: Option<Vec<StackFrame>>,
                release: Option<&str>,
-               environment: Option<&str>)
+               environment: Option<&str>,
+               tags: Option<Vec<(String, String)>>,
+               extra: Option<Vec<(String, String)>>,
+               )
                -> Event {
 
 
@@ -257,10 +260,10 @@ impl Event {
             server_name: server_name.map(|c| c.to_owned()),
             stack_trace: stack_trace,
             release: release.map(|c| c.to_owned()),
-            tags: vec![],
+            tags: tags.unwrap_or(vec![]),
             environment: environment.map(|c| c.to_owned()),
             modules: vec![],
-            extra: vec![],
+            extra: extra.unwrap_or(vec![]),
             fingerprint: fingerprint.unwrap_or(vec![]),
         }
     }
@@ -627,7 +630,9 @@ impl Sentry {
                                Some(&server_name),
                                Some(frames),
                                Some(&release),
-                               Some(&environment));
+                               Some(&environment),
+                               None,
+                               None);
             let _ = worker.work_with(e.clone());
             if let Some(ref f) = maybe_f {
                 f(info);
@@ -640,27 +645,29 @@ impl Sentry {
 
     // fatal, error, warning, info, debug
     pub fn fatal(&self, logger: &str, message: &str, culprit: Option<&str>) {
-        self.log(logger, "fatal", message, culprit, None);
+        self.log(logger, "fatal", message, culprit, None, None, None);
     }
     pub fn error(&self, logger: &str, message: &str, culprit: Option<&str>) {
-        self.log(logger, "error", message, culprit, None);
+        self.log(logger, "error", message, culprit, None, None, None);
     }
     pub fn warning(&self, logger: &str, message: &str, culprit: Option<&str>) {
-        self.log(logger, "warning", message, culprit, None);
+        self.log(logger, "warning", message, culprit, None, None, None);
     }
     pub fn info(&self, logger: &str, message: &str, culprit: Option<&str>) {
-        self.log(logger, "info", message, culprit, None);
+        self.log(logger, "info", message, culprit, None, None, None);
     }
     pub fn debug(&self, logger: &str, message: &str, culprit: Option<&str>) {
-        self.log(logger, "debug", message, culprit, None);
+        self.log(logger, "debug", message, culprit, None, None, None);
     }
 
-    fn log(&self,
+    pub fn log(&self,
            logger: &str,
            level: &str,
            message: &str,
            culprit: Option<&str>,
-           fingerprint: Option<Vec<String>>) {
+           fingerprint: Option<Vec<String>>,
+           tags: Option<Vec<(String, String)>>,
+           extra: Option<Vec<(String, String)>>) {
         let fpr = match fingerprint {
             Some(f) => f,
             None => {
@@ -678,7 +685,9 @@ impl Sentry {
                                          Some(&self.settings.server_name),
                                          None,
                                          Some(&self.settings.release),
-                                         Some(&self.settings.environment)));
+                                         Some(&self.settings.environment),
+                                         tags,
+                                         extra));
     }
 }
 
