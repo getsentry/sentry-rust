@@ -33,7 +33,7 @@ extern crate hyper_native_tls;
 use hyper_native_tls::NativeTlsClient;
 
 extern crate chrono;
-use chrono::offset::utc::UTC;
+use chrono::offset::Utc;
 
 struct ThreadState<'a> {
     alive: &'a mut Arc<AtomicBool>,
@@ -247,7 +247,7 @@ impl Event {
         Event {
             event_id: "".to_string(),
             message: message.to_owned(),
-            timestamp: UTC::now().format("%Y-%m-%dT%H:%M:%S").to_string(), /* ISO 8601 format, without a timezone ex: "2011-05-02T17:41:36" */
+            timestamp: Utc::now().format("%Y-%m-%dT%H:%M:%S").to_string(), /* ISO 8601 format, without a timezone ex: "2011-05-02T17:41:36" */
             level: level.to_owned(),
             logger: logger.to_owned(),
             platform: "other".to_string(),
