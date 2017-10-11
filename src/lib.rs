@@ -223,10 +223,10 @@ impl std::str::FromStr for SentryCredential {
 
 #[derive(Debug, PartialEq, Default, Clone)]
 pub struct Settings {
-    server_name: String,
-    release: String,
-    environment: String,
-    device: Device,
+    pub server_name: String,
+    pub release: String,
+    pub environment: String,
+    pub device: Device,
 }
 
 impl Settings {

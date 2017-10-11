@@ -31,36 +31,36 @@ extern crate sentry;
 ## Examples
 
 ```rust
-let credential = SentryCredential { key: "xx".to_string(), secret: "xx".to_string(), host: "app.getsentry.com".to_string(), project_id: "xx".to_string() };
-let sentry = Sentry::new( "Server Name".to_string(), "release".to_string(), "test_env".to_string(), credential );
+let creds = "https://mypublickey:myprivatekey@myhost/myprojectid"
+    .parse::<SentryCredential>()
+    .unwrap();
+let sentry = Sentry::from_settings(handle, Default::default(), creds);
 sentry.info("test.logger", "Test Message", None);
 ```
 
 alternatively, you can specify optional settings such as device information
 
 ```rust
-let credential = SentryCredential { key: "xx".to_string(), secret: "xx".to_string(), host: "app.getsentry.com".to_string(), project_id: "xx".to_string() };
+let creds = "https://mypublickey:myprivatekey@myhost/myprojectid"
+    .parse::<SentryCredential>()
+    .unwrap();
 let device = Device::new("device_name".to_string(), "version".to_string(), "build".to_string());
 let settings = Settings {
     device: device,
     ..Settings::default()
 };
-let sentry = Sentry::from_settings(settings, credential);
-sentry.info("test.logger", "Test Message", None);
-```
-
-you can also create credentials by parsing a full sentry dsn string:
-
-```rust
-let credential: SentryCredential = "https://mypublickey:myprivatekey@mysentryhost/myprojectid".parse().unwrap();
-let sentry = Sentry::new( "Server Name".to_string(), "release".to_string(), "test_env".to_string(), credential );
+let sentry = Sentry::from_settings(handle, Default::default(), creds);
 sentry.info("test.logger", "Test Message", None);
 ```
 
 you can share sentry accross threads
 
 ```rust
-let sentry = Arc::new(Sentry::new( "Server Name".to_string(), "release".to_string(), "test_env".to_string(), credential ));
+let creds = "https://mypublickey:myprivatekey@myhost/myprojectid"
+    .parse::<SentryCredential>()
+    .unwrap();
+let sentry = Sentry::from_settings(handle, Default::default(), creds);
+
 let sentry1 = sentry.clone();
 thread::spawn(move || sentry1.info("test.logger", "Test Message", None));
 ```
