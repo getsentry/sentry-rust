@@ -223,10 +223,10 @@ impl std::str::FromStr for SentryCredential {
 
 #[derive(Debug, PartialEq, Default, Clone)]
 pub struct Settings {
-    server_name: String,
-    release: String,
-    environment: String,
-    device: Device,
+    pub server_name: String,
+    pub release: String,
+    pub environment: String,
+    pub device: Device,
 }
 
 impl Settings {
@@ -468,17 +468,17 @@ where
     let f = client
         .request(req)
         .map_err(|_| ())
-        .and_then(|_resp| {
-            let body = _resp.body();
-            body.collect()
-                .map(|chunks| {
-                    let mut buf = Vec::new();
-                    for e in chunks.into_iter() {
-                        buf.extend_from_slice(&e);
-                    }
+        .and_then(|resp| {
+            resp.body()
+                .concat2()
+                .map(|_resp_bytes| {
+                    // println!("{:?}", _resp_bytes);
                     ()
                 })
-                .map_err(|_e| ())
+                .map_err(|_e| {
+                    // println!("{:?}", _e);
+                    ()
+                })
         })
         .map_err(|_e| ());
     handle.spawn(f);
