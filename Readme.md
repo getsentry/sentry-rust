@@ -53,7 +53,7 @@ let sentry = Sentry::from_settings(handle, Default::default(), creds);
 sentry.info("test.logger", "Test Message", None);
 ```
 
-you can share sentry accross threads
+you can share sentry across threads
 
 ```rust
 let creds = "https://mypublickey:myprivatekey@myhost/myprojectid"
