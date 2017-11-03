@@ -65,7 +65,7 @@ let sentry1 = sentry.clone();
 thread::spawn(move || sentry1.info("test.logger", "Test Message", None));
 ```
 
-with rust 1.10 or nightly you can register panic handler and still provide you own handler
+with rust 1.10 or nightly you can register panic handler and still provide your own handler
 
 ```rust
 sentry.register_panic_handler(Some(|panic_info: &PanicInfo| -> () {}));
