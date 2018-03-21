@@ -9,14 +9,14 @@ use serde::ser::{Error as SerError, SerializeMap, Serializer};
 use serde_json::{from_value, to_value, Value};
 
 /// Represents a log entry message.
-#[derive(Serialize, Deserialize, Default, Clone, Debug)]
+#[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq)]
 pub struct LogEntry {
     pub message: String,
     #[serde(skip_serializing_if = "Vec::is_empty")] pub params: Vec<Value>,
 }
 
 /// Represents a frame.
-#[derive(Serialize, Deserialize, Default, Clone, Debug)]
+#[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq)]
 pub struct Frame {
     pub filename: String,
     pub abs_path: Option<String>,
@@ -28,19 +28,19 @@ pub struct Frame {
 }
 
 /// Represents a stacktrace.
-#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub struct Stacktrace {
     pub frames: Vec<Frame>,
 }
 
 /// Represents a list of exceptions.
-#[derive(Serialize, Deserialize, Default, Clone, Debug)]
+#[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq)]
 pub struct Exception {
     pub values: Vec<SingleException>,
 }
 
 /// Represents a single exception
-#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub struct SingleException {
     #[serde(rename = "type")] pub ty: String,
     pub value: String,
@@ -48,7 +48,7 @@ pub struct SingleException {
 }
 
 /// Represents a single breadcrumb
-#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub struct Breadcrumb {
     pub timestamp: f64,
     #[serde(rename = "type")] pub ty: String,
@@ -58,7 +58,7 @@ pub struct Breadcrumb {
 }
 
 /// Represents user info.
-#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 #[serde(default)]
 pub struct User {
     pub id: Option<String>,
@@ -69,7 +69,7 @@ pub struct User {
 }
 
 /// Represents http request data.
-#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 #[serde(default)]
 pub struct Request {
     #[serde(with = "url_serde")] pub url: Option<Url>,
@@ -84,13 +84,12 @@ pub struct Request {
 }
 
 /// Represents a full event for Sentry.
-#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 #[serde(default)]
 pub struct Event {
     #[serde(skip_serializing_if = "Option::is_none")] pub level: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")] pub fingerprint: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub logentry: Option<LogEntry>,
+    #[serde(skip_serializing_if = "Option::is_none")] pub logentry: Option<LogEntry>,
     #[serde(skip_serializing_if = "Option::is_none")] pub platform: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")] pub timestamp: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")] pub server_name: Option<String>,
@@ -107,6 +106,87 @@ pub struct Event {
     #[serde(skip_serializing_if = "HashMap::is_empty")] pub tags: HashMap<String, String>,
     #[serde(skip_serializing_if = "HashMap::is_empty")] pub extra: HashMap<String, Value>,
     #[serde(flatten)] pub other: HashMap<String, Value>,
+}
+
+/// Optional device screen orientation
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[serde(rename_all = "lowercase")]
+pub enum Orientation {
+    Portrait,
+    Landscape,
+}
+
+/// General context data.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Context {
+    pub data: ContextType,
+    pub extra: HashMap<String, Value>,
+}
+
+/// Typed contextual data
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "snake_case", untagged)]
+pub enum ContextType {
+    Default,
+    Device(DeviceContext),
+    Os(OsContext),
+    Runtime(RuntimeContext),
+}
+
+/// Holds device information.
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
+pub struct DeviceContext {
+    #[serde(skip_serializing_if = "Option::is_none")] pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")] pub family: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")] pub model: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")] pub model_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")] pub arch: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")] pub battery_level: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")] pub orientation: Option<Orientation>,
+}
+
+/// Holds operating system information.
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
+pub struct OsContext {
+    #[serde(skip_serializing_if = "Option::is_none")] pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")] pub version: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")] pub build: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")] pub kernel_version: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")] pub rooted: Option<bool>,
+}
+
+/// Holds information about the runtime.
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
+pub struct RuntimeContext {
+    #[serde(skip_serializing_if = "Option::is_none")] pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")] pub version: Option<String>,
+}
+
+impl From<ContextType> for Context {
+    fn from(data: ContextType) -> Context {
+        Context {
+            data: data,
+            extra: HashMap::new(),
+        }
+    }
+}
+
+impl Default for ContextType {
+    fn default() -> ContextType {
+        ContextType::Default
+    }
+}
+
+impl ContextType {
+    /// Returns the name of the type for sentry.
+    pub fn type_name(&self) -> &str {
+        match *self {
+            ContextType::Default => "default",
+            ContextType::Device(..) => "device",
+            ContextType::Os(..) => "os",
+            ContextType::Runtime(..) => "runtime",
+        }
+    }
 }
 
 fn deserialize_context<'de, D>(deserializer: D) -> Result<HashMap<String, Context>, D::Error>
@@ -187,85 +267,4 @@ where
     }
 
     map.end()
-}
-
-/// Optional device screen orientation
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
-#[serde(rename_all = "lowercase")]
-pub enum Orientation {
-    Portrait,
-    Landscape,
-}
-
-/// General context data.
-#[derive(Debug, Clone, Default)]
-pub struct Context {
-    pub data: ContextType,
-    pub extra: HashMap<String, Value>,
-}
-
-impl From<ContextType> for Context {
-    fn from(data: ContextType) -> Context {
-        Context {
-            data: data,
-            extra: HashMap::new(),
-        }
-    }
-}
-
-/// Typed contextual data
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "snake_case", untagged)]
-pub enum ContextType {
-    Default,
-    Device(DeviceContext),
-    Os(OsContext),
-    Runtime(RuntimeContext),
-}
-
-impl Default for ContextType {
-    fn default() -> ContextType {
-        ContextType::Default
-    }
-}
-
-/// Holds device information.
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
-pub struct DeviceContext {
-    #[serde(skip_serializing_if = "Option::is_none")] pub name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub family: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub model: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub model_id: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub arch: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub battery_level: Option<f32>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub orientation: Option<Orientation>,
-}
-
-/// Holds operating system information.
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
-pub struct OsContext {
-    #[serde(skip_serializing_if = "Option::is_none")] pub name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub version: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub build: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub kernel_version: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub rooted: Option<bool>,
-}
-
-/// Holds information about the runtime.
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
-pub struct RuntimeContext {
-    #[serde(skip_serializing_if = "Option::is_none")] pub name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub version: Option<String>,
-}
-
-impl ContextType {
-    /// Returns the name of the type for sentry.
-    pub fn type_name(&self) -> &str {
-        match *self {
-            ContextType::Default => "default",
-            ContextType::Device(..) => "device",
-            ContextType::Os(..) => "os",
-            ContextType::Runtime(..) => "runtime",
-        }
-    }
 }
