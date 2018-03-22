@@ -2,6 +2,7 @@
 //! Sentry server.  It's used by the sentry relay infrastructure as well as the
 //! rust Sentry client/.
 #![warn(missing_docs)]
+extern crate chrono;
 extern crate failure;
 #[macro_use]
 extern crate failure_derive;

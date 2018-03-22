@@ -2,6 +2,8 @@
 use std::collections::HashMap;
 use std::net::IpAddr;
 
+use chrono;
+use chrono::{DateTime, Utc};
 use url_serde;
 use url::Url;
 use serde::de::{Deserialize, Deserializer, Error as DeError};
@@ -47,14 +49,72 @@ pub struct SingleException {
     pub stacktrace: Option<Stacktrace>,
 }
 
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[serde(rename_all = "lowercase")]
+pub enum Level {
+    Debug,
+    Info,
+    Warning,
+    Error,
+    Critical,
+}
+
+impl Default for Level {
+    fn default() -> Level {
+        Level::Info
+    }
+}
+
+impl Level {
+    /// A quick way to check if the level is `debug`.
+    pub fn is_debug(&self) -> bool {
+        *self == Level::Debug
+    }
+
+    /// A quick way to check if the level is `info`.
+    pub fn is_info(&self) -> bool {
+        *self == Level::Info
+    }
+
+    /// A quick way to check if the level is `warning`.
+    pub fn is_warning(&self) -> bool {
+        *self == Level::Warning
+    }
+
+    /// A quick way to check if the level is `error`.
+    pub fn is_error(&self) -> bool {
+        *self == Level::Error
+    }
+
+    /// A quick way to check if the level is `critical`.
+    pub fn is_critical(&self) -> bool {
+        *self == Level::Critical
+    }
+}
+
 /// Represents a single breadcrumb
-#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde(default)]
 pub struct Breadcrumb {
-    pub timestamp: f64,
+    #[serde(with = "chrono::serde::ts_seconds")] pub timestamp: DateTime<Utc>,
     #[serde(rename = "type")] pub ty: String,
-    pub message: String,
-    pub category: String,
-    #[serde(flatten)] pub data: HashMap<String, Value>,
+    #[serde(skip_serializing_if = "Option::is_none")] pub category: Option<String>,
+    #[serde(skip_serializing_if = "Level::is_info")] pub level: Level,
+    #[serde(skip_serializing_if = "Option::is_none")] pub message: Option<String>,
+    #[serde(skip_serializing_if = "HashMap::is_empty")] pub data: HashMap<String, Value>,
+}
+
+impl Default for Breadcrumb {
+    fn default() -> Breadcrumb {
+        Breadcrumb {
+            timestamp: Utc::now(),
+            ty: "default".into(),
+            category: None,
+            level: Default::default(),
+            message: None,
+            data: HashMap::new(),
+        }
+    }
 }
 
 /// Represents user info.
@@ -89,6 +149,7 @@ pub struct Request {
 pub struct Event {
     #[serde(skip_serializing_if = "Option::is_none")] pub level: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")] pub fingerprint: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")] pub message: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")] pub logentry: Option<LogEntry>,
     #[serde(skip_serializing_if = "Option::is_none")] pub platform: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")] pub timestamp: Option<f64>,
