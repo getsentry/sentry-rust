@@ -31,3 +31,41 @@ fn test_basic_event() {
          \"os\"}}}"
     );
 }
+
+#[test]
+fn test_canonical_exception() {
+    let mut event: v7::Event = Default::default();
+    event.exceptions.push(v7::Exception {
+        ty: "ZeroDivisionError".into(),
+        ..Default::default()
+    });
+    let json = serde_json::to_string(&event).unwrap();
+    assert_eq!(json, "{\"exception\":{\"values\":[{\"type\":\"ZeroDivisionError\"}]}}");
+
+    let event2: v7::Event = serde_json::from_str(&json).unwrap();
+    assert_eq!(event, event2);
+}
+
+#[test]
+fn test_single_exception_inline() {
+    let json = "{\"exception\":{\"type\":\"ZeroDivisionError\"}}";
+    let event: v7::Event = serde_json::from_str(&json).unwrap();
+    let mut ref_event: v7::Event = Default::default();
+    ref_event.exceptions.push(v7::Exception {
+        ty: "ZeroDivisionError".into(),
+        ..Default::default()
+    });
+    assert_eq!(event, ref_event);
+}
+
+#[test]
+fn test_multi_exception_list() {
+    let json = "{\"exception\":[{\"type\":\"ZeroDivisionError\"}]}";
+    let event: v7::Event = serde_json::from_str(&json).unwrap();
+    let mut ref_event: v7::Event = Default::default();
+    ref_event.exceptions.push(v7::Exception {
+        ty: "ZeroDivisionError".into(),
+        ..Default::default()
+    });
+    assert_eq!(event, ref_event);
+}

@@ -7,45 +7,133 @@ use chrono::{DateTime, Utc};
 use url_serde;
 use url::Url;
 use serde::de::{Deserialize, Deserializer, Error as DeError};
-use serde::ser::{Error as SerError, SerializeMap, Serializer};
+use serde::ser::{Error as SerError, Serialize, SerializeMap, Serializer};
 use serde_json::{from_value, to_value, Value};
 
 /// Represents a log entry message.
+///
+/// A log message is similar to the `message` attribute on the event itself but
+/// can additionally hold optional parameters.
 #[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq)]
 pub struct LogEntry {
+    /// The log message with parameters replaced by `%s`
     pub message: String,
-    #[serde(skip_serializing_if = "Vec::is_empty")] pub params: Vec<Value>,
+    /// Positional parameters to be inserted into the log entry.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub params: Vec<Value>,
 }
 
 /// Represents a frame.
 #[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq)]
 pub struct Frame {
-    pub filename: String,
+    /// The name of the function is known.
+    ///
+    /// Note that this might include the name of a class as well if that makes
+    /// sense for the language.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub function: Option<String>,
+    /// The potentially mangled name of the symbol as it appears in an executable.
+    ///
+    /// This is different from a function name by generally being the mangled
+    /// name that appears natively in the binary.  This is relevant for languages
+    /// like Swift, C++ or Rust.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub symbol: Option<String>,
+    /// The name of the module the frame is contained in.
+    ///
+    /// Note that this might also include a class name if that is something the
+    /// language natively considers to be part of the stack (for instance in Java).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub module: Option<String>,
+    /// The name of the package that contains the frame.
+    ///
+    /// For instance this can be a dylib for native languages, the name of the jar
+    /// or .NET assembly.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub package: Option<String>,
+    /// Location information about where the error originated.
+    #[serde(flatten)]
+    pub location: FileLocation,
+    /// Embedded sourcecode in the frame.
+    #[serde(flatten)]
+    pub source: EmbeddedSources,
+    /// In-app indicator.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub in_app: Option<bool>,
+    /// Optional local variables.
+    #[serde(skip_serializing_if = "HashMap::is_empty")]
+    pub vars: HashMap<String, Value>,
+    /// Optional instruction information for native languages.
+    #[serde(flatten)]
+    pub instruction_info: InstructionInfo,
+}
+
+/// Represents location information.
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
+pub struct FileLocation {
+    /// The filename (basename only).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub filename: Option<String>,
+    /// If known the absolute path.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub abs_path: Option<String>,
-    pub function: String,
-    pub lineno: Option<u32>,
-    pub context_line: Option<String>,
-    pub pre_context: Option<Vec<String>>,
-    pub post_context: Option<Vec<String>>,
+    /// The line number if known.
+    #[serde(rename = "lineno", skip_serializing_if = "Option::is_none")]
+    pub line: Option<u64>,
+    /// The column number if known.
+    #[serde(rename = "colno", skip_serializing_if = "Option::is_none")]
+    pub column: Option<u64>,
+}
+
+/// Represents instruction information.
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
+pub struct InstructionInfo {
+    /// If known the location of the image.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub image_addr: Option<u64>,
+    /// If known the location of the instruction.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub instruction_addr: Option<u64>,
+    /// If known the location of symbol.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub symbol_addr: Option<u64>,
+}
+
+/// Represents contextual information in a frame.
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
+pub struct EmbeddedSources {
+    /// The sources of the lines leading up to the current line.
+    #[serde(rename = "pre_context")]
+    pub pre_lines: Option<Vec<String>>,
+    /// The current line as source.
+    #[serde(rename = "context_line")]
+    pub current_line: Option<String>,
+    /// The sources of the lines after the current line.
+    #[serde(rename = "post_context")]
+    pub post_lines: Option<Vec<String>>,
 }
 
 /// Represents a stacktrace.
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub struct Stacktrace {
+    /// The list of frames in the stacktrace.
     pub frames: Vec<Frame>,
-}
-
-/// Represents a list of exceptions.
-#[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq)]
-pub struct Exception {
-    pub values: Vec<SingleException>,
+    /// Optionally a segment of frames removed (`start`, `end`)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub frames_omitted: Option<(u64, u64)>,
 }
 
 /// Represents a single exception
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
-pub struct SingleException {
-    #[serde(rename = "type")] pub ty: String,
-    pub value: String,
+pub struct Exception {
+    /// The type of the exception
+    #[serde(rename = "type")]
+    pub ty: String,
+    /// The optional value of the exception
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub value: Option<String>,
+    /// Optionally the stacktrace.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub stacktrace: Option<Stacktrace>,
 }
 
@@ -163,7 +251,9 @@ pub struct Event {
             deserialize_with = "deserialize_context")]
     pub contexts: HashMap<String, Context>,
     #[serde(skip_serializing_if = "Vec::is_empty")] pub breadcrumbs: Vec<Breadcrumb>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub exception: Option<Exception>,
+    #[serde(skip_serializing_if = "Vec::is_empty", serialize_with = "serialize_exceptions",
+            deserialize_with = "deserialize_exceptions", rename = "exception")]
+    pub exceptions: Vec<Exception>,
     #[serde(skip_serializing_if = "HashMap::is_empty")] pub tags: HashMap<String, String>,
     #[serde(skip_serializing_if = "HashMap::is_empty")] pub extra: HashMap<String, Value>,
     #[serde(flatten)] pub other: HashMap<String, Value>,
@@ -328,4 +418,33 @@ where
     }
 
     map.end()
+}
+
+fn deserialize_exceptions<'de, D>(deserializer: D) -> Result<Vec<Exception>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Repr {
+        Qualified { values: Vec<Exception> },
+        Unqualified(Vec<Exception>),
+        Single(Exception),
+    }
+    Repr::deserialize(deserializer).map(|x| match x {
+        Repr::Qualified { values } => values,
+        Repr::Unqualified(values) => values,
+        Repr::Single(exc) => vec![exc],
+    })
+}
+
+fn serialize_exceptions<S>(value: &Vec<Exception>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    #[derive(Serialize)]
+    struct Helper<'a> {
+        values: &'a [Exception],
+    }
+    Helper { values: &value }.serialize(serializer)
 }
