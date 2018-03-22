@@ -40,7 +40,10 @@ fn test_canonical_exception() {
         ..Default::default()
     });
     let json = serde_json::to_string(&event).unwrap();
-    assert_eq!(json, "{\"exception\":{\"values\":[{\"type\":\"ZeroDivisionError\"}]}}");
+    assert_eq!(
+        json,
+        "{\"exception\":{\"values\":[{\"type\":\"ZeroDivisionError\"}]}}"
+    );
 
     let event2: v7::Event = serde_json::from_str(&json).unwrap();
     assert_eq!(event, event2);

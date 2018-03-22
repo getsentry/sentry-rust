@@ -140,10 +140,15 @@ pub struct Exception {
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[serde(rename_all = "lowercase")]
 pub enum Level {
+    /// Indicates very spammy debug information
     Debug,
+    /// Informational messages
     Info,
+    /// A warning.
     Warning,
+    /// An error.
     Error,
+    /// Similar to error but indicates a critical event that usually causes a shutdown.
     Critical,
 }
 
@@ -198,7 +203,7 @@ impl Default for Breadcrumb {
             timestamp: Utc::now(),
             ty: "default".into(),
             category: None,
-            level: Default::default(),
+            level: Level::Info,
             message: None,
             data: HashMap::new(),
         }
@@ -232,45 +237,132 @@ pub struct Request {
 }
 
 /// Represents a full event for Sentry.
-#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(default)]
 pub struct Event {
-    #[serde(skip_serializing_if = "Option::is_none")] pub level: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub fingerprint: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub message: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub logentry: Option<LogEntry>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub platform: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub timestamp: Option<f64>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub server_name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub release: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub dist: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub environment: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub user: Option<User>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub request: Option<Request>,
+    /// The level of the event (defaults to error)
+    #[serde(skip_serializing_if = "Level::is_error")]
+    pub level: Level,
+    /// An optional fingerprint configuration to override the default.
+    #[serde(skip_serializing_if = "is_default_fingerprint")]
+    pub fingerprint: Vec<String>,
+    /// A message to be sent with the event.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+    /// Optionally a log entry that can be used instead of the message for
+    /// more complex cases.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub logentry: Option<LogEntry>,
+    /// A platform identifier for this event.
+    #[serde(skip_serializing_if = "is_other")]
+    pub platform: String,
+    /// The timestamp of when the event was created.
+    ///
+    /// This can be set to `None` in which case the server will set a timestamp.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub timestamp: Option<DateTime<Utc>>,
+    /// Optionally the server (or device) name of this event.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub server_name: Option<String>,
+    /// A release identifier.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub release: Option<String>,
+    /// An optional distribution identifer.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dist: Option<String>,
+    /// An optional environment identifier.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub environment: Option<String>,
+    /// Optionally user data to be sent along.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user: Option<User>,
+    /// Optionally HTTP request data to be sent along.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub request: Option<Request>,
+    /// Optional contexts.
     #[serde(skip_serializing_if = "HashMap::is_empty", serialize_with = "serialize_context",
             deserialize_with = "deserialize_context")]
     pub contexts: HashMap<String, Context>,
-    #[serde(skip_serializing_if = "Vec::is_empty")] pub breadcrumbs: Vec<Breadcrumb>,
+    /// Exceptions to be attached (one or multiple if chained).
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub breadcrumbs: Vec<Breadcrumb>,
     #[serde(skip_serializing_if = "Vec::is_empty", serialize_with = "serialize_exceptions",
             deserialize_with = "deserialize_exceptions", rename = "exception")]
     pub exceptions: Vec<Exception>,
-    #[serde(skip_serializing_if = "HashMap::is_empty")] pub tags: HashMap<String, String>,
-    #[serde(skip_serializing_if = "HashMap::is_empty")] pub extra: HashMap<String, Value>,
-    #[serde(flatten)] pub other: HashMap<String, Value>,
+    /// Optional tags to be attached to the event.
+    #[serde(skip_serializing_if = "HashMap::is_empty")]
+    pub tags: HashMap<String, String>,
+    /// Optional extra information to be sent with the event.
+    #[serde(skip_serializing_if = "HashMap::is_empty")]
+    pub extra: HashMap<String, Value>,
+    /// Additional arbitrary keys for forwards compatibility.
+    #[serde(flatten)]
+    pub other: HashMap<String, Value>,
+}
+
+fn is_other(value: &str) -> bool {
+    value == "other"
+}
+
+fn is_default_fingerprint(vec: &Vec<String>) -> bool {
+    vec.len() == 1 && (vec[0] == "{{ default }}" || vec[0] == "{{default}}")
+}
+
+impl Default for Event {
+    fn default() -> Event {
+        Event {
+            level: Level::Error,
+            fingerprint: vec!["{{ default }}".into()],
+            message: None,
+            logentry: None,
+            platform: "other".into(),
+            timestamp: None,
+            server_name: None,
+            release: None,
+            dist: None,
+            environment: None,
+            user: None,
+            request: None,
+            contexts: HashMap::new(),
+            breadcrumbs: Vec::new(),
+            exceptions: Vec::new(),
+            tags: HashMap::new(),
+            extra: HashMap::new(),
+            other: HashMap::new(),
+        }
+    }
+}
+
+impl Event {
+    /// Creates a new event without timestamp.
+    pub fn new() -> Event {
+        Default::default()
+    }
+
+    /// Creates a new event with the current timestamp.
+    pub fn new_with_current_timestamp() -> Event {
+        let mut rv = Event::new();
+        rv.timestamp = Some(Utc::now());
+        rv
+    }
 }
 
 /// Optional device screen orientation
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 #[serde(rename_all = "lowercase")]
 pub enum Orientation {
+    /// Portrait device orientation.
     Portrait,
+    /// Landscaope device orientation.
     Landscape,
 }
 
 /// General context data.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Context {
+    /// Typed context data.
     pub data: ContextType,
+    /// Additional keys sent along not known to the context type.
     pub extra: HashMap<String, Value>,
 }
 
@@ -278,9 +370,13 @@ pub struct Context {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "snake_case", untagged)]
 pub enum ContextType {
+    /// Arbitrary contextual information
     Default,
+    /// Device data.
     Device(DeviceContext),
+    /// Operating system data.
     Os(OsContext),
+    /// Runtime data.
     Runtime(RuntimeContext),
 }
 
