@@ -36,11 +36,14 @@ fn test_event_defaults() {
 
 #[test]
 fn test_basic_event() {
-    let mut event: v7::Event = Default::default();
-    event.logentry = Some(v7::LogEntry {
-        message: "Hello %s!".into(),
-        params: vec!["Peter!".into()],
-    });
+    let mut event = v7::Event {
+        id: "d43e86c9-6e42-4a93-a4fb-da156dd17341".parse().ok(),
+        logentry: Some(v7::LogEntry {
+            message: "Hello %s!".into(),
+            params: vec!["Peter!".into()],
+        }),
+        ..Default::default()
+    };
     event.contexts.insert(
         "os".into(),
         v7::ContextType::Os(v7::OsContext {
@@ -56,9 +59,69 @@ fn test_basic_event() {
     assert_eq!(&event, &event2);
     assert_eq!(
         serde_json::to_string(&event).unwrap(),
-        "{\"logentry\":{\"message\":\"Hello %s!\",\"params\":[\"Peter!\"]},\
+        "{\"event_id\":\"d43e86c96e424a93a4fbda156dd17341\",\"logentry\":\
+         {\"message\":\"Hello %s!\",\"params\":[\"Peter!\"]},\
          \"contexts\":{\"os\":{\"name\":\"linux\",\"rooted\":true,\"type\":\
          \"os\"}}}"
+    );
+}
+
+#[test]
+fn test_release_and_dist() {
+    let event = v7::Event {
+        dist: Some("42".to_string()),
+        release: Some("my.awesome.app-1.0".to_string()),
+        environment: Some("prod".to_string()),
+        ..Default::default()
+    };
+
+    assert_eq!(
+        serde_json::to_string(&event).unwrap(),
+        "{\"release\":\"my.awesome.app-1.0\",\"dist\":\"42\",\"environment\":\"prod\"}"
+    );
+}
+
+#[test]
+fn test_fingerprint() {
+    let mut event: v7::Event = Default::default();
+    assert_eq!(serde_json::to_string(&event).unwrap(), "{}");
+
+    event.fingerprint.push("extra".into());
+    assert_eq!(
+        serde_json::to_string(&event).unwrap(),
+        "{\"fingerprint\":[\"{{ default }}\",\"extra\"]}"
+    );
+}
+
+#[test]
+fn test_message_basics() {
+    let event = v7::Event {
+        message: Some("Hello World!".to_string()),
+        culprit: Some("foo in bar".to_string()),
+        level: v7::Level::Info,
+        ..Default::default()
+    };
+    assert_eq!(
+        serde_json::to_string(&event).unwrap(),
+        "{\"level\":\"info\",\"culprit\":\"foo in bar\",\"message\":\"Hello World!\"}"
+    );
+}
+
+#[test]
+fn test_logentry_basics() {
+    let event = v7::Event {
+        logentry: Some(v7::LogEntry {
+            message: "Hello %s!".to_string(),
+            params: vec!["World".into()],
+        }),
+        culprit: Some("foo in bar".to_string()),
+        level: v7::Level::Debug,
+        ..Default::default()
+    };
+    assert_eq!(
+        serde_json::to_string(&event).unwrap(),
+        "{\"level\":\"debug\",\"culprit\":\"foo in bar\",\"logentry\":{\"message\":\
+         \"Hello %s!\",\"params\":[\"World\"]}}"
     );
 }
 

@@ -15,7 +15,10 @@ use url::Url;
 use uuid::Uuid;
 use serde::de::{Deserialize, Deserializer, Error as DeError};
 use serde::ser::{Error as SerError, Serialize, SerializeMap, Serializer};
-use serde_json::{from_value, to_value, Value};
+use serde_json::{from_value, to_value};
+
+/// An arbitrary (JSON) value.
+pub use serde_json::Value;
 
 /// Represents a log entry message.
 ///
