@@ -252,7 +252,7 @@ impl Default for Breadcrumb {
             category: None,
             level: Level::Info,
             message: None,
-            data: HashMap::new(),
+            data: HashMap::with_capacity(0),
         }
     }
 }
@@ -283,10 +283,12 @@ pub struct Request {
     #[serde(flatten)] pub other: HashMap<String, Value>,
 }
 
-/// Represents debug meta information.
-#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
-#[serde(default)]
-pub struct SdkInfo {
+/// Holds information about the system SDK.
+///
+/// This is relevant for iOS and other platforms that have a system
+/// SDK.  Not to be confused with the client SDK.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct SystemSdkInfo {
     /// The internal name of the SDK
     sdk_name: String,
     /// the major version of the SDK as integer or 0
@@ -343,15 +345,14 @@ pub struct ProguardDebugImage {
 pub struct DebugMeta {
     /// Optional system SDK information.
     #[serde(skip_serializing_if = "Option::is_none")]
-    sdk_info: Option<SdkInfo>,
+    sdk_info: Option<SystemSdkInfo>,
     /// A list of debug information files.
     #[serde(skip_serializing_if = "Option::is_none")]
     images: Option<DebugImage>,
 }
 
 /// Represents a repository reference.
-#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
-#[serde(default)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct RepoReference {
     /// The name of the repository as it is registered in Sentry.
     pub name: String,
@@ -360,6 +361,18 @@ pub struct RepoReference {
     pub prefix: Option<String>,
     /// The optional current revision of the local repository.
     pub revision: Option<String>,
+}
+
+/// Represents a repository reference.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct ClientSdkInfo {
+    /// The name of the SDK.
+    pub name: String,
+    /// The version of the SDK.
+    pub version: String,
+    /// An optional list of integrations that are enabled in this SDK.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub integrations: Vec<String>
 }
 
 /// Represents a full event for Sentry.
@@ -372,6 +385,9 @@ pub struct Event {
     /// An optional fingerprint configuration to override the default.
     #[serde(skip_serializing_if = "is_default_fingerprint")]
     pub fingerprint: Vec<String>,
+    /// The culprit or transaction name of the event.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub culprit: Option<String>,
     /// A message to be sent with the event.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
@@ -379,6 +395,12 @@ pub struct Event {
     /// more complex cases.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub logentry: Option<LogEntry>,
+    /// Optionally the name of the logger that created this event.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub logger: Option<String>,
+    /// Optionally a name to version mapping of installed modules.
+    #[serde(skip_serializing_if = "HashMap::is_empty")]
+    pub modules: HashMap<String, String>,
     /// A platform identifier for this event.
     #[serde(skip_serializing_if = "is_other")]
     pub platform: String,
@@ -437,10 +459,12 @@ pub struct Event {
     /// Debug meta information.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub debug_meta: Option<DebugMeta>,
+    /// SDK metadata
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sdk_info: Option<ClientSdkInfo>,
     /// Additional arbitrary keys for forwards compatibility.
     #[serde(flatten)]
     pub other: HashMap<String, Value>,
-    // TODO: repos, sdk, logger, culprit, modules
 }
 
 fn is_other(value: &str) -> bool {
@@ -456,27 +480,31 @@ impl Default for Event {
         Event {
             level: Level::Error,
             fingerprint: vec!["{{ default }}".into()],
+            culprit: None,
             message: None,
             logentry: None,
+            logger: None,
+            modules: HashMap::with_capacity(0),
             platform: "other".into(),
             timestamp: None,
             server_name: None,
             release: None,
-            repos: HashMap::new(),
+            repos: HashMap::with_capacity(0),
             dist: None,
             environment: None,
             user: None,
             request: None,
-            contexts: HashMap::new(),
+            contexts: HashMap::with_capacity(0),
             breadcrumbs: Vec::new(),
             exceptions: Vec::new(),
             stacktrace: None,
             template_info: None,
             threads: Vec::new(),
-            tags: HashMap::new(),
-            extra: HashMap::new(),
+            tags: HashMap::with_capacity(0),
+            extra: HashMap::with_capacity(0),
             debug_meta: None,
-            other: HashMap::new(),
+            sdk_info: None,
+            other: HashMap::with_capacity(0),
         }
     }
 }
@@ -561,7 +589,7 @@ impl From<ContextType> for Context {
     fn from(data: ContextType) -> Context {
         Context {
             data: data,
-            extra: HashMap::new(),
+            extra: HashMap::with_capacity(0),
         }
     }
 }
