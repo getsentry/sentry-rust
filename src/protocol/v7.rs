@@ -124,13 +124,13 @@ pub struct TemplateInfo {
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub struct EmbeddedSources {
     /// The sources of the lines leading up to the current line.
-    #[serde(rename = "pre_context")]
+    #[serde(rename = "pre_context", skip_serializing_if = "Option::is_none")]
     pub pre_lines: Option<Vec<String>>,
     /// The current line as source.
-    #[serde(rename = "context_line")]
+    #[serde(rename = "context_line", skip_serializing_if = "Option::is_none")]
     pub current_line: Option<String>,
     /// The sources of the lines after the current line.
-    #[serde(rename = "post_context")]
+    #[serde(rename = "post_context", skip_serializing_if = "Option::is_none")]
     pub post_lines: Option<Vec<String>>,
 }
 
