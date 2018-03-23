@@ -1,4 +1,9 @@
 //! The current latest sentry protocol version.
+//!
+//! Most constructs in the protocol map directly to types here but some
+//! cleanup by renaming attributes has been applied.  The idea here is that
+//! a future sentry protocol will be a cleanup of the old one and is mapped
+//! to similar values on the rust side.
 use std::fmt;
 use std::collections::HashMap;
 use std::net::IpAddr;

@@ -1,6 +1,6 @@
 //! This crate provides common types for working with the Sentry protocol or the
 //! Sentry server.  It's used by the sentry relay infrastructure as well as the
-//! rust Sentry client/.
+//! rust Sentry client.
 #![warn(missing_docs)]
 extern crate chrono;
 extern crate failure;
