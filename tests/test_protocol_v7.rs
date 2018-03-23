@@ -224,6 +224,40 @@ fn test_user() {
 }
 
 #[test]
+fn test_request() {
+    let event = v7::Event {
+        request: Some(v7::Request {
+            url: "https://www.example.invalid/bar".parse().ok(),
+            method: Some("GET".into()),
+            data: Some("{}".into()),
+            query_string: Some("foo=bar&blub=blah".into()),
+            cookies: Some("dummy=42".into()),
+            headers: {
+                let mut hm = HashMap::new();
+                hm.insert("Content-Type".into(), "text/plain".into());
+                hm
+            },
+            env: {
+                let mut env = HashMap::new();
+                env.insert("PATH_INFO".into(), "/bar".into());
+                env
+            },
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+
+    assert_eq!(
+        serde_json::to_string(&event).unwrap(),
+        "{\"request\":{\"url\":\"https://www.example.invalid/bar\",\
+         \"method\":\"GET\",\"data\":\"{}\",\"query_string\":\
+         \"foo=bar&blub=blah\",\"cookies\":\"dummy=42\",\"headers\":\
+         {\"Content-Type\":\"text/plain\"},\"env\":\
+         {\"PATH_INFO\":\"/bar\"}}}"
+    );
+}
+
+#[test]
 fn test_canonical_exception() {
     let mut event: v7::Event = Default::default();
     event.exceptions.push(v7::Exception {
