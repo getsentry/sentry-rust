@@ -10,7 +10,6 @@ fn reserialize(event: &v7::Event) -> v7::Event {
     serde_json::from_str(&json).unwrap()
 }
 
-
 #[test]
 fn test_event_default_vs_new() {
     let event_new = reserialize(&v7::Event::new());
@@ -99,5 +98,8 @@ fn test_basic_message_event() {
     event.message = Some("Hello World!".into());
     event.logger = Some("root".into());
     let json = serde_json::to_string(&event).unwrap();
-    assert_eq!(&json, "{\"level\":\"warning\",\"message\":\"Hello World!\",\"logger\":\"root\"}");
+    assert_eq!(
+        &json,
+        "{\"level\":\"warning\",\"message\":\"Hello World!\",\"logger\":\"root\"}"
+    );
 }
