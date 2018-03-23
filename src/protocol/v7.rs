@@ -7,6 +7,7 @@ use chrono;
 use chrono::{DateTime, Utc};
 use url_serde;
 use url::Url;
+use uuid::Uuid;
 use serde::de::{Deserialize, Deserializer, Error as DeError};
 use serde::ser::{Error as SerError, Serialize, SerializeMap, Serializer};
 use serde_json::{from_value, to_value, Value};
@@ -182,6 +183,7 @@ pub struct Exception {
     pub stacktrace: Option<Stacktrace>,
 }
 
+/// Represents the level of severity of an event or breadcrumb
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[serde(rename_all = "lowercase")]
 pub enum Level {
@@ -281,6 +283,85 @@ pub struct Request {
     #[serde(flatten)] pub other: HashMap<String, Value>,
 }
 
+/// Represents debug meta information.
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
+#[serde(default)]
+pub struct SdkInfo {
+    /// The internal name of the SDK
+    sdk_name: String,
+    /// the major version of the SDK as integer or 0
+    version_major: u32,
+    /// the minor version of the SDK as integer or 0
+    version_minior: u32,
+    /// the patch version of the SDK as integer or 0
+    version_patchlevel: u32,
+}
+
+/// Represents a debug image.
+#[derive(Debug, Clone, PartialEq)]
+pub enum DebugImage {
+    Apple(AppleDebugImage),
+    Proguard(ProguardDebugImage),
+    Unknown(HashMap<String, Value>),
+}
+
+impl DebugImage {
+    /// Returns the name of the type on sentry.
+    pub fn type_name(&self) -> &str {
+        match *self {
+            DebugImage::Apple(..) => "apple",
+            DebugImage::Proguard(..) => "proguard",
+            DebugImage::Unknown(ref map) => map.get("type")
+                .and_then(|x| x.as_str())
+                .unwrap_or("unknown"),
+        }
+    }
+}
+
+/// Represents an apple debug image in the debug meta.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct AppleDebugImage {
+    pub name: String,
+    pub arch: Option<String>,
+    pub cpu_type: u32,
+    pub cpu_subtype: u32,
+    pub image_addr: u64,
+    pub image_size: u64,
+    pub image_vmaddr: u64,
+    pub uuid: Uuid,
+}
+
+/// Represents a proguard mapping file reference.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct ProguardDebugImage {
+    pub uuid: Uuid,
+}
+
+/// Represents debug meta information.
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
+#[serde(default)]
+pub struct DebugMeta {
+    /// Optional system SDK information.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    sdk_info: Option<SdkInfo>,
+    /// A list of debug information files.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    images: Option<DebugImage>,
+}
+
+/// Represents a repository reference.
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
+#[serde(default)]
+pub struct RepoReference {
+    /// The name of the repository as it is registered in Sentry.
+    pub name: String,
+    /// The optional prefix path to apply to source code when pairing it
+    /// up with files in the repository.
+    pub prefix: Option<String>,
+    /// The optional current revision of the local repository.
+    pub revision: Option<String>,
+}
+
 /// Represents a full event for Sentry.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(default)]
@@ -312,6 +393,9 @@ pub struct Event {
     /// A release identifier.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub release: Option<String>,
+    /// Repository references
+    #[serde(skip_serializing_if = "HashMap::is_empty")]
+    pub repos: HashMap<String, RepoReference>,
     /// An optional distribution identifer.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dist: Option<String>,
@@ -350,9 +434,13 @@ pub struct Event {
     /// Optional extra information to be sent with the event.
     #[serde(skip_serializing_if = "HashMap::is_empty")]
     pub extra: HashMap<String, Value>,
+    /// Debug meta information.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub debug_meta: Option<DebugMeta>,
     /// Additional arbitrary keys for forwards compatibility.
     #[serde(flatten)]
     pub other: HashMap<String, Value>,
+    // TODO: repos, sdk, logger, culprit, modules
 }
 
 fn is_other(value: &str) -> bool {
@@ -374,6 +462,7 @@ impl Default for Event {
             timestamp: None,
             server_name: None,
             release: None,
+            repos: HashMap::new(),
             dist: None,
             environment: None,
             user: None,
@@ -386,6 +475,7 @@ impl Default for Event {
             threads: Vec::new(),
             tags: HashMap::new(),
             extra: HashMap::new(),
+            debug_meta: None,
             other: HashMap::new(),
         }
     }
@@ -554,7 +644,7 @@ fn serialize_context<S>(value: &HashMap<String, Context>, serializer: S) -> Resu
 where
     S: Serializer,
 {
-    let mut map = try!(serializer.serialize_map(Some(value.len())));
+    let mut map = try!(serializer.serialize_map(None));
 
     for (key, value) in value {
         let mut c = match to_value(&value.data).map_err(S::Error::custom)? {
@@ -628,4 +718,49 @@ where
         values: &'a [Thread],
     }
     Helper { values: &value }.serialize(serializer)
+}
+
+impl<'de> Deserialize<'de> for DebugImage {
+    fn deserialize<D>(deserializer: D) -> Result<DebugImage, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let mut map = match Value::deserialize(deserializer)? {
+            Value::Object(map) => map,
+            _ => return Err(D::Error::custom("expected debug image")),
+        };
+
+        Ok(match map.remove("type").as_ref().and_then(|x| x.as_str()) {
+            Some("apple") => {
+                let img: AppleDebugImage =
+                    from_value(Value::Object(map)).map_err(D::Error::custom)?;
+                DebugImage::Apple(img)
+            }
+            Some("proguard") => {
+                let img: ProguardDebugImage =
+                    from_value(Value::Object(map)).map_err(D::Error::custom)?;
+                DebugImage::Proguard(img)
+            }
+            Some(ty) => {
+                let mut img: HashMap<String, Value> = map.into_iter().collect();
+                img.insert("type".into(), ty.into());
+                DebugImage::Unknown(img)
+            }
+            None => DebugImage::Unknown(Default::default()),
+        })
+    }
+}
+
+impl Serialize for DebugImage {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut c = match to_value(self).map_err(S::Error::custom)? {
+            Value::Object(map) => map,
+            _ => unreachable!(),
+        };
+        c.insert("type".into(), self.type_name().into());
+        c.serialize(serializer)
+    }
 }
