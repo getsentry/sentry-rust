@@ -23,6 +23,18 @@ fn test_event_default_vs_new() {
 }
 
 #[test]
+fn test_event_defaults() {
+    let event: v7::Event = Default::default();
+
+    assert_eq!(event.id, None);
+    assert_eq!(event.timestamp, None);
+    assert_eq!(event.fingerprint, vec!["{{ default }}".to_string()]);
+    assert_eq!(event.platform, "other");
+    assert_eq!(event.level, v7::Level::Error);
+    assert_eq!(event.sdk_info, None);
+}
+
+#[test]
 fn test_basic_event() {
     let mut event: v7::Event = Default::default();
     event.logentry = Some(v7::LogEntry {
