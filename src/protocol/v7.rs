@@ -100,6 +100,17 @@ pub struct InstructionInfo {
     pub symbol_addr: Option<u64>,
 }
 
+/// Represents template debug info.
+#[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq)]
+pub struct TemplateInfo {
+    /// Location information about where the error originated.
+    #[serde(flatten)]
+    pub location: FileLocation,
+    /// Embedded sourcecode in the frame.
+    #[serde(flatten)]
+    pub source: EmbeddedSources,
+}
+
 /// Represents contextual information in a frame.
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub struct EmbeddedSources {
@@ -326,6 +337,9 @@ pub struct Event {
     /// A single stacktrace (deprecated)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stacktrace: Option<Stacktrace>,
+    /// Simplified template error location info
+    #[serde(skip_serializing_if = "Option::is_none", rename = "template")]
+    pub template_info: Option<TemplateInfo>,
     /// A list of threads.
     #[serde(skip_serializing_if = "Vec::is_empty", serialize_with = "serialize_threads",
             deserialize_with = "deserialize_threads")]
@@ -368,6 +382,7 @@ impl Default for Event {
             breadcrumbs: Vec::new(),
             exceptions: Vec::new(),
             stacktrace: None,
+            template_info: None,
             threads: Vec::new(),
             tags: HashMap::new(),
             extra: HashMap::new(),
