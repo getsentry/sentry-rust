@@ -255,6 +255,41 @@ fn test_request() {
          {\"Content-Type\":\"text/plain\"},\"env\":\
          {\"PATH_INFO\":\"/bar\"}}}"
     );
+
+    let event = v7::Event {
+        request: Some(v7::Request {
+            url: "https://www.example.invalid/bar".parse().ok(),
+            method: Some("GET".into()),
+            data: Some("{}".into()),
+            query_string: Some("foo=bar&blub=blah".into()),
+            cookies: Some("dummy=42".into()),
+            other: {
+                let mut m = HashMap::new();
+                m.insert("other_key".into(), "other_value".into());
+                m
+            },
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+
+    assert_eq!(
+        serde_json::to_string(&event).unwrap(),
+        "{\"request\":{\"url\":\"https://www.example.invalid/bar\",\
+         \"method\":\"GET\",\"data\":\"{}\",\"query_string\":\
+         \"foo=bar&blub=blah\",\"cookies\":\"dummy=42\",\
+         \"other_key\":\"other_value\"}}"
+    );
+
+    let event = v7::Event {
+        request: Some(Default::default()),
+        ..Default::default()
+    };
+
+    assert_eq!(
+        serde_json::to_string(&event).unwrap(),
+        "{\"request\":{}}"
+    );
 }
 
 #[test]
