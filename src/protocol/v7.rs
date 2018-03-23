@@ -342,13 +342,13 @@ pub struct Request {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct SystemSdkInfo {
     /// The internal name of the SDK
-    sdk_name: String,
+    pub sdk_name: String,
     /// the major version of the SDK as integer or 0
-    version_major: u32,
+    pub version_major: u32,
     /// the minor version of the SDK as integer or 0
-    version_minior: u32,
+    pub version_minior: u32,
     /// the patch version of the SDK as integer or 0
-    version_patchlevel: u32,
+    pub version_patchlevel: u32,
 }
 
 /// Represents a debug image.
@@ -410,10 +410,10 @@ pub struct ProguardDebugImage {
 pub struct DebugMeta {
     /// Optional system SDK information.
     #[serde(skip_serializing_if = "Option::is_none")]
-    sdk_info: Option<SystemSdkInfo>,
+    pub sdk_info: Option<SystemSdkInfo>,
     /// A list of debug information files.
     #[serde(skip_serializing_if = "Option::is_none")]
-    images: Option<DebugImage>,
+    pub images: Option<DebugImage>,
 }
 
 /// Represents a repository reference.
