@@ -419,8 +419,10 @@ pub struct RepoReference {
     pub name: String,
     /// The optional prefix path to apply to source code when pairing it
     /// up with files in the repository.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub prefix: Option<String>,
     /// The optional current revision of the local repository.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub revision: Option<String>,
 }
 

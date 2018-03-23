@@ -3,6 +3,8 @@ extern crate serde;
 extern crate serde_json;
 extern crate uuid;
 
+use std::collections::HashMap;
+
 use sentry_types::protocol::v7;
 
 fn reserialize(event: &v7::Event) -> v7::Event {
@@ -122,6 +124,61 @@ fn test_logentry_basics() {
         serde_json::to_string(&event).unwrap(),
         "{\"level\":\"debug\",\"culprit\":\"foo in bar\",\"logentry\":{\"message\":\
          \"Hello %s!\",\"params\":[\"World\"]}}"
+    );
+}
+
+#[test]
+fn test_modules() {
+    let event = v7::Event {
+        modules: {
+            let mut m = HashMap::new();
+            m.insert("System".into(), "1.0.0".into());
+            m
+        },
+        ..Default::default()
+    };
+    assert_eq!(
+        serde_json::to_string(&event).unwrap(),
+        "{\"modules\":{\"System\":\"1.0.0\"}}"
+    );
+}
+
+#[test]
+fn test_repos() {
+    let event = v7::Event {
+        repos: {
+            let mut m = HashMap::new();
+            m.insert("/raven".into(), v7::RepoReference {
+                name: "github/raven".into(),
+                prefix: Some("/".into()),
+                revision: Some("49f45700b5fe606c1bcd9bf0205ecbb83db17f52".into()),
+            });
+            m
+        },
+        ..Default::default()
+    };
+
+    assert_eq!(
+        serde_json::to_string(&event).unwrap(),
+        "{\"repos\":{\"/raven\":{\"name\":\"github/raven\",\"prefix\":\"/\",\"revision\":\"49f45700b5fe606c1bcd9bf0205ecbb83db17f52\"}}}"
+    );
+
+    let event = v7::Event {
+        repos: {
+            let mut m = HashMap::new();
+            m.insert("/raven".into(), v7::RepoReference {
+                name: "github/raven".into(),
+                prefix: None,
+                revision: None,
+            });
+            m
+        },
+        ..Default::default()
+    };
+
+    assert_eq!(
+        serde_json::to_string(&event).unwrap(),
+        "{\"repos\":{\"/raven\":{\"name\":\"github/raven\"}}}"
     );
 }
 
