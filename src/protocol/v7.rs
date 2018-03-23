@@ -437,6 +437,10 @@ pub struct ClientSdkInfo {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(default)]
 pub struct Event {
+    /// The ID of the event
+    #[serde(serialize_with = "serialize_event_id", rename = "event_id",
+            skip_serializing_if = "Option::is_none")]
+    pub id: Option<Uuid>,
     /// The level of the event (defaults to error)
     #[serde(skip_serializing_if = "Level::is_error")]
     pub level: Level,
@@ -537,6 +541,7 @@ fn is_default_fingerprint(vec: &Vec<String>) -> bool {
 impl Default for Event {
     fn default() -> Event {
         Event {
+            id: None,
             level: Level::Error,
             fingerprint: vec!["{{ default }}".into()],
             culprit: None,
@@ -569,15 +574,11 @@ impl Default for Event {
 }
 
 impl Event {
-    /// Creates a new event without timestamp.
+    /// Creates a new event with the current timestamp and random id.
     pub fn new() -> Event {
-        Default::default()
-    }
-
-    /// Creates a new event with the current timestamp.
-    pub fn new_with_current_timestamp() -> Event {
-        let mut rv = Event::new();
+        let mut rv: Event = Default::default();
         rv.timestamp = Some(Utc::now());
+        rv.id = Some(Uuid::new_v4());
         rv
     }
 }
@@ -696,6 +697,17 @@ impl ContextType {
             ContextType::Os(..) => "os",
             ContextType::Runtime(..) => "runtime",
         }
+    }
+}
+
+fn serialize_event_id<S>(value: &Option<Uuid>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    if let &Some(uuid) = value {
+        serializer.serialize_some(&uuid.simple().to_string())
+    } else {
+        serializer.serialize_none()
     }
 }
 
