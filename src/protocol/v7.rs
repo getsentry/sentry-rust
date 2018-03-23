@@ -1,4 +1,5 @@
 //! The current latest sentry protocol version.
+use std::fmt;
 use std::collections::HashMap;
 use std::net::IpAddr;
 
@@ -121,6 +122,39 @@ pub struct Stacktrace {
     /// Optionally a segment of frames removed (`start`, `end`)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub frames_omitted: Option<(u64, u64)>,
+}
+
+/// Represents a thread id.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Ord, PartialOrd, Hash)]
+pub enum ThreadId {
+    Int(i64),
+    String(String),
+}
+
+impl Default for ThreadId {
+    fn default() -> ThreadId {
+        ThreadId::Int(0)
+    }
+}
+
+impl fmt::Display for ThreadId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            ThreadId::Int(i) => write!(f, "{}", i),
+            ThreadId::String(ref s) => write!(f, "{}", s),
+        }
+    }
+}
+
+/// Represents a single thread.
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
+#[serde(default)]
+pub struct Thread {
+    pub id: Option<ThreadId>,
+    pub name: Option<String>,
+    pub stacktrace: Option<Stacktrace>,
+    pub crashed: bool,
+    pub current: bool,
 }
 
 /// Represents a single exception
@@ -289,6 +323,13 @@ pub struct Event {
     #[serde(skip_serializing_if = "Vec::is_empty", serialize_with = "serialize_exceptions",
             deserialize_with = "deserialize_exceptions", rename = "exception")]
     pub exceptions: Vec<Exception>,
+    /// A single stacktrace (deprecated)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stacktrace: Option<Stacktrace>,
+    /// A list of threads.
+    #[serde(skip_serializing_if = "Vec::is_empty", serialize_with = "serialize_threads",
+            deserialize_with = "deserialize_threads")]
+    pub threads: Vec<Thread>,
     /// Optional tags to be attached to the event.
     #[serde(skip_serializing_if = "HashMap::is_empty")]
     pub tags: HashMap<String, String>,
@@ -326,6 +367,8 @@ impl Default for Event {
             contexts: HashMap::new(),
             breadcrumbs: Vec::new(),
             exceptions: Vec::new(),
+            stacktrace: None,
+            threads: Vec::new(),
             tags: HashMap::new(),
             extra: HashMap::new(),
             other: HashMap::new(),
@@ -541,6 +584,33 @@ where
     #[derive(Serialize)]
     struct Helper<'a> {
         values: &'a [Exception],
+    }
+    Helper { values: &value }.serialize(serializer)
+}
+
+fn deserialize_threads<'de, D>(deserializer: D) -> Result<Vec<Thread>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Repr {
+        Qualified { values: Vec<Thread> },
+        Unqualified(Vec<Thread>),
+    }
+    Repr::deserialize(deserializer).map(|x| match x {
+        Repr::Qualified { values } => values,
+        Repr::Unqualified(values) => values,
+    })
+}
+
+fn serialize_threads<S>(value: &Vec<Thread>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    #[derive(Serialize)]
+    struct Helper<'a> {
+        values: &'a [Thread],
     }
     Helper { values: &value }.serialize(serializer)
 }
