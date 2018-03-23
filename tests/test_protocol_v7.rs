@@ -96,6 +96,19 @@ fn test_fingerprint() {
 }
 
 #[test]
+fn test_basic_message_event() {
+    let mut event: v7::Event = Default::default();
+    event.level = v7::Level::Warning;
+    event.message = Some("Hello World!".into());
+    event.logger = Some("root".into());
+    let json = serde_json::to_string(&event).unwrap();
+    assert_eq!(
+        &json,
+        "{\"level\":\"warning\",\"message\":\"Hello World!\",\"logger\":\"root\"}"
+    );
+}
+
+#[test]
 fn test_message_basics() {
     let event = v7::Event {
         message: Some("Hello World!".to_string()),
@@ -334,14 +347,34 @@ fn test_multi_exception_list() {
 }
 
 #[test]
-fn test_basic_message_event() {
-    let mut event: v7::Event = Default::default();
-    event.level = v7::Level::Warning;
-    event.message = Some("Hello World!".into());
-    event.logger = Some("root".into());
-    let json = serde_json::to_string(&event).unwrap();
+fn test_minimal_exception_stacktrace() {
+    let event: v7::Event = v7::Event {
+        exceptions: vec![v7::Exception {
+            ty: "DivisionByZero".into(),
+            value: Some("integer division or modulo by zero".into()),
+            stacktrace: Some(v7::Stacktrace {
+                frames: vec![
+                    v7::Frame {
+                        function: Some("main".into()),
+                        location: v7::FileLocation {
+                            filename: Some("hello.py".into()),
+                            line: Some(1),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    }
+                ],
+                ..Default::default()
+            }),
+        }],
+        ..Default::default()
+    };
+
     assert_eq!(
-        &json,
-        "{\"level\":\"warning\",\"message\":\"Hello World!\",\"logger\":\"root\"}"
+        serde_json::to_string(&event).unwrap(),
+        "{\"exception\":{\"values\":[{\"type\":\"DivisionByZero\",\
+         \"value\":\"integer division or modulo by zero\",\"stacktrace\":\
+         {\"frames\":[{\"function\":\"main\",\"filename\":\"hello.py\",\
+         \"lineno\":1}]}}]}}"
     );
 }
