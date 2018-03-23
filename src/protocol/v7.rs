@@ -292,12 +292,16 @@ impl Default for Breadcrumb {
 #[serde(default)]
 pub struct User {
     /// The ID of the user.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
     /// The email address of the user.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub email: Option<String>,
     /// The remote ip address of the user.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub ip_address: Option<IpAddr>,
     /// A human readable username of the user.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub username: Option<String>,
     /// Additional data that should be send along.
     #[serde(flatten)]

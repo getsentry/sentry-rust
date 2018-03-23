@@ -183,6 +183,47 @@ fn test_repos() {
 }
 
 #[test]
+fn test_user() {
+    let event = v7::Event {
+        user: Some(v7::User {
+            id: Some("8fd5a33b-5b0e-45b2-aff2-9e4f067756ba".into()),
+            email: Some("foo@example.invalid".into()),
+            ip_address: Some("127.0.0.1".parse().unwrap()),
+            username: Some("john-doe".into()),
+            data: {
+                let mut hm = HashMap::new();
+                hm.insert("foo".into(), "bar".into());
+                hm
+            }
+        }),
+        ..Default::default()
+    };
+
+    assert_eq!(
+        serde_json::to_string(&event).unwrap(),
+        "{\"user\":{\"id\":\"8fd5a33b-5b0e-45b2-aff2-9e4f067756ba\",\
+         \"email\":\"foo@example.invalid\",\"ip_address\":\"127.0.0.1\",\
+         \"username\":\"john-doe\",\"foo\":\"bar\"}}"
+    );
+
+    let event = v7::Event {
+        user: Some(v7::User {
+            id: Some("8fd5a33b-5b0e-45b2-aff2-9e4f067756ba".into()),
+            email: None,
+            ip_address: None,
+            username: None,
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+
+    assert_eq!(
+        serde_json::to_string(&event).unwrap(),
+        "{\"user\":{\"id\":\"8fd5a33b-5b0e-45b2-aff2-9e4f067756ba\"}}"
+    );
+}
+
+#[test]
 fn test_canonical_exception() {
     let mut event: v7::Event = Default::default();
     event.exceptions.push(v7::Exception {
