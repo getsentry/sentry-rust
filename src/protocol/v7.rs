@@ -139,7 +139,9 @@ pub struct Stacktrace {
 /// Represents a thread id.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub enum ThreadId {
+    /// Integer representation for the thread id
     Int(i64),
+    /// String representation for the thread id
     String(String),
 }
 
@@ -162,10 +164,17 @@ impl fmt::Display for ThreadId {
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 #[serde(default)]
 pub struct Thread {
+    /// The optional ID of the thread (usually an integer)
     pub id: Option<ThreadId>,
+    /// The optional name of the thread.
     pub name: Option<String>,
+    /// If the thread suspended or crashed a stacktrace can be
+    /// attached here.
     pub stacktrace: Option<Stacktrace>,
+    /// indicates a crashed thread
     pub crashed: bool,
+    /// indicates that the thread was not suspended when the
+    /// event was created.
     pub current: bool,
 }
 
@@ -236,12 +245,25 @@ impl Level {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(default)]
 pub struct Breadcrumb {
-    #[serde(with = "chrono::serde::ts_seconds")] pub timestamp: DateTime<Utc>,
-    #[serde(rename = "type")] pub ty: String,
-    #[serde(skip_serializing_if = "Option::is_none")] pub category: Option<String>,
-    #[serde(skip_serializing_if = "Level::is_info")] pub level: Level,
-    #[serde(skip_serializing_if = "Option::is_none")] pub message: Option<String>,
-    #[serde(skip_serializing_if = "HashMap::is_empty")] pub data: HashMap<String, Value>,
+    /// The timestamp of the breadcrumb.  This is required.
+    #[serde(with = "chrono::serde::ts_seconds")]
+    pub timestamp: DateTime<Utc>,
+    /// The type of the breadcrumb.
+    #[serde(rename = "type")]
+    pub ty: String,
+    /// The optional category of the breadcrumb.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub category: Option<String>,
+    /// The non optional level of the breadcrumb.  It
+    /// defaults to info.
+    #[serde(skip_serializing_if = "Level::is_info")]
+    pub level: Level,
+    /// An optional human readbale message for the breadcrumb.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+    /// Arbitrary breadcrumb data that should be send along.
+    #[serde(skip_serializing_if = "HashMap::is_empty")]
+    pub data: HashMap<String, Value>,
 }
 
 impl Default for Breadcrumb {
@@ -261,26 +283,44 @@ impl Default for Breadcrumb {
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 #[serde(default)]
 pub struct User {
+    /// The ID of the user.
     pub id: Option<String>,
+    /// The email address of the user.
     pub email: Option<String>,
+    /// The remote ip address of the user.
     pub ip_address: Option<IpAddr>,
+    /// A human readable username of the user.
     pub username: Option<String>,
-    #[serde(flatten)] pub data: HashMap<String, Value>,
+    /// Additional data that should be send along.
+    #[serde(flatten)]
+    pub data: HashMap<String, Value>,
 }
 
 /// Represents http request data.
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 #[serde(default)]
 pub struct Request {
-    #[serde(with = "url_serde")] pub url: Option<Url>,
+    /// The current URL of the request.
+    #[serde(with = "url_serde")]
+    pub url: Option<Url>,
+    /// The HTTP request method.
     pub method: Option<String>,
+    /// Optionally some associated request data (human readable)
     // XXX: this makes absolutely no sense because of unicode
     pub data: Option<String>,
+    /// Optionally the encoded query string.
     pub query_string: Option<String>,
+    /// An encoded cookie string if available.
     pub cookies: Option<String>,
-    #[serde(skip_serializing_if = "HashMap::is_empty")] pub headers: HashMap<String, String>,
-    #[serde(skip_serializing_if = "HashMap::is_empty")] pub env: HashMap<String, String>,
-    #[serde(flatten)] pub other: HashMap<String, Value>,
+    /// HTTP request headers.
+    #[serde(skip_serializing_if = "HashMap::is_empty")]
+    pub headers: HashMap<String, String>,
+    /// Optionally a CGI/WSGI etc. environment dictionary.
+    #[serde(skip_serializing_if = "HashMap::is_empty")]
+    pub env: HashMap<String, String>,
+    /// Additional unhandled keys.
+    #[serde(flatten)]
+    pub other: HashMap<String, Value>,
 }
 
 /// Holds information about the system SDK.
@@ -302,8 +342,12 @@ pub struct SystemSdkInfo {
 /// Represents a debug image.
 #[derive(Debug, Clone, PartialEq)]
 pub enum DebugImage {
+    /// Apple debug images (machos).  This is currently also used for
+    /// non apple platforms with similar debug setups.
     Apple(AppleDebugImage),
+    /// A reference to a proguard debug file.
     Proguard(ProguardDebugImage),
+    /// A debug image that is unknown to this protocol specification.
     Unknown(HashMap<String, Value>),
 }
 
@@ -323,19 +367,28 @@ impl DebugImage {
 /// Represents an apple debug image in the debug meta.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AppleDebugImage {
+    /// The name of the debug image (usually filename)
     pub name: String,
+    /// The optional CPU architecture of the debug image.
     pub arch: Option<String>,
-    pub cpu_type: u32,
-    pub cpu_subtype: u32,
+    /// Alternatively a macho cpu type.
+    pub cpu_type: Option<u32>,
+    /// Alternatively a macho cpu subtype.
+    pub cpu_subtype: Option<u32>,
+    /// The starting address of the image.
     pub image_addr: u64,
+    /// The size of the image in bytes.
     pub image_size: u64,
+    /// The address where the image is loaded at runtime.
     pub image_vmaddr: u64,
+    /// The unique UUID of the image.
     pub uuid: Uuid,
 }
 
 /// Represents a proguard mapping file reference.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct ProguardDebugImage {
+    /// The UUID of the associated proguard file.
     pub uuid: Uuid,
 }
 
@@ -372,7 +425,7 @@ pub struct ClientSdkInfo {
     pub version: String,
     /// An optional list of integrations that are enabled in this SDK.
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub integrations: Vec<String>
+    pub integrations: Vec<String>,
 }
 
 /// Represents a full event for Sentry.
@@ -434,9 +487,10 @@ pub struct Event {
     #[serde(skip_serializing_if = "HashMap::is_empty", serialize_with = "serialize_context",
             deserialize_with = "deserialize_context")]
     pub contexts: HashMap<String, Context>,
-    /// Exceptions to be attached (one or multiple if chained).
+    /// List of breadcrumbs to send along.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub breadcrumbs: Vec<Breadcrumb>,
+    /// Exceptions to be attached (one or multiple if chained).
     #[serde(skip_serializing_if = "Vec::is_empty", serialize_with = "serialize_exceptions",
             deserialize_with = "deserialize_exceptions", rename = "exception")]
     pub exceptions: Vec<Exception>,
@@ -559,30 +613,58 @@ pub enum ContextType {
 /// Holds device information.
 #[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
 pub struct DeviceContext {
-    #[serde(skip_serializing_if = "Option::is_none")] pub name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub family: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub model: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub model_id: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub arch: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub battery_level: Option<f32>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub orientation: Option<Orientation>,
+    /// The name of the device.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// The family of the device model.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub family: Option<String>,
+    /// The device model (human readable)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    /// The device model (internal identifier)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model_id: Option<String>,
+    /// The native cpu architecture of the device.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub arch: Option<String>,
+    /// The current battery level (0-100)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub battery_level: Option<f32>,
+    /// The current screen orientation.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub orientation: Option<Orientation>,
 }
 
 /// Holds operating system information.
 #[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
 pub struct OsContext {
-    #[serde(skip_serializing_if = "Option::is_none")] pub name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub version: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub build: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub kernel_version: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub rooted: Option<bool>,
+    /// The name of the operating system.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// The version of the operating system.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
+    /// The internal build number of the operating system.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub build: Option<String>,
+    /// The current kernel version
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub kernel_version: Option<String>,
+    /// An indicator if the os is rooted (mobile mostly)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rooted: Option<bool>,
 }
 
 /// Holds information about the runtime.
 #[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
 pub struct RuntimeContext {
-    #[serde(skip_serializing_if = "Option::is_none")] pub name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub version: Option<String>,
+    /// The name of the runtime (for instance JVM)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// The version of the runtime
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
 }
 
 impl From<ContextType> for Context {
