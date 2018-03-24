@@ -425,3 +425,60 @@ fn test_slightly_larger_exception_stacktrace() {
          \"vars\":{\"var\":\"value\"}}]}}]}}"
     );
 }
+
+#[test]
+fn test_full_exception_stacktrace() {
+    let event: v7::Event = v7::Event {
+        exceptions: vec![v7::Exception {
+            ty: "DivisionByZero".into(),
+            value: Some("integer division or modulo by zero".into()),
+            stacktrace: Some(v7::Stacktrace {
+                frames: vec![
+                    v7::Frame {
+                        function: Some("main".into()),
+                        symbol: Some("main".into()),
+                        location: v7::FileLocation {
+                            filename: Some("hello.py".into()),
+                            abs_path: Some("/app/hello.py".into()),
+                            line: Some(7),
+                            column: Some(42),
+                        },
+                        source: v7::EmbeddedSources {
+                            pre_lines: vec!["foo".into(), "bar".into()],
+                            current_line: Some("hey hey hey".into()),
+                            post_lines: vec!["foo".into(), "bar".into()],
+                        },
+                        in_app: Some(true),
+                        vars: {
+                            let mut m = HashMap::new();
+                            m.insert("var".into(), "value".into());
+                            m
+                        },
+                        package: Some("hello.whl".into()),
+                        module: Some("hello".into()),
+                        instruction_info: v7::InstructionInfo {
+                            image_addr: Some(0),
+                            instruction_addr: Some(0),
+                            symbol_addr: Some(0),
+                        }
+                    },
+                ],
+                frames_omitted: Some((1, 2)),
+            }),
+        }],
+        ..Default::default()
+    };
+
+    assert_eq!(
+        serde_json::to_string(&event).unwrap(),
+        "{\"exception\":{\"values\":[{\"type\":\"DivisionByZero\",\"value\":\
+         \"integer division or modulo by zero\",\"stacktrace\":{\"frames\":\
+         [{\"function\":\"main\",\"symbol\":\"main\",\"module\":\"hello\",\
+         \"package\":\"hello.whl\",\"filename\":\"hello.py\",\"abs_path\":\
+         \"/app/hello.py\",\"lineno\":7,\"colno\":42,\"pre_context\":\
+         [\"foo\",\"bar\"],\"context_line\":\"hey hey hey\",\"post_context\":\
+         [\"foo\",\"bar\"],\"in_app\":true,\"vars\":{\"var\":\"value\"},\
+         \"image_addr\":0,\"instruction_addr\":0,\"symbol_addr\":0}],\
+         \"frames_omitted\":[1,2]}}]}}"
+    );
+}
