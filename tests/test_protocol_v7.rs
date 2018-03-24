@@ -460,9 +460,9 @@ fn test_full_exception_stacktrace() {
                         package: Some("hello.whl".into()),
                         module: Some("hello".into()),
                         instruction_info: v7::InstructionInfo {
-                            image_addr: Some(0),
-                            instruction_addr: Some(0),
-                            symbol_addr: Some(0),
+                            image_addr: Some(v7::Addr(0)),
+                            instruction_addr: Some(v7::Addr(0)),
+                            symbol_addr: Some(v7::Addr(0)),
                         }
                     },
                 ],
@@ -481,8 +481,8 @@ fn test_full_exception_stacktrace() {
          \"hello.py\",\"abs_path\":\"/app/hello.py\",\"lineno\":7,\"\
          colno\":42,\"pre_context\":[\"foo\",\"bar\"],\"context_line\":\
          \"hey hey hey\",\"post_context\":[\"foo\",\"bar\"],\"in_app\":true,\
-         \"vars\":{\"var\":\"value\"},\"image_addr\":0,\"instruction_addr\":0,\
-         \"symbol_addr\":0}],\"frames_omitted\":[1,2]}}]}}"
+         \"vars\":{\"var\":\"value\"},\"image_addr\":\"0x0\",\"instruction_addr\":\"0x0\",\
+         \"symbol_addr\":\"0x0\"}],\"frames_omitted\":[1,2]}}]}}"
     );
 }
 

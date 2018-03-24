@@ -100,13 +100,13 @@ pub struct FileLocation {
 pub struct InstructionInfo {
     /// If known the location of the image.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub image_addr: Option<u64>,
+    pub image_addr: Option<Addr>,
     /// If known the location of the instruction.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub instruction_addr: Option<u64>,
+    pub instruction_addr: Option<Addr>,
     /// If known the location of symbol.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub symbol_addr: Option<u64>,
+    pub symbol_addr: Option<Addr>,
 }
 
 /// Represents template debug info.
@@ -407,11 +407,11 @@ pub struct AppleDebugImage {
     /// Alternatively a macho cpu subtype.
     pub cpu_subtype: Option<u32>,
     /// The starting address of the image.
-    pub image_addr: u64,
+    pub image_addr: Addr,
     /// The size of the image in bytes.
     pub image_size: u64,
     /// The address where the image is loaded at runtime.
-    pub image_vmaddr: u64,
+    pub image_vmaddr: Addr,
     /// The unique UUID of the image.
     pub uuid: Uuid,
 }
