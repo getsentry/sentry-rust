@@ -485,3 +485,25 @@ fn test_full_exception_stacktrace() {
          \"symbol_addr\":0}],\"frames_omitted\":[1,2]}}]}}"
     );
 }
+
+#[test]
+fn test_addr_format() {
+    assert_eq!(serde_json::to_string(&v7::Addr(0)).unwrap(), "\"0x0\"");
+    assert_eq!(serde_json::to_string(&v7::Addr(42)).unwrap(), "\"0x2a\"");
+    assert_eq!(serde_json::from_str::<v7::Addr>("0").unwrap(), v7::Addr(0));
+    assert_eq!(serde_json::from_str::<v7::Addr>("\"0\"").unwrap(), v7::Addr(0));
+    assert_eq!(serde_json::from_str::<v7::Addr>("\"0x0\"").unwrap(), v7::Addr(0));
+    assert_eq!(serde_json::from_str::<v7::Addr>("42").unwrap(), v7::Addr(42));
+    assert_eq!(serde_json::from_str::<v7::Addr>("\"42\"").unwrap(), v7::Addr(42));
+    assert_eq!(serde_json::from_str::<v7::Addr>("\"0x2a\"").unwrap(), v7::Addr(42));
+    assert_eq!(serde_json::from_str::<v7::Addr>("\"0X2A\"").unwrap(), v7::Addr(42));
+}
+
+#[test]
+fn test_thread_id_format() {
+    assert_eq!(serde_json::to_string(&v7::ThreadId::Int(0)).unwrap(), "0");
+    assert_eq!(serde_json::to_string(&v7::ThreadId::Int(42)).unwrap(), "42");
+    assert_eq!(serde_json::to_string(&v7::ThreadId::String("x".into())).unwrap(), "\"x\"");
+    assert_eq!(serde_json::from_str::<v7::ThreadId>("0").unwrap(), v7::ThreadId::Int(0));
+    assert_eq!(serde_json::from_str::<v7::ThreadId>("\"0\"").unwrap(), v7::ThreadId::String("0".into()));
+}

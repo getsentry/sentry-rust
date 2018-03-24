@@ -146,6 +146,7 @@ pub struct Stacktrace {
 
 /// Represents a thread id.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Ord, PartialOrd, Hash)]
+#[serde(untagged)]
 pub enum ThreadId {
     /// Integer representation for the thread id
     Int(i64),
@@ -165,6 +166,16 @@ impl fmt::Display for ThreadId {
             ThreadId::Int(i) => write!(f, "{}", i),
             ThreadId::String(ref s) => write!(f, "{}", s),
         }
+    }
+}
+
+/// Represents an address.
+#[derive(Default, Debug, Clone, PartialEq, Eq, Ord, PartialOrd, Hash)]
+pub struct Addr(pub u64);
+
+impl fmt::Display for Addr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "0x{:x}", self.0)
     }
 }
 
@@ -906,5 +917,39 @@ impl Serialize for DebugImage {
         };
         c.insert("type".into(), self.type_name().into());
         c.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for Addr {
+    fn deserialize<D>(deserializer: D) -> Result<Addr, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Repr {
+            Str(String),
+            Uint(u64),
+        }
+
+        Ok(Addr(match Repr::deserialize(deserializer).map_err(D::Error::custom)? {
+            Repr::Str(s) => {
+                if s.len() > 2 && (&s[..2] == "0x" || &s[..2] == "0X") {
+                    u64::from_str_radix(&s[2..], 16).map_err(D::Error::custom)?
+                } else {
+                    u64::from_str_radix(&s, 10).map_err(D::Error::custom)?
+                }
+            }
+            Repr::Uint(val) => val
+        }))
+    }
+}
+
+impl Serialize for Addr {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&format!("0x{:0x}", self.0))
     }
 }
