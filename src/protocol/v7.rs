@@ -186,6 +186,7 @@ pub struct Thread {
     pub current: bool,
 }
 
+
 /// Represents a single exception
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub struct Exception {
@@ -195,6 +196,9 @@ pub struct Exception {
     /// The optional value of the exception
     #[serde(skip_serializing_if = "Option::is_none")]
     pub value: Option<String>,
+    /// An optional module for this exception.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub module: Option<String>,
     /// Optionally the stacktrace.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stacktrace: Option<Stacktrace>,

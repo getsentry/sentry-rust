@@ -352,6 +352,7 @@ fn test_minimal_exception_stacktrace() {
         exceptions: vec![v7::Exception {
             ty: "DivisionByZero".into(),
             value: Some("integer division or modulo by zero".into()),
+            module: None,
             stacktrace: Some(v7::Stacktrace {
                 frames: vec![
                     v7::Frame {
@@ -385,6 +386,7 @@ fn test_slightly_larger_exception_stacktrace() {
         exceptions: vec![v7::Exception {
             ty: "DivisionByZero".into(),
             value: Some("integer division or modulo by zero".into()),
+            module: None,
             stacktrace: Some(v7::Stacktrace {
                 frames: vec![
                     v7::Frame {
@@ -432,6 +434,7 @@ fn test_full_exception_stacktrace() {
         exceptions: vec![v7::Exception {
             ty: "DivisionByZero".into(),
             value: Some("integer division or modulo by zero".into()),
+            module: Some("x".into()),
             stacktrace: Some(v7::Stacktrace {
                 frames: vec![
                     v7::Frame {
@@ -471,14 +474,14 @@ fn test_full_exception_stacktrace() {
 
     assert_eq!(
         serde_json::to_string(&event).unwrap(),
-        "{\"exception\":{\"values\":[{\"type\":\"DivisionByZero\",\"value\":\
-         \"integer division or modulo by zero\",\"stacktrace\":{\"frames\":\
-         [{\"function\":\"main\",\"symbol\":\"main\",\"module\":\"hello\",\
-         \"package\":\"hello.whl\",\"filename\":\"hello.py\",\"abs_path\":\
-         \"/app/hello.py\",\"lineno\":7,\"colno\":42,\"pre_context\":\
-         [\"foo\",\"bar\"],\"context_line\":\"hey hey hey\",\"post_context\":\
-         [\"foo\",\"bar\"],\"in_app\":true,\"vars\":{\"var\":\"value\"},\
-         \"image_addr\":0,\"instruction_addr\":0,\"symbol_addr\":0}],\
-         \"frames_omitted\":[1,2]}}]}}"
+        "{\"exception\":{\"values\":[{\"type\":\"DivisionByZero\",\
+         \"value\":\"integer division or modulo by zero\",\"module\":\
+         \"x\",\"stacktrace\":{\"frames\":[{\"function\":\"main\",\"symbol\":\
+         \"main\",\"module\":\"hello\",\"package\":\"hello.whl\",\"filename\":\
+         \"hello.py\",\"abs_path\":\"/app/hello.py\",\"lineno\":7,\"\
+         colno\":42,\"pre_context\":[\"foo\",\"bar\"],\"context_line\":\
+         \"hey hey hey\",\"post_context\":[\"foo\",\"bar\"],\"in_app\":true,\
+         \"vars\":{\"var\":\"value\"},\"image_addr\":0,\"instruction_addr\":0,\
+         \"symbol_addr\":0}],\"frames_omitted\":[1,2]}}]}}"
     );
 }
