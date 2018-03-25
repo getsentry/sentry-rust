@@ -73,6 +73,9 @@ pub struct Dsn {
 
 impl Dsn {
     /// Converts the dsn into an auth object.
+    ///
+    /// This always attaches the latest and greatest protocol
+    /// version to the auth header.
     pub fn to_auth(&self, client_agent: Option<&str>) -> Auth {
         auth_from_dsn_and_client(self, client_agent)
     }
