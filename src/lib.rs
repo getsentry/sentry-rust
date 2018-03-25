@@ -1,6 +1,10 @@
 //! This crate provides common types for working with the Sentry protocol or the
-//! Sentry server.  It's used by the sentry relay infrastructure as well as the
+//! Sentry server.  It's used by the Sentry Relay infrastructure as well as the
 //! rust Sentry client.
+//!
+//! Since this library is used in the Sentry relay as well it depends on
+//! `serde_json` with the `preserve_order` feature.  As such all maps used
+//! by the protocol are linked hash maps.
 #![warn(missing_docs)]
 extern crate chrono;
 extern crate failure;
