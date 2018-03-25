@@ -30,7 +30,7 @@ pub mod ts_seconds_float {
 
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result
         {
-            write!(formatter, "a unix timestamp in seconds")
+            write!(formatter, "a unix timestamp")
         }
 
         fn visit_f64<E>(self, value: f64) -> Result<DateTime<Utc>, E>
