@@ -815,6 +815,46 @@ fn test_full_exception_stacktrace() {
 }
 
 #[test]
+fn test_sdk_info() {
+    let event = v7::Event {
+        sdk_info: Some(v7::ClientSdkInfo {
+            name: "sentry-rust".into(),
+            version: "1.0".into(),
+            integrations: vec!["rocket".into()],
+        }),
+        ..Default::default()
+    };
+
+    assert_roundtrip(&event);
+    assert_eq!(
+        serde_json::to_string(&event).unwrap(),
+        "{\"sdk_info\":{\"name\":\"sentry-rust\",\"version\":\"1.0\",\
+         \"integrations\":[\"rocket\"]}}"
+    );
+}
+
+#[test]
+fn test_other_data() {
+    let event = v7::Event {
+        id: Some("864ee979-77bf-43ac-96d7-4f7486d138ab".parse().unwrap()),
+        other: {
+            let mut m = v7::Map::new();
+            m.insert("extra_shit".into(), 42.into());
+            m.insert("extra_garbage".into(), "aha".into());
+            m
+        },
+        ..Default::default()
+    };
+
+    assert_roundtrip(&event);
+    assert_eq!(
+        serde_json::to_string(&event).unwrap(),
+        "{\"event_id\":\"864ee97977bf43ac96d74f7486d138ab\",\
+         \"extra_shit\":42,\"extra_garbage\":\"aha\"}"
+    );
+}
+
+#[test]
 fn test_addr_format() {
     assert_eq!(serde_json::to_string(&v7::Addr(0)).unwrap(), "\"0x0\"");
     assert_eq!(serde_json::to_string(&v7::Addr(42)).unwrap(), "\"0x2a\"");
