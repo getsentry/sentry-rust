@@ -359,6 +359,46 @@ fn test_template_info() {
 }
 
 #[test]
+fn test_threads() {
+    let event = v7::Event {
+        threads: vec![
+            v7::Thread {
+                id: Some("#1".into()),
+                name: Some("Awesome Thread".into()),
+                ..Default::default()
+            }
+        ],
+        ..Default::default()
+    };
+
+    assert_roundtrip(&event);
+    assert_eq!(
+        serde_json::to_string(&event).unwrap(),
+        "{\"threads\":{\"values\":[{\"id\":\"#1\",\"name\":\"Awesome Thread\"}]}}"
+    );
+
+    let event = v7::Event {
+        threads: vec![
+            v7::Thread {
+                id: Some(42u32.into()),
+                name: Some("Awesome Thread".into()),
+                crashed: true,
+                current: true,
+                ..Default::default()
+            }
+        ],
+        ..Default::default()
+    };
+
+    assert_roundtrip(&event);
+    assert_eq!(
+        serde_json::to_string(&event).unwrap(),
+        "{\"threads\":{\"values\":[{\"id\":42,\"name\":\"Awesome Thread\",\
+         \"crashed\":true,\"current\":true}]}}"
+    );
+}
+
+#[test]
 fn test_request() {
     let event = v7::Event {
         request: Some(v7::Request {
@@ -494,6 +534,7 @@ fn test_minimal_exception_stacktrace() {
                 ],
                 ..Default::default()
             }),
+            raw_stacktrace: None,
         }],
         ..Default::default()
     };
@@ -541,6 +582,7 @@ fn test_slightly_larger_exception_stacktrace() {
                 ],
                 ..Default::default()
             }),
+            raw_stacktrace: None,
         }],
         ..Default::default()
     };
@@ -597,6 +639,20 @@ fn test_full_exception_stacktrace() {
                 ],
                 frames_omitted: Some((1, 2)),
             }),
+            raw_stacktrace: Some(v7::Stacktrace {
+                frames: vec![
+                    v7::Frame {
+                        function: Some("main".into()),
+                        instruction_info: v7::InstructionInfo {
+                            image_addr: Some(v7::Addr(0)),
+                            instruction_addr: Some(v7::Addr(0)),
+                            symbol_addr: Some(v7::Addr(0)),
+                        },
+                        ..Default::default()
+                    },
+                ],
+                frames_omitted: Some((1, 2)),
+            }),
         }],
         ..Default::default()
     };
@@ -604,15 +660,17 @@ fn test_full_exception_stacktrace() {
     assert_roundtrip(&event);
     assert_eq!(
         serde_json::to_string(&event).unwrap(),
-        "{\"exception\":{\"values\":[{\"type\":\"DivisionByZero\",\
-         \"value\":\"integer division or modulo by zero\",\"module\":\
-         \"x\",\"stacktrace\":{\"frames\":[{\"function\":\"main\",\"symbol\":\
-         \"main\",\"module\":\"hello\",\"package\":\"hello.whl\",\"filename\":\
-         \"hello.py\",\"abs_path\":\"/app/hello.py\",\"lineno\":7,\"\
-         colno\":42,\"pre_context\":[\"foo\",\"bar\"],\"context_line\":\
-         \"hey hey hey\",\"post_context\":[\"foo\",\"bar\"],\"in_app\":true,\
-         \"vars\":{\"var\":\"value\"},\"image_addr\":\"0x0\",\"instruction_addr\":\"0x0\",\
-         \"symbol_addr\":\"0x0\"}],\"frames_omitted\":[1,2]}}]}}"
+        "{\"exception\":{\"values\":[{\"type\":\"DivisionByZero\",\"value\":\
+         \"integer division or modulo by zero\",\"module\":\"x\",\"stacktrace\":\
+        {\"frames\":[{\"function\":\"main\",\"symbol\":\"main\",\"module\":\
+        \"hello\",\"package\":\"hello.whl\",\"filename\":\"hello.py\",\"abs_path\"\
+        :\"/app/hello.py\",\"lineno\":7,\"colno\":42,\"pre_context\":[\"foo\",\"\
+        bar\"],\"context_line\":\"hey hey hey\",\"post_context\":[\"foo\",\"bar\"]\
+        ,\"in_app\":true,\"vars\":{\"var\":\"value\"},\"image_addr\":\"0x0\",\
+        \"instruction_addr\":\"0x0\",\"symbol_addr\":\"0x0\"}],\"frames_omitted\":\
+        [1,2]},\"raw_stacktrace\":{\"frames\":[{\"function\":\"main\",\
+        \"image_addr\":\"0x0\",\"instruction_addr\":\"0x0\",\"symbol_addr\":\"0x0\"}\
+        ],\"frames_omitted\":[1,2]}}]}}"
     );
 }
 

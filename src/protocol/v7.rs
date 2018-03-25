@@ -169,7 +169,7 @@ pub struct Stacktrace {
 #[serde(untagged)]
 pub enum ThreadId {
     /// Integer representation for the thread id
-    Int(i64),
+    Int(u64),
     /// String representation for the thread id
     String(String),
 }
@@ -177,6 +177,36 @@ pub enum ThreadId {
 impl Default for ThreadId {
     fn default() -> ThreadId {
         ThreadId::Int(0)
+    }
+}
+
+impl<'a> From<&'a str> for ThreadId {
+    fn from(id: &'a str) -> ThreadId {
+        ThreadId::String(id.to_string())
+    }
+}
+
+impl From<String> for ThreadId {
+    fn from(id: String) -> ThreadId {
+        ThreadId::String(id)
+    }
+}
+
+impl From<i64> for ThreadId {
+    fn from(id: i64) -> ThreadId {
+        ThreadId::Int(id as u64)
+    }
+}
+
+impl From<u32> for ThreadId {
+    fn from(id: u32) -> ThreadId {
+        ThreadId::Int(id as u64)
+    }
+}
+
+impl From<u16> for ThreadId {
+    fn from(id: u16) -> ThreadId {
+        ThreadId::Int(id as u64)
     }
 }
 
@@ -229,21 +259,33 @@ impl Into<u64> for Addr {
     }
 }
 
+fn is_false(value: &bool) -> bool {
+    *value == false
+}
+
 /// Represents a single thread.
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 #[serde(default)]
 pub struct Thread {
     /// The optional ID of the thread (usually an integer)
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<ThreadId>,
     /// The optional name of the thread.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     /// If the thread suspended or crashed a stacktrace can be
     /// attached here.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub stacktrace: Option<Stacktrace>,
+    /// Optional raw stacktrace.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub raw_stacktrace: Option<Stacktrace>,
     /// indicates a crashed thread
+    #[serde(skip_serializing_if = "is_false")]
     pub crashed: bool,
     /// indicates that the thread was not suspended when the
     /// event was created.
+    #[serde(skip_serializing_if = "is_false")]
     pub current: bool,
 }
 
@@ -263,6 +305,9 @@ pub struct Exception {
     /// Optionally the stacktrace.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stacktrace: Option<Stacktrace>,
+    /// An optional raw stacktrace.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub raw_stacktrace: Option<Stacktrace>,
 }
 
 /// Represents the level of severity of an event or breadcrumb
