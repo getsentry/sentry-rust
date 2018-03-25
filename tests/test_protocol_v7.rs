@@ -938,3 +938,9 @@ fn test_thread_id_format() {
     assert_eq!(serde_json::from_str::<v7::ThreadId>("0").unwrap(), v7::ThreadId::Int(0));
     assert_eq!(serde_json::from_str::<v7::ThreadId>("\"0\"").unwrap(), v7::ThreadId::String("0".into()));
 }
+
+#[test]
+fn test_orientation() {
+    assert_eq!(serde_json::to_string(&v7::Orientation::Landscape).unwrap(), "\"landscape\"");
+    assert_eq!(serde_json::to_string(&v7::Orientation::Portrait).unwrap(), "\"portrait\"");
+}
