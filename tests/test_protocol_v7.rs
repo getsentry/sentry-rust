@@ -332,6 +332,33 @@ fn test_stacktrace() {
 }
 
 #[test]
+fn test_template_info() {
+    let event = v7::Event {
+        template_info: Some(v7::TemplateInfo {
+            location: v7::FileLocation {
+                filename: Some("hello.html".into()),
+                line: Some(1),
+                ..Default::default()
+            },
+            source: v7::EmbeddedSources {
+                pre_lines: vec!["foo1".into(), "bar2".into()],
+                current_line: Some("hey hey hey3".into()),
+                post_lines: vec!["foo4".into(), "bar5".into()],
+            },
+        }),
+        ..Default::default()
+    };
+
+    assert_roundtrip(&event);
+    assert_eq!(
+        serde_json::to_string(&event).unwrap(),
+        "{\"template\":{\"filename\":\"hello.html\",\"lineno\":1,\
+         \"pre_context\":[\"foo1\",\"bar2\"],\"context_line\":\
+         \"hey hey hey3\",\"post_context\":[\"foo4\",\"bar5\"]}}"
+    );
+}
+
+#[test]
 fn test_request() {
     let event = v7::Event {
         request: Some(v7::Request {
