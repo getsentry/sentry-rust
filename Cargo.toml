@@ -9,7 +9,8 @@ failure_derive = "0.1.1"
 url = "1.7.0"
 serde = "1.0.34"
 serde_derive = "1.0.34"
-serde_json = "1.0"
+serde_json = { version = "1.0", features = ["preserve_order"] }
 url_serde = "0.2.0"
 chrono = { version = "0.4.0", features = ["serde"] }
 uuid = { version = "0.6.2", features = ["serde", "v4"] }
+linked-hash-map = { version = "0.5.1", features = ["serde_impl"] }

@@ -5,7 +5,6 @@
 //! a future sentry protocol will be a cleanup of the old one and is mapped
 //! to similar values on the rust side.
 use std::fmt;
-use std::collections::HashMap;
 use std::net::IpAddr;
 
 use chrono;
@@ -17,8 +16,26 @@ use serde::de::{Deserialize, Deserializer, Error as DeError};
 use serde::ser::{Error as SerError, Serialize, SerializeMap, Serializer};
 use serde_json::{from_value, to_value};
 
+/// Internals for the protocol v7's arbitrary data type.
+pub mod value {
+    pub use serde_json::value::{Value, Index, Number, from_value, to_value};
+}
+
+/// Internals for the protocol v7's map type.
+///
+/// It is currently backed by the `linked-hash-map` crate's hash map so that
+/// insertion order is preserved.
+pub mod map {
+    pub use linked_hash_map::{Entries, IntoIter, Iter, IterMut, Keys,
+                              LinkedHashMap, OccupiedEntry,
+                              VacantEntry, Values};
+}
+
 /// An arbitrary (JSON) value.
-pub use serde_json::Value;
+pub use self::value::Value;
+
+/// The internally use arbitrary data map type.
+pub use self::map::LinkedHashMap as Map;
 
 /// Represents a log entry message.
 ///
@@ -71,8 +88,8 @@ pub struct Frame {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub in_app: Option<bool>,
     /// Optional local variables.
-    #[serde(skip_serializing_if = "HashMap::is_empty")]
-    pub vars: HashMap<String, Value>,
+    #[serde(skip_serializing_if = "Map::is_empty")]
+    pub vars: Map<String, Value>,
     /// Optional instruction information for native languages.
     #[serde(flatten)]
     pub instruction_info: InstructionInfo,
@@ -285,8 +302,8 @@ pub struct Breadcrumb {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
     /// Arbitrary breadcrumb data that should be send along.
-    #[serde(skip_serializing_if = "HashMap::is_empty")]
-    pub data: HashMap<String, Value>,
+    #[serde(skip_serializing_if = "Map::is_empty")]
+    pub data: Map<String, Value>,
 }
 
 impl Default for Breadcrumb {
@@ -297,7 +314,7 @@ impl Default for Breadcrumb {
             category: None,
             level: Level::Info,
             message: None,
-            data: HashMap::with_capacity(0),
+            data: Map::new(),
         }
     }
 }
@@ -320,7 +337,7 @@ pub struct User {
     pub username: Option<String>,
     /// Additional data that should be send along.
     #[serde(flatten)]
-    pub data: HashMap<String, Value>,
+    pub data: Map<String, Value>,
 }
 
 /// Represents http request data.
@@ -344,14 +361,14 @@ pub struct Request {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cookies: Option<String>,
     /// HTTP request headers.
-    #[serde(skip_serializing_if = "HashMap::is_empty")]
-    pub headers: HashMap<String, String>,
+    #[serde(skip_serializing_if = "Map::is_empty")]
+    pub headers: Map<String, String>,
     /// Optionally a CGI/WSGI etc. environment dictionary.
-    #[serde(skip_serializing_if = "HashMap::is_empty")]
-    pub env: HashMap<String, String>,
+    #[serde(skip_serializing_if = "Map::is_empty")]
+    pub env: Map<String, String>,
     /// Additional unhandled keys.
     #[serde(flatten)]
-    pub other: HashMap<String, Value>,
+    pub other: Map<String, Value>,
 }
 
 /// Holds information about the system SDK.
@@ -379,7 +396,7 @@ pub enum DebugImage {
     /// A reference to a proguard debug file.
     Proguard(ProguardDebugImage),
     /// A debug image that is unknown to this protocol specification.
-    Unknown(HashMap<String, Value>),
+    Unknown(Map<String, Value>),
 }
 
 impl DebugImage {
@@ -489,8 +506,8 @@ pub struct Event {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub logger: Option<String>,
     /// Optionally a name to version mapping of installed modules.
-    #[serde(skip_serializing_if = "HashMap::is_empty")]
-    pub modules: HashMap<String, String>,
+    #[serde(skip_serializing_if = "Map::is_empty")]
+    pub modules: Map<String, String>,
     /// A platform identifier for this event.
     #[serde(skip_serializing_if = "is_other")]
     pub platform: String,
@@ -506,8 +523,8 @@ pub struct Event {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub release: Option<String>,
     /// Repository references
-    #[serde(skip_serializing_if = "HashMap::is_empty")]
-    pub repos: HashMap<String, RepoReference>,
+    #[serde(skip_serializing_if = "Map::is_empty")]
+    pub repos: Map<String, RepoReference>,
     /// An optional distribution identifer.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dist: Option<String>,
@@ -521,9 +538,9 @@ pub struct Event {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub request: Option<Request>,
     /// Optional contexts.
-    #[serde(skip_serializing_if = "HashMap::is_empty", serialize_with = "serialize_context",
+    #[serde(skip_serializing_if = "Map::is_empty", serialize_with = "serialize_context",
             deserialize_with = "deserialize_context")]
-    pub contexts: HashMap<String, Context>,
+    pub contexts: Map<String, Context>,
     /// List of breadcrumbs to send along.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub breadcrumbs: Vec<Breadcrumb>,
@@ -542,11 +559,11 @@ pub struct Event {
             deserialize_with = "deserialize_threads")]
     pub threads: Vec<Thread>,
     /// Optional tags to be attached to the event.
-    #[serde(skip_serializing_if = "HashMap::is_empty")]
-    pub tags: HashMap<String, String>,
+    #[serde(skip_serializing_if = "Map::is_empty")]
+    pub tags: Map<String, String>,
     /// Optional extra information to be sent with the event.
-    #[serde(skip_serializing_if = "HashMap::is_empty")]
-    pub extra: HashMap<String, Value>,
+    #[serde(skip_serializing_if = "Map::is_empty")]
+    pub extra: Map<String, Value>,
     /// Debug meta information.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub debug_meta: Option<DebugMeta>,
@@ -555,7 +572,7 @@ pub struct Event {
     pub sdk_info: Option<ClientSdkInfo>,
     /// Additional arbitrary keys for forwards compatibility.
     #[serde(flatten)]
-    pub other: HashMap<String, Value>,
+    pub other: Map<String, Value>,
 }
 
 fn is_other(value: &str) -> bool {
@@ -576,27 +593,27 @@ impl Default for Event {
             message: None,
             logentry: None,
             logger: None,
-            modules: HashMap::with_capacity(0),
+            modules: Map::new(),
             platform: "other".into(),
             timestamp: None,
             server_name: None,
             release: None,
-            repos: HashMap::with_capacity(0),
+            repos: Map::new(),
             dist: None,
             environment: None,
             user: None,
             request: None,
-            contexts: HashMap::with_capacity(0),
+            contexts: Map::new(),
             breadcrumbs: Vec::new(),
             exceptions: Vec::new(),
             stacktrace: None,
             template_info: None,
             threads: Vec::new(),
-            tags: HashMap::with_capacity(0),
-            extra: HashMap::with_capacity(0),
+            tags: Map::new(),
+            extra: Map::new(),
             debug_meta: None,
             sdk_info: None,
-            other: HashMap::with_capacity(0),
+            other: Map::new(),
         }
     }
 }
@@ -627,7 +644,7 @@ pub struct Context {
     /// Typed context data.
     pub data: ContextType,
     /// Additional keys sent along not known to the context type.
-    pub extra: HashMap<String, Value>,
+    pub extra: Map<String, Value>,
 }
 
 /// Typed contextual data
@@ -705,7 +722,7 @@ impl From<ContextType> for Context {
     fn from(data: ContextType) -> Context {
         Context {
             data: data,
-            extra: HashMap::with_capacity(0),
+            extra: Map::new(),
         }
     }
 }
@@ -739,17 +756,17 @@ where
     }
 }
 
-fn deserialize_context<'de, D>(deserializer: D) -> Result<HashMap<String, Context>, D::Error>
+fn deserialize_context<'de, D>(deserializer: D) -> Result<Map<String, Context>, D::Error>
 where
     D: Deserializer<'de>,
 {
-    let raw = <HashMap<String, Value>>::deserialize(deserializer)?;
-    let mut rv = HashMap::new();
+    let raw = <Map<String, Value>>::deserialize(deserializer)?;
+    let mut rv = Map::new();
 
     #[derive(Deserialize)]
     pub struct Helper<T> {
         #[serde(flatten)] data: T,
-        #[serde(flatten)] extra: HashMap<String, Value>,
+        #[serde(flatten)] extra: Map<String, Value>,
     }
 
     for (key, mut raw_context) in raw {
@@ -795,7 +812,7 @@ where
     Ok(rv)
 }
 
-fn serialize_context<S>(value: &HashMap<String, Context>, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_context<S>(value: &Map<String, Context>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
@@ -897,7 +914,7 @@ impl<'de> Deserialize<'de> for DebugImage {
                 DebugImage::Proguard(img)
             }
             Some(ty) => {
-                let mut img: HashMap<String, Value> = map.into_iter().collect();
+                let mut img: Map<String, Value> = map.into_iter().collect();
                 img.insert("type".into(), ty.into());
                 DebugImage::Unknown(img)
             }

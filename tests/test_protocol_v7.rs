@@ -2,8 +2,9 @@ extern crate sentry_types;
 extern crate serde;
 extern crate serde_json;
 extern crate uuid;
+extern crate chrono;
 
-use std::collections::HashMap;
+use chrono::{TimeZone, Utc};
 
 use sentry_types::protocol::v7;
 
@@ -144,7 +145,7 @@ fn test_logentry_basics() {
 fn test_modules() {
     let event = v7::Event {
         modules: {
-            let mut m = HashMap::new();
+            let mut m = v7::Map::new();
             m.insert("System".into(), "1.0.0".into());
             m
         },
@@ -160,7 +161,7 @@ fn test_modules() {
 fn test_repos() {
     let event = v7::Event {
         repos: {
-            let mut m = HashMap::new();
+            let mut m = v7::Map::new();
             m.insert("/raven".into(), v7::RepoReference {
                 name: "github/raven".into(),
                 prefix: Some("/".into()),
@@ -178,7 +179,7 @@ fn test_repos() {
 
     let event = v7::Event {
         repos: {
-            let mut m = HashMap::new();
+            let mut m = v7::Map::new();
             m.insert("/raven".into(), v7::RepoReference {
                 name: "github/raven".into(),
                 prefix: None,
@@ -196,6 +197,20 @@ fn test_repos() {
 }
 
 #[test]
+fn test_platform_and_timestamp() {
+    let event = v7::Event {
+        platform: "python".into(),
+        timestamp: Some(Utc.ymd(2017, 12, 24).and_hms(8, 12, 0)),
+        ..Default::default()
+    };
+
+    assert_eq!(
+        serde_json::to_string(&event).unwrap(),
+        "{\"platform\":\"python\",\"timestamp\":\"2017-12-24T08:12:00Z\"}"
+    );
+}
+
+#[test]
 fn test_user() {
     let event = v7::Event {
         user: Some(v7::User {
@@ -204,7 +219,7 @@ fn test_user() {
             ip_address: Some("127.0.0.1".parse().unwrap()),
             username: Some("john-doe".into()),
             data: {
-                let mut hm = HashMap::new();
+                let mut hm = v7::Map::new();
                 hm.insert("foo".into(), "bar".into());
                 hm
             }
@@ -237,6 +252,42 @@ fn test_user() {
 }
 
 #[test]
+fn test_breadcrumbs() {
+    let event = v7::Event {
+        breadcrumbs: vec![
+            v7::Breadcrumb {
+                timestamp: Utc.ymd(2017, 12, 24).and_hms_milli(8, 12, 0, 713),
+                category: Some("ui.click".into()),
+                message: Some("span.platform-card > li.platform-tile".into()),
+                ..Default::default()
+            },
+            v7::Breadcrumb {
+                timestamp: Utc.ymd(2017, 12, 24).and_hms_milli(8, 12, 0, 913),
+                ty: "http".into(),
+                category: Some("xhr".into()),
+                data: {
+                    let mut m = v7::Map::new();
+                    m.insert("url".into(), "/api/0/organizations/foo".into());
+                    m.insert("status_code".into(), 200.into());
+                    m.insert("method".into(), "GET".into());
+                    m
+                },
+                ..Default::default()
+            },
+        ],
+        ..Default::default()
+    };
+
+    assert_eq!(
+        serde_json::to_string(&event).unwrap(),
+        "{\"breadcrumbs\":[{\"timestamp\":1514103120,\"type\":\"default\",\
+         \"category\":\"ui.click\",\"message\":\"span.platform-card > li.platform-tile\"}\
+         ,{\"timestamp\":1514103120,\"type\":\"http\",\"category\":\"xhr\",\"data\":\
+         {\"url\":\"/api/0/organizations/foo\",\"status_code\":200,\"method\":\"GET\"}}]}"
+    );
+}
+
+#[test]
 fn test_request() {
     let event = v7::Event {
         request: Some(v7::Request {
@@ -246,12 +297,12 @@ fn test_request() {
             query_string: Some("foo=bar&blub=blah".into()),
             cookies: Some("dummy=42".into()),
             headers: {
-                let mut hm = HashMap::new();
+                let mut hm = v7::Map::new();
                 hm.insert("Content-Type".into(), "text/plain".into());
                 hm
             },
             env: {
-                let mut env = HashMap::new();
+                let mut env = v7::Map::new();
                 env.insert("PATH_INFO".into(), "/bar".into());
                 env
             },
@@ -277,7 +328,7 @@ fn test_request() {
             query_string: Some("foo=bar&blub=blah".into()),
             cookies: Some("dummy=42".into()),
             other: {
-                let mut m = HashMap::new();
+                let mut m = v7::Map::new();
                 m.insert("other_key".into(), "other_value".into());
                 m
             },
@@ -404,7 +455,7 @@ fn test_slightly_larger_exception_stacktrace() {
                         },
                         in_app: Some(true),
                         vars: {
-                            let mut m = HashMap::new();
+                            let mut m = v7::Map::new();
                             m.insert("var".into(), "value".into());
                             m
                         },
@@ -453,7 +504,7 @@ fn test_full_exception_stacktrace() {
                         },
                         in_app: Some(true),
                         vars: {
-                            let mut m = HashMap::new();
+                            let mut m = v7::Map::new();
                             m.insert("var".into(), "value".into());
                             m
                         },

@@ -13,6 +13,7 @@ extern crate serde_json;
 extern crate url;
 extern crate url_serde;
 extern crate uuid;
+extern crate linked_hash_map;
 
 #[macro_use]
 mod macros;
