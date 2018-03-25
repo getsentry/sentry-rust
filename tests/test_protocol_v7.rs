@@ -551,6 +551,14 @@ fn test_addr_format() {
 }
 
 #[test]
+fn test_addr_api() {
+    use std::ptr;
+    assert_eq!(v7::Addr::from(42u64), v7::Addr(42));
+    assert_eq!(v7::Addr::from(42u32), v7::Addr(42));
+    assert_eq!(v7::Addr::from(ptr::null::<()>()), v7::Addr(0));
+}
+
+#[test]
 fn test_thread_id_format() {
     assert_eq!(serde_json::to_string(&v7::ThreadId::Int(0)).unwrap(), "0");
     assert_eq!(serde_json::to_string(&v7::ThreadId::Int(42)).unwrap(), "42");

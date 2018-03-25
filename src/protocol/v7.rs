@@ -196,6 +196,36 @@ impl fmt::Display for Addr {
     }
 }
 
+impl From<u64> for Addr {
+    fn from(addr: u64) -> Addr {
+        Addr(addr)
+    }
+}
+
+impl From<u32> for Addr {
+    fn from(addr: u32) -> Addr {
+        Addr(addr as u64)
+    }
+}
+
+impl From<usize> for Addr {
+    fn from(addr: usize) -> Addr {
+        Addr(addr as u64)
+    }
+}
+
+impl<T> From<*const T> for Addr {
+    fn from(addr: *const T) -> Addr {
+        Addr(addr as u64)
+    }
+}
+
+impl Into<u64> for Addr {
+    fn into(self: Addr) -> u64 {
+        self.0
+    }
+}
+
 /// Represents a single thread.
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 #[serde(default)]
