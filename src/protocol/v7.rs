@@ -15,7 +15,7 @@ use serde::de::{Deserialize, Deserializer, Error as DeError};
 use serde::ser::{Error as SerError, Serialize, SerializeMap, Serializer};
 use serde_json::{from_value, to_value};
 
-use protocol::utils::ts_seconds_float;
+use utils::ts_seconds_float;
 
 /// An arbitrary (JSON) value (`serde_json::value::Value`)
 pub mod value {

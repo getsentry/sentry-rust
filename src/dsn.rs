@@ -4,6 +4,7 @@ use std::str::FromStr;
 use url::Url;
 
 use project_id::{ProjectId, ProjectIdParseError};
+use auth::{Auth, auth_from_dsn_and_client};
 
 /// Represents a dsn url parsing error.
 #[derive(Debug, Fail)]
@@ -71,6 +72,11 @@ pub struct Dsn {
 }
 
 impl Dsn {
+    /// Converts the dsn into an auth object.
+    pub fn to_auth(&self, client_agent: Option<&str>) -> Auth {
+        auth_from_dsn_and_client(self, client_agent)
+    }
+
     /// Returns the scheme
     pub fn scheme(&self) -> Scheme {
         self.scheme

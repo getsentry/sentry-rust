@@ -1,6 +1,12 @@
 use std::fmt;
 use std::str::FromStr;
 
+use chrono::{DateTime, Utc};
+
+use protocol;
+use utils::{datetime_to_timestamp, timestamp_to_datetime};
+use dsn::Dsn;
+
 /// Represents an auth header parsing error.
 #[derive(Debug, Fail)]
 pub enum AuthParseError {
@@ -22,9 +28,9 @@ pub enum AuthParseError {
 }
 
 /// Represents an auth header.
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct Auth {
-    timestamp: Option<f64>,
+    timestamp: Option<DateTime<Utc>>,
     client: Option<String>,
     version: u16,
     key: String,
@@ -33,7 +39,7 @@ pub struct Auth {
 
 impl Auth {
     /// Returns the unix timestamp the client defined
-    pub fn timestamp(&self) -> Option<f64> {
+    pub fn timestamp(&self) -> Option<DateTime<Utc>> {
         self.timestamp
     }
 
@@ -57,8 +63,8 @@ impl Auth {
         self.secret.is_none()
     }
 
-    /// Returns the client's relay
-    pub fn client_relay(&self) -> Option<&str> {
+    /// Returns the client's agent
+    pub fn client_agent(&self) -> Option<&str> {
         self.client.as_ref().map(|x| x.as_str())
     }
 }
@@ -71,7 +77,7 @@ impl fmt::Display for Auth {
             self.key, self.version
         )?;
         if let Some(ts) = self.timestamp {
-            write!(f, ", sentry_timestamp={}", ts)?;
+            write!(f, ", sentry_timestamp={}", datetime_to_timestamp(&ts))?;
         }
         if let Some(ref client) = self.client {
             write!(f, ", sentry_client={}", client)?;
@@ -87,7 +93,13 @@ impl FromStr for Auth {
     type Err = AuthParseError;
 
     fn from_str(s: &str) -> Result<Auth, AuthParseError> {
-        let mut rv = Auth::default();
+        let mut rv = Auth {
+            timestamp: None,
+            client: None,
+            version: protocol::LATEST,
+            key: "".into(),
+            secret: None,
+        };
         let mut base_iter = s.splitn(2, ' ');
         if !base_iter
             .next()
@@ -101,7 +113,8 @@ impl FromStr for Auth {
             let mut kviter = item.trim().split('=');
             match (kviter.next(), kviter.next()) {
                 (Some("sentry_timestamp"), Some(ts)) => {
-                    rv.timestamp = Some(ts.parse().map_err(|_| AuthParseError::InvalidTimestamp)?);
+                    let f: f64 = ts.parse().map_err(|_| AuthParseError::InvalidTimestamp)?;
+                    rv.timestamp = Some(timestamp_to_datetime(f));
                 }
                 (Some("sentry_client"), Some(client)) => {
                     rv.client = Some(client.into());
@@ -130,27 +143,12 @@ impl FromStr for Auth {
     }
 }
 
-#[test]
-fn test_auth_parsing() {
-    let auth: Auth = "Sentry sentry_timestamp=1328055286.51, \
-                      sentry_client=raven-python/42, \
-                      sentry_version=6, \
-                      sentry_key=public, \
-                      sentry_secret=secret"
-        .parse()
-        .unwrap();
-    assert_eq!(auth.timestamp(), Some(1328055286.51));
-    assert_eq!(auth.client_relay(), Some("raven-python/42"));
-    assert_eq!(auth.version(), 6);
-    assert_eq!(auth.public_key(), "public");
-    assert_eq!(auth.secret_key(), Some("secret"));
-
-    assert_eq!(
-        auth.to_string(),
-        "Sentry sentry_key=public, \
-         sentry_version=6, \
-         sentry_timestamp=1328055286.51, \
-         sentry_client=raven-python/42, \
-         sentry_secret=secret"
-    );
+pub(crate) fn auth_from_dsn_and_client(dsn: &Dsn, client: Option<&str>) -> Auth {
+    Auth {
+        timestamp: Some(Utc::now()),
+        client: client.map(|x| x.to_string()),
+        version: protocol::LATEST,
+        key: dsn.public_key().to_string(),
+        secret: dsn.secret_key().map(|x| x.to_string()),
+    }
 }

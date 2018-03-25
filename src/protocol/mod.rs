@@ -2,7 +2,8 @@
 
 pub mod v7;
 
-mod utils;
+/// The latest version of the protocol.
+pub const LATEST: u16 = 7;
 
 /// the always latest sentry protocol version
 pub mod latest {
