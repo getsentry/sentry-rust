@@ -1,8 +1,7 @@
 extern crate chrono;
 extern crate sentry_types;
 use chrono::{TimeZone, Utc};
-use sentry_types::{Auth, Dsn, protocol};
-
+use sentry_types::{protocol, Auth, Dsn};
 
 #[test]
 fn test_auth_parsing() {
@@ -13,7 +12,10 @@ fn test_auth_parsing() {
                       sentry_secret=secret"
         .parse()
         .unwrap();
-    assert_eq!(auth.timestamp(), Some(Utc.ymd(2012, 2, 1).and_hms_milli(0, 14, 46, 500)));
+    assert_eq!(
+        auth.timestamp(),
+        Some(Utc.ymd(2012, 2, 1).and_hms_milli(0, 14, 46, 500))
+    );
     assert_eq!(auth.client_agent(), Some("raven-python/42"));
     assert_eq!(auth.version(), 6);
     assert_eq!(auth.public_key(), "public");

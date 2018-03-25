@@ -4,7 +4,7 @@ use std::str::FromStr;
 use url::Url;
 
 use project_id::{ProjectId, ProjectIdParseError};
-use auth::{Auth, auth_from_dsn_and_client};
+use auth::{auth_from_dsn_and_client, Auth};
 
 /// Represents a dsn url parsing error.
 #[derive(Debug, Fail)]

@@ -1,8 +1,9 @@
+extern crate chrono;
 extern crate sentry_types;
 extern crate serde;
-#[macro_use] extern crate serde_json;
+#[macro_use]
+extern crate serde_json;
 extern crate uuid;
-extern crate chrono;
 
 use chrono::{TimeZone, Utc};
 
@@ -172,11 +173,14 @@ fn test_repos() {
     let event = v7::Event {
         repos: {
             let mut m = v7::Map::new();
-            m.insert("/raven".into(), v7::RepoReference {
-                name: "github/raven".into(),
-                prefix: Some("/".into()),
-                revision: Some("49f45700b5fe606c1bcd9bf0205ecbb83db17f52".into()),
-            });
+            m.insert(
+                "/raven".into(),
+                v7::RepoReference {
+                    name: "github/raven".into(),
+                    prefix: Some("/".into()),
+                    revision: Some("49f45700b5fe606c1bcd9bf0205ecbb83db17f52".into()),
+                },
+            );
             m
         },
         ..Default::default()
@@ -191,11 +195,14 @@ fn test_repos() {
     let event = v7::Event {
         repos: {
             let mut m = v7::Map::new();
-            m.insert("/raven".into(), v7::RepoReference {
-                name: "github/raven".into(),
-                prefix: None,
-                revision: None,
-            });
+            m.insert(
+                "/raven".into(),
+                v7::RepoReference {
+                    name: "github/raven".into(),
+                    prefix: None,
+                    revision: None,
+                },
+            );
             m
         },
         ..Default::default()
@@ -235,7 +242,7 @@ fn test_user() {
                 let mut hm = v7::Map::new();
                 hm.insert("foo".into(), "bar".into());
                 hm
-            }
+            },
         }),
         ..Default::default()
     };
@@ -316,7 +323,7 @@ fn test_stacktrace() {
                         ..Default::default()
                     },
                     ..Default::default()
-                }
+                },
             ],
             ..Default::default()
         }),
@@ -366,7 +373,7 @@ fn test_threads() {
                 id: Some("#1".into()),
                 name: Some("Awesome Thread".into()),
                 ..Default::default()
-            }
+            },
         ],
         ..Default::default()
     };
@@ -385,7 +392,7 @@ fn test_threads() {
                 crashed: true,
                 current: true,
                 ..Default::default()
-            }
+            },
         ],
         ..Default::default()
     };
@@ -429,7 +436,7 @@ fn test_threads() {
                     ..Default::default()
                 }),
                 ..Default::default()
-            }
+            },
         ],
         ..Default::default()
     };
@@ -439,7 +446,7 @@ fn test_threads() {
         serde_json::to_string(&event).unwrap(),
         "{\"threads\":{\"values\":[{\"stacktrace\":{\"frames\":[{\"function\":\
          \"main\",\"filename\":\"hello.py\",\"lineno\":1}]},\"raw_stacktrace\"\
-        :{\"frames\":[{\"function\":\"main\",\"filename\":\"hello.py\",\"lineno\":1}]}}]}}"
+         :{\"frames\":[{\"function\":\"main\",\"filename\":\"hello.py\",\"lineno\":1}]}}]}}"
     );
 }
 
@@ -509,10 +516,7 @@ fn test_request() {
     };
 
     assert_roundtrip(&event);
-    assert_eq!(
-        serde_json::to_string(&event).unwrap(),
-        "{\"request\":{}}"
-    );
+    assert_eq!(serde_json::to_string(&event).unwrap(), "{\"request\":{}}");
 }
 
 #[test]
@@ -539,10 +543,13 @@ fn test_extra() {
     let event = v7::Event {
         extra: {
             let mut m = v7::Map::new();
-            m.insert("component_state".into(), json!({
+            m.insert(
+                "component_state".into(),
+                json!({
                 "dirty": true,
                 "revision": 17
-            }));
+            }),
+            );
             m
         },
         ..Default::default()
@@ -592,7 +599,7 @@ fn test_debug_meta() {
                 }),
                 v7::DebugImage::Proguard(v7::ProguardDebugImage {
                     uuid: "8c954262-f905-4992-8a61-f60825f4553b".parse().unwrap(),
-                })
+                }),
             ],
             ..Default::default()
         },
@@ -656,26 +663,28 @@ fn test_multi_exception_list() {
 #[test]
 fn test_minimal_exception_stacktrace() {
     let event: v7::Event = v7::Event {
-        exceptions: vec![v7::Exception {
-            ty: "DivisionByZero".into(),
-            value: Some("integer division or modulo by zero".into()),
-            module: None,
-            stacktrace: Some(v7::Stacktrace {
-                frames: vec![
-                    v7::Frame {
-                        function: Some("main".into()),
-                        location: v7::FileLocation {
-                            filename: Some("hello.py".into()),
-                            line: Some(1),
+        exceptions: vec![
+            v7::Exception {
+                ty: "DivisionByZero".into(),
+                value: Some("integer division or modulo by zero".into()),
+                module: None,
+                stacktrace: Some(v7::Stacktrace {
+                    frames: vec![
+                        v7::Frame {
+                            function: Some("main".into()),
+                            location: v7::FileLocation {
+                                filename: Some("hello.py".into()),
+                                line: Some(1),
+                                ..Default::default()
+                            },
                             ..Default::default()
                         },
-                        ..Default::default()
-                    }
-                ],
-                ..Default::default()
-            }),
-            raw_stacktrace: None,
-        }],
+                    ],
+                    ..Default::default()
+                }),
+                raw_stacktrace: None,
+            },
+        ],
         ..Default::default()
     };
 
@@ -692,38 +701,40 @@ fn test_minimal_exception_stacktrace() {
 #[test]
 fn test_slightly_larger_exception_stacktrace() {
     let event: v7::Event = v7::Event {
-        exceptions: vec![v7::Exception {
-            ty: "DivisionByZero".into(),
-            value: Some("integer division or modulo by zero".into()),
-            module: None,
-            stacktrace: Some(v7::Stacktrace {
-                frames: vec![
-                    v7::Frame {
-                        function: Some("main".into()),
-                        location: v7::FileLocation {
-                            filename: Some("hello.py".into()),
-                            line: Some(7),
-                            column: Some(42),
+        exceptions: vec![
+            v7::Exception {
+                ty: "DivisionByZero".into(),
+                value: Some("integer division or modulo by zero".into()),
+                module: None,
+                stacktrace: Some(v7::Stacktrace {
+                    frames: vec![
+                        v7::Frame {
+                            function: Some("main".into()),
+                            location: v7::FileLocation {
+                                filename: Some("hello.py".into()),
+                                line: Some(7),
+                                column: Some(42),
+                                ..Default::default()
+                            },
+                            source: v7::EmbeddedSources {
+                                pre_lines: vec!["foo".into(), "bar".into()],
+                                current_line: Some("hey hey hey".into()),
+                                post_lines: vec!["foo".into(), "bar".into()],
+                            },
+                            in_app: Some(true),
+                            vars: {
+                                let mut m = v7::Map::new();
+                                m.insert("var".into(), "value".into());
+                                m
+                            },
                             ..Default::default()
                         },
-                        source: v7::EmbeddedSources {
-                            pre_lines: vec!["foo".into(), "bar".into()],
-                            current_line: Some("hey hey hey".into()),
-                            post_lines: vec!["foo".into(), "bar".into()],
-                        },
-                        in_app: Some(true),
-                        vars: {
-                            let mut m = v7::Map::new();
-                            m.insert("var".into(), "value".into());
-                            m
-                        },
-                        ..Default::default()
-                    },
-                ],
-                ..Default::default()
-            }),
-            raw_stacktrace: None,
-        }],
+                    ],
+                    ..Default::default()
+                }),
+                raw_stacktrace: None,
+            },
+        ],
         ..Default::default()
     };
 
@@ -742,58 +753,60 @@ fn test_slightly_larger_exception_stacktrace() {
 #[test]
 fn test_full_exception_stacktrace() {
     let event: v7::Event = v7::Event {
-        exceptions: vec![v7::Exception {
-            ty: "DivisionByZero".into(),
-            value: Some("integer division or modulo by zero".into()),
-            module: Some("x".into()),
-            stacktrace: Some(v7::Stacktrace {
-                frames: vec![
-                    v7::Frame {
-                        function: Some("main".into()),
-                        symbol: Some("main".into()),
-                        location: v7::FileLocation {
-                            filename: Some("hello.py".into()),
-                            abs_path: Some("/app/hello.py".into()),
-                            line: Some(7),
-                            column: Some(42),
+        exceptions: vec![
+            v7::Exception {
+                ty: "DivisionByZero".into(),
+                value: Some("integer division or modulo by zero".into()),
+                module: Some("x".into()),
+                stacktrace: Some(v7::Stacktrace {
+                    frames: vec![
+                        v7::Frame {
+                            function: Some("main".into()),
+                            symbol: Some("main".into()),
+                            location: v7::FileLocation {
+                                filename: Some("hello.py".into()),
+                                abs_path: Some("/app/hello.py".into()),
+                                line: Some(7),
+                                column: Some(42),
+                            },
+                            source: v7::EmbeddedSources {
+                                pre_lines: vec!["foo".into(), "bar".into()],
+                                current_line: Some("hey hey hey".into()),
+                                post_lines: vec!["foo".into(), "bar".into()],
+                            },
+                            in_app: Some(true),
+                            vars: {
+                                let mut m = v7::Map::new();
+                                m.insert("var".into(), "value".into());
+                                m
+                            },
+                            package: Some("hello.whl".into()),
+                            module: Some("hello".into()),
+                            instruction_info: v7::InstructionInfo {
+                                image_addr: Some(v7::Addr(0)),
+                                instruction_addr: Some(v7::Addr(0)),
+                                symbol_addr: Some(v7::Addr(0)),
+                            },
                         },
-                        source: v7::EmbeddedSources {
-                            pre_lines: vec!["foo".into(), "bar".into()],
-                            current_line: Some("hey hey hey".into()),
-                            post_lines: vec!["foo".into(), "bar".into()],
+                    ],
+                    frames_omitted: Some((1, 2)),
+                }),
+                raw_stacktrace: Some(v7::Stacktrace {
+                    frames: vec![
+                        v7::Frame {
+                            function: Some("main".into()),
+                            instruction_info: v7::InstructionInfo {
+                                image_addr: Some(v7::Addr(0)),
+                                instruction_addr: Some(v7::Addr(0)),
+                                symbol_addr: Some(v7::Addr(0)),
+                            },
+                            ..Default::default()
                         },
-                        in_app: Some(true),
-                        vars: {
-                            let mut m = v7::Map::new();
-                            m.insert("var".into(), "value".into());
-                            m
-                        },
-                        package: Some("hello.whl".into()),
-                        module: Some("hello".into()),
-                        instruction_info: v7::InstructionInfo {
-                            image_addr: Some(v7::Addr(0)),
-                            instruction_addr: Some(v7::Addr(0)),
-                            symbol_addr: Some(v7::Addr(0)),
-                        }
-                    },
-                ],
-                frames_omitted: Some((1, 2)),
-            }),
-            raw_stacktrace: Some(v7::Stacktrace {
-                frames: vec![
-                    v7::Frame {
-                        function: Some("main".into()),
-                        instruction_info: v7::InstructionInfo {
-                            image_addr: Some(v7::Addr(0)),
-                            instruction_addr: Some(v7::Addr(0)),
-                            symbol_addr: Some(v7::Addr(0)),
-                        },
-                        ..Default::default()
-                    },
-                ],
-                frames_omitted: Some((1, 2)),
-            }),
-        }],
+                    ],
+                    frames_omitted: Some((1, 2)),
+                }),
+            },
+        ],
         ..Default::default()
     };
 
@@ -802,15 +815,15 @@ fn test_full_exception_stacktrace() {
         serde_json::to_string(&event).unwrap(),
         "{\"exception\":{\"values\":[{\"type\":\"DivisionByZero\",\"value\":\
          \"integer division or modulo by zero\",\"module\":\"x\",\"stacktrace\":\
-        {\"frames\":[{\"function\":\"main\",\"symbol\":\"main\",\"module\":\
-        \"hello\",\"package\":\"hello.whl\",\"filename\":\"hello.py\",\"abs_path\"\
-        :\"/app/hello.py\",\"lineno\":7,\"colno\":42,\"pre_context\":[\"foo\",\"\
-        bar\"],\"context_line\":\"hey hey hey\",\"post_context\":[\"foo\",\"bar\"]\
-        ,\"in_app\":true,\"vars\":{\"var\":\"value\"},\"image_addr\":\"0x0\",\
-        \"instruction_addr\":\"0x0\",\"symbol_addr\":\"0x0\"}],\"frames_omitted\":\
-        [1,2]},\"raw_stacktrace\":{\"frames\":[{\"function\":\"main\",\
-        \"image_addr\":\"0x0\",\"instruction_addr\":\"0x0\",\"symbol_addr\":\"0x0\"}\
-        ],\"frames_omitted\":[1,2]}}]}}"
+         {\"frames\":[{\"function\":\"main\",\"symbol\":\"main\",\"module\":\
+         \"hello\",\"package\":\"hello.whl\",\"filename\":\"hello.py\",\"abs_path\"\
+         :\"/app/hello.py\",\"lineno\":7,\"colno\":42,\"pre_context\":[\"foo\",\"\
+         bar\"],\"context_line\":\"hey hey hey\",\"post_context\":[\"foo\",\"bar\"]\
+         ,\"in_app\":true,\"vars\":{\"var\":\"value\"},\"image_addr\":\"0x0\",\
+         \"instruction_addr\":\"0x0\",\"symbol_addr\":\"0x0\"}],\"frames_omitted\":\
+         [1,2]},\"raw_stacktrace\":{\"frames\":[{\"function\":\"main\",\
+         \"image_addr\":\"0x0\",\"instruction_addr\":\"0x0\",\"symbol_addr\":\"0x0\"}\
+         ],\"frames_omitted\":[1,2]}}]}}"
     );
 }
 
@@ -859,37 +872,51 @@ fn test_contexts() {
     let event = v7::Event {
         contexts: {
             let mut m = v7::Map::new();
-            m.insert("device".into(), v7::ContextType::Device(v7::DeviceContext {
-                name: Some("iphone".into()),
-                family: Some("iphone".into()),
-                model: Some("iphone7,3".into()),
-                model_id: Some("AH223".into()),
-                arch: Some("arm64".into()),
-                battery_level: Some(58.5.into()),
-                orientation: Some(v7::Orientation::Landscape),
-            }.into()).into());
-            m.insert("os".into(), v7::ContextType::Os(v7::OsContext {
-                name: Some("iOS".into()),
-                version: Some("11.4.2".into()),
-                build: Some("ADSA23".into()),
-                kernel_version: Some("17.4.0".into()),
-                rooted: Some(true),
-            }).into());
-            m.insert("magicvm".into(), v7::ContextType::Runtime(v7::RuntimeContext {
-                name: Some("magicvm".into()),
-                version: Some("5.3".into()),
-            }).into());
-            m.insert("othervm".into(), v7::Context {
-                data: v7::ContextType::Runtime(v7::RuntimeContext {
+            m.insert(
+                "device".into(),
+                v7::ContextType::Device(
+                    v7::DeviceContext {
+                        name: Some("iphone".into()),
+                        family: Some("iphone".into()),
+                        model: Some("iphone7,3".into()),
+                        model_id: Some("AH223".into()),
+                        arch: Some("arm64".into()),
+                        battery_level: Some(58.5.into()),
+                        orientation: Some(v7::Orientation::Landscape),
+                    }.into(),
+                ).into(),
+            );
+            m.insert(
+                "os".into(),
+                v7::ContextType::Os(v7::OsContext {
+                    name: Some("iOS".into()),
+                    version: Some("11.4.2".into()),
+                    build: Some("ADSA23".into()),
+                    kernel_version: Some("17.4.0".into()),
+                    rooted: Some(true),
+                }).into(),
+            );
+            m.insert(
+                "magicvm".into(),
+                v7::ContextType::Runtime(v7::RuntimeContext {
                     name: Some("magicvm".into()),
                     version: Some("5.3".into()),
-                }),
-                extra: {
-                    let mut m = v7::Map::new();
-                    m.insert("extra_stuff".into(), "extra_value".into());
-                    m
-                }
-            });
+                }).into(),
+            );
+            m.insert(
+                "othervm".into(),
+                v7::Context {
+                    data: v7::ContextType::Runtime(v7::RuntimeContext {
+                        name: Some("magicvm".into()),
+                        version: Some("5.3".into()),
+                    }),
+                    extra: {
+                        let mut m = v7::Map::new();
+                        m.insert("extra_stuff".into(), "extra_value".into());
+                        m
+                    },
+                },
+            );
             m
         },
         ..Default::default()
@@ -914,12 +941,30 @@ fn test_addr_format() {
     assert_eq!(serde_json::to_string(&v7::Addr(0)).unwrap(), "\"0x0\"");
     assert_eq!(serde_json::to_string(&v7::Addr(42)).unwrap(), "\"0x2a\"");
     assert_eq!(serde_json::from_str::<v7::Addr>("0").unwrap(), v7::Addr(0));
-    assert_eq!(serde_json::from_str::<v7::Addr>("\"0\"").unwrap(), v7::Addr(0));
-    assert_eq!(serde_json::from_str::<v7::Addr>("\"0x0\"").unwrap(), v7::Addr(0));
-    assert_eq!(serde_json::from_str::<v7::Addr>("42").unwrap(), v7::Addr(42));
-    assert_eq!(serde_json::from_str::<v7::Addr>("\"42\"").unwrap(), v7::Addr(42));
-    assert_eq!(serde_json::from_str::<v7::Addr>("\"0x2a\"").unwrap(), v7::Addr(42));
-    assert_eq!(serde_json::from_str::<v7::Addr>("\"0X2A\"").unwrap(), v7::Addr(42));
+    assert_eq!(
+        serde_json::from_str::<v7::Addr>("\"0\"").unwrap(),
+        v7::Addr(0)
+    );
+    assert_eq!(
+        serde_json::from_str::<v7::Addr>("\"0x0\"").unwrap(),
+        v7::Addr(0)
+    );
+    assert_eq!(
+        serde_json::from_str::<v7::Addr>("42").unwrap(),
+        v7::Addr(42)
+    );
+    assert_eq!(
+        serde_json::from_str::<v7::Addr>("\"42\"").unwrap(),
+        v7::Addr(42)
+    );
+    assert_eq!(
+        serde_json::from_str::<v7::Addr>("\"0x2a\"").unwrap(),
+        v7::Addr(42)
+    );
+    assert_eq!(
+        serde_json::from_str::<v7::Addr>("\"0X2A\"").unwrap(),
+        v7::Addr(42)
+    );
 }
 
 #[test]
@@ -934,13 +979,28 @@ fn test_addr_api() {
 fn test_thread_id_format() {
     assert_eq!(serde_json::to_string(&v7::ThreadId::Int(0)).unwrap(), "0");
     assert_eq!(serde_json::to_string(&v7::ThreadId::Int(42)).unwrap(), "42");
-    assert_eq!(serde_json::to_string(&v7::ThreadId::String("x".into())).unwrap(), "\"x\"");
-    assert_eq!(serde_json::from_str::<v7::ThreadId>("0").unwrap(), v7::ThreadId::Int(0));
-    assert_eq!(serde_json::from_str::<v7::ThreadId>("\"0\"").unwrap(), v7::ThreadId::String("0".into()));
+    assert_eq!(
+        serde_json::to_string(&v7::ThreadId::String("x".into())).unwrap(),
+        "\"x\""
+    );
+    assert_eq!(
+        serde_json::from_str::<v7::ThreadId>("0").unwrap(),
+        v7::ThreadId::Int(0)
+    );
+    assert_eq!(
+        serde_json::from_str::<v7::ThreadId>("\"0\"").unwrap(),
+        v7::ThreadId::String("0".into())
+    );
 }
 
 #[test]
 fn test_orientation() {
-    assert_eq!(serde_json::to_string(&v7::Orientation::Landscape).unwrap(), "\"landscape\"");
-    assert_eq!(serde_json::to_string(&v7::Orientation::Portrait).unwrap(), "\"portrait\"");
+    assert_eq!(
+        serde_json::to_string(&v7::Orientation::Landscape).unwrap(),
+        "\"landscape\""
+    );
+    assert_eq!(
+        serde_json::to_string(&v7::Orientation::Portrait).unwrap(),
+        "\"portrait\""
+    );
 }

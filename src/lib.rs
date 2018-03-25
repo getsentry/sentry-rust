@@ -40,6 +40,7 @@ extern crate chrono;
 extern crate failure;
 #[macro_use]
 extern crate failure_derive;
+extern crate linked_hash_map;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
@@ -47,7 +48,6 @@ extern crate serde_json;
 extern crate url;
 extern crate url_serde;
 extern crate uuid;
-extern crate linked_hash_map;
 
 #[macro_use]
 mod macros;

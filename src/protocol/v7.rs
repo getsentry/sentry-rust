@@ -19,7 +19,7 @@ use utils::ts_seconds_float;
 
 /// An arbitrary (JSON) value (`serde_json::value::Value`)
 pub mod value {
-    pub use serde_json::value::{Map, Value, Index, Number, from_value, to_value};
+    pub use serde_json::value::{from_value, to_value, Index, Map, Number, Value};
 }
 
 /// The internally use arbitrary data map type (`linked_hash_map::LinkedHashMap`)
@@ -27,9 +27,8 @@ pub mod value {
 /// It is currently backed by the `linked-hash-map` crate's hash map so that
 /// insertion order is preserved.
 pub mod map {
-    pub use linked_hash_map::{Entries, IntoIter, Iter, IterMut, Keys,
-                              LinkedHashMap, OccupiedEntry,
-                              VacantEntry, Values};
+    pub use linked_hash_map::{Entries, IntoIter, Iter, IterMut, Keys, LinkedHashMap,
+                              OccupiedEntry, VacantEntry, Values};
 }
 
 /// An arbitrary (JSON) value (`serde_json::value::Value`)
@@ -307,7 +306,6 @@ pub struct Thread {
     #[serde(skip_serializing_if = "is_false")]
     pub current: bool,
 }
-
 
 /// Represents a single exception
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
@@ -1061,16 +1059,18 @@ impl<'de> Deserialize<'de> for Addr {
             Uint(u64),
         }
 
-        Ok(Addr(match Repr::deserialize(deserializer).map_err(D::Error::custom)? {
-            Repr::Str(s) => {
-                if s.len() > 2 && (&s[..2] == "0x" || &s[..2] == "0X") {
-                    u64::from_str_radix(&s[2..], 16).map_err(D::Error::custom)?
-                } else {
-                    u64::from_str_radix(&s, 10).map_err(D::Error::custom)?
+        Ok(Addr(
+            match Repr::deserialize(deserializer).map_err(D::Error::custom)? {
+                Repr::Str(s) => {
+                    if s.len() > 2 && (&s[..2] == "0x" || &s[..2] == "0X") {
+                        u64::from_str_radix(&s[2..], 16).map_err(D::Error::custom)?
+                    } else {
+                        u64::from_str_radix(&s, 10).map_err(D::Error::custom)?
+                    }
                 }
-            }
-            Repr::Uint(val) => val
-        }))
+                Repr::Uint(val) => val,
+            },
+        ))
     }
 }
 
