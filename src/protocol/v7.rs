@@ -16,12 +16,12 @@ use serde::de::{Deserialize, Deserializer, Error as DeError};
 use serde::ser::{Error as SerError, Serialize, SerializeMap, Serializer};
 use serde_json::{from_value, to_value};
 
-/// Internals for the protocol v7's arbitrary data type.
+/// An arbitrary (JSON) value (`serde_json::value::Value`)
 pub mod value {
     pub use serde_json::value::{Value, Index, Number, from_value, to_value};
 }
 
-/// Internals for the protocol v7's map type.
+/// The internally use arbitrary data map type (`linked_hash_map::LinkedHashMap`)
 ///
 /// It is currently backed by the `linked-hash-map` crate's hash map so that
 /// insertion order is preserved.
@@ -31,10 +31,10 @@ pub mod map {
                               VacantEntry, Values};
 }
 
-/// An arbitrary (JSON) value.
+/// An arbitrary (JSON) value (`serde_json::value::Value`)
 pub use self::value::Value;
 
-/// The internally use arbitrary data map type.
+/// The internally use arbitrary data map type (`linked_hash_map::LinkedHashMap`)
 pub use self::map::LinkedHashMap as Map;
 
 /// Represents a log entry message.
