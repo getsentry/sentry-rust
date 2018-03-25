@@ -13,6 +13,11 @@ fn reserialize(event: &v7::Event) -> v7::Event {
     serde_json::from_str(&json).unwrap()
 }
 
+fn assert_roundtrip(event: &v7::Event) {
+    let event_roundtripped = reserialize(event);
+    assert_eq!(event, &event_roundtripped);
+}
+
 #[test]
 fn test_event_default_vs_new() {
     let event_new = reserialize(&v7::Event::new());
@@ -90,6 +95,7 @@ fn test_fingerprint() {
     assert_eq!(serde_json::to_string(&event).unwrap(), "{}");
 
     event.fingerprint.push("extra".into());
+    assert_roundtrip(&event);
     assert_eq!(
         serde_json::to_string(&event).unwrap(),
         "{\"fingerprint\":[\"{{ default }}\",\"extra\"]}"
@@ -102,6 +108,7 @@ fn test_basic_message_event() {
     event.level = v7::Level::Warning;
     event.message = Some("Hello World!".into());
     event.logger = Some("root".into());
+    assert_roundtrip(&event);
     let json = serde_json::to_string(&event).unwrap();
     assert_eq!(
         &json,
@@ -117,6 +124,7 @@ fn test_message_basics() {
         level: v7::Level::Info,
         ..Default::default()
     };
+    assert_roundtrip(&event);
     assert_eq!(
         serde_json::to_string(&event).unwrap(),
         "{\"level\":\"info\",\"culprit\":\"foo in bar\",\"message\":\"Hello World!\"}"
@@ -134,6 +142,7 @@ fn test_logentry_basics() {
         level: v7::Level::Debug,
         ..Default::default()
     };
+    assert_roundtrip(&event);
     assert_eq!(
         serde_json::to_string(&event).unwrap(),
         "{\"level\":\"debug\",\"culprit\":\"foo in bar\",\"logentry\":{\"message\":\
@@ -151,6 +160,7 @@ fn test_modules() {
         },
         ..Default::default()
     };
+    assert_roundtrip(&event);
     assert_eq!(
         serde_json::to_string(&event).unwrap(),
         "{\"modules\":{\"System\":\"1.0.0\"}}"
@@ -172,6 +182,7 @@ fn test_repos() {
         ..Default::default()
     };
 
+    assert_roundtrip(&event);
     assert_eq!(
         serde_json::to_string(&event).unwrap(),
         "{\"repos\":{\"/raven\":{\"name\":\"github/raven\",\"prefix\":\"/\",\"revision\":\"49f45700b5fe606c1bcd9bf0205ecbb83db17f52\"}}}"
@@ -190,6 +201,7 @@ fn test_repos() {
         ..Default::default()
     };
 
+    assert_roundtrip(&event);
     assert_eq!(
         serde_json::to_string(&event).unwrap(),
         "{\"repos\":{\"/raven\":{\"name\":\"github/raven\"}}}"
@@ -204,6 +216,7 @@ fn test_platform_and_timestamp() {
         ..Default::default()
     };
 
+    assert_roundtrip(&event);
     assert_eq!(
         serde_json::to_string(&event).unwrap(),
         "{\"platform\":\"python\",\"timestamp\":\"2017-12-24T08:12:00Z\"}"
@@ -227,6 +240,7 @@ fn test_user() {
         ..Default::default()
     };
 
+    assert_roundtrip(&event);
     assert_eq!(
         serde_json::to_string(&event).unwrap(),
         "{\"user\":{\"id\":\"8fd5a33b-5b0e-45b2-aff2-9e4f067756ba\",\
@@ -245,6 +259,7 @@ fn test_user() {
         ..Default::default()
     };
 
+    assert_roundtrip(&event);
     assert_eq!(
         serde_json::to_string(&event).unwrap(),
         "{\"user\":{\"id\":\"8fd5a33b-5b0e-45b2-aff2-9e4f067756ba\"}}"
@@ -278,12 +293,41 @@ fn test_breadcrumbs() {
         ..Default::default()
     };
 
+    assert_roundtrip(&event);
     assert_eq!(
         serde_json::to_string(&event).unwrap(),
-        "{\"breadcrumbs\":[{\"timestamp\":1514103120,\"type\":\"default\",\
-         \"category\":\"ui.click\",\"message\":\"span.platform-card > li.platform-tile\"}\
-         ,{\"timestamp\":1514103120,\"type\":\"http\",\"category\":\"xhr\",\"data\":\
-         {\"url\":\"/api/0/organizations/foo\",\"status_code\":200,\"method\":\"GET\"}}]}"
+        "{\"breadcrumbs\":[{\"timestamp\":1514103120.713,\"type\":\"default\",\
+         \"category\":\"ui.click\",\"message\":\"span.platform-card > li.platform-tile\"\
+         },{\"timestamp\":1514103120.913,\"type\":\"http\",\"category\":\"xhr\",\"data\"\
+         :{\"url\":\"/api/0/organizations/foo\",\"status_code\":200,\"method\":\"GET\"}}]}"
+    );
+}
+
+#[test]
+fn test_stacktrace() {
+    let event = v7::Event {
+        stacktrace: Some(v7::Stacktrace {
+            frames: vec![
+                v7::Frame {
+                    function: Some("main".into()),
+                    location: v7::FileLocation {
+                        filename: Some("hello.py".into()),
+                        line: Some(1),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                }
+            ],
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+
+    assert_roundtrip(&event);
+    assert_eq!(
+        serde_json::to_string(&event).unwrap(),
+        "{\"stacktrace\":{\"frames\":[{\"function\":\"main\",\
+         \"filename\":\"hello.py\",\"lineno\":1}]}}"
     );
 }
 
@@ -311,6 +355,7 @@ fn test_request() {
         ..Default::default()
     };
 
+    assert_roundtrip(&event);
     assert_eq!(
         serde_json::to_string(&event).unwrap(),
         "{\"request\":{\"url\":\"https://www.example.invalid/bar\",\
@@ -337,6 +382,7 @@ fn test_request() {
         ..Default::default()
     };
 
+    assert_roundtrip(&event);
     assert_eq!(
         serde_json::to_string(&event).unwrap(),
         "{\"request\":{\"url\":\"https://www.example.invalid/bar\",\
@@ -350,6 +396,7 @@ fn test_request() {
         ..Default::default()
     };
 
+    assert_roundtrip(&event);
     assert_eq!(
         serde_json::to_string(&event).unwrap(),
         "{\"request\":{}}"
@@ -364,6 +411,7 @@ fn test_canonical_exception() {
         ..Default::default()
     });
     let json = serde_json::to_string(&event).unwrap();
+    assert_roundtrip(&event);
     assert_eq!(
         json,
         "{\"exception\":{\"values\":[{\"type\":\"ZeroDivisionError\"}]}}"
@@ -394,6 +442,7 @@ fn test_multi_exception_list() {
         ty: "ZeroDivisionError".into(),
         ..Default::default()
     });
+    assert_roundtrip(&event);
     assert_eq!(event, ref_event);
 }
 
@@ -422,6 +471,7 @@ fn test_minimal_exception_stacktrace() {
         ..Default::default()
     };
 
+    assert_roundtrip(&event);
     assert_eq!(
         serde_json::to_string(&event).unwrap(),
         "{\"exception\":{\"values\":[{\"type\":\"DivisionByZero\",\
@@ -468,6 +518,7 @@ fn test_slightly_larger_exception_stacktrace() {
         ..Default::default()
     };
 
+    assert_roundtrip(&event);
     assert_eq!(
         serde_json::to_string(&event).unwrap(),
         "{\"exception\":{\"values\":[{\"type\":\"DivisionByZero\",\"value\":\
@@ -523,6 +574,7 @@ fn test_full_exception_stacktrace() {
         ..Default::default()
     };
 
+    assert_roundtrip(&event);
     assert_eq!(
         serde_json::to_string(&event).unwrap(),
         "{\"exception\":{\"values\":[{\"type\":\"DivisionByZero\",\

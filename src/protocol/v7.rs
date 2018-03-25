@@ -7,7 +7,6 @@
 use std::fmt;
 use std::net::IpAddr;
 
-use chrono;
 use chrono::{DateTime, Utc};
 use url_serde;
 use url::Url;
@@ -15,6 +14,8 @@ use uuid::Uuid;
 use serde::de::{Deserialize, Deserializer, Error as DeError};
 use serde::ser::{Error as SerError, Serialize, SerializeMap, Serializer};
 use serde_json::{from_value, to_value};
+
+use protocol::utils::ts_seconds_float;
 
 /// An arbitrary (JSON) value (`serde_json::value::Value`)
 pub mod value {
@@ -52,6 +53,7 @@ pub struct LogEntry {
 
 /// Represents a frame.
 #[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq)]
+#[serde(default)]
 pub struct Frame {
     /// The name of the function is known.
     ///
@@ -139,6 +141,7 @@ pub struct TemplateInfo {
 
 /// Represents contextual information in a frame.
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
+#[serde(default)]
 pub struct EmbeddedSources {
     /// The sources of the lines leading up to the current line.
     #[serde(rename = "pre_context", skip_serializing_if = "Vec::is_empty")]
@@ -316,7 +319,7 @@ impl Level {
 #[serde(default)]
 pub struct Breadcrumb {
     /// The timestamp of the breadcrumb.  This is required.
-    #[serde(with = "chrono::serde::ts_seconds")]
+    #[serde(with = "ts_seconds_float")]
     pub timestamp: DateTime<Utc>,
     /// The type of the breadcrumb.
     #[serde(rename = "type")]
