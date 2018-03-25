@@ -855,6 +855,61 @@ fn test_other_data() {
 }
 
 #[test]
+fn test_contexts() {
+    let event = v7::Event {
+        contexts: {
+            let mut m = v7::Map::new();
+            m.insert("device".into(), v7::ContextType::Device(v7::DeviceContext {
+                name: Some("iphone".into()),
+                family: Some("iphone".into()),
+                model: Some("iphone7,3".into()),
+                model_id: Some("AH223".into()),
+                arch: Some("arm64".into()),
+                battery_level: Some(58.5.into()),
+                orientation: Some(v7::Orientation::Landscape),
+            }.into()).into());
+            m.insert("os".into(), v7::ContextType::Os(v7::OsContext {
+                name: Some("iOS".into()),
+                version: Some("11.4.2".into()),
+                build: Some("ADSA23".into()),
+                kernel_version: Some("17.4.0".into()),
+                rooted: Some(true),
+            }).into());
+            m.insert("magicvm".into(), v7::ContextType::Runtime(v7::RuntimeContext {
+                name: Some("magicvm".into()),
+                version: Some("5.3".into()),
+            }).into());
+            m.insert("othervm".into(), v7::Context {
+                data: v7::ContextType::Runtime(v7::RuntimeContext {
+                    name: Some("magicvm".into()),
+                    version: Some("5.3".into()),
+                }),
+                extra: {
+                    let mut m = v7::Map::new();
+                    m.insert("extra_stuff".into(), "extra_value".into());
+                    m
+                }
+            });
+            m
+        },
+        ..Default::default()
+    };
+
+    assert_roundtrip(&event);
+    assert_eq!(
+        serde_json::to_string(&event).unwrap(),
+        "{\"contexts\":{\"device\":{\"name\":\"iphone\",\"family\":\"iphone\",\
+         \"model\":\"iphone7,3\",\"model_id\":\"AH223\",\"arch\":\"arm64\",\
+         \"battery_level\":58.5,\"orientation\":\"landscape\",\"type\"\
+         :\"device\"},\"os\":{\"name\":\"iOS\",\"version\":\"11.4.2\",\"build\":\
+         \"ADSA23\",\"kernel_version\":\"17.4.0\",\"rooted\":true,\"type\":\"os\"}\
+         ,\"magicvm\":{\"name\":\"magicvm\",\"version\":\"5.3\",\"type\":\
+         \"runtime\"},\"othervm\":{\"name\":\"magicvm\",\"version\":\"5.3\",\
+         \"type\":\"runtime\",\"extra_stuff\":\"extra_value\"}}}"
+    );
+}
+
+#[test]
 fn test_addr_format() {
     assert_eq!(serde_json::to_string(&v7::Addr(0)).unwrap(), "\"0x0\"");
     assert_eq!(serde_json::to_string(&v7::Addr(42)).unwrap(), "\"0x2a\"");

@@ -741,7 +741,7 @@ impl Event {
 pub enum Orientation {
     /// Portrait device orientation.
     Portrait,
-    /// Landscaope device orientation.
+    /// Landscape device orientation.
     Landscape,
 }
 
