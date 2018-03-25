@@ -1,7 +1,21 @@
 [package]
 name = "sentry-types"
 version = "0.1.0"
+license = "Apache-2.0"
+description = "Common reusable types for implementing the sentry.io protocol."
+homepage = "https://sentry.io/"
+repository = "https://github.com/getsentry/rust-sentry-types"
+documentation = "https://docs.rs/rust-sentry-types"
+keywords = ["sentry", "protocol"]
+readme = "README.md"
 authors = ["Sentry <hello@sentry.io>"]
+exclude = [
+    ".vscode/**/*",
+    "scripts/**/*"
+]
+
+[badges]
+travis-ci = { repository = "getsentry/rust-sentry-types" }
 
 [dependencies]
 failure = "0.1.1"
