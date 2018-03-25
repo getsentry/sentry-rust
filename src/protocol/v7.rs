@@ -19,7 +19,7 @@ use protocol::utils::ts_seconds_float;
 
 /// An arbitrary (JSON) value (`serde_json::value::Value`)
 pub mod value {
-    pub use serde_json::value::{Value, Index, Number, from_value, to_value};
+    pub use serde_json::value::{Map, Value, Index, Number, from_value, to_value};
 }
 
 /// The internally use arbitrary data map type (`linked_hash_map::LinkedHashMap`)
@@ -198,6 +198,12 @@ impl From<i64> for ThreadId {
     }
 }
 
+impl From<i32> for ThreadId {
+    fn from(id: i32) -> ThreadId {
+        ThreadId::Int(id as u64)
+    }
+}
+
 impl From<u32> for ThreadId {
     fn from(id: u32) -> ThreadId {
         ThreadId::Int(id as u64)
@@ -223,6 +229,13 @@ impl fmt::Display for ThreadId {
 #[derive(Default, Debug, Clone, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub struct Addr(pub u64);
 
+impl Addr {
+    /// Returns `true` if this address is the null pointer.
+    pub fn is_null(&self) -> bool {
+        self.0 == 0
+    }
+}
+
 impl fmt::Display for Addr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "0x{:x}", self.0)
@@ -232,6 +245,12 @@ impl fmt::Display for Addr {
 impl From<u64> for Addr {
     fn from(addr: u64) -> Addr {
         Addr(addr)
+    }
+}
+
+impl From<i32> for Addr {
+    fn from(addr: i32) -> Addr {
+        Addr(addr as u64)
     }
 }
 
@@ -460,7 +479,7 @@ pub struct SystemSdkInfo {
     /// the major version of the SDK as integer or 0
     pub version_major: u32,
     /// the minor version of the SDK as integer or 0
-    pub version_minior: u32,
+    pub version_minor: u32,
     /// the patch version of the SDK as integer or 0
     pub version_patchlevel: u32,
 }
@@ -506,6 +525,7 @@ pub struct AppleDebugImage {
     /// The size of the image in bytes.
     pub image_size: u64,
     /// The address where the image is loaded at runtime.
+    #[serde(skip_serializing_if = "Addr::is_null")]
     pub image_vmaddr: Addr,
     /// The unique UUID of the image.
     pub uuid: Uuid,
@@ -526,8 +546,17 @@ pub struct DebugMeta {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sdk_info: Option<SystemSdkInfo>,
     /// A list of debug information files.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub images: Option<DebugImage>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub images: Vec<DebugImage>,
+}
+
+impl DebugMeta {
+    /// Returns true if the debug meta is empty.
+    ///
+    /// This is used by the serializer to entirely skip the section.
+    pub fn is_empty(&self) -> bool {
+        self.sdk_info.is_none() && self.images.is_empty()
+    }
 }
 
 /// Represents a repository reference.
@@ -643,8 +672,8 @@ pub struct Event {
     #[serde(skip_serializing_if = "Map::is_empty")]
     pub extra: Map<String, Value>,
     /// Debug meta information.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub debug_meta: Option<DebugMeta>,
+    #[serde(skip_serializing_if = "DebugMeta::is_empty")]
+    pub debug_meta: DebugMeta,
     /// SDK metadata
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sdk_info: Option<ClientSdkInfo>,
@@ -689,7 +718,7 @@ impl Default for Event {
             threads: Vec::new(),
             tags: Map::new(),
             extra: Map::new(),
-            debug_meta: None,
+            debug_meta: Default::default(),
             sdk_info: None,
             other: Map::new(),
         }
@@ -1006,7 +1035,12 @@ impl Serialize for DebugImage {
     where
         S: Serializer,
     {
-        let mut c = match to_value(self).map_err(S::Error::custom)? {
+        let actual = match *self {
+            DebugImage::Apple(ref img) => to_value(img),
+            DebugImage::Proguard(ref img) => to_value(img),
+            DebugImage::Unknown(ref img) => to_value(img),
+        };
+        let mut c = match actual.map_err(S::Error::custom)? {
             Value::Object(map) => map,
             _ => unreachable!(),
         };

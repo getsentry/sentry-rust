@@ -1,6 +1,6 @@
 extern crate sentry_types;
 extern crate serde;
-extern crate serde_json;
+#[macro_use] extern crate serde_json;
 extern crate uuid;
 extern crate chrono;
 
@@ -380,7 +380,7 @@ fn test_threads() {
     let event = v7::Event {
         threads: vec![
             v7::Thread {
-                id: Some(42u32.into()),
+                id: Some(42.into()),
                 name: Some("Awesome Thread".into()),
                 crashed: true,
                 current: true,
@@ -395,6 +395,51 @@ fn test_threads() {
         serde_json::to_string(&event).unwrap(),
         "{\"threads\":{\"values\":[{\"id\":42,\"name\":\"Awesome Thread\",\
          \"crashed\":true,\"current\":true}]}}"
+    );
+
+    let event = v7::Event {
+        threads: vec![
+            v7::Thread {
+                stacktrace: Some(v7::Stacktrace {
+                    frames: vec![
+                        v7::Frame {
+                            function: Some("main".into()),
+                            location: v7::FileLocation {
+                                filename: Some("hello.py".into()),
+                                line: Some(1),
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        },
+                    ],
+                    ..Default::default()
+                }),
+                raw_stacktrace: Some(v7::Stacktrace {
+                    frames: vec![
+                        v7::Frame {
+                            function: Some("main".into()),
+                            location: v7::FileLocation {
+                                filename: Some("hello.py".into()),
+                                line: Some(1),
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        },
+                    ],
+                    ..Default::default()
+                }),
+                ..Default::default()
+            }
+        ],
+        ..Default::default()
+    };
+
+    assert_roundtrip(&event);
+    assert_eq!(
+        serde_json::to_string(&event).unwrap(),
+        "{\"threads\":{\"values\":[{\"stacktrace\":{\"frames\":[{\"function\":\
+         \"main\",\"filename\":\"hello.py\",\"lineno\":1}]},\"raw_stacktrace\"\
+        :{\"frames\":[{\"function\":\"main\",\"filename\":\"hello.py\",\"lineno\":1}]}}]}}"
     );
 }
 
@@ -467,6 +512,101 @@ fn test_request() {
     assert_eq!(
         serde_json::to_string(&event).unwrap(),
         "{\"request\":{}}"
+    );
+}
+
+#[test]
+fn test_tags() {
+    let event = v7::Event {
+        tags: {
+            let mut m = v7::Map::new();
+            m.insert("device_type".into(), "mobile".into());
+            m.insert("interpreter".into(), "7".into());
+            m
+        },
+        ..Default::default()
+    };
+
+    assert_roundtrip(&event);
+    assert_eq!(
+        serde_json::to_string(&event).unwrap(),
+        "{\"tags\":{\"device_type\":\"mobile\",\"interpreter\":\"7\"}}"
+    );
+}
+
+#[test]
+fn test_extra() {
+    let event = v7::Event {
+        extra: {
+            let mut m = v7::Map::new();
+            m.insert("component_state".into(), json!({
+                "dirty": true,
+                "revision": 17
+            }));
+            m
+        },
+        ..Default::default()
+    };
+
+    assert_roundtrip(&event);
+    assert_eq!(
+        serde_json::to_string(&event).unwrap(),
+        "{\"extra\":{\"component_state\":{\"dirty\":true,\"revision\":17}}}"
+    );
+}
+
+#[test]
+fn test_debug_meta() {
+    let event = v7::Event {
+        debug_meta: v7::DebugMeta {
+            sdk_info: Some(v7::SystemSdkInfo {
+                sdk_name: "iOS".into(),
+                version_major: 10,
+                version_minor: 3,
+                version_patchlevel: 0,
+            }),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+
+    assert_roundtrip(&event);
+    assert_eq!(
+        serde_json::to_string(&event).unwrap(),
+        "{\"debug_meta\":{\"sdk_info\":{\"sdk_name\":\"iOS\",\"version_major\":10,\
+         \"version_minor\":3,\"version_patchlevel\":0}}}"
+    );
+
+    let event = v7::Event {
+        debug_meta: v7::DebugMeta {
+            images: vec![
+                v7::DebugImage::Apple(v7::AppleDebugImage {
+                    name: "CoreFoundation".into(),
+                    arch: Some("arm64".into()),
+                    cpu_type: Some(1233),
+                    cpu_subtype: Some(3),
+                    image_addr: 0.into(),
+                    image_size: 4096,
+                    image_vmaddr: 32768.into(),
+                    uuid: "494f3aea-88fa-4296-9644-fa8ef5d139b6".parse().unwrap(),
+                }),
+                v7::DebugImage::Proguard(v7::ProguardDebugImage {
+                    uuid: "8c954262-f905-4992-8a61-f60825f4553b".parse().unwrap(),
+                })
+            ],
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+
+    assert_roundtrip(&event);
+    assert_eq!(
+        serde_json::to_string(&event).unwrap(),
+        "{\"debug_meta\":{\"images\":[{\"name\":\"CoreFoundation\",\"arch\":\
+         \"arm64\",\"cpu_type\":1233,\"cpu_subtype\":3,\"image_addr\":\"0x0\",\
+         \"image_size\":4096,\"image_vmaddr\":\"0x8000\",\"uuid\":\
+         \"494f3aea-88fa-4296-9644-fa8ef5d139b6\",\"type\":\"apple\"},\
+         {\"uuid\":\"8c954262-f905-4992-8a61-f60825f4553b\",\"type\":\"proguard\"}]}}"
     );
 }
 
@@ -691,7 +831,7 @@ fn test_addr_format() {
 fn test_addr_api() {
     use std::ptr;
     assert_eq!(v7::Addr::from(42u64), v7::Addr(42));
-    assert_eq!(v7::Addr::from(42u32), v7::Addr(42));
+    assert_eq!(v7::Addr::from(42), v7::Addr(42));
     assert_eq!(v7::Addr::from(ptr::null::<()>()), v7::Addr(0));
 }
 
