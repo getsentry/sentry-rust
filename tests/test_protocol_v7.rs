@@ -587,7 +587,7 @@ fn test_debug_meta() {
     let event = v7::Event {
         debug_meta: v7::DebugMeta {
             images: vec![
-                v7::DebugImage::Apple(v7::AppleDebugImage {
+                v7::AppleDebugImage {
                     name: "CoreFoundation".into(),
                     arch: Some("arm64".into()),
                     cpu_type: Some(1233),
@@ -596,18 +596,18 @@ fn test_debug_meta() {
                     image_size: 4096,
                     image_vmaddr: 32768.into(),
                     uuid: "494f3aea-88fa-4296-9644-fa8ef5d139b6".parse().unwrap(),
-                }),
-                v7::DebugImage::Symbolic(v7::SymbolicDebugImage {
+                }.into(),
+                v7::SymbolicDebugImage {
                     name: "CoreFoundation".into(),
                     arch: Some("arm64".into()),
                     image_addr: 0.into(),
                     image_size: 4096,
                     image_vmaddr: 32768.into(),
                     id: "494f3aea-88fa-4296-9644-fa8ef5d139b6-1234".parse().unwrap(),
-                }),
-                v7::DebugImage::Proguard(v7::ProguardDebugImage {
+                }.into(),
+                v7::ProguardDebugImage {
                     uuid: "8c954262-f905-4992-8a61-f60825f4553b".parse().unwrap(),
-                }),
+                }.into(),
             ],
             ..Default::default()
         },

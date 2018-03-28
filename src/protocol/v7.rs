@@ -516,6 +516,16 @@ impl DebugImage {
     }
 }
 
+macro_rules! into_debug_image {
+    ($kind:ident, $ty:ty) => {
+        impl From<$ty> for DebugImage {
+            fn from(data: $ty) -> DebugImage {
+                DebugImage::$kind(data)
+            }
+        }
+    }
+}
+
 /// Represents an apple debug image in the debug meta.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AppleDebugImage {
@@ -562,6 +572,10 @@ pub struct ProguardDebugImage {
     /// The UUID of the associated proguard file.
     pub uuid: Uuid,
 }
+
+into_debug_image!(Apple, AppleDebugImage);
+into_debug_image!(Symbolic, SymbolicDebugImage);
+into_debug_image!(Proguard, ProguardDebugImage);
 
 /// Represents debug meta information.
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
