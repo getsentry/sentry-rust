@@ -744,6 +744,14 @@ pub enum Orientation {
 }
 
 /// General context data.
+///
+/// The data can be either typed (`ContextData`) or be filled in as
+/// unhandled attributes in `extra`.  If completely arbitrary data
+/// should be used the typed data can be set to `ContextData::Default`
+/// in which case no key is well known.
+///
+/// Types like `OsContext` can be directly converted with `.into()`
+/// to `Context` or `ContextData`.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Context {
     /// Typed context data.
