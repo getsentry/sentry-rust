@@ -954,7 +954,7 @@ fn test_contexts() {
                     let mut m = v7::Map::new();
                     m.insert("aha".into(), "oho".into());
                     m
-                }.into()
+                }.into(),
             );
             m
         },

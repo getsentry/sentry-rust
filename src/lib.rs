@@ -37,6 +37,7 @@
 //! ```
 #![warn(missing_docs)]
 extern crate chrono;
+extern crate debugid;
 extern crate failure;
 #[macro_use]
 extern crate failure_derive;
@@ -48,7 +49,6 @@ extern crate serde_json;
 extern crate url;
 extern crate url_serde;
 extern crate uuid;
-extern crate debugid;
 
 #[macro_use]
 mod macros;
