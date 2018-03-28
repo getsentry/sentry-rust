@@ -747,7 +747,7 @@ pub enum Orientation {
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Context {
     /// Typed context data.
-    pub data: ContextType,
+    pub data: ContextData,
     /// Additional keys sent along not known to the context type.
     pub extra: Map<String, Value>,
 }
@@ -755,7 +755,7 @@ pub struct Context {
 /// Typed contextual data
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "snake_case", untagged)]
-pub enum ContextType {
+pub enum ContextData {
     /// Arbitrary contextual information
     Default,
     /// Device data.
@@ -881,8 +881,8 @@ pub struct AppContext {
     pub app_build: Option<String>,
 }
 
-impl From<ContextType> for Context {
-    fn from(data: ContextType) -> Context {
+impl From<ContextData> for Context {
+    fn from(data: ContextData) -> Context {
         Context {
             data: data,
             extra: Map::new(),
@@ -892,15 +892,15 @@ impl From<ContextType> for Context {
 
 macro_rules! into_context {
     ($kind:ident, $ty:ty) => {
-        impl From<$ty> for ContextType {
-            fn from(data: $ty) -> ContextType {
-                ContextType::$kind(data)
+        impl From<$ty> for ContextData {
+            fn from(data: $ty) -> ContextData {
+                ContextData::$kind(data)
             }
         }
 
         impl From<$ty> for Context {
             fn from(data: $ty) -> Context {
-                ContextType::$kind(data).into()
+                ContextData::$kind(data).into()
             }
         }
     }
@@ -914,27 +914,27 @@ into_context!(Runtime, RuntimeContext);
 impl From<Map<String, Value>> for Context {
     fn from(data: Map<String, Value>) -> Context {
         Context {
-            data: ContextType::Default,
+            data: ContextData::Default,
             extra: data,
         }
     }
 }
 
-impl Default for ContextType {
-    fn default() -> ContextType {
-        ContextType::Default
+impl Default for ContextData {
+    fn default() -> ContextData {
+        ContextData::Default
     }
 }
 
-impl ContextType {
+impl ContextData {
     /// Returns the name of the type for sentry.
     pub fn type_name(&self) -> &str {
         match *self {
-            ContextType::Default => "default",
-            ContextType::Device(..) => "device",
-            ContextType::Os(..) => "os",
-            ContextType::Runtime(..) => "runtime",
-            ContextType::App(..) => "app",
+            ContextData::Default => "default",
+            ContextData::Device(..) => "device",
+            ContextData::Os(..) => "os",
+            ContextData::Runtime(..) => "runtime",
+            ContextData::App(..) => "app",
         }
     }
 }
@@ -992,12 +992,12 @@ where
         }
 
         let (data, extra) = match ty.as_str() {
-            "device" => convert_context!(ContextType::Device, DeviceContext),
-            "os" => convert_context!(ContextType::Os, OsContext),
-            "runtime" => convert_context!(ContextType::Runtime, RuntimeContext),
-            "app" => convert_context!(ContextType::App, AppContext),
+            "device" => convert_context!(ContextData::Device, DeviceContext),
+            "os" => convert_context!(ContextData::Os, OsContext),
+            "runtime" => convert_context!(ContextData::Runtime, RuntimeContext),
+            "app" => convert_context!(ContextData::App, AppContext),
             _ => (
-                ContextType::Default,
+                ContextData::Default,
                 from_value(data).map_err(D::Error::custom)?,
             ),
         };
@@ -1014,7 +1014,7 @@ where
     let mut map = try!(serializer.serialize_map(None));
 
     for (key, value) in value {
-        let mut c = if let ContextType::Default = value.data {
+        let mut c = if let ContextData::Default = value.data {
             value::Map::new()
         } else {
             match to_value(&value.data).map_err(S::Error::custom)? {

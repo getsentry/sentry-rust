@@ -55,7 +55,7 @@ fn test_basic_event() {
     };
     event.contexts.insert(
         "os".into(),
-        v7::ContextType::Os(v7::OsContext {
+        v7::ContextData::Os(v7::OsContext {
             name: Some("linux".into()),
             rooted: Some(true),
             ..Default::default()
@@ -914,7 +914,7 @@ fn test_contexts() {
             m.insert(
                 "othervm".into(),
                 v7::Context {
-                    data: v7::ContextType::Runtime(v7::RuntimeContext {
+                    data: v7::ContextData::Runtime(v7::RuntimeContext {
                         name: Some("magicvm".into()),
                         version: Some("5.3".into()),
                     }),
