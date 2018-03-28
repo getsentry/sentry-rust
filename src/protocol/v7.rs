@@ -8,6 +8,7 @@ use std::fmt;
 use std::net::IpAddr;
 
 use chrono::{DateTime, Utc};
+use debugid::DebugId;
 use url_serde;
 use url::Url;
 use uuid::Uuid;
@@ -32,10 +33,9 @@ pub mod map {
 }
 
 /// Represents a debug ID.
-pub use debugid::DebugId;
-
-/// An error caused by not being able to parse a debug id.
-pub use debugid::DebugIdParseError;
+pub mod debugid {
+    pub use debugid::{DebugId, DebugIdParseError, BreakpadFormat};
+}
 
 /// An arbitrary (JSON) value (`serde_json::value::Value`)
 pub use self::value::Value;
