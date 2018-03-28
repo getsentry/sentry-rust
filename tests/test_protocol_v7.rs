@@ -874,34 +874,42 @@ fn test_contexts() {
             let mut m = v7::Map::new();
             m.insert(
                 "device".into(),
-                v7::ContextType::Device(
-                    v7::DeviceContext {
-                        name: Some("iphone".into()),
-                        family: Some("iphone".into()),
-                        model: Some("iphone7,3".into()),
-                        model_id: Some("AH223".into()),
-                        arch: Some("arm64".into()),
-                        battery_level: Some(58.5.into()),
-                        orientation: Some(v7::Orientation::Landscape),
-                    }.into(),
-                ).into(),
+                v7::DeviceContext {
+                    name: Some("iphone".into()),
+                    family: Some("iphone".into()),
+                    model: Some("iphone7,3".into()),
+                    model_id: Some("AH223".into()),
+                    arch: Some("arm64".into()),
+                    battery_level: Some(58.5.into()),
+                    orientation: Some(v7::Orientation::Landscape),
+                    simulator: Some(true),
+                    memory_size: Some(3137978368),
+                    free_memory: Some(322781184),
+                    usable_memory: Some(2843525120),
+                    storage_size: Some(63989469184),
+                    free_storage: Some(31994734592),
+                    external_storage_size: Some(2097152),
+                    external_free_storage: Some(2097152),
+                    boot_time: Some("2018-02-08T12:52:12Z".parse().unwrap()),
+                    timezone: Some("Europe/Vienna".into()),
+                }.into(),
             );
             m.insert(
                 "os".into(),
-                v7::ContextType::Os(v7::OsContext {
+                v7::OsContext {
                     name: Some("iOS".into()),
                     version: Some("11.4.2".into()),
                     build: Some("ADSA23".into()),
                     kernel_version: Some("17.4.0".into()),
                     rooted: Some(true),
-                }).into(),
+                }.into(),
             );
             m.insert(
                 "magicvm".into(),
-                v7::ContextType::Runtime(v7::RuntimeContext {
+                v7::RuntimeContext {
                     name: Some("magicvm".into()),
                     version: Some("5.3".into()),
-                }).into(),
+                }.into(),
             );
             m.insert(
                 "othervm".into(),
@@ -917,6 +925,26 @@ fn test_contexts() {
                     },
                 },
             );
+            m.insert(
+                "app".into(),
+                v7::AppContext {
+                    app_start_time: Some("2018-02-08T22:21:57Z".parse().unwrap()),
+                    device_app_hash: Some("4c793e3776474877ae30618378e9662a".into()),
+                    build_type: Some("testflight".into()),
+                    app_identifier: Some("foo.bar.baz".into()),
+                    app_name: Some("Baz App".into()),
+                    app_version: Some("1.0".into()),
+                    app_build: Some("100001".into()),
+                }.into(),
+            );
+            m.insert(
+                "other".into(),
+                {
+                    let mut m = v7::Map::new();
+                    m.insert("aha".into(), "oho".into());
+                    m
+                }.into()
+            );
             m
         },
         ..Default::default()
@@ -925,14 +953,22 @@ fn test_contexts() {
     assert_roundtrip(&event);
     assert_eq!(
         serde_json::to_string(&event).unwrap(),
-        "{\"contexts\":{\"device\":{\"name\":\"iphone\",\"family\":\"iphone\",\
-         \"model\":\"iphone7,3\",\"model_id\":\"AH223\",\"arch\":\"arm64\",\
-         \"battery_level\":58.5,\"orientation\":\"landscape\",\"type\"\
-         :\"device\"},\"os\":{\"name\":\"iOS\",\"version\":\"11.4.2\",\"build\":\
-         \"ADSA23\",\"kernel_version\":\"17.4.0\",\"rooted\":true,\"type\":\"os\"}\
-         ,\"magicvm\":{\"name\":\"magicvm\",\"version\":\"5.3\",\"type\":\
-         \"runtime\"},\"othervm\":{\"name\":\"magicvm\",\"version\":\"5.3\",\
-         \"type\":\"runtime\",\"extra_stuff\":\"extra_value\"}}}"
+        "{\"contexts\":{\"device\":{\"name\":\"iphone\",\"family\":\"iphone\",\"model\":\
+         \"iphone7,3\",\"model_id\":\"AH223\",\"arch\":\"arm64\",\"battery_level\":58.5,\
+         \"orientation\":\"landscape\",\"simulator\":true,\"memory_size\":3137978368,\
+         \"free_memory\":322781184,\"usable_memory\":2843525120,\"storage_size\":63989469184,\
+         \"free_storage\":31994734592,\"external_storage_size\":2097152,\
+         \"external_free_storage\":2097152,\"boot_time\":\"2018-02-08T12:52:12Z\",\
+         \"timezone\":\"Europe/Vienna\",\"type\":\"device\"},\"os\":{\"name\":\"iOS\",\
+         \"version\":\"11.4.2\",\"build\":\"ADSA23\",\"kernel_version\":\"17.4.0\",\
+         \"rooted\":true,\"type\":\"os\"},\"magicvm\":{\"name\":\"magicvm\",\"version\":\
+         \"5.3\",\"type\":\"runtime\"},\"othervm\":{\"name\":\"magicvm\",\"version\":\
+         \"5.3\",\"type\":\"runtime\",\"extra_stuff\":\"extra_value\"},\"app\":\
+         {\"app_start_time\":\"2018-02-08T22:21:57Z\",\"device_app_hash\":\
+         \"4c793e3776474877ae30618378e9662a\",\"build_type\":\"testflight\",\
+         \"app_identifier\":\"foo.bar.baz\",\"app_name\":\"Baz App\",\"app_version\"\
+         :\"1.0\",\"app_build\":\"100001\",\"type\":\"app\"},\"other\":{\"type\":\
+         \"default\",\"aha\":\"oho\"}}}"
     );
 }
 

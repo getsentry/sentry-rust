@@ -764,6 +764,8 @@ pub enum ContextType {
     Os(OsContext),
     /// Runtime data.
     Runtime(RuntimeContext),
+    /// Application data
+    App(AppContext),
 }
 
 /// Holds device information.
@@ -790,6 +792,36 @@ pub struct DeviceContext {
     /// The current screen orientation.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub orientation: Option<Orientation>,
+    /// Simulator/prod indicator
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub simulator: Option<bool>,
+    /// Total memory available
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub memory_size: Option<u64>,
+    /// How much memory is still available.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub free_memory: Option<u64>,
+    /// How much memory is usable for the app.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub usable_memory: Option<u64>,
+    /// Total storage size of the device.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub storage_size: Option<u64>,
+    /// How much storage is free.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub free_storage: Option<u64>,
+    /// Total size of the attached external storage (eg: android SDK card).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub external_storage_size: Option<u64>,
+    /// Free size of the attached external storage (eg: android SDK card).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub external_free_storage: Option<u64>,
+    /// Optionally an indicator when the device was booted.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub boot_time: Option<DateTime<Utc>>,
+    /// The timezone of the device.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub timezone: Option<String>,
 }
 
 /// Holds operating system information.
@@ -823,11 +855,67 @@ pub struct RuntimeContext {
     pub version: Option<String>,
 }
 
+/// Holds app information.
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
+pub struct AppContext {
+    /// Optional start time of the app.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub app_start_time: Option<DateTime<Utc>>,
+    /// Optional device app hash (app specific device ID)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub device_app_hash: Option<String>,
+    /// Optional build identicator
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub build_type: Option<String>,
+    /// Optional app identifier (dotted bundle id)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub app_identifier: Option<String>,
+    /// Application name as it appears on the platform
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub app_name: Option<String>,
+    /// Application version as it appears on the platform
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub app_version: Option<String>,
+    /// Internal build ID as it appears on the platform
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub app_build: Option<String>,
+}
+
 impl From<ContextType> for Context {
     fn from(data: ContextType) -> Context {
         Context {
             data: data,
             extra: Map::new(),
+        }
+    }
+}
+
+macro_rules! into_context {
+    ($kind:ident, $ty:ty) => {
+        impl From<$ty> for ContextType {
+            fn from(data: $ty) -> ContextType {
+                ContextType::$kind(data)
+            }
+        }
+
+        impl From<$ty> for Context {
+            fn from(data: $ty) -> Context {
+                ContextType::$kind(data).into()
+            }
+        }
+    }
+}
+
+into_context!(App, AppContext);
+into_context!(Device, DeviceContext);
+into_context!(Os, OsContext);
+into_context!(Runtime, RuntimeContext);
+
+impl From<Map<String, Value>> for Context {
+    fn from(data: Map<String, Value>) -> Context {
+        Context {
+            data: ContextType::Default,
+            extra: data,
         }
     }
 }
@@ -846,6 +934,7 @@ impl ContextType {
             ContextType::Device(..) => "device",
             ContextType::Os(..) => "os",
             ContextType::Runtime(..) => "runtime",
+            ContextType::App(..) => "app",
         }
     }
 }
@@ -906,6 +995,7 @@ where
             "device" => convert_context!(ContextType::Device, DeviceContext),
             "os" => convert_context!(ContextType::Os, OsContext),
             "runtime" => convert_context!(ContextType::Runtime, RuntimeContext),
+            "app" => convert_context!(ContextType::App, AppContext),
             _ => (
                 ContextType::Default,
                 from_value(data).map_err(D::Error::custom)?,
@@ -924,9 +1014,13 @@ where
     let mut map = try!(serializer.serialize_map(None));
 
     for (key, value) in value {
-        let mut c = match to_value(&value.data).map_err(S::Error::custom)? {
-            Value::Object(map) => map,
-            _ => unreachable!(),
+        let mut c = if let ContextType::Default = value.data {
+            value::Map::new()
+        } else {
+            match to_value(&value.data).map_err(S::Error::custom)? {
+                Value::Object(map) => map,
+                _ => unreachable!(),
+            }
         };
         c.insert("type".into(), value.data.type_name().into());
         c.extend(
