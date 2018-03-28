@@ -597,6 +597,14 @@ fn test_debug_meta() {
                     image_vmaddr: 32768.into(),
                     uuid: "494f3aea-88fa-4296-9644-fa8ef5d139b6".parse().unwrap(),
                 }),
+                v7::DebugImage::Symbolic(v7::SymbolicDebugImage {
+                    name: "CoreFoundation".into(),
+                    arch: Some("arm64".into()),
+                    image_addr: 0.into(),
+                    image_size: 4096,
+                    image_vmaddr: 32768.into(),
+                    id: "494f3aea-88fa-4296-9644-fa8ef5d139b6-1234".parse().unwrap(),
+                }),
                 v7::DebugImage::Proguard(v7::ProguardDebugImage {
                     uuid: "8c954262-f905-4992-8a61-f60825f4553b".parse().unwrap(),
                 }),
@@ -613,7 +621,10 @@ fn test_debug_meta() {
          \"arm64\",\"cpu_type\":1233,\"cpu_subtype\":3,\"image_addr\":\"0x0\",\
          \"image_size\":4096,\"image_vmaddr\":\"0x8000\",\"uuid\":\
          \"494f3aea-88fa-4296-9644-fa8ef5d139b6\",\"type\":\"apple\"},\
-         {\"uuid\":\"8c954262-f905-4992-8a61-f60825f4553b\",\"type\":\"proguard\"}]}}"
+         {\"name\":\"CoreFoundation\",\"arch\":\"arm64\",\"image_addr\":\
+         \"0x0\",\"image_size\":4096,\"image_vmaddr\":\"0x8000\",\"id\":\
+         \"494f3aea-88fa-4296-9644-fa8ef5d139b6-1234\",\"type\":\"symbolic\"}\
+         ,{\"uuid\":\"8c954262-f905-4992-8a61-f60825f4553b\",\"type\":\"proguard\"}]}}"
     );
 }
 

@@ -31,6 +31,12 @@ pub mod map {
                               OccupiedEntry, VacantEntry, Values};
 }
 
+/// Represents a debug ID.
+pub use debugid::DebugId;
+
+/// An error caused by not being able to parse a debug id.
+pub use debugid::DebugIdParseError;
+
 /// An arbitrary (JSON) value (`serde_json::value::Value`)
 pub use self::value::Value;
 
@@ -488,6 +494,8 @@ pub enum DebugImage {
     /// Apple debug images (machos).  This is currently also used for
     /// non apple platforms with similar debug setups.
     Apple(AppleDebugImage),
+    /// Symbolic (new style) debug infos.
+    Symbolic(SymbolicDebugImage),
     /// A reference to a proguard debug file.
     Proguard(ProguardDebugImage),
     /// A debug image that is unknown to this protocol specification.
@@ -499,6 +507,7 @@ impl DebugImage {
     pub fn type_name(&self) -> &str {
         match *self {
             DebugImage::Apple(..) => "apple",
+            DebugImage::Symbolic(..) => "symbolic",
             DebugImage::Proguard(..) => "proguard",
             DebugImage::Unknown(ref map) => map.get("type")
                 .and_then(|x| x.as_str())
@@ -527,6 +536,24 @@ pub struct AppleDebugImage {
     pub image_vmaddr: Addr,
     /// The unique UUID of the image.
     pub uuid: Uuid,
+}
+
+/// Represents a symbolic debug image.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct SymbolicDebugImage {
+    /// The name of the debug image (usually filename)
+    pub name: String,
+    /// The optional CPU architecture of the debug image.
+    pub arch: Option<String>,
+    /// The starting address of the image.
+    pub image_addr: Addr,
+    /// The size of the image in bytes.
+    pub image_size: u64,
+    /// The address where the image is loaded at runtime.
+    #[serde(skip_serializing_if = "Addr::is_null")]
+    pub image_vmaddr: Addr,
+    /// The unique debug id of the image.
+    pub id: DebugId,
 }
 
 /// Represents a proguard mapping file reference.
@@ -1115,6 +1142,11 @@ impl<'de> Deserialize<'de> for DebugImage {
                     from_value(Value::Object(map)).map_err(D::Error::custom)?;
                 DebugImage::Apple(img)
             }
+            Some("symbolic") => {
+                let img: SymbolicDebugImage =
+                    from_value(Value::Object(map)).map_err(D::Error::custom)?;
+                DebugImage::Symbolic(img)
+            }
             Some("proguard") => {
                 let img: ProguardDebugImage =
                     from_value(Value::Object(map)).map_err(D::Error::custom)?;
@@ -1137,6 +1169,7 @@ impl Serialize for DebugImage {
     {
         let actual = match *self {
             DebugImage::Apple(ref img) => to_value(img),
+            DebugImage::Symbolic(ref img) => to_value(img),
             DebugImage::Proguard(ref img) => to_value(img),
             DebugImage::Unknown(ref img) => to_value(img),
         };
