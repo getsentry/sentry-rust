@@ -239,7 +239,10 @@ mod test {
         let url = "https://username@domain:8888/42";
         let dsn = Dsn::from_str(url).unwrap();
         assert_eq!(url, dsn.to_string());
-        assert_eq!(dsn.store_api_url().to_string(), "https://domain:8888/api/42/");
+        assert_eq!(
+            dsn.store_api_url().to_string(),
+            "https://domain:8888/api/42/"
+        );
     }
 
     #[test]
