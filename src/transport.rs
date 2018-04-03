@@ -18,7 +18,7 @@ fn spawn_http_sender(receiver: Receiver<Option<Event>>, dsn: Dsn) -> JoinHandle<
     let user_agent = format!("sentry-rust/{}", VERSION);
     let client = Client::new();
     thread::spawn(move || {
-        let url = dsn.api_url().to_string();
+        let url = dsn.store_api_url().to_string();
         while let Some(event) = receiver.recv().unwrap_or(None) {
             let auth = dsn.to_auth(Some(&user_agent));
             let mut headers = Headers::new();
