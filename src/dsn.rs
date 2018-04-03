@@ -222,7 +222,10 @@ mod test {
         let dsn = Dsn::from_str(url).unwrap();
         assert_eq!(dsn.port(), 443);
         assert_eq!(url, dsn.to_string());
-        assert_eq!(dsn.store_api_url().to_string(), "https://domain/api/42/store/");
+        assert_eq!(
+            dsn.store_api_url().to_string(),
+            "https://domain/api/42/store/"
+        );
     }
 
     #[test]
@@ -231,7 +234,10 @@ mod test {
         let dsn = Dsn::from_str(url).unwrap();
         assert_eq!(dsn.port(), 80);
         assert_eq!(url, dsn.to_string());
-        assert_eq!(dsn.store_api_url().to_string(), "http://domain/api/42/store/");
+        assert_eq!(
+            dsn.store_api_url().to_string(),
+            "http://domain/api/42/store/"
+        );
     }
 
     #[test]
