@@ -81,13 +81,13 @@ impl Dsn {
     }
 
     /// Returns the submission API URL.
-    pub fn api_url(&self) -> Url {
+    pub fn store_api_url(&self) -> Url {
         use std::fmt::Write;
         let mut buf = format!("{}://{}", self.scheme(), self.host());
         if self.port() != self.scheme.default_port() {
             write!(&mut buf, ":{}", self.port()).unwrap();
         }
-        write!(&mut buf, "/api/{}/", self.project_id()).unwrap();
+        write!(&mut buf, "/api/{}/store/", self.project_id()).unwrap();
         Url::parse(&buf).unwrap()
     }
 
@@ -222,7 +222,7 @@ mod test {
         let dsn = Dsn::from_str(url).unwrap();
         assert_eq!(dsn.port(), 443);
         assert_eq!(url, dsn.to_string());
-        assert_eq!(dsn.api_url().to_string(), "https://domain/api/42/");
+        assert_eq!(dsn.store_api_url().to_string(), "https://domain/api/42/");
     }
 
     #[test]
@@ -231,7 +231,7 @@ mod test {
         let dsn = Dsn::from_str(url).unwrap();
         assert_eq!(dsn.port(), 80);
         assert_eq!(url, dsn.to_string());
-        assert_eq!(dsn.api_url().to_string(), "http://domain/api/42/");
+        assert_eq!(dsn.store_api_url().to_string(), "http://domain/api/42/");
     }
 
     #[test]
@@ -239,7 +239,7 @@ mod test {
         let url = "https://username@domain:8888/42";
         let dsn = Dsn::from_str(url).unwrap();
         assert_eq!(url, dsn.to_string());
-        assert_eq!(dsn.api_url().to_string(), "https://domain:8888/api/42/");
+        assert_eq!(dsn.store_api_url().to_string(), "https://domain:8888/api/42/");
     }
 
     #[test]
