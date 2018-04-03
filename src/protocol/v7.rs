@@ -1008,8 +1008,10 @@ where
 
     #[derive(Deserialize)]
     pub struct Helper<T> {
-        #[serde(flatten)] data: T,
-        #[serde(flatten)] extra: Map<String, Value>,
+        #[serde(flatten)]
+        data: T,
+        #[serde(flatten)]
+        extra: Map<String, Value>,
     }
 
     for (key, mut raw_context) in raw {
