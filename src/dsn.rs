@@ -80,6 +80,17 @@ impl Dsn {
         auth_from_dsn_and_client(self, client_agent)
     }
 
+    /// Returns the submission API URL.
+    pub fn api_url(&self) -> Url {
+        use std::fmt::Write;
+        let mut buf = format!("{}://{}", self.scheme(), self.host());
+        if self.port() != self.scheme.default_port() {
+            write!(&mut buf, ":{}", self.port()).unwrap();
+        }
+        write!(&mut buf, "/api/{}/", self.project_id()).unwrap();
+        Url::parse(&buf).unwrap()
+    }
+
     /// Returns the scheme
     pub fn scheme(&self) -> Scheme {
         self.scheme
@@ -101,8 +112,8 @@ impl Dsn {
     }
 
     /// Returns the port
-    pub fn port(&self) -> Option<u16> {
-        self.port
+    pub fn port(&self) -> u16 {
+        self.port.unwrap_or_else(|| self.scheme.default_port())
     }
 
     /// Returns the project_id
@@ -200,7 +211,7 @@ mod test {
         assert_eq!(dsn.public_key(), "username");
         assert_eq!(dsn.secret_key(), Some("password"));
         assert_eq!(dsn.host(), "domain");
-        assert_eq!(dsn.port(), Some(8888));
+        assert_eq!(dsn.port(), 8888);
         assert_eq!(dsn.project_id(), ProjectId::from(23));
         assert_eq!(url, dsn.to_string());
     }
@@ -209,7 +220,18 @@ mod test {
     fn test_dsn_no_port() {
         let url = "https://username@domain/42";
         let dsn = Dsn::from_str(url).unwrap();
+        assert_eq!(dsn.port(), 443);
         assert_eq!(url, dsn.to_string());
+        assert_eq!(dsn.api_url().to_string(), "https://domain/api/42/");
+    }
+
+    #[test]
+    fn test_insecure_dsn_no_port() {
+        let url = "http://username@domain/42";
+        let dsn = Dsn::from_str(url).unwrap();
+        assert_eq!(dsn.port(), 80);
+        assert_eq!(url, dsn.to_string());
+        assert_eq!(dsn.api_url().to_string(), "http://domain/api/42/");
     }
 
     #[test]
@@ -217,6 +239,7 @@ mod test {
         let url = "https://username@domain:8888/42";
         let dsn = Dsn::from_str(url).unwrap();
         assert_eq!(url, dsn.to_string());
+        assert_eq!(dsn.api_url().to_string(), "https://domain:8888/api/42/");
     }
 
     #[test]
