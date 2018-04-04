@@ -81,12 +81,13 @@ impl Client {
                 for frame in stacktrace.frames.iter_mut() {
                     let func_name = match frame.function {
                         Some(ref func) => func,
-                        None => continue
+                        None => continue,
                     };
 
                     // set package if missing to crate prefix
                     if frame.package.is_none() {
-                        frame.package = CRATE_RE.captures(func_name)
+                        frame.package = CRATE_RE
+                            .captures(func_name)
                             .and_then(|caps| caps.get(1))
                             .map(|cr| cr.as_str().into());
                     }

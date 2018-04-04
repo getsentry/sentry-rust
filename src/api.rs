@@ -15,6 +15,9 @@ pub use client::Client;
 pub use scope::{pop_scope, push_scope, Scope};
 pub use errorlike::ErrorLike;
 
+#[cfg(feature = "with_error_chain")]
+pub use errorlike::ErrorChain;
+
 /// Returns the currently bound client if there is one.
 pub fn current_client() -> Option<Arc<Client>> {
     with_stack(|stack| stack.client())

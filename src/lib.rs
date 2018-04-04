@@ -16,6 +16,9 @@ extern crate regex;
 #[cfg(feature = "with_failure")]
 extern crate failure;
 
+#[cfg(feature = "with_error_chain")]
+extern crate error_chain;
+
 #[cfg(feature = "with_log")]
 extern crate log;
 
