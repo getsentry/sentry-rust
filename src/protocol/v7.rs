@@ -171,6 +171,18 @@ pub struct Stacktrace {
     pub frames_omitted: Option<(u64, u64)>,
 }
 
+impl Stacktrace {
+    /// Optionally creates a stacktrace from a list of stack frames.
+    pub fn from_frames_reversed(mut frames: Vec<Frame>) -> Option<Stacktrace> {
+        if frames.is_empty() {
+            None
+        } else {
+            frames.reverse();
+            Some(Stacktrace { frames, ..Default::default() })
+        }
+    }
+}
+
 /// Represents a thread id.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Ord, PartialOrd, Hash)]
 #[serde(untagged)]
