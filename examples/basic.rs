@@ -6,6 +6,14 @@ use std::sync::Arc;
 use sentry::{bind_client, capture_exception, Client, protocol::Event};
 use failure::Error;
 
+fn f(num: u32) -> Result<u32, Error> {
+    if (num < 1) {
+        return Err(Error::from(failure::err_msg("kaputt")));
+    }
+
+    Ok(f(num - 1)? + f(num - 2)?)
+}
+
 fn main() {
     let event = Event {
         message: Some("hello, world!".into()),
@@ -20,10 +28,12 @@ fn main() {
 
     bind_client(Arc::new(client));
 
-    println!(
-        "{}",
-        capture_exception(Some(&Error::from(failure::err_msg("Hello!"))))
-    );
+    capture_exception(Some(&f(32).unwrap_err()));
+
+    // println!(
+    //     "{}",
+    //     capture_exception(Some(&Error::from(failure::err_msg("Hello!"))))
+    // );
 
     ::std::thread::sleep_ms(2000);
 

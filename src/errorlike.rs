@@ -15,6 +15,29 @@ pub fn current_error_like() -> Box<ErrorLike> {
     unreachable!()
 }
 
+lazy_static! {
+    pub static ref WELL_KNOWN_SYS_MODULES: Vec<&'static str> = {
+        let mut rv = vec![
+            "__rust_",
+            "std::",
+            "core::",
+            "alloc::",
+            "backtrace::",
+        ];
+        #[cfg(feature = "with_failure")] {
+            rv.push("failure::");
+        }
+        rv
+    };
+    pub static ref WELL_KNOWN_BORDER_FRAMES: Vec<&'static str> = {
+        let mut rv = vec![];
+        #[cfg(feature = "with_failure")] {
+            rv.push("failure::error_message::err_msg");
+        }
+        rv
+    };
+}
+
 #[cfg(feature = "with_failure")]
 mod failure_support {
     use super::*;
@@ -118,7 +141,6 @@ mod failure_support {
                     None if idx == 0 => Some(self.backtrace()),
                     None => None,
                 };
-                println!("{:?}", &bt);
                 rv.push(fail_to_exception(cause, bt));
             }
             rv
