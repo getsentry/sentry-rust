@@ -1,11 +1,10 @@
+extern crate failure;
 extern crate sentry;
-#[macro_use] extern crate futures;
 
-use sentry::{Client, protocol::Event};
+use std::sync::Arc;
 
-task_local! {
-    static FOO: u32 = 0
-}
+use sentry::{bind_client, capture_exception, Client, protocol::Event};
+use failure::Error;
 
 fn main() {
     let event = Event {
@@ -14,10 +13,19 @@ fn main() {
     };
 
     let client = Client::new(
-        "https://a94ae32be2584e0bbd7a4cbb95971fee@sentry.io/1041156"
+        "https://f09df2dafaef4332928a4de20cd45f90@sentry-ja-689a42ff319b.eu.ngrok.io/5"
             .parse()
             .unwrap(),
     );
+
+    bind_client(Arc::new(client));
+
+    println!(
+        "{}",
+        capture_exception(Some(&Error::from(failure::err_msg("Hello!"))))
+    );
+
+    ::std::thread::sleep_ms(2000);
 
     /*
     let id = client.capture_event(event);

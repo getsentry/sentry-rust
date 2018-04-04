@@ -12,8 +12,8 @@ Sentry (getsentry.com) client for rust ;)
 """
 
 [features]
-default-features = ["with_failure", "with_log"]
-with_failure = ["failure"]
+default = ["with_failure", "with_log"]
+with_failure = ["failure", "regex"]
 with_log = ["log"]
 
 [dependencies]
@@ -28,6 +28,7 @@ sentry-types = "0.1.1"
 reqwest = "0.8.5"
 uuid = { version = "0.6.2", features = ["v4"] }
 lazy_static = "1.0.0"
+regex = { version = "0.2.10", optional = true }
 
 [patch.crates-io]
 sentry-types = { path = "../rust-sentry-types" }

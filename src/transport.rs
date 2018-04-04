@@ -9,6 +9,7 @@ use Dsn;
 use protocol::Event;
 
 /// A transport can send rust events.
+#[derive(Debug)]
 pub struct Transport {
     sender: Mutex<Sender<Option<Event>>>,
     handle: Option<JoinHandle<()>>,
@@ -38,7 +39,10 @@ impl Transport {
     pub fn new(dsn: &Dsn) -> Transport {
         let (sender, receiver) = channel();
         let handle = Some(spawn_http_sender(receiver, dsn.clone()));
-        Transport { sender: Mutex::new(sender), handle }
+        Transport {
+            sender: Mutex::new(sender),
+            handle,
+        }
     }
 
     /// Sends a sentry event and return the event ID.

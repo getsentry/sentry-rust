@@ -1,13 +1,16 @@
 use uuid::Uuid;
 
-use Dsn;
+use api::Dsn;
+use scope::Scope;
 use protocol::Event;
 use transport::Transport;
+use errorlike::ErrorLike;
 
 /// The sentry client object.
+#[derive(Debug)]
 pub struct Client {
     dsn: Option<Dsn>,
-    transport: Option<Transport>,
+    transport: Transport,
 }
 
 impl Client {
@@ -16,15 +19,17 @@ impl Client {
         let transport = Transport::new(&dsn);
         Client {
             dsn: Some(dsn),
-            transport: Some(transport),
+            transport: transport,
         }
     }
 
-    /// Creates a new disabled client.
-    pub fn disabled() -> Client {
-        Client {
-            dsn: None,
-            transport: None,
+    fn prepare_event(&self, event: &mut Event, scope: Option<&Scope>) {
+        if let Some(scope) = scope {
+            if !scope.breadcrumbs.is_empty() {
+                event
+                    .breadcrumbs
+                    .extend(scope.breadcrumbs.iter().map(|x| x.clone()));
+            }
         }
     }
 
@@ -34,10 +39,20 @@ impl Client {
     }
 
     /// Captures an event and sends it to sentry.
-    pub fn capture_event(&self, event: Event) -> Uuid {
-        self.transport
-            .as_ref()
-            .map(|transport| transport.send_event(event))
-            .unwrap_or(Uuid::nil())
+    pub fn capture_event(&self, mut event: Event, scope: Option<&Scope>) -> Uuid {
+        self.prepare_event(&mut event, scope);
+        self.transport.send_event(event)
+    }
+
+    /// Captures an exception like thing.
+    pub fn capture_exception<E: ErrorLike + ?Sized>(&self, e: &E, scope: Option<&Scope>) -> Uuid {
+        self.capture_event(
+            Event {
+                exceptions: e.exceptions(),
+                level: e.level(),
+                ..Default::default()
+            },
+            scope,
+        )
     }
 }
