@@ -7,6 +7,9 @@ extern crate serde_json;
 extern crate url;
 extern crate uuid;
 
+#[macro_use]
+extern crate lazy_static;
+
 #[cfg(feature = "with_failure")]
 extern crate failure;
 
@@ -22,5 +25,6 @@ pub use sentry_types::protocol::v7 as protocol;
 mod client;
 mod constants;
 mod transport;
+mod scope;
 
 pub use client::Client;

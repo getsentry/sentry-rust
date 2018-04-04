@@ -1,4 +1,4 @@
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::{Mutex, mpsc::{channel, Receiver, Sender}};
 use std::thread::{self, JoinHandle};
 
 use reqwest::{Client, header::Headers};
@@ -10,7 +10,7 @@ use protocol::Event;
 
 /// A transport can send rust events.
 pub struct Transport {
-    sender: Sender<Option<Event>>,
+    sender: Mutex<Sender<Option<Event>>>,
     handle: Option<JoinHandle<()>>,
 }
 
@@ -38,7 +38,7 @@ impl Transport {
     pub fn new(dsn: &Dsn) -> Transport {
         let (sender, receiver) = channel();
         let handle = Some(spawn_http_sender(receiver, dsn.clone()));
-        Transport { sender, handle }
+        Transport { sender: Mutex::new(sender), handle }
     }
 
     /// Sends a sentry event and return the event ID.
@@ -48,16 +48,18 @@ impl Transport {
         }
         let event_id = event.id.unwrap();
         // ignore the error on shutdown
-        self.sender.send(Some(event)).ok();
+        self.sender.lock().unwrap().send(Some(event)).ok();
         event_id
     }
 }
 
 impl Drop for Transport {
     fn drop(&mut self) {
-        self.sender.send(None).ok();
-        if let Some(handle) = self.handle.take() {
-            handle.join().ok();
+        if let Ok(sender) = self.sender.lock() {
+            sender.send(None).ok();
+            if let Some(handle) = self.handle.take() {
+                handle.join().ok();
+            }
         }
     }
 }

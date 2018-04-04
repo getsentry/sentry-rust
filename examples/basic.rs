@@ -1,6 +1,11 @@
 extern crate sentry;
+#[macro_use] extern crate futures;
 
 use sentry::{Client, protocol::Event};
+
+task_local! {
+    static FOO: u32 = 0
+}
 
 fn main() {
     let event = Event {
@@ -14,6 +19,8 @@ fn main() {
             .unwrap(),
     );
 
+    /*
     let id = client.capture_event(event);
     println!("sent event: {}", id);
+    */
 }
