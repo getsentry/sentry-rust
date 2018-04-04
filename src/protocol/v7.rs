@@ -5,7 +5,9 @@
 //! a future sentry protocol will be a cleanup of the old one and is mapped
 //! to similar values on the rust side.
 use std::fmt;
+use std::str;
 use std::net::IpAddr;
+use std::num::ParseIntError;
 
 use chrono::{DateTime, Utc};
 use debugid::DebugId;
@@ -1210,18 +1212,12 @@ impl<'de> Deserialize<'de> for Addr {
             Uint(u64),
         }
 
-        Ok(Addr(
+        Ok(
             match Repr::deserialize(deserializer).map_err(D::Error::custom)? {
-                Repr::Str(s) => {
-                    if s.len() > 2 && (&s[..2] == "0x" || &s[..2] == "0X") {
-                        u64::from_str_radix(&s[2..], 16).map_err(D::Error::custom)?
-                    } else {
-                        u64::from_str_radix(&s, 10).map_err(D::Error::custom)?
-                    }
-                }
-                Repr::Uint(val) => val,
+                Repr::Str(s) => s.parse().map_err(D::Error::custom)?,
+                Repr::Uint(val) => Addr(val),
             },
-        ))
+        )
     }
 }
 
@@ -1231,5 +1227,17 @@ impl Serialize for Addr {
         S: Serializer,
     {
         serializer.serialize_str(&format!("0x{:0x}", self.0))
+    }
+}
+
+impl str::FromStr for Addr {
+    type Err = ParseIntError;
+
+    fn from_str(s: &str) -> Result<Addr, ParseIntError> {
+        if s.len() > 2 && (&s[..2] == "0x" || &s[..2] == "0X") {
+            u64::from_str_radix(&s[2..], 16).map(Addr)
+        } else {
+            u64::from_str_radix(&s, 10).map(Addr)
+        }
     }
 }
