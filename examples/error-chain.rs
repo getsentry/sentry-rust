@@ -4,7 +4,7 @@ extern crate sentry;
 
 use std::sync::Arc;
 
-use sentry::{bind_client, capture_exception, Client, ErrorChain, protocol::Event};
+use sentry::{bind_client, capture_exception, Client, compat::ErrorChain, protocol::Event};
 
 error_chain! {
     errors {

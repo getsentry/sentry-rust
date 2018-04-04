@@ -7,9 +7,9 @@ use api::Dsn;
 use scope::Scope;
 use protocol::Event;
 use transport::Transport;
-use errorlike::{ErrorLike, WELL_KNOWN_BORDER_FRAMES, WELL_KNOWN_SYS_MODULES};
+use exception::{Exception, WELL_KNOWN_BORDER_FRAMES, WELL_KNOWN_SYS_MODULES};
 
-/// The sentry client object.
+/// The Sentry client object.
 #[derive(Debug, Clone)]
 pub struct Client {
     dsn: Dsn,
@@ -17,15 +17,29 @@ pub struct Client {
     transport: Arc<Transport>,
 }
 
-#[derive(Debug, Default, Clone)]
+/// Configuration settings for the client.
+#[derive(Debug, Clone)]
 pub struct ClientOptions {
     /// module prefixes that are always considered in_app
-    in_app_include: Vec<&'static str>,
+    pub in_app_include: Vec<&'static str>,
     /// module prefixes that are never in_app
-    in_app_exclude: Vec<&'static str>,
+    pub in_app_exclude: Vec<&'static str>,
     /// border frames which indicate a border from a backtrace to
     /// useless internals.  Some are automatically included.
-    extra_border_frames: Vec<&'static str>,
+    pub extra_border_frames: Vec<&'static str>,
+    /// Maximum number of breadcrumbs.
+    pub max_breadcrumbs: usize,
+}
+
+impl Default for ClientOptions {
+    fn default() -> ClientOptions {
+        ClientOptions {
+            in_app_include: vec![],
+            in_app_exclude: vec![],
+            extra_border_frames: vec![],
+            max_breadcrumbs: 100,
+        }
+    }
 }
 
 lazy_static! {
@@ -162,7 +176,7 @@ impl Client {
     }
 
     /// Captures an exception like thing.
-    pub fn capture_exception<E: ErrorLike + ?Sized>(&self, e: &E, scope: Option<&Scope>) -> Uuid {
+    pub fn capture_exception<E: Exception + ?Sized>(&self, e: &E, scope: Option<&Scope>) -> Uuid {
         self.capture_event(
             Event {
                 exceptions: e.exceptions(),

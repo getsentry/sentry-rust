@@ -1,17 +1,23 @@
 use api::protocol;
 
 /// Helper trait to return us backtrace and error info.
-pub trait ErrorLike {
+///
+/// Various things can be converted into Sentry exceptions.  Currently
+/// implemented are `failure::Error`, the `compat::ErrorChain` wrapper
+/// to work with error chains and a few more.
+pub trait Exception {
+    /// Return a list of Sentry exception objects.
     fn exceptions(&self) -> Vec<protocol::Exception> {
         Vec::new()
     }
 
+    /// Return the intended level of severity for the exception.
     fn level(&self) -> protocol::Level {
         protocol::Level::Error
     }
 }
 
-pub fn current_error_like() -> Box<ErrorLike> {
+pub fn current_error_like() -> Box<Exception> {
     unreachable!()
 }
 
@@ -78,12 +84,13 @@ mod error_chain_support {
     use super::*;
     use super::backtrace_support::*;
 
+    /// Wrapper to report error chains.
     pub struct ErrorChain<'a, T>(pub &'a T)
     where
         T: ChainedError,
         T::ErrorKind: Debug + Display;
 
-    impl<'a, T> ErrorLike for ErrorChain<'a, T>
+    impl<'a, T> Exception for ErrorChain<'a, T>
     where
         T: ChainedError,
         T::ErrorKind: Debug + Display,
@@ -218,7 +225,7 @@ mod failure_support {
         }
     }
 
-    impl<'a> ErrorLike for failure::Error {
+    impl<'a> Exception for failure::Error {
         fn exceptions(&self) -> Vec<protocol::Exception> {
             let mut rv = vec![];
             for (idx, cause) in self.causes().enumerate() {

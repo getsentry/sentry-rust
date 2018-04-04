@@ -2,6 +2,7 @@ use std::mem;
 use std::thread;
 use std::cell::RefCell;
 use std::sync::{Arc, Mutex};
+use std::collections::VecDeque;
 
 use api::protocol::Breadcrumb;
 use client::Client;
@@ -30,7 +31,7 @@ pub struct Stack {
 /// This is optional on a lot of calls to the client itself.
 #[derive(Default, Debug)]
 pub struct Scope {
-    pub breadcrumbs: Vec<Breadcrumb>,
+    pub breadcrumbs: VecDeque<Breadcrumb>,
 }
 
 #[derive(Default, Debug)]
@@ -59,10 +60,6 @@ impl Stack {
         }
     }
 
-    pub fn stack_type(&self) -> StackType {
-        self.ty
-    }
-
     pub fn is_empty(&self) -> bool {
         self.layers.is_empty()
     }
@@ -73,13 +70,9 @@ impl Stack {
 
     pub fn pop(&mut self) {
         if self.layers.len() <= 1 {
-            panic!("Pop from empty stack")
+            panic!("Pop from empty {:?} stack", self.ty)
         }
         self.layers.pop().unwrap();
-    }
-
-    fn top(&self) -> &StackLayer {
-        &self.layers[self.layers.len() - 1]
     }
 
     pub fn bind_client(&mut self, client: Arc<Client>) {
@@ -88,11 +81,12 @@ impl Stack {
     }
 
     pub fn client(&self) -> Option<Arc<Client>> {
-        self.top().client.clone()
+        self.layers[self.layers.len() - 1].client.clone()
     }
 
-    pub fn scope(&self) -> &Scope {
-        &self.top().scope
+    pub fn scope_mut(&mut self) -> &mut Scope {
+        let idx = self.layers.len() - 1;
+        &mut self.layers[idx].scope
     }
 }
 
@@ -134,12 +128,12 @@ where
 /// Crate internal helper for working with clients and scopes.
 pub fn with_client_and_scope<F, R>(f: F) -> R
 where
-    F: FnOnce(Arc<Client>, &Scope) -> R,
+    F: FnOnce(Arc<Client>, &mut Scope) -> R,
     R: Default,
 {
     with_stack(|stack| {
         if let Some(client) = stack.client() {
-            f(client, stack.scope())
+            f(client, stack.scope_mut())
         } else {
             Default::default()
         }
@@ -147,6 +141,9 @@ where
 }
 
 /// Pushes a new scope on the stack.
+///
+/// If client is `None` then the currently bound client is propagated to the
+/// new scope.
 pub fn push_scope(client: Option<Arc<Client>>) {
     with_stack(|stack| {
         stack.push();

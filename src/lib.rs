@@ -1,3 +1,14 @@
+//! This crate provides support for logging events and errors / panics to
+//! the [Sentry](https://sentry.io/) error logging service.
+//!
+//! ## Feature Flags
+//!
+//! The following feature flags control the behavior of the client:
+//!
+//! * `with_log` (default): enables support for capturing log messages as breadcrumbs.
+//! * `with_failure` (default): enables support for reporting `failure::Fail`
+//!   objects as exceptions.
+//! * `with_error_chain`: enables logging of error chain errors as exceptions.
 #[warn(missing_docs)]
 extern crate backtrace;
 extern crate futures;
@@ -26,7 +37,7 @@ mod client;
 mod constants;
 mod transport;
 mod scope;
-mod errorlike;
+mod exception;
 mod api;
 
 pub use api::*;
