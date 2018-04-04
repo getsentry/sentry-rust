@@ -279,6 +279,12 @@ impl<T> From<*const T> for Addr {
     }
 }
 
+impl<T> From<*mut T> for Addr {
+    fn from(addr: *mut T) -> Addr {
+        Addr(addr as u64)
+    }
+}
+
 impl Into<u64> for Addr {
     fn into(self: Addr) -> u64 {
         self.0
