@@ -1,59 +1,22 @@
 language: rust
-cache: cargo
-dist: xenial
-sudo: false
+cache:
+  cargo: true
 
+git:
+  depth: 1
 
-# necessary for `travis-cargo coveralls --no-sudo`
-addons:
-  apt:
-    packages:
-      - libcurl4-openssl-dev
-      - libelf-dev
-      - libdw-dev
+if: tag IS blank
+script: make $SUITE
 
-rust:
-  - stable
-  - beta
-  - nightly
-
-
-before_script:
-  # load travis-cargo
-  - |
-      pip install 'travis-cargo<0.2' --user &&
-      if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
-        export PATH=$HOME/.local/bin/:$PATH
-      else
-        export PATH=$HOME/Library/Python/2.7/bin:$PATH
-      fi
-  - |
-      if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-        export OPENSSL_INCLUDE_DIR=`brew --prefix openssl`/include && \
-        export OPENSSL_LIB_DIR=`brew --prefix openssl`/lib && \
-        echo "Installed openssl for osx."
-      fi
-
-
-script:
-  - cargo test
-  # - rustdoc --test Readme.md -L target/debug/deps -L target/debug
-  - cargo doc --no-deps
-
-notifications:
-  email:
-    on_success: never
-
-after_success:
-  - travis-cargo --only stable doc-upload
-  - travis-cargo --only stable coveralls --no-sudo
-
-env:
-  global:
-    secure:
-
-
-
-os:
-  - linux
-  # - osx
+matrix:
+  include:
+    - os: linux
+      sudo: required
+      env: SUITE=test
+      install: cargo build --all
+    - os: osx
+      env: SUITE=test
+      install: cargo build --all
+    - os: linux
+      env: SUITE=format-check
+      install: rustup component add rustfmt-preview

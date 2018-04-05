@@ -49,8 +49,7 @@ pub fn event_from_panic_info(info: &panic::PanicInfo) -> Event {
 /// use sentry::integrations::panic::register_panic_handler;
 /// register_panic_handler(Some(panic::take_hook()));
 /// ```
-pub fn register_panic_handler(next: Option<Box<Fn(&panic::PanicInfo) + Sync + Send + 'static>>)
-{
+pub fn register_panic_handler(next: Option<Box<Fn(&panic::PanicInfo) + Sync + Send + 'static>>) {
     panic::set_hook(Box::new(move |info| {
         with_client_and_scope(|client, scope| {
             client.capture_event(event_from_panic_info(info), Some(scope));
