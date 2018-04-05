@@ -1,4 +1,6 @@
+use std::env;
 use std::sync::Arc;
+use std::ffi::{OsStr, OsString};
 
 use uuid::Uuid;
 
@@ -13,38 +15,72 @@ pub use sentry_types::protocol::v7 as protocol;
 pub use client::{Client, ClientOptions};
 pub use scope::{pop_scope, push_scope};
 
-/// Helper trait to convert an object into an DSN.
-pub trait IntoDsn {
-    /// Convert the value into a DSN.
+/// Helper trait to convert an object into a client config
+/// for create.
+pub trait IntoClientConfig {
+    /// Converts the object into a client config tuple of
+    /// DSN and options.
     ///
-    /// In case the null DSN shold be used `None` must be returned.
-    fn into_dsn(self) -> Option<Dsn>;
+    /// This can panic in cases where the conversion cannot be
+    /// performed due to an error.
+    fn into_client_config(self) -> (Option<Dsn>, Option<ClientOptions>);
 }
 
-impl<'a> IntoDsn for &'a str {
-    fn into_dsn(self) -> Option<Dsn> {
-        Some(self.parse().unwrap())
+impl<C: IntoClientConfig> IntoClientConfig for Option<C> {
+    fn into_client_config(self) -> (Option<Dsn>, Option<ClientOptions>) {
+        self.map(|x| x.into_client_config()).unwrap_or((None, None))
     }
 }
 
-impl<'a> IntoDsn for Dsn {
-    fn into_dsn(self) -> Option<Dsn> {
-        Some(self)
+impl<'a> IntoClientConfig for &'a str {
+    fn into_client_config(self) -> (Option<Dsn>, Option<ClientOptions>) {
+        (Some(self.parse().unwrap()), None)
     }
 }
 
-/// Creates the sentry client and binds it.
-pub fn create<I: IntoDsn>(dsn: Option<I>, options: Option<ClientOptions>) {
-    let client = if let Some(dsn) = dsn.and_then(|x| x.into_dsn()) {
-        if let Some(options) = options {
-            Some(Client::with_options(dsn, options))
+impl<'a> IntoClientConfig for &'a OsStr {
+    fn into_client_config(self) -> (Option<Dsn>, Option<ClientOptions>) {
+        (Some(self.to_string_lossy().parse().unwrap()), None)
+    }
+}
+
+impl IntoClientConfig for OsString {
+    fn into_client_config(self) -> (Option<Dsn>, Option<ClientOptions>) {
+        (Some(self.to_string_lossy().parse().unwrap()), None)
+    }
+}
+
+impl IntoClientConfig for String {
+    fn into_client_config(self) -> (Option<Dsn>, Option<ClientOptions>) {
+        (Some(self.parse().unwrap()), None)
+    }
+}
+
+impl IntoClientConfig for Dsn {
+    fn into_client_config(self) -> (Option<Dsn>, Option<ClientOptions>) {
+        (Some(self), None)
+    }
+}
+
+impl<C> IntoClientConfig for (C, ClientOptions) {
+    fn into_client_config(self) -> (Option<Dsn>, Option<ClientOptions>) {
+        let (dsn, _) = self.0.into_client_config();
+        (dsn, self.1)
+    }
+}
+
+/// Creates the sentry client for a given DSN and binds it.
+pub fn init<C: IntoClientConfig>(cfg: C) {
+    let (dsn, options) = cfg.into_client_config();
+    let dsn = dsn.or_else(|| {
+        env::var("SENTRY_DSN").ok().and_then(|dsn| dsn.parse::<Dsn>().ok())
+    });
+    if let Some(dsn) = dsn {
+        let client = if let Some(options) = options {
+            Client::with_options(dsn, options)
         } else {
-            Some(Client::new(dsn))
-        }
-    } else {
-        None
-    };
-    if let Some(client) = client {
+            Client::new(dsn)
+        };
         bind_client(Arc::new(client));
     }
 }

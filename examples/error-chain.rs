@@ -2,9 +2,8 @@
 extern crate error_chain;
 extern crate sentry;
 
-use std::sync::Arc;
-
-use sentry::{bind_client, capture_exception, Client, compat::ErrorChain, protocol::Event};
+use std::{thread::sleep, time::Duration};
+use sentry::{integrations::error_chain::capture_error_chain};
 
 error_chain! {
     errors {
@@ -19,19 +18,8 @@ fn make_err() -> Result<()> {
 }
 
 fn main() {
-    let event = Event {
-        message: Some("hello, world!".into()),
-        ..Default::default()
-    };
-
-    let client = Client::new(
-        "https://f09df2dafaef4332928a4de20cd45f90@sentry-ja-689a42ff319b.eu.ngrok.io/5"
-            .parse()
-            .unwrap(),
-    );
-
-    bind_client(Arc::new(client));
+    sentry::init("https://a94ae32be2584e0bbd7a4cbb95971fee@sentry.io/1041156");
     let err = make_err().chain_err(|| "foobar").unwrap_err();
-    capture_exception(Some(&ErrorChain(&err)));
-    ::std::thread::sleep_ms(2000);
+    capture_error_chain(&err);
+    sleep(Duration::from_secs(2));
 }
