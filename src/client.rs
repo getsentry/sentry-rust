@@ -27,8 +27,10 @@ pub struct ClientOptions {
     /// border frames which indicate a border from a backtrace to
     /// useless internals.  Some are automatically included.
     pub extra_border_frames: Vec<&'static str>,
-    /// Maximum number of breadcrumbs.
+    /// Maximum number of breadcrumbs (0 to disable feature).
     pub max_breadcrumbs: usize,
+    /// Automatically trim backtraces of junk before sending.
+    pub trim_backtraces: bool,
 }
 
 impl Default for ClientOptions {
@@ -38,6 +40,7 @@ impl Default for ClientOptions {
             in_app_exclude: vec![],
             extra_border_frames: vec![],
             max_breadcrumbs: 100,
+            trim_backtraces: true,
         }
     }
 }
@@ -69,6 +72,24 @@ impl Client {
                     .breadcrumbs
                     .extend(scope.breadcrumbs.iter().map(|x| x.clone()));
             }
+
+            if event.user.is_none() {
+                if let Some(ref user) = scope.user {
+                    event.user = Some(user.clone());
+                }
+            }
+
+            if let Some(ref extra) = scope.extra {
+                event
+                    .extra
+                    .extend(extra.iter().map(|(k, v)| (k.clone(), v.clone())));
+            }
+
+            if let Some(ref tags) = scope.tags {
+                event
+                    .tags
+                    .extend(tags.iter().map(|(k, v)| (k.clone(), v.clone())));
+            }
         }
 
         if &event.platform == "other" {
@@ -78,16 +99,18 @@ impl Client {
         for exc in event.exceptions.iter_mut() {
             if let Some(ref mut stacktrace) = exc.stacktrace {
                 // automatically trim backtraces
-                if let Some(cutoff) = stacktrace.frames.iter().rev().position(|frame| {
-                    if let Some(ref func) = frame.function {
-                        WELL_KNOWN_BORDER_FRAMES.contains(&func.as_str())
-                            || self.options.extra_border_frames.contains(&func.as_str())
-                    } else {
-                        false
+                if self.options.trim_backtraces {
+                    if let Some(cutoff) = stacktrace.frames.iter().rev().position(|frame| {
+                        if let Some(ref func) = frame.function {
+                            WELL_KNOWN_BORDER_FRAMES.contains(&func.as_str())
+                                || self.options.extra_border_frames.contains(&func.as_str())
+                        } else {
+                            false
+                        }
+                    }) {
+                        let trunc = stacktrace.frames.len() - cutoff - 1;
+                        stacktrace.frames.truncate(trunc);
                     }
-                }) {
-                    let trunc = stacktrace.frames.len() - cutoff - 1;
-                    stacktrace.frames.truncate(trunc);
                 }
 
                 // automatically prime in_app and set package

@@ -4,7 +4,7 @@ use std::cell::RefCell;
 use std::sync::{Arc, Mutex};
 use std::collections::VecDeque;
 
-use api::protocol::Breadcrumb;
+use api::protocol::{Breadcrumb, Map, User, Value};
 use client::Client;
 
 lazy_static! {
@@ -32,6 +32,9 @@ pub struct Stack {
 #[derive(Default, Debug)]
 pub struct Scope {
     pub breadcrumbs: VecDeque<Breadcrumb>,
+    pub user: Option<User>,
+    pub extra: Option<Map<String, Value>>,
+    pub tags: Option<Map<String, String>>,
 }
 
 #[derive(Default, Debug)]

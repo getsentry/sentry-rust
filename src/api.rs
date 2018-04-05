@@ -4,7 +4,7 @@ use std::ffi::{OsStr, OsString};
 
 use uuid::Uuid;
 
-use api::protocol::{Breadcrumb, Event, Exception, Level};
+use api::protocol::{Breadcrumb, Event, Exception, Level, Map, User, Value};
 use scope::{with_client_and_scope, with_stack};
 use utils::current_stacktrace;
 
@@ -160,10 +160,33 @@ pub fn capture_message(msg: &str, level: Level) -> Uuid {
 /// is not interested in breadcrumbs none will be recorded.
 pub fn add_breadcrumb<F: FnOnce() -> Breadcrumb>(f: F) {
     with_client_and_scope(|client, scope| {
-        scope.breadcrumbs.push_back(f());
         let limit = client.options().max_breadcrumbs;
-        while scope.breadcrumbs.len() > limit {
-            scope.breadcrumbs.pop_front();
+        if limit > 0 {
+            scope.breadcrumbs.push_back(f());
+            while scope.breadcrumbs.len() > limit {
+                scope.breadcrumbs.pop_front();
+            }
         }
     })
+}
+
+/// Sets the user context.
+pub fn set_user_context(user: Option<User>) {
+    with_client_and_scope(|_, scope| {
+        scope.user = user;
+    });
+}
+
+/// Sets the tags context.
+pub fn set_tags_context(tags: Map<String, String>) {
+    with_client_and_scope(|_, scope| {
+        scope.tags = if tags.is_empty() { None } else { Some(tags) };
+    });
+}
+
+/// Sets the extra context.
+pub fn set_extra_context(extra: Map<String, Value>) {
+    with_client_and_scope(|_, scope| {
+        scope.extra = if extra.is_empty() { None } else { Some(extra) };
+    });
 }
