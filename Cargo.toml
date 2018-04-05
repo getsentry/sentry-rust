@@ -1,8 +1,8 @@
 [package]
 name = "sentry"
 version = "0.2.0"
-authors = ["Alexis Agahi <aagahi@prefetch.com>"]
-license = "MIT/Apache-2.0"
+authors = ["Sentry <hello@sentry.io>"]
+license = "Apache-2.0"
 readme = "Readme.md"
 repository = "https://github.com/getsentry/sentry-rust"
 homepage = "https://github.com/getsentry/sentry-rust"
@@ -11,17 +11,30 @@ description = """
 Sentry (getsentry.com) client for rust ;)
 """
 
+[features]
+default = ["with_failure", "with_log"]
+with_failure = ["failure", "regex"]
+with_log = ["log"]
+with_error_chain = ["error-chain"]
 
 [dependencies]
 backtrace = "0.3"
-time = "0.1"
-url = "1"
-log = "0.3"
-error-chain = "0.11"
+url = "1.7"
+failure = { version = "0.1", optional = true }
+log = { version = "0.4", optional = true }
 futures = "0.1"
-hyper = "0.11"
-hyper-tls = "0.1"
-tokio-core = "0.1"
-serde = "1"
-serde_derive = "1"
-serde_json = "1"
+serde = "1.0"
+serde_json = "1.0"
+sentry-types = "0.2.0"
+reqwest = "0.8.5"
+uuid = { version = "0.6.2", features = ["v4"] }
+lazy_static = "1.0.0"
+regex = { version = "0.2.10", optional = true }
+error-chain = { version = "0.11.0", optional = true }
+
+# For when working with local ovrerrides
+#[patch.crates-io]
+#sentry-types = { path = "../rust-sentry-types" }
+
+[package.metadata.docs.rs]
+all-features = true
