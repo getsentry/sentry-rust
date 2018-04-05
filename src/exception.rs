@@ -21,29 +21,6 @@ pub fn current_error_like() -> Box<Exception> {
     unreachable!()
 }
 
-lazy_static! {
-    pub static ref WELL_KNOWN_SYS_MODULES: Vec<&'static str> = {
-        let mut rv = vec![
-            "__rust_",
-            "std::",
-            "core::",
-            "alloc::",
-            "backtrace::",
-        ];
-        #[cfg(feature = "with_failure")] {
-            rv.push("failure::");
-        }
-        rv
-    };
-    pub static ref WELL_KNOWN_BORDER_FRAMES: Vec<&'static str> = {
-        let mut rv = vec![];
-        #[cfg(feature = "with_failure")] {
-            rv.push("failure::error_message::err_msg");
-        }
-        rv
-    };
-}
-
 #[cfg(any(feature = "with_error_chain", feature = "with_failure"))]
 mod backtrace_support {
     use std::fmt;

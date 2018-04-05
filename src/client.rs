@@ -7,7 +7,7 @@ use api::Dsn;
 use scope::Scope;
 use protocol::Event;
 use transport::Transport;
-use exception::{Exception, WELL_KNOWN_BORDER_FRAMES, WELL_KNOWN_SYS_MODULES};
+use backtrace_support::{WELL_KNOWN_BORDER_FRAMES, WELL_KNOWN_SYS_MODULES};
 
 /// The Sentry client object.
 #[derive(Debug, Clone)]
@@ -173,17 +173,5 @@ impl Client {
     pub fn capture_event(&self, mut event: Event, scope: Option<&Scope>) -> Uuid {
         self.prepare_event(&mut event, scope);
         self.transport.send_event(event)
-    }
-
-    /// Captures an exception like thing.
-    pub fn capture_exception<E: Exception + ?Sized>(&self, e: &E, scope: Option<&Scope>) -> Uuid {
-        self.capture_event(
-            Event {
-                exceptions: e.exceptions(),
-                level: e.level(),
-                ..Default::default()
-            },
-            scope,
-        )
     }
 }

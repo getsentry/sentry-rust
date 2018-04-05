@@ -37,7 +37,8 @@ mod client;
 mod constants;
 mod transport;
 mod scope;
-mod exception;
 mod api;
+pub mod integrations;
+mod backtrace_support;
 
 pub use api::*;

@@ -2,9 +2,8 @@ use std::sync::Arc;
 
 use uuid::Uuid;
 
-use api::protocol::{Event, Breadcrumb};
+use api::protocol::{Breadcrumb, Event};
 use scope::{with_client_and_scope, with_stack};
-use exception::current_error_like;
 
 // public api from other crates
 pub use sentry_types::{Dsn, ProjectId};
@@ -13,15 +12,12 @@ pub use sentry_types::protocol::v7 as protocol;
 // public exports from this crate
 pub use client::{Client, ClientOptions};
 pub use scope::{pop_scope, push_scope};
-pub use exception::Exception;
 
-/// Compatibility utilities.
-pub mod compat {
-    #[cfg(feature = "with_error_chain")]
-    pub use exception::ErrorChain;
-}
-
+/// Helper trait to convert an object into an DSN.
 pub trait IntoDsn {
+    /// Convert the value into a DSN.
+    ///
+    /// In case the null DSN shold be used `None` must be returned.
     fn into_dsn(self) -> Option<Dsn>;
 }
 
@@ -39,7 +35,7 @@ impl<'a> IntoDsn for Dsn {
 
 /// Creates the sentry client and binds it.
 pub fn create<I: IntoDsn>(dsn: Option<I>, options: Option<ClientOptions>) {
-    let client = if let Some(dsn) = dns.and_then(|x| x.into_dsn()) {
+    let client = if let Some(dsn) = dsn.and_then(|x| x.into_dsn()) {
         if let Some(options) = options {
             Some(Client::with_options(dsn, options))
         } else {
@@ -78,20 +74,6 @@ pub fn bind_client(client: Arc<Client>) {
 /// the utility methods like `capture_exception`.
 pub fn capture_event(event: Event) -> Uuid {
     with_client_and_scope(|client, scope| client.capture_event(event, Some(scope)))
-}
-
-/// Captures an exception with stacktrace.
-///
-/// The `Exception` trait is implemented for a range of common error objects.
-/// This crate supports currently `error-chain` and `failure`.
-pub fn capture_exception<E: Exception + ?Sized>(e: Option<&E>) -> Uuid {
-    with_client_and_scope(|client, scope| {
-        if let Some(e) = e {
-            client.capture_exception(e, Some(scope))
-        } else {
-            client.capture_exception(&*current_error_like(), Some(scope))
-        }
-    })
 }
 
 /// Records a breadcrumb.
