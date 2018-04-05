@@ -62,10 +62,10 @@ impl IntoClientConfig for Dsn {
     }
 }
 
-impl<C> IntoClientConfig for (C, ClientOptions) {
+impl<C: IntoClientConfig> IntoClientConfig for (C, ClientOptions) {
     fn into_client_config(self) -> (Option<Dsn>, Option<ClientOptions>) {
         let (dsn, _) = self.0.into_client_config();
-        (dsn, self.1)
+        (dsn, Some(self.1))
     }
 }
 
