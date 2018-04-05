@@ -44,20 +44,18 @@ pub fn event_from_panic_info(info: &panic::PanicInfo) -> Event {
 /// Optionally it can call into another panic handler.  To delegate to the
 /// default panic handler one can do this:
 ///
-/// ```rust,no_run
+/// ```
 /// use std::panic;
 /// use sentry::integrations::panic::register_panic_handler;
 /// register_panic_handler(Some(panic::take_hook()));
 /// ```
-pub fn register_panic_handler<F>(callback: Option<F>)
-where
-    F: Fn(&panic::PanicInfo) + 'static + Sync + Send,
+pub fn register_panic_handler(next: Option<Box<Fn(&panic::PanicInfo) + Sync + Send + 'static>>)
 {
     panic::set_hook(Box::new(move |info| {
         with_client_and_scope(|client, scope| {
             client.capture_event(event_from_panic_info(info), Some(scope));
         });
-        if let Some(cb) = callback.as_ref() {
+        if let Some(cb) = next.as_ref() {
             cb(info);
         }
     }));

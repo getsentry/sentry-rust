@@ -145,7 +145,7 @@ fn convert_log_level(level: log::Level) -> Level {
 ///
 /// For instance to use `env_logger` with this one needs to do this:
 ///
-/// ```rust,no_run
+/// ```ignore
 /// use sentry::integrations::log;
 /// use env_logger;
 ///
