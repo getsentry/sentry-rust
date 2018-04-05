@@ -38,6 +38,7 @@ mod constants;
 mod transport;
 mod scope;
 mod api;
+pub mod utils;
 pub mod integrations;
 mod backtrace_support;
 

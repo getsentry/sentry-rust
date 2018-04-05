@@ -4,8 +4,9 @@ use std::ffi::{OsStr, OsString};
 
 use uuid::Uuid;
 
-use api::protocol::{Breadcrumb, Event};
+use api::protocol::{Breadcrumb, Event, Exception, Level};
 use scope::{with_client_and_scope, with_stack};
+use utils::current_stacktrace;
 
 // public api from other crates
 pub use sentry_types::{Dsn, ProjectId};
@@ -120,25 +121,44 @@ pub fn capture_event(event: Event) -> Uuid {
     with_client_and_scope(|client, scope| client.capture_event(event, Some(scope)))
 }
 
-/// Records a breadcrumb.
+/// Captures an error.
 ///
-/// The total number of breadcrumbs that can be recorded are limited by the
-/// configuration on the client.
-pub fn add_breadcrumb(bc: Breadcrumb) {
+/// This attaches the current stacktrace automatically.
+pub fn capture_exception(ty: &str, value: Option<String>) -> Uuid {
     with_client_and_scope(|client, scope| {
-        scope.breadcrumbs.push_back(bc);
-        let limit = client.options().max_breadcrumbs;
-        while scope.breadcrumbs.len() > limit {
-            scope.breadcrumbs.pop_front();
-        }
+        let event = Event {
+            exceptions: vec![
+                Exception {
+                    ty: ty.to_string(),
+                    value: value,
+                    stacktrace: current_stacktrace(),
+                    ..Default::default()
+                },
+            ],
+            ..Default::default()
+        };
+        client.capture_event(event, Some(scope))
+    })
+}
+
+/// Captures an arbitrary message.
+pub fn capture_message(msg: &str, level: Level) -> Uuid {
+    with_client_and_scope(|client, scope| {
+        let event = Event {
+            message: Some(msg.to_string()),
+            level: level,
+            ..Default::default()
+        };
+        client.capture_event(event, Some(scope))
     })
 }
 
 /// Records a breadcrumb by calling a function.
 ///
 /// The total number of breadcrumbs that can be recorded are limited by the
-/// configuration on the client.
-pub fn add_breadcrumb_from<F: FnOnce() -> Breadcrumb>(f: F) {
+/// configuration on the client.  This takes a callback because if the client
+/// is not interested in breadcrumbs none will be recorded.
+pub fn add_breadcrumb<F: FnOnce() -> Breadcrumb>(f: F) {
     with_client_and_scope(|client, scope| {
         scope.breadcrumbs.push_back(f());
         let limit = client.options().max_breadcrumbs;

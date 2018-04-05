@@ -5,8 +5,8 @@
 use std::fmt::{Debug, Display};
 use error_chain::ChainedError;
 
-use api::protocol::{Event, Exception, FileLocation, Frame, InstructionInfo, Level};
-use backtrace_support::{error_typename, filename, sanitize_symbol};
+use api::protocol::{Event, Exception, Level};
+use backtrace_support::{backtrace_to_stacktrace, error_typename};
 
 fn exceptions_from_error_chain<'a, T>(e: &'a T)
 where
@@ -19,40 +19,7 @@ where
     rv.push(Exception {
         ty: error_typename(error.kind()),
         value: Some(error.kind().to_string()),
-        stacktrace: error.backtrace().and_then(|backtrace| {
-            let frames = backtrace
-                .frames()
-                .iter()
-                .flat_map(|frame| {
-                    frame.symbols().iter().map(move |sym| {
-                        let abs_path = sym.filename().map(|m| m.to_string_lossy().to_string());
-                        let filename = abs_path.as_ref().map(|p| filename(p));
-                        let symbol = sym.name().map_or("<unknown>".into(), |n| n.to_string());
-                        let function = sanitize_symbol(&symbol).to_string();
-                        Frame {
-                            symbol: if symbol != function {
-                                Some(symbol)
-                            } else {
-                                None
-                            },
-                            function: Some(function),
-                            instruction_info: InstructionInfo {
-                                instruction_addr: Some(frame.ip().into()),
-                                ..Default::default()
-                            },
-                            location: FileLocation {
-                                abs_path: abs_path,
-                                filename: filename,
-                                line: sym.lineno().map(|l| l as u64),
-                                column: None,
-                            },
-                            ..Default::default()
-                        }
-                    })
-                })
-                .collect();
-            Stacktrace::from_frames_reversed(frames)
-        }),
+        stacktrace: error.backtrace().and_then(backtrace_to_stacktrace),
         ..Default::default()
     });
 

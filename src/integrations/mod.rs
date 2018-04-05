@@ -9,3 +9,5 @@ pub mod error_chain;
 
 #[cfg(feature = "with_log")]
 pub mod log;
+
+pub mod panic;
