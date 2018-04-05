@@ -26,6 +26,12 @@ pub trait IntoClientConfig {
     fn into_client_config(self) -> (Option<Dsn>, Option<ClientOptions>);
 }
 
+impl IntoClientConfig for () {
+    fn into_client_config(self) -> (Option<Dsn>, Option<ClientOptions>) {
+        (None, None)
+    }
+}
+
 impl<C: IntoClientConfig> IntoClientConfig for Option<C> {
     fn into_client_config(self) -> (Option<Dsn>, Option<ClientOptions>) {
         self.map(|x| x.into_client_config()).unwrap_or((None, None))
