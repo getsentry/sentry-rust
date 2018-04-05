@@ -94,7 +94,8 @@ pub fn event_from_error(err: &failure::Error) -> Event {
 
 /// Helper function to create an event from a `failure::Fail`.
 pub fn event_from_fail<F>(fail: &F) -> Event
-    where F: Fail + Sized
+where
+    F: Fail + Sized,
 {
     Event {
         exceptions: failure::Fail::causes(fail)
@@ -107,16 +108,13 @@ pub fn event_from_fail<F>(fail: &F) -> Event
 
 /// Captures a boxed failure (`failure::Error`).
 pub fn capture_fail_error(err: &Error) -> Uuid {
-    with_client_and_scope(|client, scope| {
-        client.capture_event(event_from_error(err), Some(scope))
-    })
+    with_client_and_scope(|client, scope| client.capture_event(event_from_error(err), Some(scope)))
 }
 
 /// Captures a `failure::Fail`.
 pub fn capture_fail<F>(fail: &F) -> Uuid
-    where F: Fail + Sized
+where
+    F: Fail + Sized,
 {
-    with_client_and_scope(|client, scope| {
-        client.capture_event(event_from_fail(fail), Some(scope))
-    })
+    with_client_and_scope(|client, scope| client.capture_event(event_from_fail(fail), Some(scope)))
 }

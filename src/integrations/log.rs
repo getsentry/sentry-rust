@@ -4,11 +4,21 @@ use log;
 use protocol::Breadcrumb;
 use api::add_breadcrumb_from;
 
-
 /// Logger specific options.
 pub struct LoggerOptions {
-    /// The sentry specific log level filter
+    /// The sentry specific log level filter (defaults to `Info`)
     pub filter: log::LevelFilter,
+    /// If set to `true`, breadcrumbs are emitted. (defaults to `true`)
+    pub emit_breadcrumbs: bool,
+}
+
+impl Default for LoggerOptions {
+    fn default() -> LoggerOptions {
+        LoggerOptions {
+            filter: log::LevelFilter::Info,
+            emit_breadcrumbs: true,
+        }
+    }
 }
 
 /// Provides a dispatching logger.
@@ -18,7 +28,6 @@ pub struct Logger {
 }
 
 impl Logger {
-
     /// Initializes a new logger.
     ///
     /// It can just send to Sentry or additionally also send messages to another

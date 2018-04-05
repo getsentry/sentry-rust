@@ -5,7 +5,7 @@
 use std::fmt::{Debug, Display};
 use error_chain::ChainedError;
 
-use api::protocol::{Event, Level, Exception, Frame, InstructionInfo, FileLocation};
+use api::protocol::{Event, Exception, FileLocation, Frame, InstructionInfo, Level};
 use backtrace_support::{error_typename, filename, sanitize_symbol};
 
 fn exceptions_from_error_chain<'a, T>(e: &'a T)
