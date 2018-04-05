@@ -3,7 +3,7 @@ extern crate error_chain;
 extern crate sentry;
 
 use std::{thread::sleep, time::Duration};
-use sentry::{integrations::error_chain::capture_error_chain};
+use sentry::integrations::error_chain::capture_error_chain;
 
 error_chain! {
     errors {

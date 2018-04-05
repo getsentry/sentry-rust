@@ -2,7 +2,7 @@ extern crate failure;
 extern crate sentry;
 
 use std::{thread::sleep, time::Duration};
-use sentry::{integrations::failure::capture_fail_error};
+use sentry::integrations::failure::capture_fail_error;
 use failure::Error;
 
 fn f(num: u32) -> Result<u32, Error> {

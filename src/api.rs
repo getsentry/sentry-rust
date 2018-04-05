@@ -79,7 +79,9 @@ impl<C: IntoClientConfig> IntoClientConfig for (C, ClientOptions) {
 pub fn init<C: IntoClientConfig>(cfg: C) {
     let (dsn, options) = cfg.into_client_config();
     let dsn = dsn.or_else(|| {
-        env::var("SENTRY_DSN").ok().and_then(|dsn| dsn.parse::<Dsn>().ok())
+        env::var("SENTRY_DSN")
+            .ok()
+            .and_then(|dsn| dsn.parse::<Dsn>().ok())
     });
     if let Some(dsn) = dsn {
         let client = if let Some(options) = options {
