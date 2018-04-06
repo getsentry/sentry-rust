@@ -369,7 +369,7 @@ pub enum Level {
     /// An error.
     Error,
     /// Similar to error but indicates a critical event that usually causes a shutdown.
-    Critical,
+    Fatal,
 }
 
 impl Default for Level {
@@ -399,9 +399,9 @@ impl Level {
         *self == Level::Error
     }
 
-    /// A quick way to check if the level is `critical`.
-    pub fn is_critical(&self) -> bool {
-        *self == Level::Critical
+    /// A quick way to check if the level is `fatal`.
+    pub fn is_fatal(&self) -> bool {
+        *self == Level::Fatal
     }
 }
 
