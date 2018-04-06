@@ -1,19 +1,18 @@
-extern crate failure;
 extern crate sentry;
 
-use sentry::integrations::failure::capture_fail_error;
-use failure::Error;
-
-fn f(num: u32) -> Result<u32, Error> {
-    if num < 1 {
-        return Err(Error::from(failure::err_msg("kaputt")));
-    }
-    Ok(f(num - 1)? + f(num - 2)?)
-}
-
 fn main() {
-    let _sentry = sentry::init("https://a94ae32be2584e0bbd7a4cbb95971fee@sentry.io/1041156");
+    let _sentry = sentry::init((
+        "https://a94ae32be2584e0bbd7a4cbb95971fee@sentry.io/1041156",
+        sentry::ClientOptions {
+            release: Some("16ebee932f262d6457d8713defc49714159c0a1a".into()),
+            ..Default::default()
+        },
+    ));
     sentry::integrations::panic::register_panic_handler(None);
-    //capture_fail_error(&f(32).unwrap_err());
+
+    let _scope_guard = sentry::push_and_configure_scope(|scope| {
+        scope.set_tag("foo", "bar");
+    });
+
     panic!("Holy shit everything is on fire!");
 }
