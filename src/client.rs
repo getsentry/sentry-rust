@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::Duration;
 
 use uuid::Uuid;
 use regex::Regex;
@@ -196,5 +197,14 @@ impl Client {
     pub fn capture_event(&self, mut event: Event, scope: Option<&Scope>) -> Uuid {
         self.prepare_event(&mut event, scope);
         self.transport.send_event(event)
+    }
+
+    /// Drains all pending events up to the current time.
+    ///
+    /// This returns `true` if the queue was successfully drained in the
+    /// given time or `false` if not (for instance because of a timeout).
+    /// If no timeout is provided the client will wait forever.
+    pub fn drain_events(&self, timeout: Option<Duration>) -> bool {
+        self.transport.drain(timeout)
     }
 }
