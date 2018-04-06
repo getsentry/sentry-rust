@@ -173,6 +173,15 @@ pub fn drain_events(timeout: Option<Duration>) {
 ///     }));
 /// });
 /// ```
+///
+/// # Warning
+///
+/// `configure_scope` internally can require a mutex to be held an extended period
+/// of time that is needed for when new threads are spawned.  Do not perform any
+/// expensive operations in that callback that could hold this mutex for too long
+/// to avoid contention when spawning threads.  Furthermore there is no deadlock
+/// detection currently so do not call any methods that would require the current
+/// client or scope to be resolved.
 pub fn configure_scope<F, R>(f: F) -> R
 where
     R: Default,
