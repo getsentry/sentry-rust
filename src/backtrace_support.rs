@@ -45,12 +45,15 @@ pub fn filename(s: &str) -> String {
     s.rsplitn(2, &['/', '\\'][..]).next().unwrap().to_string()
 }
 
-pub fn sanitize_symbol<'a>(s: &'a str) -> String {
-    COMMON_RUST_SYMBOL_ESCAPES_RE.replace_all(
-        HASH_FUNC_RE
-            .captures(s)
-            .map(|c| c.get(1).unwrap().as_str())
-            .unwrap_or(s),
+pub fn strip_symbol(s: &str) -> &str {
+    HASH_FUNC_RE
+        .captures(s)
+        .map(|c| c.get(1).unwrap().as_str())
+        .unwrap_or(s)
+}
+
+pub fn demangle_symbol<'a>(s: &'a str) -> String {
+    COMMON_RUST_SYMBOL_ESCAPES_RE.replace_all(s,
         |caps: &Captures| {
             match &caps[1] {
                 "SP" => "@",
@@ -93,11 +96,12 @@ pub fn backtrace_to_stacktrace(bt: &Backtrace) -> Option<Stacktrace> {
             frame.symbols().iter().map(move |sym| {
                 let abs_path = sym.filename().map(|m| m.to_string_lossy().to_string());
                 let filename = abs_path.as_ref().map(|p| filename(p));
-                let symbol = sym.name().map_or("<unknown>".into(), |n| n.to_string());
-                let function = sanitize_symbol(&symbol);
+                let real_symbol = sym.name().map_or("<unknown>".into(), |n| n.to_string());
+                let symbol = strip_symbol(&real_symbol);
+                let function = demangle_symbol(symbol);
                 Frame {
                     symbol: if symbol != function {
-                        Some(symbol)
+                        Some(symbol.into())
                     } else {
                         None
                     },

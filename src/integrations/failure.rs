@@ -8,7 +8,7 @@ use failure;
 use failure::{Error, Fail};
 
 use api::protocol::{Event, Exception, FileLocation, Frame, InstructionInfo, Level, Stacktrace};
-use backtrace_support::{error_typename, filename, sanitize_symbol};
+use backtrace_support::{error_typename, filename, strip_symbol, demangle_symbol};
 use scope::with_client_and_scope;
 
 lazy_static! {
@@ -34,11 +34,12 @@ fn parse_stacktrace(bt: &str) -> Option<Stacktrace> {
         .map(|captures| {
             let abs_path = captures.name("path").map(|m| m.as_str().to_string());
             let filename = abs_path.as_ref().map(|p| filename(p));
-            let symbol = captures["symbol"].to_string();
-            let function = sanitize_symbol(&symbol);
+            let real_symbol = captures["symbol"].to_string();
+            let symbol = strip_symbol(&real_symbol);
+            let function = demangle_symbol(symbol);
             Frame {
                 symbol: if symbol != function {
-                    Some(symbol)
+                    Some(symbol.into())
                 } else {
                     None
                 },
