@@ -34,6 +34,10 @@ pub struct ClientOptions {
     pub max_breadcrumbs: usize,
     /// Automatically trim backtraces of junk before sending.
     pub trim_backtraces: bool,
+    /// The release to be sent with events.
+    pub release: Option<String>,
+    /// The environment to be sent with events.
+    pub environment: Option<String>,
 }
 
 impl Default for ClientOptions {
@@ -44,6 +48,12 @@ impl Default for ClientOptions {
             extra_border_frames: vec![],
             max_breadcrumbs: 100,
             trim_backtraces: true,
+            release: None,
+            environment: Some(if cfg!(debug_assertions) {
+                "debug".into()
+            } else {
+                "release".into()
+            }),
         }
     }
 }
@@ -219,6 +229,13 @@ impl Client {
                     .tags
                     .extend(tags.iter().map(|(k, v)| (k.clone(), v.clone())));
             }
+        }
+
+        if event.release.is_none() {
+            event.release = self.options.release.clone();
+        }
+        if event.environment.is_none() {
+            event.environment = self.options.environment.clone();
         }
 
         if &event.platform == "other" {

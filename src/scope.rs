@@ -63,10 +63,6 @@ impl Stack {
         }
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.layers.is_empty()
-    }
-
     pub fn push(&mut self) {
         self.layers.push(Default::default());
     }
@@ -103,11 +99,7 @@ fn with_process_stack<F, R>(f: F) -> R
 where
     F: FnOnce(&mut Stack) -> R,
 {
-    let mut stack = PROCESS_STACK.lock().unwrap();
-    if stack.is_empty() {
-        stack.push();
-    }
-    f(&mut stack)
+    f(&mut PROCESS_STACK.lock().unwrap())
 }
 
 fn with_thread_stack<F, R>(f: F) -> R

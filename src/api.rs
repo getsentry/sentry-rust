@@ -12,7 +12,7 @@ pub use sentry_types::{Dsn, DsnParseError, ProjectId, ProjectIdParseError};
 pub use sentry_types::protocol::v7 as protocol;
 
 // public exports from this crate
-pub use client::{Client, IntoClientConfig};
+pub use client::{Client, ClientOptions, IntoClientConfig};
 pub use scope::{pop_scope, push_scope};
 
 /// Helper struct that is returned from `init`.
