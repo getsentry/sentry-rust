@@ -178,7 +178,10 @@ impl Stacktrace {
             None
         } else {
             frames.reverse();
-            Some(Stacktrace { frames, ..Default::default() })
+            Some(Stacktrace {
+                frames,
+                ..Default::default()
+            })
         }
     }
 }
