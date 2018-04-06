@@ -8,7 +8,7 @@ use failure;
 use failure::{Error, Fail};
 
 use api::protocol::{Event, Exception, FileLocation, Frame, InstructionInfo, Level, Stacktrace};
-use backtrace_support::{error_typename, filename, strip_symbol, demangle_symbol};
+use backtrace_support::{demangle_symbol, error_typename, filename, strip_symbol};
 use scope::with_client_and_scope;
 
 lazy_static! {

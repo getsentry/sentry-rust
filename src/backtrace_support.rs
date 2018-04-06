@@ -1,6 +1,6 @@
 use std::fmt;
 
-use regex::{Regex, Captures};
+use regex::{Captures, Regex};
 use backtrace::Backtrace;
 
 use api::protocol::{FileLocation, Frame, InstructionInfo, Stacktrace};
@@ -53,8 +53,8 @@ pub fn strip_symbol(s: &str) -> &str {
 }
 
 pub fn demangle_symbol<'a>(s: &'a str) -> String {
-    COMMON_RUST_SYMBOL_ESCAPES_RE.replace_all(s,
-        |caps: &Captures| {
+    COMMON_RUST_SYMBOL_ESCAPES_RE
+        .replace_all(s, |caps: &Captures| {
             match &caps[1] {
                 "SP" => "@",
                 "BP" => "*",
@@ -74,10 +74,10 @@ pub fn demangle_symbol<'a>(s: &'a str) -> String {
                 "u3b" => ";",
                 "u2b" => "+",
                 "u22" => "\"",
-                _ => unreachable!()
+                _ => unreachable!(),
             }.to_string()
-        }
-    ).to_string()
+        })
+        .to_string()
 }
 
 pub fn error_typename<D: fmt::Debug>(error: D) -> String {

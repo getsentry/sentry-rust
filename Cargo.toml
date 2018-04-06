@@ -11,6 +11,9 @@ description = """
 Sentry (getsentry.com) client for rust ;)
 """
 
+[package.metadata.docs.rs]
+all-features = true
+
 [features]
 default = ["with_failure", "with_log"]
 with_failure = ["failure", "regex"]
@@ -31,10 +34,4 @@ uuid = { version = "0.6.2", features = ["v4"] }
 lazy_static = "1.0.0"
 regex = { version = "0.2.10", optional = true }
 error-chain = { version = "0.11.0", optional = true }
-
-# For when working with local ovrerrides
-#[patch.crates-io]
-#sentry-types = { path = "../rust-sentry-types" }
-
-[package.metadata.docs.rs]
-all-features = true
+im = "10.0.0"

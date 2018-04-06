@@ -3,17 +3,18 @@ use std::time::Duration;
 
 use uuid::Uuid;
 
-use api::protocol::{Breadcrumb, Event, Exception, Level, Map, User, Value};
+use api::protocol::{Breadcrumb, Event, Exception};
 use scope::{with_client_and_scope, with_stack};
 use utils::current_stacktrace;
 
 // public api from other crates
 pub use sentry_types::{Dsn, DsnParseError, ProjectId, ProjectIdParseError};
 pub use sentry_types::protocol::v7 as protocol;
+pub use sentry_types::protocol::v7::{Level, User};
 
 // public exports from this crate
 pub use client::{Client, ClientOptions, IntoClientConfig};
-pub use scope::{pop_scope, push_scope};
+pub use scope::{push_scope, Scope, ScopeGuard};
 
 /// Helper struct that is returned from `init`.
 ///
@@ -59,12 +60,11 @@ impl Drop for ClientInitGuard {
 /// but gives a simplified interface that transparently handles clients not
 /// being created by the Dsn being empty.
 pub fn init<C: IntoClientConfig>(cfg: C) -> ClientInitGuard {
-    ClientInitGuard(Client::from_config(cfg)
-        .map(|client| {
-            let client = Arc::new(client);
-            bind_client(client.clone());
-            client
-        }))
+    ClientInitGuard(Client::from_config(cfg).map(|client| {
+        let client = Arc::new(client);
+        bind_client(client.clone());
+        client
+    }))
 }
 
 /// Returns the currently bound client if there is one.
@@ -135,33 +135,14 @@ pub fn add_breadcrumb<F: FnOnce() -> Breadcrumb>(f: F) {
     with_client_and_scope(|client, scope| {
         let limit = client.options().max_breadcrumbs;
         if limit > 0 {
-            scope.breadcrumbs.push_back(f());
+            scope.breadcrumbs = scope.breadcrumbs.push_back(f());
             while scope.breadcrumbs.len() > limit {
-                scope.breadcrumbs.pop_front();
+                if let Some((_, new)) = scope.breadcrumbs.pop_front() {
+                    scope.breadcrumbs = new;
+                }
             }
         }
     })
-}
-
-/// Sets the user context.
-pub fn set_user_context(user: Option<User>) {
-    with_client_and_scope(|_, scope| {
-        scope.user = user;
-    });
-}
-
-/// Sets the tags context.
-pub fn set_tags_context(tags: Map<String, String>) {
-    with_client_and_scope(|_, scope| {
-        scope.tags = if tags.is_empty() { None } else { Some(tags) };
-    });
-}
-
-/// Sets the extra context.
-pub fn set_extra_context(extra: Map<String, Value>) {
-    with_client_and_scope(|_, scope| {
-        scope.extra = if extra.is_empty() { None } else { Some(extra) };
-    });
 }
 
 /// Drain events that are not yet sent of the current client.
@@ -172,4 +153,51 @@ pub fn drain_events(timeout: Option<Duration>) {
     with_client_and_scope(|client, _| {
         client.drain_events(timeout);
     });
+}
+
+/// Invokes a function that can modify the current scope.
+///
+/// The function is passed a mutable reference to the `Scope` so that modifications
+/// can be performed.  Because there might currently not be a scope or client active
+/// it's possible that the callback might not be called at all.  As a result of this
+/// the return value of this closure must have a default that is returned in such
+/// cases.
+///
+/// # Example
+///
+/// ```rust
+/// sentry::configure_scope(|scope| {
+///     scope.set_user(Some(sentry::User {
+///         username: Some("john_doe".into()),
+///         ..Default::default()
+///     }));
+/// });
+/// ```
+pub fn configure_scope<F, R>(f: F) -> R
+where
+    R: Default,
+    F: FnOnce(&mut Scope) -> R,
+{
+    with_client_and_scope(|_, scope| f(scope))
+}
+
+/// Shortcut for pushing and configuring a scope in one go.
+///
+/// # Example
+///
+/// ```rust
+/// let _guard = sentry::push_and_configure_scope(|scope| {
+///     scope.set_user(Some(sentry::User {
+///         username: Some("john_doe".into()),
+///         ..Default::default()
+///     }));
+/// });
+/// ```
+pub fn push_and_configure_scope<F>(f: F) -> ScopeGuard
+where
+    F: FnOnce(&mut Scope),
+{
+    let guard = push_scope();
+    configure_scope(f);
+    guard
 }

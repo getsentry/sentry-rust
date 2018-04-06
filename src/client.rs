@@ -1,4 +1,5 @@
 use std::env;
+use std::fmt;
 use std::sync::Arc;
 use std::time::Duration;
 use std::ffi::{OsStr, OsString};
@@ -13,11 +14,20 @@ use transport::Transport;
 use backtrace_support::{WELL_KNOWN_BORDER_FRAMES, WELL_KNOWN_SYS_MODULES};
 
 /// The Sentry client object.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Client {
     dsn: Dsn,
     options: ClientOptions,
     transport: Arc<Transport>,
+}
+
+impl fmt::Debug for Client {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Client")
+            .field("dsn", &self.dsn)
+            .field("options", &self.options)
+            .finish()
+    }
 }
 
 /// Configuration settings for the client.
@@ -209,25 +219,28 @@ impl Client {
             if !scope.breadcrumbs.is_empty() {
                 event
                     .breadcrumbs
-                    .extend(scope.breadcrumbs.iter().map(|x| x.clone()));
+                    .extend(scope.breadcrumbs.iter().map(|x| (*x).clone()));
             }
 
             if event.user.is_none() {
                 if let Some(ref user) = scope.user {
-                    event.user = Some(user.clone());
+                    event.user = Some((**user).clone());
                 }
             }
 
-            if let Some(ref extra) = scope.extra {
-                event
-                    .extra
-                    .extend(extra.iter().map(|(k, v)| (k.clone(), v.clone())));
+            if !scope.extra.is_empty() {
+                event.extra.extend(
+                    scope
+                        .extra
+                        .iter()
+                        .map(|(k, v)| ((*k).clone(), (*v).clone())),
+                );
             }
 
-            if let Some(ref tags) = scope.tags {
+            if !scope.tags.is_empty() {
                 event
                     .tags
-                    .extend(tags.iter().map(|(k, v)| (k.clone(), v.clone())));
+                    .extend(scope.tags.iter().map(|(k, v)| ((*k).clone(), (*v).clone())));
             }
         }
 

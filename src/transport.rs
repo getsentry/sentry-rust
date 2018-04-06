@@ -16,7 +16,7 @@ pub struct Transport {
     sender: Mutex<SyncSender<Option<Event>>>,
     drain_signal: Arc<Condvar>,
     queue_size: Arc<Mutex<usize>>,
-    handle: Option<JoinHandle<()>>,
+    _handle: Option<JoinHandle<()>>,
 }
 
 fn spawn_http_sender(
@@ -67,7 +67,7 @@ impl Transport {
             sender: Mutex::new(sender),
             drain_signal: drain_signal,
             queue_size: queue_size,
-            handle,
+            _handle: handle,
         }
     }
 

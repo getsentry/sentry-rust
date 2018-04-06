@@ -21,7 +21,7 @@
 //! extern crate sentry;
 //!
 //! fn main() {
-//!     let _guard = sentry::init("<dsn goes here>");
+//!     let _guard = sentry::init("https://key@sentry.io/42");
 //!     sentry::capture_message("Hello World!", sentry::Level::Info);
 //!     // when the guard goes out of scope here, the client will wait up to two
 //!     // seconds to send remaining events to the service.
@@ -39,6 +39,7 @@
 #[warn(missing_docs)]
 extern crate backtrace;
 extern crate futures;
+extern crate im;
 #[macro_use]
 extern crate lazy_static;
 extern crate reqwest;
