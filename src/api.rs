@@ -1,6 +1,4 @@
-use std::env;
 use std::sync::Arc;
-use std::ffi::{OsStr, OsString};
 use std::time::Duration;
 
 use uuid::Uuid;
@@ -10,72 +8,12 @@ use scope::{with_client_and_scope, with_stack};
 use utils::current_stacktrace;
 
 // public api from other crates
-pub use sentry_types::{Dsn, ProjectId};
+pub use sentry_types::{Dsn, DsnParseError, ProjectId, ProjectIdParseError};
 pub use sentry_types::protocol::v7 as protocol;
 
 // public exports from this crate
-pub use client::{Client, ClientOptions};
+pub use client::{Client, IntoClientConfig};
 pub use scope::{pop_scope, push_scope};
-
-/// Helper trait to convert an object into a client config
-/// for create.
-pub trait IntoClientConfig {
-    /// Converts the object into a client config tuple of
-    /// DSN and options.
-    ///
-    /// This can panic in cases where the conversion cannot be
-    /// performed due to an error.
-    fn into_client_config(self) -> (Option<Dsn>, Option<ClientOptions>);
-}
-
-impl IntoClientConfig for () {
-    fn into_client_config(self) -> (Option<Dsn>, Option<ClientOptions>) {
-        (None, None)
-    }
-}
-
-impl<C: IntoClientConfig> IntoClientConfig for Option<C> {
-    fn into_client_config(self) -> (Option<Dsn>, Option<ClientOptions>) {
-        self.map(|x| x.into_client_config()).unwrap_or((None, None))
-    }
-}
-
-impl<'a> IntoClientConfig for &'a str {
-    fn into_client_config(self) -> (Option<Dsn>, Option<ClientOptions>) {
-        (Some(self.parse().unwrap()), None)
-    }
-}
-
-impl<'a> IntoClientConfig for &'a OsStr {
-    fn into_client_config(self) -> (Option<Dsn>, Option<ClientOptions>) {
-        (Some(self.to_string_lossy().parse().unwrap()), None)
-    }
-}
-
-impl IntoClientConfig for OsString {
-    fn into_client_config(self) -> (Option<Dsn>, Option<ClientOptions>) {
-        (Some(self.to_string_lossy().parse().unwrap()), None)
-    }
-}
-
-impl IntoClientConfig for String {
-    fn into_client_config(self) -> (Option<Dsn>, Option<ClientOptions>) {
-        (Some(self.parse().unwrap()), None)
-    }
-}
-
-impl IntoClientConfig for Dsn {
-    fn into_client_config(self) -> (Option<Dsn>, Option<ClientOptions>) {
-        (Some(self), None)
-    }
-}
-
-impl<C: IntoClientConfig> IntoClientConfig for (C, ClientOptions) {
-    fn into_client_config(self) -> (Option<Dsn>, Option<ClientOptions>) {
-        let (dsn, _) = self.0.into_client_config();
-        (dsn, Some(self.1))
-    }
-}
 
 /// Helper struct that is returned from `init`.
 ///
@@ -109,35 +47,24 @@ impl Drop for ClientInitGuard {
 /// the generated client.  If the scope guard is immediately dropped then
 /// no draining will take place so ensure it's bound to a variable.
 ///
-/// The client config can be of one of many formats as implemented by the
-/// `IntoClientConfig` trait.  The most common form is to just supply a
-/// string with the DSN.
-///
-/// Example usage:
+/// # Examples
 ///
 /// ```rust
 /// fn main() {
 ///     let _sentry = sentry::init("https://key@sentry.io/1234");
 /// }
 /// ```
+///
+/// This behaves similar to creating a client by calling `Client::from_config`
+/// but gives a simplified interface that transparently handles clients not
+/// being created by the Dsn being empty.
 pub fn init<C: IntoClientConfig>(cfg: C) -> ClientInitGuard {
-    let (dsn, options) = cfg.into_client_config();
-    let dsn = dsn.or_else(|| {
-        env::var("SENTRY_DSN")
-            .ok()
-            .and_then(|dsn| dsn.parse::<Dsn>().ok())
-    });
-    ClientInitGuard(if let Some(dsn) = dsn {
-        let client = Arc::new(if let Some(options) = options {
-            Client::with_options(dsn, options)
-        } else {
-            Client::new(dsn)
-        });
-        bind_client(client.clone());
-        Some(client)
-    } else {
-        None
-    })
+    ClientInitGuard(Client::from_config(cfg)
+        .map(|client| {
+            let client = Arc::new(client);
+            bind_client(client.clone());
+            client
+        }))
 }
 
 /// Returns the currently bound client if there is one.

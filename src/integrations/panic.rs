@@ -34,7 +34,7 @@ pub fn event_from_panic_info(info: &panic::PanicInfo) -> Event {
                 ..Default::default()
             },
         ],
-        level: Level::Critical,
+        level: Level::Fatal,
         ..Default::default()
     }
 }

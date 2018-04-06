@@ -1,6 +1,6 @@
 use std::fmt;
 
-use regex::Regex;
+use regex::{Regex, Captures};
 use backtrace::Backtrace;
 
 use api::protocol::{FileLocation, Frame, InstructionInfo, Stacktrace};
@@ -32,17 +32,49 @@ lazy_static!{
         }
         rv
     };
+
+    pub static ref COMMON_RUST_SYMBOL_ESCAPES_RE: Regex = Regex::new(r#"(?x)
+        \$
+            (SP|BP|RF|LT|GT|LP|RP|C|
+             u7e|u20|u27|u5b|u5d|u7b|u7d|u3b|u2b|u22)
+        \$
+    "#).unwrap();
 }
 
 pub fn filename(s: &str) -> String {
     s.rsplitn(2, &['/', '\\'][..]).next().unwrap().to_string()
 }
 
-pub fn sanitize_symbol(s: &str) -> &str {
-    HASH_FUNC_RE
-        .captures(s)
-        .map(|c| c.get(1).unwrap().as_str())
-        .unwrap_or(s)
+pub fn sanitize_symbol<'a>(s: &'a str) -> String {
+    COMMON_RUST_SYMBOL_ESCAPES_RE.replace_all(
+        HASH_FUNC_RE
+            .captures(s)
+            .map(|c| c.get(1).unwrap().as_str())
+            .unwrap_or(s),
+        |caps: &Captures| {
+            match &caps[1] {
+                "SP" => "@",
+                "BP" => "*",
+                "RF" => "&",
+                "LT" => "<",
+                "GT" => ">",
+                "LP" => "(",
+                "RP" => ")",
+                "C" => ",",
+                "u7e" => "~",
+                "u20" => " ",
+                "u27" => "'",
+                "u5b" => "[",
+                "u5d" => "]",
+                "u7b" => "{",
+                "u7d" => "}",
+                "u3b" => ";",
+                "u2b" => "+",
+                "u22" => "\"",
+                _ => unreachable!()
+            }.to_string()
+        }
+    ).to_string()
 }
 
 pub fn error_typename<D: fmt::Debug>(error: D) -> String {
@@ -62,7 +94,7 @@ pub fn backtrace_to_stacktrace(bt: &Backtrace) -> Option<Stacktrace> {
                 let abs_path = sym.filename().map(|m| m.to_string_lossy().to_string());
                 let filename = abs_path.as_ref().map(|p| filename(p));
                 let symbol = sym.name().map_or("<unknown>".into(), |n| n.to_string());
-                let function = sanitize_symbol(&symbol).to_string();
+                let function = sanitize_symbol(&symbol);
                 Frame {
                     symbol: if symbol != function {
                         Some(symbol)

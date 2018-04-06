@@ -35,7 +35,7 @@ fn parse_stacktrace(bt: &str) -> Option<Stacktrace> {
             let abs_path = captures.name("path").map(|m| m.as_str().to_string());
             let filename = abs_path.as_ref().map(|p| filename(p));
             let symbol = captures["symbol"].to_string();
-            let function = sanitize_symbol(&symbol).to_string();
+            let function = sanitize_symbol(&symbol);
             Frame {
                 symbol: if symbol != function {
                     Some(symbol)
