@@ -4,7 +4,7 @@ use std::time::Duration;
 use uuid::Uuid;
 
 use api::protocol::{Breadcrumb, Event, Exception};
-use scope::{with_client_and_scope, with_stack};
+use scope::{with_client_and_scope, with_client_and_scope_mut, with_stack, with_stack_mut};
 use utils::current_stacktrace;
 
 // public api from other crates
@@ -83,7 +83,7 @@ pub fn current_client() -> Option<Arc<Client>> {
 /// in the sense that if the main thread binds a client it becomes bound to the
 /// process.
 pub fn bind_client(client: Arc<Client>) {
-    with_stack(|stack| stack.bind_client(client));
+    with_stack_mut(|stack| stack.bind_client(client));
 }
 
 /// Captures an event on the currently active client if any.
@@ -132,7 +132,7 @@ pub fn capture_message(msg: &str, level: Level) -> Uuid {
 /// configuration on the client.  This takes a callback because if the client
 /// is not interested in breadcrumbs none will be recorded.
 pub fn add_breadcrumb<F: FnOnce() -> Breadcrumb>(f: F) {
-    with_client_and_scope(|client, scope| {
+    with_client_and_scope_mut(|client, scope| {
         let limit = client.options().max_breadcrumbs;
         if limit > 0 {
             scope.breadcrumbs = scope.breadcrumbs.push_back(f());
@@ -174,20 +174,18 @@ pub fn drain_events(timeout: Option<Duration>) {
 /// });
 /// ```
 ///
-/// # Warning
+/// # Panics
 ///
-/// `configure_scope` internally can require a mutex to be held an extended period
-/// of time that is needed for when new threads are spawned.  Do not perform any
-/// expensive operations in that callback that could hold this mutex for too long
-/// to avoid contention when spawning threads.  Furthermore there is no deadlock
-/// detection currently so do not call any methods that would require the current
-/// client or scope to be resolved.
+/// While the scope is being configured accessing scope related functionality is
+/// not permitted.  In this case a wide range of panics will be raised.  It's
+/// unsafe to call into `sentry::bind_client` or similar functions from within
+/// the callback as a result of this.
 pub fn configure_scope<F, R>(f: F) -> R
 where
     R: Default,
     F: FnOnce(&mut Scope) -> R,
 {
-    with_client_and_scope(|_, scope| f(scope))
+    with_client_and_scope_mut(|_, scope| f(scope))
 }
 
 /// Shortcut for pushing and configuring a scope in one go.

@@ -7,7 +7,7 @@ use std::panic;
 
 use api::protocol::{Event, Exception, Level};
 use utils::current_stacktrace;
-use scope::with_client_and_scope;
+use scope::{with_client_and_scope, scope_panic_safe};
 
 /// Extract the message of a panic.
 pub fn message_from_panic_info<'a>(info: &'a panic::PanicInfo) -> &'a str {
@@ -39,23 +39,35 @@ pub fn event_from_panic_info(info: &panic::PanicInfo) -> Event {
     }
 }
 
-/// Registes a panic handler that sends to sentry.
+/// A panic handler that sends to Sentry.
 ///
-/// Optionally it can call into another panic handler.  To delegate to the
-/// default panic handler one can do this:
-///
-/// ```
-/// use std::panic;
-/// use sentry::integrations::panic::register_panic_handler;
-/// register_panic_handler(Some(panic::take_hook()));
-/// ```
-pub fn register_panic_handler(next: Option<Box<Fn(&panic::PanicInfo) + Sync + Send + 'static>>) {
-    panic::set_hook(Box::new(move |info| {
+/// This panic handler report panics to Sentry.  It also attempts to prevent
+/// double faults in some cases where it's known to be unsafe to invoke the
+/// Sentry panic handler.
+pub fn panic_handler(info: &panic::PanicInfo) {
+    // if the process stack lock is acquired we would cause a double fault
+    // when invoking `with_client_and_scope`.  To prevent this we automatically
+    // disabled our panic handler in that case.
+    if scope_panic_safe() {
         with_client_and_scope(|client, scope| {
             client.capture_event(event_from_panic_info(info), Some(scope));
         });
-        if let Some(cb) = next.as_ref() {
-            cb(info);
-        }
+    }
+}
+
+/// Registes the panic handler.
+///
+/// This registers the panic handler (`panic_handler`) as panic hook and
+/// dispatches automatically to the one that was there before.
+///
+/// ```
+/// use sentry::integrations::panic::register_panic_handler;
+/// register_panic_handler();
+/// ```
+pub fn register_panic_handler() {
+    let next = panic::take_hook();
+    panic::set_hook(Box::new(move |info| {
+        panic_handler(info);
+        next(info);
     }));
 }

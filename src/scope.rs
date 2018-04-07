@@ -1,7 +1,7 @@
 use std::mem;
 use std::thread;
 use std::cell::RefCell;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, RwLock};
 
 use api::protocol::{Breadcrumb, User, Value};
 use client::Client;
@@ -9,7 +9,7 @@ use client::Client;
 use im;
 
 lazy_static! {
-    static ref PROCESS_STACK: Mutex<Stack> = Mutex::new(Stack::for_process());
+    static ref PROCESS_STACK: RwLock<Stack> = RwLock::new(Stack::for_process());
 }
 thread_local! {
     static THREAD_STACK: RefCell<Stack> = RefCell::new(Stack::for_thread());
@@ -29,6 +29,12 @@ pub struct Stack {
 
 #[derive(PartialEq, Clone, Copy)]
 struct StackLayerToken(*const Stack, usize);
+
+/// An indicator that is used internally to help prevent double faults in
+/// panic handlers.
+pub fn scope_panic_safe() -> bool {
+    PROCESS_STACK.try_read().is_ok()
+}
 
 /// Holds contextual data for the current scope.
 ///
@@ -72,7 +78,7 @@ impl Stack {
             layers: vec![
                 with_process_stack(|stack| StackLayer {
                     client: stack.client(),
-                    scope: stack.scope_mut().clone(),
+                    scope: stack.scope().clone(),
                 }),
             ],
             ty: StackType::Thread,
@@ -100,6 +106,11 @@ impl Stack {
         self.layers[self.layers.len() - 1].client.clone()
     }
 
+    pub fn scope(&self) -> &Scope {
+        let idx = self.layers.len() - 1;
+        &self.layers[idx].scope
+    }
+
     pub fn scope_mut(&mut self) -> &mut Scope {
         let idx = self.layers.len() - 1;
         &mut self.layers[idx].scope
@@ -118,29 +129,62 @@ fn is_main_thread() -> bool {
 
 fn with_process_stack<F, R>(f: F) -> R
 where
-    F: FnOnce(&mut Stack) -> R,
+    F: FnOnce(&Stack) -> R,
 {
-    f(&mut PROCESS_STACK.lock().unwrap())
+    f(&mut PROCESS_STACK.read().unwrap_or_else(|x| x.into_inner()))
 }
 
-pub fn with_stack<F, R>(f: F) -> R
+fn with_process_stack_mut<F, R>(f: F) -> R
+where
+    F: FnOnce(&mut Stack) -> R,
+{
+    f(&mut PROCESS_STACK.write().unwrap_or_else(|x| x.into_inner()))
+}
+
+pub fn with_stack_mut<F, R>(f: F) -> R
 where
     F: FnOnce(&mut Stack) -> R,
 {
     if is_main_thread() {
-        with_process_stack(f)
+        with_process_stack_mut(f)
     } else {
         THREAD_STACK.with(|stack| f(&mut *stack.borrow_mut()))
+    }
+}
+
+pub fn with_stack<F, R>(f: F) -> R
+where
+    F: FnOnce(&Stack) -> R,
+{
+    if is_main_thread() {
+        with_process_stack(f)
+    } else {
+        THREAD_STACK.with(|stack| f(&*stack.borrow()))
     }
 }
 
 /// Crate internal helper for working with clients and scopes.
 pub fn with_client_and_scope<F, R>(f: F) -> R
 where
-    F: FnOnce(Arc<Client>, &mut Scope) -> R,
+    F: FnOnce(Arc<Client>, &Scope) -> R,
     R: Default,
 {
     with_stack(|stack| {
+        if let Some(client) = stack.client() {
+            f(client, stack.scope())
+        } else {
+            Default::default()
+        }
+    })
+}
+
+/// Crate internal helper for working with clients and mutable scopes.
+pub fn with_client_and_scope_mut<F, R>(f: F) -> R
+where
+    F: FnOnce(Arc<Client>, &mut Scope) -> R,
+    R: Default,
+{
+    with_stack_mut(|stack| {
         if let Some(client) = stack.client() {
             f(client, stack.scope_mut())
         } else {
@@ -156,7 +200,7 @@ pub struct ScopeGuard(Option<StackLayerToken>);
 impl Drop for ScopeGuard {
     fn drop(&mut self) {
         if let Some(token) = self.0 {
-            with_stack(|stack| {
+            with_stack_mut(|stack| {
                 if stack.token() != token {
                     panic!("Current active stack does not match scope guard");
                 } else {
@@ -187,7 +231,7 @@ impl Drop for ScopeGuard {
 /// }
 /// ```
 pub fn push_scope() -> ScopeGuard {
-    with_stack(|stack| {
+    with_stack_mut(|stack| {
         stack.push();
         ScopeGuard(Some(stack.token()))
     })
