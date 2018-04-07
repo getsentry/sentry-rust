@@ -7,7 +7,7 @@ use std::panic;
 
 use api::protocol::{Event, Exception, Level};
 use utils::current_stacktrace;
-use scope::{with_client_and_scope, scope_panic_safe};
+use scope::{scope_panic_safe, with_client_and_scope};
 
 /// Extract the message of a panic.
 pub fn message_from_panic_info<'a>(info: &'a panic::PanicInfo) -> &'a str {
