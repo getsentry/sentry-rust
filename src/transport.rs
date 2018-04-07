@@ -6,7 +6,7 @@ use std::thread::{self, JoinHandle};
 use reqwest::{Client, header::Headers};
 use uuid::Uuid;
 
-use constants::VERSION;
+use constants::USER_AGENT;
 use Dsn;
 use protocol::Event;
 
@@ -25,13 +25,12 @@ fn spawn_http_sender(
     signal: Arc<Condvar>,
     queue_size: Arc<Mutex<usize>>,
 ) -> JoinHandle<()> {
-    let user_agent = format!("sentry-rust/{}", VERSION);
     let client = Client::new();
     thread::spawn(move || {
         let url = dsn.store_api_url().to_string();
         // TODO: if queue is full this shuts down
         while let Some(event) = receiver.recv().unwrap_or(None) {
-            let auth = dsn.to_auth(Some(&user_agent));
+            let auth = dsn.to_auth(Some(&USER_AGENT));
             let mut headers = Headers::new();
             headers.set_raw("X-Sentry-Auth", auth.to_string());
             // TODO: what to do with network failures. retry!

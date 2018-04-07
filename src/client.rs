@@ -12,6 +12,8 @@ use scope::Scope;
 use protocol::Event;
 use transport::Transport;
 use backtrace_support::{WELL_KNOWN_BORDER_FRAMES, WELL_KNOWN_SYS_MODULES};
+use utils::server_name;
+use constants::SDK_INFO;
 
 /// The Sentry client object.
 #[derive(Clone)]
@@ -48,6 +50,8 @@ pub struct ClientOptions {
     pub release: Option<String>,
     /// The environment to be sent with events.
     pub environment: Option<String>,
+    /// The server name to be reported.
+    pub server_name: Option<String>,
 }
 
 impl Default for ClientOptions {
@@ -64,6 +68,7 @@ impl Default for ClientOptions {
             } else {
                 "release".into()
             }),
+            server_name: server_name(),
         }
     }
 }
@@ -242,6 +247,23 @@ impl Client {
                     .tags
                     .extend(scope.tags.iter().map(|(k, v)| ((*k).clone(), (*v).clone())));
             }
+
+            if !scope.contexts.is_empty() {
+                event.contexts.extend(
+                    scope
+                        .contexts
+                        .iter()
+                        .map(|(k, v)| ((*k).clone(), (*v).clone())),
+                );
+            }
+
+            if event.fingerprint.len() == 1 &&
+               (event.fingerprint[0] == "{{ default }}" ||
+                event.fingerprint[0] == "{{default}}") {
+                if let Some(ref fp) = scope.fingerprint {
+                    event.fingerprint = (**fp).clone();
+                }
+            }
         }
 
         if event.release.is_none() {
@@ -249,6 +271,12 @@ impl Client {
         }
         if event.environment.is_none() {
             event.environment = self.options.environment.clone();
+        }
+        if event.server_name.is_none() {
+            event.server_name = self.options.server_name.clone();
+        }
+        if event.sdk_info.is_none() {
+            event.sdk_info = Some(SDK_INFO.clone());
         }
 
         if &event.platform == "other" {

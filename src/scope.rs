@@ -3,8 +3,9 @@ use std::thread;
 use std::cell::RefCell;
 use std::sync::{Arc, RwLock};
 
-use api::protocol::{Breadcrumb, User, Value};
+use api::protocol::{Breadcrumb, Context, User, Value};
 use client::Client;
+use utils;
 
 use im;
 
@@ -51,12 +52,39 @@ pub fn scope_panic_safe() -> bool {
 ///
 /// Note that the scope can only be modified but not inspected.  Only the
 /// client can use the scope to extract information currently.
-#[derive(Default, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct Scope {
+    pub(crate) fingerprint: Option<Arc<Vec<String>>>,
     pub(crate) breadcrumbs: im::Vector<Breadcrumb>,
     pub(crate) user: Option<Arc<User>>,
     pub(crate) extra: im::HashMap<String, Value>,
     pub(crate) tags: im::HashMap<String, String>,
+    pub(crate) contexts: im::HashMap<String, Context>,
+}
+
+impl Default for Scope {
+    fn default() -> Scope {
+        Scope {
+            fingerprint: None,
+            breadcrumbs: Default::default(),
+            user: None,
+            extra: Default::default(),
+            tags: Default::default(),
+            contexts: {
+                let mut contexts = im::HashMap::new();
+                if let Some(c) = utils::os_context() {
+                    contexts = contexts.insert("os".to_string(), c);
+                }
+                if let Some(c) = utils::rust_context() {
+                    contexts = contexts.insert("rust".to_string(), c);
+                }
+                if let Some(c) = utils::device_context() {
+                    contexts = contexts.insert("device".to_string(), c);
+                }
+                contexts
+            },
+        }
+    }
 }
 
 #[derive(Default, Debug, Clone)]
@@ -247,6 +275,11 @@ impl Scope {
         *self = Default::default();
     }
 
+    /// Sets the fingerprint.
+    pub fn set_fingerprint(&mut self, fingerprint: Option<Vec<String>>) {
+        self.fingerprint = fingerprint.map(Arc::new);
+    }
+
     /// Sets the user for the current scope.
     pub fn set_user(&mut self, user: Option<User>) {
         self.user = user.map(Arc::new);
@@ -261,6 +294,17 @@ impl Scope {
     pub fn remove_tag(&mut self, key: &str) {
         // annoyingly this needs a String :(
         self.tags = self.tags.remove(&key.to_string());
+    }
+
+    /// Sets a context for a key.
+    pub fn set_context<C: Into<Context>>(&mut self, key: &str, value: C) {
+        self.contexts = self.contexts.insert(key.to_string(), value.into());
+    }
+
+    /// Removes a context for a key.
+    pub fn remove_context(&mut self, key: &str) {
+        // annoyingly this needs a String :(
+        self.contexts = self.contexts.remove(&key.to_string());
     }
 
     /// Sets a extra to a specific value.

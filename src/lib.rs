@@ -119,6 +119,15 @@ extern crate serde_json;
 extern crate url;
 extern crate uuid;
 
+#[cfg(feature = "with_device_info")]
+extern crate libc;
+
+#[cfg(feature = "with_device_info")]
+extern crate hostname;
+
+#[cfg(all(feature = "with_device_info", not(windows)))]
+extern crate uname;
+
 #[cfg(feature = "with_failure")]
 extern crate regex;
 
