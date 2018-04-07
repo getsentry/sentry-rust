@@ -1,3 +1,9 @@
+//! <p style="margin: -10px 0 0 15px; padding: 0; float: right;">
+//!   <a href="https://sentry.io/"><img
+//!     src="https://sentry-brand.storage.googleapis.com/sentry-logo-black.png"
+//!     style="width: 260px"></a>
+//! </p>
+//!
 //! This crate provides support for logging events and errors / panics to
 //! the [Sentry](https://sentry.io/) error logging service.  It integrates with
 //! the standard panic system in Rust as well as a few popular error handling
@@ -97,15 +103,6 @@
 //! sentry::integrations::log::init(Some(
 //!     Box::new(log_builder.build())), Default::default());
 //! ```
-//!
-//! # Feature Flags
-//!
-//! The following feature flags control the behavior of the client:
-//!
-//! * `with_log` (default): enables support for capturing log messages as breadcrumbs.
-//! * `with_failure` (default): enables support for reporting `failure::Fail`
-//!   objects as exceptions.
-//! * `with_error_chain`: enables logging of error chain errors as exceptions.
 #[warn(missing_docs)]
 extern crate backtrace;
 extern crate futures;

@@ -89,7 +89,21 @@ pub fn bind_client(client: Arc<Client>) {
 /// Captures an event on the currently active client if any.
 ///
 /// The event must already be assembled.  Typically code would instead use
-/// the utility methods like `capture_exception`.
+/// the utility methods like `capture_exception`.  The return value is the
+/// event ID.  In case Sentry is disabled the return value will be the nil
+/// UUID (`Uuid::nil`).
+///
+/// # Example
+///
+/// ```
+/// use sentry::protocol::{Event, Level};
+///
+/// sentry::capture_event(Event {
+///     message: Some("Hello World!".into()),
+///     level: Level::Info,
+///     ..Default::default()
+/// });
+/// ```
 pub fn capture_event(event: Event) -> Uuid {
     with_client_and_scope(|client, scope| client.capture_event(event, Some(scope)))
 }
@@ -97,6 +111,12 @@ pub fn capture_event(event: Event) -> Uuid {
 /// Captures an error.
 ///
 /// This attaches the current stacktrace automatically.
+///
+/// # Example
+///
+/// ```
+/// sentry::capture_exception("MyError", Some("This went horribly wrong".into()));
+/// ```
 pub fn capture_exception(ty: &str, value: Option<String>) -> Uuid {
     with_client_and_scope(|client, scope| {
         let event = Event {
@@ -131,6 +151,24 @@ pub fn capture_message(msg: &str, level: Level) -> Uuid {
 /// The total number of breadcrumbs that can be recorded are limited by the
 /// configuration on the client.  This takes a callback because if the client
 /// is not interested in breadcrumbs none will be recorded.
+///
+/// # Example
+/// 
+/// ```
+/// use sentry::protocol::{Breadcrumb, Map};
+///
+/// sentry::add_breadcrumb(|| Breadcrumb {
+///     ty: "http".into(),
+///     category: Some("request".into()),
+///     data: {
+///         let mut map = Map::new();
+///         map.insert("method".into(), "GET".into());
+///         map.insert("url".into(), "https://example.com/".into());
+///         map
+///     },
+///     ..Default::default()
+/// });
+/// ```
 pub fn add_breadcrumb<F: FnOnce() -> Breadcrumb>(f: F) {
     with_client_and_scope_mut(|client, scope| {
         let limit = client.options().max_breadcrumbs;
