@@ -12,13 +12,16 @@ lazy_static!{
 
     pub static ref WELL_KNOWN_SYS_MODULES: Vec<&'static str> = {
         let mut rv = vec![
-            "__rust_",
             "std::",
             "core::",
             "alloc::",
             "backtrace::",
             "sentry::",
             "sentry_types::",
+            // these are not modules but things like __rust_maybe_catch_panic
+            // or _<T as core..convert..Into<U>>::into
+            "__rust_",
+            "_<",
         ];
         #[cfg(feature = "with_failure")] {
             rv.push("failure::");
@@ -31,6 +34,7 @@ lazy_static!{
         ];
         #[cfg(feature = "with_failure")] {
             rv.push("failure::error_message::err_msg");
+            rv.push("failure::backtrace::Backtrace::new");
         }
         rv
     };

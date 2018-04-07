@@ -69,7 +69,7 @@ impl Default for ClientOptions {
 }
 
 lazy_static! {
-    static ref CRATE_RE: Regex = Regex::new(r"^([^:]+?)::").unwrap();
+    static ref CRATE_RE: Regex = Regex::new(r"^([a-zA-Z0-9_]+?)::").unwrap();
 }
 
 /// Helper trait to convert an object into a client config
