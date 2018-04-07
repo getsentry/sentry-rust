@@ -1,6 +1,6 @@
 [package]
 name = "sentry"
-version = "0.2.0"
+version = "0.3.0-beta"
 authors = ["Sentry <hello@sentry.io>"]
 license = "Apache-2.0"
 readme = "Readme.md"
