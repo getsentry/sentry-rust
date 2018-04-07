@@ -36,6 +36,9 @@ lazy_static!{
             rv.push("failure::error_message::err_msg");
             rv.push("failure::backtrace::Backtrace::new");
         }
+        #[cfg(feature = "with_log")] {
+            rv.push("_<sentry..integrations..log..Logger as log..Log>::log");
+        }
         rv
     };
 

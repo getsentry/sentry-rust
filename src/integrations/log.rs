@@ -98,17 +98,17 @@ impl log::Log for Logger {
                 return false;
             }
         }
-        self.options.filter >= md.level() || self.dest.as_ref().map_or(false, |x| x.enabled(md))
+        md.level() <= self.options.filter || self.dest.as_ref().map_or(false, |x| x.enabled(md))
     }
 
     fn log(&self, record: &log::Record) {
-        if self.options.filter >= record.level() {
-            add_breadcrumb(|| breadcrumb_from_record(record))
-        }
-        if self.options.emit_error_events && record.level() >= log::Level::Error {
+        if self.options.emit_error_events && record.level() <= log::Level::Error {
             with_client_and_scope(|client, scope| {
                 client.capture_event(event_from_record(record, true), Some(scope))
             });
+        }
+        if record.level() <= self.options.filter {
+            add_breadcrumb(|| breadcrumb_from_record(record))
         }
         if let Some(ref log) = self.dest {
             if log.enabled(record.metadata()) {
@@ -156,6 +156,8 @@ pub fn init(dest: Option<Box<log::Log>>, options: LoggerOptions) {
     let logger = Logger::new(dest, options);
     if let Some(filter) = logger.options().global_filter {
         log::set_max_level(filter);
+    } else {
+        log::set_max_level(logger.options().filter);
     }
     log::set_boxed_logger(Box::new(logger)).unwrap();
 }
