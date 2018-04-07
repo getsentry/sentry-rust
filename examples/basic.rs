@@ -1,3 +1,4 @@
+extern crate failure;
 extern crate sentry;
 
 fn main() {
@@ -8,7 +9,7 @@ fn main() {
             ..Default::default()
         },
     ));
-    sentry::integrations::panic::register_panic_handler(None);
+    sentry::integrations::panic::register_panic_handler();
 
     let _scope_guard = sentry::push_and_configure_scope(|scope| {
         scope.set_tag("foo", "bar");
