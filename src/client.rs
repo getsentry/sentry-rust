@@ -257,9 +257,10 @@ impl Client {
                 );
             }
 
-            if event.fingerprint.len() == 1 &&
-               (event.fingerprint[0] == "{{ default }}" ||
-                event.fingerprint[0] == "{{default}}") {
+            if event.fingerprint.len() == 1
+                && (event.fingerprint[0] == "{{ default }}"
+                    || event.fingerprint[0] == "{{default}}")
+            {
                 if let Some(ref fp) = scope.fingerprint {
                     event.fingerprint = (**fp).clone();
                 }
