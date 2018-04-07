@@ -108,7 +108,7 @@ where
 }
 
 /// Captures a boxed failure (`failure::Error`).
-pub fn capture_fail_error(err: &Error) -> Uuid {
+pub fn capture_error(err: &Error) -> Uuid {
     with_client_and_scope(|client, scope| client.capture_event(event_from_error(err), Some(scope)))
 }
 
