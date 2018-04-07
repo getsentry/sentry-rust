@@ -1,6 +1,7 @@
-#[macro_use] extern crate log;
-extern crate sentry;
+#[macro_use]
+extern crate log;
 extern crate pretty_env_logger;
+extern crate sentry;
 
 fn main() {
     let _sentry = sentry::init((
