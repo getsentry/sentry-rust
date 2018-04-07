@@ -1,4 +1,3 @@
-extern crate failure;
 extern crate sentry;
 
 fn main() {
