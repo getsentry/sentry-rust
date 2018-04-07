@@ -153,7 +153,7 @@ pub fn capture_message(msg: &str, level: Level) -> Uuid {
 /// is not interested in breadcrumbs none will be recorded.
 ///
 /// # Example
-/// 
+///
 /// ```
 /// use sentry::protocol::{Breadcrumb, Map};
 ///
