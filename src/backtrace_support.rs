@@ -26,7 +26,9 @@ lazy_static!{
         rv
     };
     pub static ref WELL_KNOWN_BORDER_FRAMES: Vec<&'static str> = {
-        let mut rv = vec![];
+        let mut rv = vec![
+            "std::panicking::begin_panic",
+        ];
         #[cfg(feature = "with_failure")] {
             rv.push("failure::error_message::err_msg");
         }
