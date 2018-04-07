@@ -3,7 +3,7 @@ extern crate failure;
 extern crate failure_derive;
 extern crate sentry;
 
-use sentry::integrations::failure::capture_fail_error;
+use sentry::integrations::failure::capture_error;
 
 #[derive(Fail, Debug)]
 #[fail(display = "An error occurred with error code {}. ({})", code, message)]
@@ -30,6 +30,6 @@ fn main() {
 
     if let Err(err) = execute() {
         println!("error: {}", err);
-        capture_fail_error(&err);
+        capture_error(&err);
     }
 }
