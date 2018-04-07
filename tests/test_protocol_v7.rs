@@ -852,7 +852,7 @@ fn test_sdk_info() {
     assert_roundtrip(&event);
     assert_eq!(
         serde_json::to_string(&event).unwrap(),
-        "{\"sdk_info\":{\"name\":\"sentry-rust\",\"version\":\"1.0\",\
+        "{\"sdk\":{\"name\":\"sentry-rust\",\"version\":\"1.0\",\
          \"integrations\":[\"rocket\"]}}"
     );
 }

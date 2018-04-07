@@ -737,7 +737,7 @@ pub struct Event {
     #[serde(skip_serializing_if = "DebugMeta::is_empty")]
     pub debug_meta: DebugMeta,
     /// SDK metadata
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "sdk", skip_serializing_if = "Option::is_none")]
     pub sdk_info: Option<ClientSdkInfo>,
     /// Additional arbitrary keys for forwards compatibility.
     #[serde(flatten)]
