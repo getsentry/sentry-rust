@@ -137,6 +137,9 @@ extern crate error_chain;
 #[cfg(feature = "with_log")]
 extern crate log;
 
+#[macro_use]
+mod macros;
+
 mod client;
 mod constants;
 mod transport;
