@@ -226,23 +226,29 @@ where
     with_client_and_scope_mut(|_, scope| f(scope))
 }
 
-/// Shortcut for pushing and configuring a scope in one go.
+/// A callback based alternative to using `push_scope`.
+///
+/// This that might look a bit nicer and is more consistent with some other
+/// language integerations.
 ///
 /// # Example
 ///
 /// ```rust
-/// let _guard = sentry::push_and_configure_scope(|scope| {
-///     scope.set_user(Some(sentry::User {
-///         username: Some("john_doe".into()),
-///         ..Default::default()
-///     }));
+/// # macro_rules! panic { ($e:expr) => {} }
+/// sentry::with_scope(|| {
+///     sentry::configure_scope(|scope| {
+///         scope.set_user(Some(sentry::User {
+///             username: Some("john_doe".into()),
+///             ..Default::default()
+///         }));
+///     });
+///     panic!("Something went wrong!");
 /// });
 /// ```
-pub fn push_and_configure_scope<F>(f: F) -> ScopeGuard
+pub fn with_scope<F, R>(f: F) -> R
 where
-    F: FnOnce(&mut Scope),
+    F: FnOnce() -> R,
 {
-    let guard = push_scope();
-    configure_scope(f);
-    guard
+    let _guard = push_scope();
+    f()
 }

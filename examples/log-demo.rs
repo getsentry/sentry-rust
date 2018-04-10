@@ -8,7 +8,7 @@ fn main() {
     let _sentry = sentry::init((
         "https://a94ae32be2584e0bbd7a4cbb95971fee@sentry.io/1041156",
         sentry::ClientOptions {
-            release: Some(sentry_crate_release!()),
+            release: sentry_crate_release!(),
             ..Default::default()
         },
     ));
