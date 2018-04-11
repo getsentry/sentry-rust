@@ -32,7 +32,7 @@ log = { version = "0.4", optional = true }
 futures = "0.1"
 serde = "1.0"
 serde_json = "1.0"
-sentry-types = { git = "https://github.com/getsentry/rust-sentry-types", rev = "b030ac8f210ed1880833ed2ed255ed664d27480c" }
+sentry-types = { git = "https://github.com/getsentry/rust-sentry-types", rev = "c7b8719d1e6b8df633f7d13ed44f2363174c225b" }
 reqwest = "0.8.5"
 uuid = { version = "0.6.2", features = ["v4"] }
 lazy_static = "1.0.0"

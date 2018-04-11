@@ -52,7 +52,7 @@ pub struct ClientOptions {
     /// The environment to be sent with events.
     pub environment: Option<Cow<'static, str>>,
     /// The server name to be reported.
-    pub server_name: Option<String>,
+    pub server_name: Option<Cow<'static, str>>,
 }
 
 impl Default for ClientOptions {
@@ -69,7 +69,7 @@ impl Default for ClientOptions {
             } else {
                 "release".into()
             }),
-            server_name: server_name(),
+            server_name: server_name().map(Cow::Owned),
         }
     }
 }
