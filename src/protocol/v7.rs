@@ -688,7 +688,7 @@ pub struct Event<'a> {
     pub timestamp: Option<DateTime<Utc>>,
     /// Optionally the server (or device) name of this event.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub server_name: Option<String>,
+    pub server_name: Option<Cow<'a, str>>,
     /// A release identifier.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub release: Option<Cow<'a, str>>,
@@ -815,7 +815,7 @@ impl<'a> Event<'a> {
             modules: self.modules,
             platform: Cow::Owned(self.platform.into_owned()),
             timestamp: self.timestamp,
-            server_name: self.server_name,
+            server_name: self.server_name.map(|x| Cow::Owned(x.into_owned())),
             release: self.release.map(|x| Cow::Owned(x.into_owned())),
             dist: self.dist.map(|x| Cow::Owned(x.into_owned())),
             repos: self.repos,
