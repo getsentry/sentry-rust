@@ -4,20 +4,20 @@
 //! cleanup by renaming attributes has been applied.  The idea here is that
 //! a future sentry protocol will be a cleanup of the old one and is mapped
 //! to similar values on the rust side.
+use std::borrow::Cow;
 use std::fmt;
-use std::str;
 use std::net::IpAddr;
 use std::num::ParseIntError;
-use std::borrow::Cow;
+use std::str;
 
 use chrono::{DateTime, Utc};
 use debugid::DebugId;
-use url_serde;
-use url::Url;
-use uuid::Uuid;
 use serde::de::{Deserialize, Deserializer, Error as DeError};
 use serde::ser::{Error as SerError, Serialize, SerializeMap, Serializer};
 use serde_json::{from_value, to_value};
+use url::Url;
+use url_serde;
+use uuid::Uuid;
 
 use utils::ts_seconds_float;
 
@@ -547,7 +547,7 @@ macro_rules! into_debug_image {
                 DebugImage::$kind(data)
             }
         }
-    }
+    };
 }
 
 /// Represents an apple debug image in the debug meta.
@@ -802,7 +802,12 @@ impl<'a> Event<'a> {
         Event {
             id: self.id,
             level: self.level,
-            fingerprint: Cow::Owned(self.fingerprint.iter().map(|x| Cow::Owned(x.to_string())).collect()),
+            fingerprint: Cow::Owned(
+                self.fingerprint
+                    .iter()
+                    .map(|x| Cow::Owned(x.to_string()))
+                    .collect(),
+            ),
             culprit: self.culprit,
             message: self.message,
             logentry: self.logentry,
@@ -1010,7 +1015,7 @@ macro_rules! into_context {
                 ContextData::$kind(data).into()
             }
         }
-    }
+    };
 }
 
 into_context!(App, AppContext);
@@ -1094,10 +1099,9 @@ where
 
         macro_rules! convert_context {
             ($enum:path, $ty:ident) => {{
-                let helper = from_value::<Helper<$ty>>(data)
-                    .map_err(D::Error::custom)?;
+                let helper = from_value::<Helper<$ty>>(data).map_err(D::Error::custom)?;
                 ($enum(helper.data), helper.extra)
-            }}
+            }};
         }
 
         let (data, extra) = match ty.as_str() {

@@ -3,9 +3,9 @@ use std::str::FromStr;
 
 use chrono::{DateTime, Utc};
 
+use dsn::Dsn;
 use protocol;
 use utils::{datetime_to_timestamp, timestamp_to_datetime};
-use dsn::Dsn;
 
 /// Represents an auth header parsing error.
 #[derive(Debug, Fail)]

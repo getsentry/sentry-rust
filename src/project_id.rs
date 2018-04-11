@@ -47,7 +47,7 @@ macro_rules! impl_from {
                 ProjectId { val: val as u64 }
             }
         }
-    }
+    };
 }
 
 impl_from!(usize);

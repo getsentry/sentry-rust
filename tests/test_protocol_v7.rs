@@ -5,8 +5,8 @@ extern crate serde;
 extern crate serde_json;
 extern crate uuid;
 
-use std::borrow::Cow;
 use chrono::{TimeZone, Utc};
+use std::borrow::Cow;
 
 use sentry_types::protocol::v7;
 

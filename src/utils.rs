@@ -16,9 +16,9 @@ pub fn timestamp_to_datetime(ts: f64) -> DateTime<Utc> {
 }
 
 pub mod ts_seconds_float {
-    use std::fmt;
-    use serde::{de, ser};
     use chrono::{DateTime, TimeZone, Utc};
+    use serde::{de, ser};
+    use std::fmt;
 
     use super::timestamp_to_datetime;
 

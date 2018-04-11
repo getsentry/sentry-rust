@@ -33,15 +33,17 @@ macro_rules! impl_str_serialization {
                     where
                         E: ::serde::de::Error,
                     {
-                        value
-                            .parse()
-                            .map_err(|_| ::serde::de::Error::invalid_value(
-                                ::serde::de::Unexpected::Str(value), &self))
+                        value.parse().map_err(|_| {
+                            ::serde::de::Error::invalid_value(
+                                ::serde::de::Unexpected::Str(value),
+                                &self,
+                            )
+                        })
                     }
                 }
 
                 deserializer.deserialize_str(V)
             }
         }
-    }
+    };
 }

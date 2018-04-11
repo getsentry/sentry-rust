@@ -56,8 +56,8 @@ mod macros;
 mod auth;
 mod dsn;
 mod project_id;
-mod utils;
 pub mod protocol;
+mod utils;
 
 pub use auth::*;
 pub use dsn::*;
