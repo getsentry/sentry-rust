@@ -5,18 +5,19 @@ extern crate serde;
 extern crate serde_json;
 extern crate uuid;
 
+use std::borrow::Cow;
 use chrono::{TimeZone, Utc};
 
 use sentry_types::protocol::v7;
 
-fn reserialize(event: &v7::Event) -> v7::Event {
+fn reserialize(event: &v7::Event) -> v7::Event<'static> {
     let json = serde_json::to_string(event).unwrap();
     serde_json::from_str(&json).unwrap()
 }
 
 fn assert_roundtrip(event: &v7::Event) {
     let event_roundtripped = reserialize(event);
-    assert_eq!(event, &event_roundtripped);
+    assert_eq!(&event.clone().into_owned(), &event_roundtripped);
 }
 
 #[test]
@@ -78,9 +79,9 @@ fn test_basic_event() {
 #[test]
 fn test_release_and_dist() {
     let event = v7::Event {
-        dist: Some("42".to_string()),
-        release: Some("my.awesome.app-1.0".to_string()),
-        environment: Some("prod".to_string()),
+        dist: Some("42".into()),
+        release: Some("my.awesome.app-1.0".into()),
+        environment: Some("prod".into()),
         ..Default::default()
     };
 
@@ -95,7 +96,11 @@ fn test_fingerprint() {
     let mut event: v7::Event = Default::default();
     assert_eq!(serde_json::to_string(&event).unwrap(), "{}");
 
-    event.fingerprint.push("extra".into());
+    event.fingerprint = {
+        let mut fp = event.fingerprint.into_owned();
+        fp.push("extra".into());
+        Cow::Owned(fp)
+    };
     assert_roundtrip(&event);
     assert_eq!(
         serde_json::to_string(&event).unwrap(),
@@ -565,7 +570,7 @@ fn test_extra() {
 #[test]
 fn test_debug_meta() {
     let event = v7::Event {
-        debug_meta: v7::DebugMeta {
+        debug_meta: Cow::Owned(v7::DebugMeta {
             sdk_info: Some(v7::SystemSdkInfo {
                 sdk_name: "iOS".into(),
                 version_major: 10,
@@ -573,7 +578,7 @@ fn test_debug_meta() {
                 version_patchlevel: 0,
             }),
             ..Default::default()
-        },
+        }),
         ..Default::default()
     };
 
@@ -585,7 +590,7 @@ fn test_debug_meta() {
     );
 
     let event = v7::Event {
-        debug_meta: v7::DebugMeta {
+        debug_meta: Cow::Owned(v7::DebugMeta {
             images: vec![
                 v7::AppleDebugImage {
                     name: "CoreFoundation".into(),
@@ -610,7 +615,7 @@ fn test_debug_meta() {
                 }.into(),
             ],
             ..Default::default()
-        },
+        }),
         ..Default::default()
     };
 
@@ -841,11 +846,11 @@ fn test_full_exception_stacktrace() {
 #[test]
 fn test_sdk_info() {
     let event = v7::Event {
-        sdk_info: Some(v7::ClientSdkInfo {
+        sdk_info: Some(Cow::Owned(v7::ClientSdkInfo {
             name: "sentry-rust".into(),
             version: "1.0".into(),
             integrations: vec!["rocket".into()],
-        }),
+        })),
         ..Default::default()
     };
 

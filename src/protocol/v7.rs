@@ -8,6 +8,7 @@ use std::fmt;
 use std::str;
 use std::net::IpAddr;
 use std::num::ParseIntError;
+use std::borrow::Cow;
 
 use chrono::{DateTime, Utc};
 use debugid::DebugId;
@@ -650,7 +651,7 @@ pub struct ClientSdkInfo {
 /// Represents a full event for Sentry.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(default)]
-pub struct Event {
+pub struct Event<'a> {
     /// The ID of the event
     #[serde(serialize_with = "serialize_event_id", rename = "event_id",
             skip_serializing_if = "Option::is_none")]
@@ -660,7 +661,7 @@ pub struct Event {
     pub level: Level,
     /// An optional fingerprint configuration to override the default.
     #[serde(skip_serializing_if = "is_default_fingerprint")]
-    pub fingerprint: Vec<String>,
+    pub fingerprint: Cow<'a, [Cow<'a, str>]>,
     /// The culprit or transaction name of the event.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub culprit: Option<String>,
@@ -679,7 +680,7 @@ pub struct Event {
     pub modules: Map<String, String>,
     /// A platform identifier for this event.
     #[serde(skip_serializing_if = "is_other")]
-    pub platform: String,
+    pub platform: Cow<'a, str>,
     /// The timestamp of when the event was created.
     ///
     /// This can be set to `None` in which case the server will set a timestamp.
@@ -690,16 +691,16 @@ pub struct Event {
     pub server_name: Option<String>,
     /// A release identifier.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub release: Option<String>,
+    pub release: Option<Cow<'a, str>>,
+    /// An optional distribution identifer.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dist: Option<Cow<'a, str>>,
     /// Repository references
     #[serde(skip_serializing_if = "Map::is_empty")]
     pub repos: Map<String, RepoReference>,
-    /// An optional distribution identifer.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub dist: Option<String>,
     /// An optional environment identifier.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub environment: Option<String>,
+    pub environment: Option<Cow<'a, str>>,
     /// Optionally user data to be sent along.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub user: Option<User>,
@@ -735,10 +736,10 @@ pub struct Event {
     pub extra: Map<String, Value>,
     /// Debug meta information.
     #[serde(skip_serializing_if = "DebugMeta::is_empty")]
-    pub debug_meta: DebugMeta,
+    pub debug_meta: Cow<'a, DebugMeta>,
     /// SDK metadata
     #[serde(rename = "sdk", skip_serializing_if = "Option::is_none")]
-    pub sdk_info: Option<ClientSdkInfo>,
+    pub sdk_info: Option<Cow<'a, ClientSdkInfo>>,
     /// Additional arbitrary keys for forwards compatibility.
     #[serde(flatten)]
     pub other: Map<String, Value>,
@@ -748,16 +749,16 @@ fn is_other(value: &str) -> bool {
     value == "other"
 }
 
-fn is_default_fingerprint(vec: &Vec<String>) -> bool {
-    vec.len() == 1 && (vec[0] == "{{ default }}" || vec[0] == "{{default}}")
+fn is_default_fingerprint<'a>(fp: &Cow<'a, [Cow<'a, str>]>) -> bool {
+    fp.len() == 1 && ((&fp)[0] == "{{ default }}" || (&fp)[0] == "{{default}}")
 }
 
-impl Default for Event {
-    fn default() -> Event {
+impl<'a> Default for Event<'a> {
+    fn default() -> Event<'a> {
         Event {
             id: None,
             level: Level::Error,
-            fingerprint: vec!["{{ default }}".into()],
+            fingerprint: Cow::Borrowed([Cow::Borrowed("{{ default }}")].as_ref()),
             culprit: None,
             message: None,
             logentry: None,
@@ -767,8 +768,8 @@ impl Default for Event {
             timestamp: None,
             server_name: None,
             release: None,
-            repos: Map::new(),
             dist: None,
+            repos: Map::new(),
             environment: None,
             user: None,
             request: None,
@@ -787,13 +788,47 @@ impl Default for Event {
     }
 }
 
-impl Event {
+impl<'a> Event<'a> {
     /// Creates a new event with the current timestamp and random id.
-    pub fn new() -> Event {
+    pub fn new() -> Event<'a> {
         let mut rv: Event = Default::default();
         rv.timestamp = Some(Utc::now());
         rv.id = Some(Uuid::new_v4());
         rv
+    }
+
+    /// Creates a fully owned version of the event.
+    pub fn into_owned(self) -> Event<'static> {
+        Event {
+            id: self.id,
+            level: self.level,
+            fingerprint: Cow::Owned(self.fingerprint.iter().map(|x| Cow::Owned(x.to_string())).collect()),
+            culprit: self.culprit,
+            message: self.message,
+            logentry: self.logentry,
+            logger: self.logger,
+            modules: self.modules,
+            platform: Cow::Owned(self.platform.into_owned()),
+            timestamp: self.timestamp,
+            server_name: self.server_name,
+            release: self.release.map(|x| Cow::Owned(x.into_owned())),
+            dist: self.dist.map(|x| Cow::Owned(x.into_owned())),
+            repos: self.repos,
+            environment: self.environment.map(|x| Cow::Owned(x.into_owned())),
+            user: self.user,
+            request: self.request,
+            contexts: self.contexts,
+            breadcrumbs: self.breadcrumbs,
+            exceptions: self.exceptions,
+            stacktrace: self.stacktrace,
+            template_info: self.template_info,
+            threads: self.threads,
+            tags: self.tags,
+            extra: self.extra,
+            debug_meta: Cow::Owned(self.debug_meta.into_owned()),
+            sdk_info: self.sdk_info.map(|x| Cow::Owned(x.into_owned())),
+            other: self.other,
+        }
     }
 }
 
