@@ -194,7 +194,8 @@ fn test_repos() {
     assert_roundtrip(&event);
     assert_eq!(
         serde_json::to_string(&event).unwrap(),
-        "{\"repos\":{\"/raven\":{\"name\":\"github/raven\",\"prefix\":\"/\",\"revision\":\"49f45700b5fe606c1bcd9bf0205ecbb83db17f52\"}}}"
+        "{\"repos\":{\"/raven\":{\"name\":\"github/raven\",\
+         \"prefix\":\"/\",\"revision\":\"49f45700b5fe606c1bcd9bf0205ecbb83db17f52\"}}}"
     );
 
     let event = v7::Event {
