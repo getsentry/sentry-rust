@@ -16,12 +16,13 @@ build = "build.rs"
 all-features = true
 
 [features]
-default = ["with_failure", "with_log", "with_device_info", "with_rust_info"]
+default = ["with_failure", "with_log", "with_device_info", "with_rust_info", "with_debug_meta"]
 with_failure = ["failure", "regex"]
 with_log = ["log"]
 with_error_chain = ["error-chain"]
 with_device_info = ["libc", "hostname", "uname"]
 with_rust_info = ["rustc_version"]
+with_debug_meta = ["findshlibs"]
 
 [dependencies]
 backtrace = "0.3"
@@ -31,7 +32,7 @@ log = { version = "0.4", optional = true }
 futures = "0.1"
 serde = "1.0"
 serde_json = "1.0"
-sentry-types = "0.2.2"
+sentry-types = { git = "https://github.com/getsentry/rust-sentry-types", rev = "b030ac8f210ed1880833ed2ed255ed664d27480c" }
 reqwest = "0.8.5"
 uuid = { version = "0.6.2", features = ["v4"] }
 lazy_static = "1.0.0"
@@ -41,6 +42,7 @@ im = "10.0.0"
 libc = { version = "0.2.40", optional = true }
 hostname = { version = "0.1.4", optional = true }
 uname = { version = "0.1.1", optional = true }
+findshlibs = { git = "https://github.com/getsentry/findshlibs", rev = "319b897fb284ae0ed1c199c8f6006ca1188124ec", optional = true }
 
 [build-dependencies]
 rustc_version = { version = "0.2.2", optional = true }

@@ -2,6 +2,7 @@ use std::env;
 use std::fmt;
 use std::sync::Arc;
 use std::time::Duration;
+use std::borrow::Cow;
 use std::ffi::{OsStr, OsString};
 
 use uuid::Uuid;
@@ -9,10 +10,10 @@ use regex::Regex;
 
 use api::Dsn;
 use scope::Scope;
-use protocol::Event;
+use protocol::{Event, DebugMeta};
 use transport::Transport;
 use backtrace_support::{WELL_KNOWN_BORDER_FRAMES, WELL_KNOWN_SYS_MODULES};
-use utils::server_name;
+use utils::{debug_images, server_name};
 use constants::SDK_INFO;
 
 /// The Sentry client object.
@@ -47,9 +48,9 @@ pub struct ClientOptions {
     /// Automatically trim backtraces of junk before sending.
     pub trim_backtraces: bool,
     /// The release to be sent with events.
-    pub release: Option<String>,
+    pub release: Option<Cow<'static, str>>,
     /// The environment to be sent with events.
-    pub environment: Option<String>,
+    pub environment: Option<Cow<'static, str>>,
     /// The server name to be reported.
     pub server_name: Option<String>,
 }
@@ -220,6 +221,13 @@ impl Client {
     }
 
     fn prepare_event(&self, event: &mut Event, scope: Option<&Scope>) {
+        lazy_static! {
+            static ref DEBUG_META: DebugMeta = DebugMeta {
+                images: debug_images(),
+                ..Default::default()
+            };
+        }
+
         if let Some(scope) = scope {
             if !scope.breadcrumbs.is_empty() {
                 event
@@ -262,7 +270,7 @@ impl Client {
                     || event.fingerprint[0] == "{{default}}")
             {
                 if let Some(ref fp) = scope.fingerprint {
-                    event.fingerprint = (**fp).clone();
+                    event.fingerprint = Cow::Owned((**fp).clone());
                 }
             }
         }
@@ -277,11 +285,15 @@ impl Client {
             event.server_name = self.options.server_name.clone();
         }
         if event.sdk_info.is_none() {
-            event.sdk_info = Some(SDK_INFO.clone());
+            event.sdk_info = Some(Cow::Borrowed(&SDK_INFO));
         }
 
         if &event.platform == "other" {
             event.platform = "native".into();
+        }
+
+        if event.debug_meta.is_empty() {
+            event.debug_meta = Cow::Borrowed(&DEBUG_META);
         }
 
         for exc in event.exceptions.iter_mut() {
@@ -381,7 +393,7 @@ impl Client {
     }
 
     /// Captures an event and sends it to sentry.
-    pub fn capture_event(&self, mut event: Event, scope: Option<&Scope>) -> Uuid {
+    pub fn capture_event(&self, mut event: Event<'static>, scope: Option<&Scope>) -> Uuid {
         self.prepare_event(&mut event, scope);
         self.transport.send_event(event)
     }

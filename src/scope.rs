@@ -2,6 +2,7 @@ use std::mem;
 use std::thread;
 use std::cell::RefCell;
 use std::sync::{Arc, RwLock};
+use std::borrow::Cow;
 
 use api::protocol::{Breadcrumb, Context, User, Value};
 use client::Client;
@@ -54,7 +55,7 @@ pub fn scope_panic_safe() -> bool {
 /// client can use the scope to extract information currently.
 #[derive(Debug, Clone)]
 pub struct Scope {
-    pub(crate) fingerprint: Option<Arc<Vec<String>>>,
+    pub(crate) fingerprint: Option<Arc<Vec<Cow<'static, str>>>>,
     pub(crate) breadcrumbs: im::Vector<Breadcrumb>,
     pub(crate) user: Option<Arc<User>>,
     pub(crate) extra: im::HashMap<String, Value>,
@@ -276,8 +277,10 @@ impl Scope {
     }
 
     /// Sets the fingerprint.
-    pub fn set_fingerprint(&mut self, fingerprint: Option<Vec<String>>) {
-        self.fingerprint = fingerprint.map(Arc::new);
+    pub fn set_fingerprint(&mut self, fingerprint: Option<&[&str]>) {
+        self.fingerprint = fingerprint.map(|fp| {
+            Arc::new(fp.iter().map(|x| Cow::Owned(x.to_string())).collect())
+        })
     }
 
     /// Sets the user for the current scope.

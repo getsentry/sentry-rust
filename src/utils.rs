@@ -1,7 +1,9 @@
 //! Useful utilities for working with events.
 use backtrace;
+use uuid::Uuid;
 
-use api::protocol::{Context, DeviceContext, OsContext, RuntimeContext, Stacktrace};
+use api::protocol::{Context, DebugImage, DeviceContext, OsContext, RuntimeContext, Stacktrace};
+use api::protocol::debugid::DebugId;
 use backtrace_support::backtrace_to_stacktrace;
 
 /// Returns the current backtrace as sentry stacktrace.
@@ -58,6 +60,69 @@ mod model_support {
     }
 
     pub fn get_family() -> Option<String> {
+        None
+    }
+}
+
+#[cfg(feature = "with_debug_meta")]
+mod findshlibs_support {
+    use super::*;
+    use api::protocol::SymbolicDebugImage;
+    use findshlibs::{Segment, SharedLibrary, SharedLibraryId, TargetSharedLibrary,
+                     TARGET_SUPPORTED};
+
+    pub fn find_shlibs() -> Option<Vec<DebugImage>> {
+        if !TARGET_SUPPORTED {
+            return None;
+        }
+
+        let mut rv = vec![];
+        TargetSharedLibrary::each(|shlib| {
+            let debug_id = match shlib.id() {
+                Some(SharedLibraryId::Uuid(bytes)) => {
+                    DebugId::from_uuid(Uuid::from_uuid_bytes(bytes))
+                }
+                None => return,
+            };
+
+            let mut lowest_addr = !0;
+            let mut lowest_vmaddr = !0;
+            let mut highest_addr = 0;
+
+            for seg in shlib.segments() {
+                let svma: u64 = seg.stated_virtual_memory_address().0 as u64;
+                let avma: u64 = seg.actual_virtual_memory_address(shlib).0 as u64;
+                if lowest_addr > avma {
+                    lowest_addr = avma;
+                }
+                if highest_addr < avma {
+                    highest_addr = avma;
+                }
+                if lowest_vmaddr > svma {
+                    lowest_vmaddr = svma;
+                }
+            }
+
+            rv.push(
+                SymbolicDebugImage {
+                    name: shlib.name().to_string_lossy().to_string(),
+                    arch: None,
+                    image_addr: lowest_addr.into(),
+                    image_size: highest_addr - lowest_addr,
+                    image_vmaddr: lowest_vmaddr.into(),
+                    id: debug_id,
+                }.into(),
+            );
+        });
+
+        Some(rv)
+    }
+}
+
+#[cfg(not(feature = "with_debug_meta"))]
+mod findshlibs_support {
+    use super::*;
+    pub fn find_shlibs() -> Option<Vec<DebugImage>> {
         None
     }
 }
@@ -165,4 +230,9 @@ pub fn device_context() -> Option<Context> {
     {
         None
     }
+}
+
+/// Returns the loaded debug images.
+pub fn debug_images() -> Vec<DebugImage> {
+    findshlibs_support::find_shlibs().unwrap_or_else(|| Vec::new())
 }

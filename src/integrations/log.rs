@@ -71,7 +71,7 @@ pub fn breadcrumb_from_record(record: &log::Record) -> Breadcrumb {
 ///
 /// If `with_stacktrace` is set to `true` then a stacktrace is attached
 /// from the current frame.
-pub fn event_from_record(record: &log::Record, with_stacktrace: bool) -> Event {
+pub fn event_from_record(record: &log::Record, with_stacktrace: bool) -> Event<'static> {
     Event {
         logger: Some(record.target().into()),
         level: convert_log_level(record.level()),

@@ -104,7 +104,7 @@ pub fn bind_client(client: Arc<Client>) {
 ///     ..Default::default()
 /// });
 /// ```
-pub fn capture_event(event: Event) -> Uuid {
+pub fn capture_event(event: Event<'static>) -> Uuid {
     with_client_and_scope(|client, scope| client.capture_event(event, Some(scope)))
 }
 
@@ -223,7 +223,16 @@ where
     R: Default,
     F: FnOnce(&mut Scope) -> R,
 {
-    with_client_and_scope_mut(|_, scope| f(scope))
+    if let Some((new_scope, rv)) = with_client_and_scope(|_, scope| {
+        let mut new_scope = scope.clone();
+        let rv = f(&mut new_scope);
+        Some((new_scope, rv))
+    }) {
+        with_client_and_scope_mut(|_, scope| *scope = new_scope);
+        rv
+    } else {
+        Default::default()
+    }
 }
 
 /// A callback based alternative to using `push_scope`.

@@ -13,14 +13,14 @@ use protocol::Event;
 /// A transport can send rust events.
 #[derive(Debug)]
 pub struct Transport {
-    sender: Mutex<SyncSender<Option<Event>>>,
+    sender: Mutex<SyncSender<Option<Event<'static>>>>,
     drain_signal: Arc<Condvar>,
     queue_size: Arc<Mutex<usize>>,
     _handle: Option<JoinHandle<()>>,
 }
 
 fn spawn_http_sender(
-    receiver: Receiver<Option<Event>>,
+    receiver: Receiver<Option<Event<'static>>>,
     dsn: Dsn,
     signal: Arc<Condvar>,
     queue_size: Arc<Mutex<usize>>,
@@ -71,7 +71,7 @@ impl Transport {
     }
 
     /// Sends a sentry event and return the event ID.
-    pub fn send_event(&self, mut event: Event) -> Uuid {
+    pub fn send_event(&self, mut event: Event<'static>) -> Uuid {
         if event.id.is_none() {
             event.id = Some(Uuid::new_v4());
         }
