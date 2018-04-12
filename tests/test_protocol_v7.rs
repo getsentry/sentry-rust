@@ -962,6 +962,13 @@ fn test_contexts() {
                     m
                 }.into(),
             );
+            m.insert(
+                "browser".into(),
+                v7::BrowserContext {
+                    name: Some("Chrome".into()),
+                    version: Some("59.0.3071".into()),
+                }.into(),
+            );
             m
         },
         ..Default::default()
@@ -985,7 +992,8 @@ fn test_contexts() {
          \"4c793e3776474877ae30618378e9662a\",\"build_type\":\"testflight\",\
          \"app_identifier\":\"foo.bar.baz\",\"app_name\":\"Baz App\",\"app_version\"\
          :\"1.0\",\"app_build\":\"100001\",\"type\":\"app\"},\"other\":{\"type\":\
-         \"default\",\"aha\":\"oho\"}}}"
+         \"default\",\"aha\":\"oho\"},\"browser\":{\"name\":\"Chrome\",\"version\":\
+         \"59.0.3071\",\"type\":\"browser\"}}}"
     );
 }
 
