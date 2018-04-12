@@ -9,7 +9,7 @@ doc:
 test: cargotest
 
 cargotest:
-	@cargo test --all
+	@cargo test --all --all-features
 
 format-check:
 	@cargo fmt -- --write-mode diff
