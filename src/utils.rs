@@ -2,9 +2,10 @@
 use backtrace;
 use uuid::Uuid;
 
-use api::protocol::{Context, DebugImage, DeviceContext, OsContext, RuntimeContext, Stacktrace};
+use api::protocol::{Context, DebugImage, DeviceContext, Frame, OsContext, RuntimeContext,
+                    Stacktrace};
 use api::protocol::debugid::DebugId;
-use backtrace_support::backtrace_to_stacktrace;
+use backtrace_support::{backtrace_to_stacktrace, SECONDARY_BORDER_FRAMES, WELL_KNOWN_BORDER_FRAMES};
 
 /// Returns the current backtrace as sentry stacktrace.
 pub fn current_stacktrace() -> Option<Stacktrace> {
@@ -235,4 +236,50 @@ pub fn device_context() -> Option<Context> {
 /// Returns the loaded debug images.
 pub fn debug_images() -> Vec<DebugImage> {
     findshlibs_support::find_shlibs().unwrap_or_else(|| Vec::new())
+}
+
+/// A helper function to trim a stacktrace.
+pub fn trim_stacktrace<F>(stacktrace: &mut Stacktrace, f: F)
+where
+    F: Fn(&Frame, &Stacktrace) -> bool,
+{
+    if let Some(cutoff) = stacktrace.frames.iter().rev().position(|frame| {
+        if let Some(ref func) = frame.function {
+            WELL_KNOWN_BORDER_FRAMES.contains(&func.as_str()) || f(frame, stacktrace)
+        } else {
+            false
+        }
+    }) {
+        let secondary = {
+            let func = stacktrace.frames[stacktrace.frames.len() - cutoff - 1]
+                .function
+                .as_ref()
+                .unwrap();
+            SECONDARY_BORDER_FRAMES
+                .iter()
+                .filter_map(|&(primary, secondary)| {
+                    if primary == func {
+                        Some(secondary)
+                    } else {
+                        None
+                    }
+                })
+                .next()
+        };
+        let trunc = stacktrace.frames.len() - cutoff - 1;
+        stacktrace.frames.truncate(trunc);
+
+        if let Some(secondary) = secondary {
+            if let Some(cutoff) = stacktrace.frames.iter().rev().position(|frame| {
+                if let Some(ref func) = frame.function {
+                    func.as_str() == secondary
+                } else {
+                    false
+                }
+            }) {
+                let trunc = stacktrace.frames.len() - cutoff - 1;
+                stacktrace.frames.truncate(trunc);
+            }
+        }
+    }
 }

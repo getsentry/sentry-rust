@@ -3,18 +3,20 @@
 //! This module is available if the crate is compiled with the `with_error_chain` feature.  It's
 //! not enabled by default as error-chain is being replaced by `failure`.
 use std::fmt::{Debug, Display};
+
+use uuid::Uuid;
 use error_chain::ChainedError;
 
 use api::protocol::{Event, Exception, Level};
+use scope::with_client_and_scope;
 use backtrace_support::{backtrace_to_stacktrace, error_typename};
 
-fn exceptions_from_error_chain<'a, T>(e: &'a T)
+fn exceptions_from_error_chain<'a, T>(error: &'a T) -> Vec<Exception>
 where
     T: ChainedError,
     T::ErrorKind: Debug + Display,
 {
     let mut rv = vec![];
-    let error = self.0;
 
     rv.push(Exception {
         ty: error_typename(error.kind()),
@@ -35,7 +37,7 @@ where
 }
 
 /// Creates an event from an error chain.
-pub fn event_from_error_chain<'a, T>(e: &'a T) -> Event
+pub fn event_from_error_chain<'a, T>(e: &'a T) -> Event<'static>
 where
     T: ChainedError,
     T::ErrorKind: Debug + Display,
@@ -48,7 +50,7 @@ where
 }
 
 /// Captures an error chain.
-pub fn capture_error_chain<'a, T>(e: &'a T) -> Event
+pub fn capture_error_chain<'a, T>(e: &'a T) -> Uuid
 where
     T: ChainedError,
     T::ErrorKind: Debug + Display,

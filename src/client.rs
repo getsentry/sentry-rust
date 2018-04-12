@@ -10,10 +10,10 @@ use regex::Regex;
 
 use api::Dsn;
 use scope::Scope;
-use protocol::{Event, DebugMeta};
+use protocol::{DebugMeta, Event};
 use transport::Transport;
-use backtrace_support::{WELL_KNOWN_BORDER_FRAMES, WELL_KNOWN_SYS_MODULES};
-use utils::{debug_images, server_name};
+use backtrace_support::WELL_KNOWN_SYS_MODULES;
+use utils::{debug_images, server_name, trim_stacktrace};
 use constants::SDK_INFO;
 
 /// The Sentry client object.
@@ -300,17 +300,13 @@ impl Client {
             if let Some(ref mut stacktrace) = exc.stacktrace {
                 // automatically trim backtraces
                 if self.options.trim_backtraces {
-                    if let Some(cutoff) = stacktrace.frames.iter().rev().position(|frame| {
+                    trim_stacktrace(stacktrace, |frame, _| {
                         if let Some(ref func) = frame.function {
-                            WELL_KNOWN_BORDER_FRAMES.contains(&func.as_str())
-                                || self.options.extra_border_frames.contains(&func.as_str())
+                            self.options.extra_border_frames.contains(&func.as_str())
                         } else {
                             false
                         }
-                    }) {
-                        let trunc = stacktrace.frames.len() - cutoff - 1;
-                        stacktrace.frames.truncate(trunc);
-                    }
+                    })
                 }
 
                 // automatically prime in_app and set package
