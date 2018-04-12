@@ -42,7 +42,7 @@ im = "10.0.0"
 libc = { version = "0.2.40", optional = true }
 hostname = { version = "0.1.4", optional = true }
 uname = { version = "0.1.1", optional = true }
-findshlibs = { git = "https://github.com/getsentry/findshlibs", rev = "319b897fb284ae0ed1c199c8f6006ca1188124ec", optional = true }
+findshlibs = { git = "https://github.com/gimli-rs/findshlibs", rev = "b47a834e7ce3d07ef6dc6fba5ea89d5d6e615848", optional = true }
 
 [build-dependencies]
 rustc_version = { version = "0.2.2", optional = true }
