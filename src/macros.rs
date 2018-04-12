@@ -6,6 +6,7 @@
 /// is a message for the expectation error (human readable type effectively).
 macro_rules! impl_str_serialization {
     ($type:ty, $expectation:expr) => {
+        #[cfg(feature = "with_serde")]
         impl ::serde::ser::Serialize for $type {
             fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
             where
@@ -15,6 +16,7 @@ macro_rules! impl_str_serialization {
             }
         }
 
+        #[cfg(feature = "with_serde")]
         impl<'de> ::serde::de::Deserialize<'de> for $type {
             fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
             where

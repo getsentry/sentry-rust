@@ -42,11 +42,15 @@ extern crate failure;
 #[macro_use]
 extern crate failure_derive;
 extern crate linked_hash_map;
+#[cfg(feature = "with_serde")]
 extern crate serde;
+#[cfg(feature = "with_serde")]
 #[macro_use]
 extern crate serde_derive;
+#[cfg(feature = "with_serde")]
 extern crate serde_json;
 extern crate url;
+#[cfg(feature = "with_serde")]
 extern crate url_serde;
 extern crate uuid;
 
