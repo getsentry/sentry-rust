@@ -11,10 +11,8 @@ script: make $SUITE
 matrix:
   include:
     - os: linux
-      sudo: required
       env: SUITE=checkall
     - os: linux
-      sudo: required
       env: SUITE=cargotest
     - os: osx
       env: SUITE=checkall
