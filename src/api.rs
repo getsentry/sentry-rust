@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use std::time::Duration; 
+use std::time::Duration;
 use uuid::Uuid;
 
 use api::protocol::{Breadcrumb, Event};
@@ -12,8 +12,8 @@ pub use sentry_types::protocol::v7::{Level, User};
 // public exports from this crate
 pub use client::Client;
 #[cfg(feature = "with_client_implementation")]
-pub use client::{ClientOptions, IntoClientConfig, ClientInitGuard, init};
-pub use scope::{push_scope, Scope, ScopeGuard, bind_client, current_client, with_client_and_scope};
+pub use client::{init, ClientInitGuard, ClientOptions, IntoClientConfig};
+pub use scope::{bind_client, current_client, push_scope, with_client_and_scope, Scope, ScopeGuard};
 
 /// Captures an event on the currently active client if any.
 ///

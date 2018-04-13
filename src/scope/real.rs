@@ -96,10 +96,12 @@ struct StackLayer {
 impl Stack {
     pub fn for_process() -> Stack {
         Stack {
-            layers: vec![StackLayer {
-                client: None,
-                scope: default_scope()
-            }],
+            layers: vec![
+                StackLayer {
+                    client: None,
+                    scope: default_scope(),
+                },
+            ],
             ty: StackType::Process,
         }
     }

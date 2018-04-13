@@ -1,7 +1,7 @@
 use std::fmt;
 use std::sync::Arc;
 
-use api::protocol::{User, Context, Value};
+use api::protocol::{Context, User, Value};
 use client::noop::Client;
 
 /// The "shim only" scope.

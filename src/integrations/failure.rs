@@ -177,8 +177,7 @@ where
 /// # Ok(()) }
 /// # fn main() { test().unwrap() }
 /// ```
-pub fn tap_error<T>(rv: Result<T, Error>) -> Result<T, Error>
-{
+pub fn tap_error<T>(rv: Result<T, Error>) -> Result<T, Error> {
     match rv {
         Ok(value) => Ok(value),
         Err(error) => {
@@ -210,7 +209,7 @@ pub fn tap_error<T>(rv: Result<T, Error>) -> Result<T, Error>
 /// ```
 pub fn tap_fail<T, F>(rv: Result<T, F>) -> Result<T, F>
 where
-    F: Fail + Sized
+    F: Fail + Sized,
 {
     match rv {
         Ok(value) => Ok(value),

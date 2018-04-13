@@ -38,6 +38,8 @@ fn main() {
             // activates the scope token which binds the current context to the token's context.
             scope_handle.bind();
             error!("Failing!");
-        }).join().unwrap();
-    }).join().unwrap();
+        }).join()
+            .unwrap();
+    }).join()
+        .unwrap();
 }

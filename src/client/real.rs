@@ -9,7 +9,7 @@ use uuid::Uuid;
 use regex::Regex;
 
 use api::Dsn;
-use scope::{Scope, bind_client};
+use scope::{bind_client, Scope};
 use protocol::{DebugMeta, Event};
 use transport::Transport;
 use backtrace_support::WELL_KNOWN_SYS_MODULES;

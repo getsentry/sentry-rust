@@ -24,7 +24,6 @@ macro_rules! sentry_crate_release {
     }}
 }
 
-
 macro_rules! with_client_impl {
     ($body:block) => {
         #[cfg(feature = "with_client_implementation")]
