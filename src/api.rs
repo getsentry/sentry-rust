@@ -248,7 +248,9 @@ pub struct ScopeHandle(Option<(Arc<Client>, Arc<Scope>)>);
 /// ```
 pub fn scope_handle() -> ScopeHandle {
     with_client_impl! {{
-        with_client_and_scope(|client, scope| ScopeHandle(Some((client, Arc::new(scope.clone())))))
+        with_client_and_scope(|client, scope| {
+            ScopeHandle(Some((client, Arc::new(scope.clone()))))
+        })
     }}
 }
 
@@ -260,7 +262,8 @@ impl ScopeHandle {
             if let Some((src_client, src_scope)) = self.0 {
                 bind_client(src_client);
                 with_client_and_scope_mut(|_, scope| {
-                    *scope = Arc::try_unwrap(src_scope).unwrap_or_else(|arc| (*arc).clone());
+                    *scope = Arc::try_unwrap(src_scope)
+                        .unwrap_or_else(|arc| (*arc).clone());
                 })
             }
         }}
