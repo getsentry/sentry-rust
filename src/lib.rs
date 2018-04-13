@@ -55,6 +55,28 @@
 //! In shim mode some types are restricted in functionality.  For instance the `Client` in shim
 //! mode does not retain all API functionality.  To see what the APIs in shim-only
 //! mode look like refer to [the shim only docs](shim/index.html).
+//!
+//! # Features
+//!
+//! Functionality of the crate can be turned on and off by feature flags.  This is the
+//! current list of feature flags:
+//!
+//! default flags:
+//!
+//! * `with_client_implementation`: turns on the real client implementation.
+//! * `with_backtrace`: enables backtrace support (automatically turned on in a few cases)
+//! * `with_panic`: enables the panic integration
+//! * `with_failure`: enables the `failure` integration
+//! * `with_log`: enables the `log` integration
+//! * `with_device_info`: enables the device info context
+//! * `with_rust_info`: enables the rust compiler info context
+//! * `with_debug_meta`: enables debug meta support (permits server side symbolication)
+//!
+//! additional features:
+//!
+//! * `with_error_chain`: enables the error-chain integration
+//! * `with_shim_api`: compiles the shim only api into a dummy `shim` module for inspection.
+//!   This API cannot be used but it can be inspected for documentation purposes.
 #[warn(missing_docs)]
 #[cfg(feature = "with_backtrace")]
 extern crate backtrace;
@@ -113,7 +135,7 @@ pub mod integrations;
 #[cfg(feature = "with_backtrace")]
 mod backtrace_support;
 
-/// The shim only API.
+/// The shim only API (documentation only).
 ///
 /// This module does not exist normally but it's typically compiled for documentation
 /// purposes so that users can see the API subset trivially that is available for
