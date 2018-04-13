@@ -41,6 +41,18 @@
 //! the ecosystem a feature flag needs to be enabled.  For the available
 //! integrations and how to use them see [integrations](integrations/index.html).
 //!
+//! # Scope Management
+//!
+//! Data is typically bound to a scope.  A new scope can be introduced by pushing it
+//! with the [`push_scope`](fn.push_scope.html) function.  That scope can then be
+//! configured with [`configure_scope`](fn.configure_scope.html) which lets you
+//! attach data to it that will be sent along with errors.
+//!
+//! If a new scope is pushed the data and currently bound client are inherited.  To
+//! propagate that scope to a completely different thread a
+//! [`scope_handle`](fn.scope_handle.html) can be acquired and passed to a thread
+//! where it can be bound.
+//!
 //! # Shim Only API
 //!
 //! This crate can also be used in "shim only" mode.  This is enabled by disabling all
