@@ -197,7 +197,7 @@ pub fn tap_error<T>(rv: Result<T, Error>) -> Result<T, Error> {
 /// # use std::fmt;
 /// # extern crate sentry;
 /// # extern crate failure;
-/// # struct E;
+/// # #[derive(Debug)] struct E;
 /// # impl fmt::Display for E { fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { unreachable!() } }
 /// # impl failure::Fail for E {}
 /// # fn function_that_might_fail() -> Result<(), E> { Ok(()) }

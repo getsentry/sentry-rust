@@ -9,11 +9,11 @@
 //!
 //! ```
 //! # extern crate sentry;
-//! # extern crate error_chain;
+//! # #[macro_use] extern crate error_chain;
 //! # error_chain! {}
 //! use sentry::integrations::error_chain::capture_error_chain;
 //! # fn function_that_might_fail() -> Result<()> { Ok(()) }
-//! # fn test() -> Result<(), Error> {
+//! # fn test() -> Result<()> {
 //! let result = match function_that_might_fail() {
 //!     Ok(result) => result,
 //!     Err(err) => {

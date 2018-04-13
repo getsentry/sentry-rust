@@ -231,4 +231,4 @@ pub fn debug_images() -> Vec<DebugImage> {
 }
 
 #[cfg(feature = "with_backtrace")]
-pub use backtrace_support::{trim_stacktrace, current_stacktrace};
+pub use backtrace_support::{current_stacktrace, trim_stacktrace};
