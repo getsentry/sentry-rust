@@ -16,7 +16,7 @@
 use std::panic;
 
 use api::protocol::{Event, Exception, Level};
-use utils::current_stacktrace;
+use backtrace_support::current_stacktrace;
 use scope::{scope_panic_safe, with_client_and_scope};
 
 /// Extract the message of a panic.

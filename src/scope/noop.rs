@@ -110,3 +110,8 @@ impl Scope {
         shim_unreachable!();
     }
 }
+
+#[allow(unused)]
+pub(crate) fn scope_panic_safe() -> bool {
+    true
+}

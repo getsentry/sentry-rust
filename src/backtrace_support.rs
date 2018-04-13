@@ -11,6 +11,7 @@ lazy_static!{
     "#).unwrap();
 
     pub static ref WELL_KNOWN_SYS_MODULES: Vec<&'static str> = {
+        #[allow(unused_mut)]
         let mut rv = vec![
             "std::",
             "core::",
@@ -29,6 +30,7 @@ lazy_static!{
         rv
     };
     pub static ref WELL_KNOWN_BORDER_FRAMES: Vec<&'static str> = {
+        #[allow(unused_mut)]
         let mut rv = vec![
             "std::panicking::begin_panic",
         ];
@@ -100,6 +102,7 @@ pub fn demangle_symbol<'a>(s: &'a str) -> String {
         .to_string()
 }
 
+#[allow(unused)]
 pub fn error_typename<D: fmt::Debug>(error: D) -> String {
     format!("{:?}", error)
         .split(&['(', '{'][..])
@@ -109,6 +112,7 @@ pub fn error_typename<D: fmt::Debug>(error: D) -> String {
         .into()
 }
 
+#[allow(unused)]
 pub fn backtrace_to_stacktrace(bt: &Backtrace) -> Option<Stacktrace> {
     let frames = bt.frames()
         .iter()
@@ -142,4 +146,63 @@ pub fn backtrace_to_stacktrace(bt: &Backtrace) -> Option<Stacktrace> {
         })
         .collect();
     Stacktrace::from_frames_reversed(frames)
+}
+
+/// Returns the current backtrace as sentry stacktrace.
+#[allow(unused)]
+pub fn current_stacktrace() -> Option<Stacktrace> {
+    backtrace_to_stacktrace(&Backtrace::new())
+}
+
+/// A helper function to trim a stacktrace.
+#[allow(unused)]
+pub fn trim_stacktrace<F>(stacktrace: &mut Stacktrace, f: F)
+where
+    F: Fn(&Frame, &Stacktrace) -> bool,
+{
+    if let Some(cutoff) = stacktrace.frames.iter().rev().position(|frame| {
+        if let Some(ref func) = frame.function {
+            WELL_KNOWN_BORDER_FRAMES.contains(&func.as_str()) || f(frame, stacktrace)
+        } else {
+            false
+        }
+    }) {
+        let secondary = {
+            let func = stacktrace.frames[stacktrace.frames.len() - cutoff - 1]
+                .function
+                .as_ref()
+                .unwrap();
+            SECONDARY_BORDER_FRAMES
+                .iter()
+                .filter_map(|&(primary, secondary)| {
+                    if primary == func {
+                        Some(secondary)
+                    } else {
+                        None
+                    }
+                })
+                .next()
+        };
+        let trunc = stacktrace.frames.len() - cutoff - 1;
+        stacktrace.frames.truncate(trunc);
+
+        if let Some(secondary) = secondary {
+            if let Some(cutoff) = stacktrace.frames.iter().rev().position(|frame| {
+                if let Some(ref func) = frame.function {
+                    func.as_str() == secondary
+                } else {
+                    false
+                }
+            }) {
+                let trunc = stacktrace.frames.len() - cutoff - 1;
+                stacktrace.frames.truncate(trunc);
+            }
+        }
+    }
+}
+
+/// Checks if a function is considered to be not in-app
+#[allow(unused)]
+pub fn is_sys_function(func: &str) -> bool {
+    WELL_KNOWN_SYS_MODULES.iter().any(|m| func.starts_with(m))
 }

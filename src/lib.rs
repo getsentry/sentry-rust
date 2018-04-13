@@ -56,7 +56,7 @@
 //! mode does not retain all API functionality.  To see what the APIs in shim-only
 //! mode look like refer to [the shim only docs](shim/index.html).
 #[warn(missing_docs)]
-#[cfg(feature = "with_client_implementation")]
+#[cfg(feature = "with_backtrace")]
 extern crate backtrace;
 #[cfg(feature = "with_client_implementation")]
 extern crate im;
@@ -81,7 +81,7 @@ extern crate hostname;
 #[cfg(all(feature = "with_device_info", not(windows)))]
 extern crate uname;
 
-#[cfg(feature = "with_failure")]
+#[cfg(any(feature = "with_backtrace", feature = "with_device_info"))]
 extern crate regex;
 
 #[cfg(feature = "with_failure")]
@@ -109,9 +109,8 @@ mod constants;
 mod transport;
 #[cfg(feature = "with_client_implementation")]
 pub mod utils;
-#[cfg(feature = "with_client_implementation")]
 pub mod integrations;
-#[cfg(feature = "with_client_implementation")]
+#[cfg(feature = "with_backtrace")]
 mod backtrace_support;
 
 /// The shim only API.

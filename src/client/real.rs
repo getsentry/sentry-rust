@@ -12,7 +12,7 @@ use api::Dsn;
 use scope::{bind_client, Scope};
 use protocol::{DebugMeta, Event};
 use transport::Transport;
-use backtrace_support::WELL_KNOWN_SYS_MODULES;
+use backtrace_support::is_sys_function;
 use utils::{debug_images, server_name, trim_stacktrace};
 use constants::SDK_INFO;
 
@@ -369,11 +369,8 @@ impl Client {
                         continue;
                     }
 
-                    for m in WELL_KNOWN_SYS_MODULES.iter() {
-                        if func_name.starts_with(m) {
-                            frame.in_app = Some(false);
-                            break;
-                        }
+                    if is_sys_function(func_name) {
+                        frame.in_app = Some(false);
                     }
                 }
 

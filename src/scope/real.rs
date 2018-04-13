@@ -33,9 +33,8 @@ pub struct Stack {
 #[derive(PartialEq, Clone, Copy)]
 struct StackLayerToken(*const Stack, usize);
 
-/// An indicator that is used internally to help prevent double faults in
-/// panic handlers.
-pub fn scope_panic_safe() -> bool {
+#[allow(unused)]
+pub(crate) fn scope_panic_safe() -> bool {
     PROCESS_STACK.try_read().is_ok() && THREAD_STACK.with(|x| x.try_borrow().is_ok())
 }
 
