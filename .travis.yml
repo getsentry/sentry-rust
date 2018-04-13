@@ -12,11 +12,14 @@ matrix:
   include:
     - os: linux
       sudo: required
-      env: SUITE=test
-      install: cargo build --all
+      env: SUITE=checkall
+    - os: linux
+      sudo: required
+      env: SUITE=cargotest
     - os: osx
-      env: SUITE=test
-      install: cargo build --all
+      env: SUITE=checkall
+    - os: osx
+      env: SUITE=cargotest
     - os: linux
       env: SUITE=format-check
       install: rustup component add rustfmt-preview
