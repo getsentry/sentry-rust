@@ -6,7 +6,15 @@ build:
 doc:
 	@cargo doc
 
-test: cargotest
+checkall:
+	@echo 'ALL FEATURES'
+	@RUSTFLAGS=-Dwarnings cargo check --all-features
+	@echo 'NO DEFAULT FEATURES'
+	@RUSTFLAGS=-Dwarnings cargo check --no-default-features
+	@echo 'DEFAULT FEATURES'
+	@RUSTFLAGS=-Dwarnings cargo check
+
+test: checkall cargotest
 
 cargotest:
 	@cargo test --all --all-features

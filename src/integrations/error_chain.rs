@@ -1,7 +1,29 @@
 //! Adds support for the error-chain crate.
 //!
-//! This module is available if the crate is compiled with the `with_error_chain` feature.  It's
-//! not enabled by default as error-chain is being replaced by `failure`.
+//! **Feature:** `with_error_chain` (disabled by default)
+//!
+//! Errors created by the `error-chain` crate can be logged with the
+//! `error_chain` integration.
+//!
+//! # Example
+//!
+//! ```
+//! # extern crate sentry;
+//! # extern crate error_chain;
+//! # error_chain! {}
+//! use sentry::integrations::error_chain::capture_error_chain;
+//! # fn function_that_might_fail() -> Result<()> { Ok(()) }
+//! # fn test() -> Result<(), Error> {
+//! let result = match function_that_might_fail() {
+//!     Ok(result) => result,
+//!     Err(err) => {
+//!         capture_error_chain(&err);
+//!         return Err(err);
+//!     }
+//! };
+//! # Ok(()) }
+//! # fn main() { test().unwrap() }
+//! ```
 use std::fmt::{Debug, Display};
 
 use uuid::Uuid;

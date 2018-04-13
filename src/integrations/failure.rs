@@ -1,7 +1,48 @@
 //! Adds support for the failure crate.
 //!
-//! This module is available if the crate is compiled with the `with_failure` feature.  It's
-//! part of the default features of the crate.
+//! **Feature:** `with_failure` (enabled by default)
+//!
+//! Failure errors and `Fail` objects can be logged with the failure integration.
+//! This works really well if you use the `failure::Error` type or if you have
+//! `failure::Fail` objects that use the failure context internally to gain a
+//! backtrace.
+//!
+//! # Example
+//!
+//! ```
+//! # extern crate sentry;
+//! # extern crate failure;
+//! # fn function_that_might_fail() -> Result<(), failure::Error> { Ok(()) }
+//! use sentry::integrations::failure::capture_error;
+//! # fn test() -> Result<(), failure::Error> {
+//! let result = match function_that_might_fail() {
+//!     Ok(result) => result,
+//!     Err(err) => {
+//!         capture_error(&err);
+//!         return Err(err);
+//!     }
+//! };
+//! # Ok(()) }
+//! # fn main() { test().unwrap() }
+//! ```
+//!
+//! # Tapping
+//!
+//! For convenience you can also use the tapping feature where an error is logged
+//! but passed through a call.  So the above example can also be written like this:
+//!
+//! ```
+//! # extern crate sentry;
+//! # extern crate failure;
+//! # fn function_that_might_fail() -> Result<(), failure::Error> { Ok(()) }
+//! use sentry::integrations::failure::tap_error;
+//! # fn test() -> Result<(), failure::Error> {
+//! let result = tap_error(function_that_might_fail())?;
+//! # Ok(()) }
+//! # fn main() { test().unwrap() }
+//! ```
+//!
+//! To capture fails and not errors use `capture_fail`.
 use uuid::Uuid;
 use regex::Regex;
 use failure;
@@ -118,4 +159,64 @@ where
     F: Fail + Sized,
 {
     with_client_and_scope(|client, scope| client.capture_event(event_from_fail(fail), Some(scope)))
+}
+
+/// Log a result of `failure::Error` but return the value unchanged.
+///
+/// This taps into a `Result<T, Error>` and logs an error that might be
+/// contained in it with Sentry.  This makes it very convenient to log
+/// an error that is otherwise already handled by the system:
+///
+/// ```
+/// # extern crate sentry;
+/// # extern crate failure;
+/// # fn function_that_might_fail() -> Result<(), failure::Error> { Ok(()) }
+/// use sentry::integrations::failure::tap_error;
+/// # fn test() -> Result<(), failure::Error> {
+/// let result = tap_error(function_that_might_fail())?;
+/// # Ok(()) }
+/// # fn main() { test().unwrap() }
+/// ```
+pub fn tap_error<T>(rv: Result<T, Error>) -> Result<T, Error>
+{
+    match rv {
+        Ok(value) => Ok(value),
+        Err(error) => {
+            capture_error(&error);
+            Err(error)
+        }
+    }
+}
+
+/// Log a result of `failure::Fail` but return the value unchanged.
+///
+/// This taps into a `Result<T, Fail>` and logs an error that might be
+/// contained in it with Sentry.  This makes it very convenient to log
+/// an error that is otherwise already handled by the system:
+///
+/// ```
+/// # use std::fmt;
+/// # extern crate sentry;
+/// # extern crate failure;
+/// # struct E;
+/// # impl fmt::Display for E { fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { unreachable!() } }
+/// # impl failure::Fail for E {}
+/// # fn function_that_might_fail() -> Result<(), E> { Ok(()) }
+/// use sentry::integrations::failure::tap_fail;
+/// # fn test() -> Result<(), E> {
+/// let result = tap_fail(function_that_might_fail())?;
+/// # Ok(()) }
+/// # fn main() { test().unwrap() }
+/// ```
+pub fn tap_fail<T, F>(rv: Result<T, F>) -> Result<T, F>
+where
+    F: Fail + Sized
+{
+    match rv {
+        Ok(value) => Ok(value),
+        Err(error) => {
+            capture_fail(&error);
+            Err(error)
+        }
+    }
 }

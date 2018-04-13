@@ -9,7 +9,7 @@ use uuid::Uuid;
 use regex::Regex;
 
 use api::Dsn;
-use scope::Scope;
+use scope::{Scope, bind_client};
 use protocol::{DebugMeta, Event};
 use transport::Transport;
 use backtrace_support::WELL_KNOWN_SYS_MODULES;
@@ -17,6 +17,16 @@ use utils::{debug_images, server_name, trim_stacktrace};
 use constants::SDK_INFO;
 
 /// The Sentry client object.
+///
+/// ## Shim Behavior
+///
+/// This type is technically available in Shim mode but cannot be constructed.
+/// It's passed to some callbacks but those callbacks will never be executed if
+/// the shim is not configured so a lot of the implementations are irrelevant as
+/// the code is effectively dead.
+///
+/// To see what types are available in shim only mode refer to
+/// [the shim client docs](shim/struct.Client.html).
 #[derive(Clone)]
 pub struct Client {
     dsn: Dsn,
@@ -402,4 +412,56 @@ impl Client {
     pub fn drain_events(&self, timeout: Option<Duration>) -> bool {
         self.transport.drain(timeout)
     }
+}
+
+/// Helper struct that is returned from `init`.
+///
+/// When this is dropped events are drained with a 1 second timeout.
+pub struct ClientInitGuard(Option<Arc<Client>>);
+
+impl ClientInitGuard {
+    /// Returns `true` if a client was created by initialization.
+    pub fn is_enabled(&self) -> bool {
+        self.0.is_some()
+    }
+
+    /// Returns the client created by `init`.
+    pub fn client(&self) -> Option<Arc<Client>> {
+        self.0.clone()
+    }
+}
+
+impl Drop for ClientInitGuard {
+    fn drop(&mut self) {
+        if let Some(ref client) = self.0 {
+            client.drain_events(Some(Duration::from_secs(2)));
+        }
+    }
+}
+
+/// Creates the Sentry client for a given client config and binds it.
+///
+/// This returns a client init guard that if kept in scope will help the
+/// client send events before the application closes by calling drain on
+/// the generated client.  If the scope guard is immediately dropped then
+/// no draining will take place so ensure it's bound to a variable.
+///
+/// # Examples
+///
+/// ```rust
+/// fn main() {
+///     let _sentry = sentry::init("https://key@sentry.io/1234");
+/// }
+/// ```
+///
+/// This behaves similar to creating a client by calling `Client::from_config`
+/// but gives a simplified interface that transparently handles clients not
+/// being created by the Dsn being empty.
+#[cfg(feature = "with_client_implementation")]
+pub fn init<C: IntoClientConfig>(cfg: C) -> ClientInitGuard {
+    ClientInitGuard(Client::from_config(cfg).map(|client| {
+        let client = Arc::new(client);
+        bind_client(client.clone());
+        client
+    }))
 }

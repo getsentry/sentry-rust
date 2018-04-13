@@ -1,4 +1,5 @@
 use std::mem;
+use std::fmt;
 use std::thread;
 use std::cell::RefCell;
 use std::sync::{Arc, RwLock};
@@ -63,32 +64,30 @@ pub struct Scope {
     pub(crate) contexts: im::HashMap<String, Context>,
 }
 
-impl Default for Scope {
-    fn default() -> Scope {
-        Scope {
-            fingerprint: None,
-            breadcrumbs: Default::default(),
-            user: None,
-            extra: Default::default(),
-            tags: Default::default(),
-            contexts: {
-                let mut contexts = im::HashMap::new();
-                if let Some(c) = utils::os_context() {
-                    contexts = contexts.insert("os".to_string(), c);
-                }
-                if let Some(c) = utils::rust_context() {
-                    contexts = contexts.insert("rust".to_string(), c);
-                }
-                if let Some(c) = utils::device_context() {
-                    contexts = contexts.insert("device".to_string(), c);
-                }
-                contexts
-            },
-        }
+fn default_scope() -> Scope {
+    Scope {
+        fingerprint: None,
+        breadcrumbs: Default::default(),
+        user: None,
+        extra: Default::default(),
+        tags: Default::default(),
+        contexts: {
+            let mut contexts = im::HashMap::new();
+            if let Some(c) = utils::os_context() {
+                contexts = contexts.insert("os".to_string(), c);
+            }
+            if let Some(c) = utils::rust_context() {
+                contexts = contexts.insert("rust".to_string(), c);
+            }
+            if let Some(c) = utils::device_context() {
+                contexts = contexts.insert("device".to_string(), c);
+            }
+            contexts
+        },
     }
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Debug, Clone)]
 struct StackLayer {
     client: Option<Arc<Client>>,
     scope: Scope,
@@ -97,7 +96,10 @@ struct StackLayer {
 impl Stack {
     pub fn for_process() -> Stack {
         Stack {
-            layers: vec![Default::default()],
+            layers: vec![StackLayer {
+                client: None,
+                scope: default_scope()
+            }],
             ty: StackType::Process,
         }
     }
@@ -145,7 +147,7 @@ impl Stack {
         &mut self.layers[idx].scope
     }
 
-    fn token(&self) -> StackLayerToken {
+    fn layer_token(&self) -> StackLayerToken {
         StackLayerToken(self as *const Stack, self.layers.len())
     }
 }
@@ -170,7 +172,7 @@ where
     f(&mut PROCESS_STACK.write().unwrap_or_else(|x| x.into_inner()))
 }
 
-pub fn with_stack_mut<F, R>(f: F) -> R
+fn with_stack_mut<F, R>(f: F) -> R
 where
     F: FnOnce(&mut Stack) -> R,
 {
@@ -181,7 +183,7 @@ where
     }
 }
 
-pub fn with_stack<F, R>(f: F) -> R
+fn with_stack<F, R>(f: F) -> R
 where
     F: FnOnce(&Stack) -> R,
 {
@@ -192,7 +194,15 @@ where
     }
 }
 
-/// Crate internal helper for working with clients and scopes.
+/// Invokes a function if the sentry client is available with client and scope.
+///
+/// The function is invoked with the client and current scope (read-only) and permits
+/// operations to be executed on the client.  This is useful when writing integration
+/// code where potentially expensive operations should not be executed if Sentry is
+/// not configured.
+///
+/// The return value must be `Default` so that it can be created even if Sentry is not
+/// configured.
 pub fn with_client_and_scope<F, R>(f: F) -> R
 where
     F: FnOnce(Arc<Client>, &Scope) -> R,
@@ -208,7 +218,7 @@ where
 }
 
 /// Crate internal helper for working with clients and mutable scopes.
-pub fn with_client_and_scope_mut<F, R>(f: F) -> R
+pub(crate) fn with_client_and_scope_mut<F, R>(f: F) -> R
 where
     F: FnOnce(Arc<Client>, &mut Scope) -> R,
     R: Default,
@@ -226,11 +236,17 @@ where
 #[derive(Default)]
 pub struct ScopeGuard(Option<StackLayerToken>);
 
+impl fmt::Debug for ScopeGuard {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "ScopeGuard")
+    }
+}
+
 impl Drop for ScopeGuard {
     fn drop(&mut self) {
         if let Some(token) = self.0 {
             with_stack_mut(|stack| {
-                if stack.token() != token {
+                if stack.layer_token() != token {
                     panic!("Current active stack does not match scope guard");
                 } else {
                     stack.pop();
@@ -262,8 +278,31 @@ impl Drop for ScopeGuard {
 pub fn push_scope() -> ScopeGuard {
     with_stack_mut(|stack| {
         stack.push();
-        ScopeGuard(Some(stack.token()))
+        ScopeGuard(Some(stack.layer_token()))
     })
+}
+
+/// Returns the currently bound client if there is one.
+///
+/// This might return `None` in case there is no client.  For the most part
+/// code will not use this function but instead directly call `capture_event`
+/// and similar functions which work on the currently active client.
+pub fn current_client() -> Option<Arc<Client>> {
+    with_client_impl! {{
+        with_stack(|stack| stack.client())
+    }}
+}
+
+/// Rebinds the client on the current scope.
+///
+/// The current scope is defined as the current thread.  If a new thread spawns
+/// it inherits the client of the process.  The main thread is specially handled
+/// in the sense that if the main thread binds a client it becomes bound to the
+/// process.
+pub fn bind_client(client: Arc<Client>) {
+    with_client_impl! {{
+        with_stack_mut(|stack| stack.bind_client(client));
+    }}
 }
 
 impl Scope {
@@ -273,7 +312,7 @@ impl Scope {
     /// In some situations this might not be what a user wants.  Calling
     /// this method will wipe all data contained within.
     pub fn clear(&mut self) {
-        *self = Default::default();
+        *self = default_scope();
     }
 
     /// Sets the fingerprint.

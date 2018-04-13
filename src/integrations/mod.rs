@@ -10,4 +10,5 @@ pub mod error_chain;
 #[cfg(feature = "with_log")]
 pub mod log;
 
+#[cfg(feature = "with_panic")]
 pub mod panic;

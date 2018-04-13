@@ -1,8 +1,18 @@
 //! Panic handler support.
 //!
-//! When the panic handler is registered with `register_panic_handler` a
-//! Sentry critical error event will be emitted for all panics that
-//! occur.
+//! **Feature:** `with_panic` (enabled by default)
+//!
+//! A panic handler can be installed that will automatically dispatch all errors
+//! to Sentry that are caused by a panic.
+//!
+//! # Configuration
+//!
+//! ```
+//! use sentry::integrations::panic::register_panic_handler;
+//! register_panic_handler();
+//! ```
+//!
+//! Additionally panics are forwarded to the previously registered panic hook.
 use std::panic;
 
 use api::protocol::{Event, Exception, Level};

@@ -16,29 +16,31 @@ build = "build.rs"
 all-features = true
 
 [features]
-default = ["with_failure", "with_log", "with_device_info", "with_rust_info", "with_debug_meta"]
+default = ["with_client_implementation", "with_panic", "with_failure", "with_log", "with_device_info", "with_rust_info", "with_debug_meta"]
+with_client_implementation = ["reqwest", "im", "url", "backtrace"]
+with_panic = []
 with_failure = ["failure", "regex"]
 with_log = ["log"]
 with_error_chain = ["error-chain"]
 with_device_info = ["libc", "hostname", "uname"]
 with_rust_info = ["rustc_version"]
 with_debug_meta = ["findshlibs"]
+with_shim_api = []
 
 [dependencies]
-backtrace = "0.3"
-url = "1.7"
+backtrace = { version = "0.3", optional = true }
+url = { version = "1.7", optional = true }
 failure = { version = "0.1", optional = true }
 log = { version = "0.4", optional = true }
-futures = "0.1"
 serde = "1.0"
 serde_json = "1.0"
 sentry-types = "0.3.0"
-reqwest = "0.8.5"
+reqwest = { version = "0.8.5", optional = true }
 uuid = { version = "0.6.2", features = ["v4"] }
 lazy_static = "1.0.0"
 regex = { version = "0.2.10", optional = true }
 error-chain = { version = "0.11.0", optional = true }
-im = "10.0.0"
+im = { version = "10.0.0", optional = true }
 libc = { version = "0.2.40", optional = true }
 hostname = { version = "0.1.4", optional = true }
 uname = { version = "0.1.1", optional = true }

@@ -1,4 +1,26 @@
 //! Adds support for automatic breadcrumb capturing from logs.
+//!
+//! **Feature:** `with_log` (*enabled by default*)
+//!
+//! The `log` crate is supported in two ways.  First events can be captured as
+//! breadcrumbs for later, secondly error events can be logged as events to
+//! Sentry.  By default anything above `Info` is recorded as breadcrumb and
+//! anything above `Error` is captured as error event.
+//!
+//! # Configuration
+//!
+//! However due to how log systems in Rust work this currently requires you to
+//! slightly change your log setup.  This is an example with the pretty
+//! env logger crate:
+//!
+//! ```
+//! # extern crate sentry;
+//! # extern crate pretty_env_logger;
+//! let mut log_builder = pretty_env_logger::formatted_builder().unwrap();
+//! log_builder.parse("info");  // or env::var("RUST_LOG")
+//! sentry::integrations::log::init(Some(
+//!     Box::new(log_builder.build())), Default::default());
+//! ```
 use log;
 
 use protocol::{Breadcrumb, Event, Exception, Level};

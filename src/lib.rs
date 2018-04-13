@@ -38,81 +38,37 @@
 //!
 //! What makes this crate useful are the various integrations that exist.  Some
 //! of them are enabled by default, some uncommon ones or for deprecated parts of
-//! the ecosystem a feature flag needs to be enabled.
+//! the ecosystem a feature flag needs to be enabled.  For the available
+//! integrations and how to use them see [integrations](integrations/index.html).
 //!
-//! ## Panic Handler
+//! # Shim Only API
 //!
-//! **Feature:** *always available*
+//! This crate can also be used in "shim only" mode.  This is enabled by disabling all
+//! default features of the crate.  In that mode a minimal API set is retained that
+//! can be used to instrument code for Sentry without actually using Sentry.  The
+//! shim is a small set of APIs that dispatch to the underlying implementations on
+//! the configured Sentry client.  If the client is not there the shim will blackhole
+//! a lot of operations.
 //!
-//! A panic handler can be installed that will automatically dispatch all errors
-//! to Sentry that are caused by a panic:
+//! Only if a user then also uses and configures Sentry this code becomes used.
 //!
-//! ```
-//! use sentry::integrations::panic::register_panic_handler;
-//! register_panic_handler();
-//! ```
-//!
-//! ## Failure
-//!
-//! **Feature:** *enabled by default* (`with_failure`)
-//!
-//! Failure errors and `Fail` objects can be logged with the failure integration.
-//! This works really well if you use the `failure::Error` type or if you have
-//! `failure::Fail` objects that use the failure context internally to gain a
-//! backtrace.
-//!
-//! Example usage:
-//!
-//! ```
-//! # extern crate sentry;
-//! # extern crate failure;
-//! # fn function_that_might_fail() -> Result<(), failure::Error> { Ok(()) }
-//! use sentry::integrations::failure::capture_error;
-//! # fn test() -> Result<(), failure::Error> {
-//! let result = match function_that_might_fail() {
-//!     Ok(result) => result,
-//!     Err(err) => {
-//!         capture_error(&err);
-//!         return Err(err);
-//!     }
-//! };
-//! # Ok(()) }
-//! # fn main() { test().unwrap() }
-//! ```
-//!
-//! To capture fails and not errors use `capture_fail`.
-//!
-//! ## Log
-//!
-//! **Feature:** *enabled by default* (`with_log`)
-//!
-//! The `log` crate is supported in two ways.  First events can be captured as
-//! breadcrumbs for later, secondly error events can be logged as events to
-//! Sentry.  By default anything above `Info` is recorded as breadcrumb and
-//! anything above `Error` is captured as error event.
-//!
-//! However due to how log systems in Rust work this currently requires you to
-//! slightly change your log setup.  This is an example with the pretty
-//! env logger crate:
-//!
-//! ```
-//! # extern crate sentry;
-//! # extern crate pretty_env_logger;
-//! let mut log_builder = pretty_env_logger::formatted_builder().unwrap();
-//! log_builder.parse("info");  // or env::var("RUST_LOG")
-//! sentry::integrations::log::init(Some(
-//!     Box::new(log_builder.build())), Default::default());
-//! ```
+//! In shim mode some types are restricted in functionality.  For instance the `Client` in shim
+//! mode does not retain all API functionality.  To see what the APIs in shim-only
+//! mode look like refer to [the shim only docs](shim/index.html).
 #[warn(missing_docs)]
+#[cfg(feature = "with_client_implementation")]
 extern crate backtrace;
-extern crate futures;
+#[cfg(feature = "with_client_implementation")]
 extern crate im;
+#[allow(unused_imports)]
 #[macro_use]
 extern crate lazy_static;
+#[cfg(feature = "with_client_implementation")]
 extern crate reqwest;
 extern crate sentry_types;
 extern crate serde;
 extern crate serde_json;
+#[cfg(feature = "with_client_implementation")]
 extern crate url;
 extern crate uuid;
 
@@ -144,12 +100,29 @@ extern crate findshlibs;
 mod macros;
 
 mod client;
-mod constants;
-mod transport;
 mod scope;
 mod api;
+
+#[cfg(feature = "with_client_implementation")]
+mod constants;
+#[cfg(feature = "with_client_implementation")]
+mod transport;
+#[cfg(feature = "with_client_implementation")]
 pub mod utils;
+#[cfg(feature = "with_client_implementation")]
 pub mod integrations;
+#[cfg(feature = "with_client_implementation")]
 mod backtrace_support;
+
+/// The shim only API.
+///
+/// This module does not exist normally but it's typically compiled for documentation
+/// purposes so that users can see the API subset trivially that is available for
+/// environments where all features are disabled.
+#[cfg(feature = "with_shim_api")]
+pub mod shim {
+    pub use client::shim::*;
+    pub use scope::shim::*;
+}
 
 pub use api::*;

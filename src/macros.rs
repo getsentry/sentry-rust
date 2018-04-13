@@ -3,6 +3,7 @@
 /// This can be used with `ClientOptions` to set the release name.  It uses
 /// the information supplied by cargo to calculate a release.
 #[macro_export]
+#[cfg(feature = "with_client_implementation")]
 macro_rules! sentry_crate_release {
     () => {{
         use ::std::sync::{Once, ONCE_INIT};
@@ -21,4 +22,26 @@ macro_rules! sentry_crate_release {
             })
         }
     }}
+}
+
+
+macro_rules! with_client_impl {
+    ($body:block) => {
+        #[cfg(feature = "with_client_implementation")]
+        {
+            $body
+        }
+        #[cfg(not(feature = "with_client_implementation"))]
+        {
+            Default::default()
+        }
+    }
+}
+
+#[allow(unused_macros)]
+macro_rules! shim_unreachable {
+    () => {
+        panic!("this code should not be reachable. It's stubbed out for shim usage. \
+                If you get this error this is a bug in the sentry shim");
+    }
 }

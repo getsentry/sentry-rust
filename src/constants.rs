@@ -11,6 +11,7 @@ lazy_static! {
         name: "sentry-rust".into(),
         version: VERSION.into(),
         integrations: {
+            #[allow(unused_mut)]
             let mut rv = vec![];
             #[cfg(feature = "with_failure")] {
                 rv.push("failure".to_string());
