@@ -7,7 +7,7 @@
 //!
 //! # Example
 //!
-//! ```
+//! ```no_run
 //! # extern crate sentry;
 //! # #[macro_use] extern crate error_chain;
 //! # error_chain! {}

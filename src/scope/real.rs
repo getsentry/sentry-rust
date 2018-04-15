@@ -267,7 +267,7 @@ impl Drop for ScopeGuard {
 ///
 /// # Example
 ///
-/// ```rust
+/// ```no_run
 /// {
 ///     let _guard = sentry::push_scope();
 ///     sentry::configure_scope(|scope| {

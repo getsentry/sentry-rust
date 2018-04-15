@@ -9,7 +9,7 @@
 //!
 //! # Example
 //!
-//! ```
+//! ```no_run
 //! # extern crate sentry;
 //! # extern crate failure;
 //! # fn function_that_might_fail() -> Result<(), failure::Error> { Ok(()) }
@@ -31,7 +31,7 @@
 //! For convenience you can also use the tapping feature where an error is logged
 //! but passed through a call.  So the above example can also be written like this:
 //!
-//! ```
+//! ```no_run
 //! # extern crate sentry;
 //! # extern crate failure;
 //! # fn function_that_might_fail() -> Result<(), failure::Error> { Ok(()) }
@@ -167,7 +167,7 @@ where
 /// contained in it with Sentry.  This makes it very convenient to log
 /// an error that is otherwise already handled by the system:
 ///
-/// ```
+/// ```no_run
 /// # extern crate sentry;
 /// # extern crate failure;
 /// # fn function_that_might_fail() -> Result<(), failure::Error> { Ok(()) }
@@ -193,7 +193,7 @@ pub fn tap_error<T>(rv: Result<T, Error>) -> Result<T, Error> {
 /// contained in it with Sentry.  This makes it very convenient to log
 /// an error that is otherwise already handled by the system:
 ///
-/// ```
+/// ```no_run
 /// # use std::fmt;
 /// # extern crate sentry;
 /// # extern crate failure;

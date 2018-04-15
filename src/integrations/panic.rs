@@ -7,7 +7,7 @@
 //!
 //! # Configuration
 //!
-//! ```
+//! ```no_run
 //! use sentry::integrations::panic::register_panic_handler;
 //! register_panic_handler();
 //! ```

@@ -13,7 +13,7 @@
 //! slightly change your log setup.  This is an example with the pretty
 //! env logger crate:
 //!
-//! ```
+//! ```no_run
 //! # extern crate sentry;
 //! # extern crate pretty_env_logger;
 //! let mut log_builder = pretty_env_logger::formatted_builder().unwrap();
