@@ -14,7 +14,7 @@ use protocol::{DebugMeta, Event};
 use transport::Transport;
 use backtrace_support::is_sys_function;
 use utils::{debug_images, server_name, trim_stacktrace};
-use constants::SDK_INFO;
+use constants::{SDK_INFO, USER_AGENT};
 
 /// The Sentry client object.
 ///
@@ -63,6 +63,8 @@ pub struct ClientOptions {
     pub environment: Option<Cow<'static, str>>,
     /// The server name to be reported.
     pub server_name: Option<Cow<'static, str>>,
+    /// The user agent that should be reported.
+    pub user_agent: Cow<'static, str>,
 }
 
 impl Default for ClientOptions {
@@ -80,6 +82,7 @@ impl Default for ClientOptions {
                 "release".into()
             }),
             server_name: server_name().map(Cow::Owned),
+            user_agent: Cow::Borrowed(&USER_AGENT),
         }
     }
 }
@@ -222,7 +225,7 @@ impl Client {
 
     /// Creates a new sentry client for the given DSN.
     pub fn with_dsn_and_options(dsn: Dsn, options: ClientOptions) -> Client {
-        let transport = Transport::new(&dsn);
+        let transport = Transport::new(&dsn, options.user_agent.to_string());
         Client {
             dsn: dsn,
             options: options,

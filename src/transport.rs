@@ -1,12 +1,12 @@
-use std::time::Duration;
+use std::time::{Duration, Instant, SystemTime};
 use std::sync::{Arc, Condvar, Mutex};
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 use std::thread::{self, JoinHandle};
 
-use reqwest::{Client, header::Headers};
+use reqwest::{Client, StatusCode};
+use reqwest::header::{Headers, RetryAfter};
 use uuid::Uuid;
 
-use constants::USER_AGENT;
 use Dsn;
 use protocol::Event;
 
@@ -24,22 +24,51 @@ fn spawn_http_sender(
     dsn: Dsn,
     signal: Arc<Condvar>,
     queue_size: Arc<Mutex<usize>>,
+    user_agent: String,
 ) -> JoinHandle<()> {
     let client = Client::new();
+    let mut disabled: Option<(Instant, RetryAfter)> = None;
+
     thread::spawn(move || {
         let url = dsn.store_api_url().to_string();
-        // TODO: if queue is full this shuts down
+
         while let Some(event) = receiver.recv().unwrap_or(None) {
-            let auth = dsn.to_auth(Some(&USER_AGENT));
+            // while we are disabled due to rate limits, skip
+            match disabled {
+                Some((disabled_at, RetryAfter::Delay(disabled_for))) => {
+                    if disabled_at.elapsed() > disabled_for {
+                        disabled = None;
+                    } else {
+                        continue;
+                    }
+                }
+                Some((_, RetryAfter::DateTime(wait_until))) => {
+                    if SystemTime::from(wait_until) > SystemTime::now() {
+                        disabled = None;
+                    } else {
+                        continue;
+                    }
+                }
+                None => {}
+            }
+
+            let auth = dsn.to_auth(Some(&user_agent));
             let mut headers = Headers::new();
             headers.set_raw("X-Sentry-Auth", auth.to_string());
-            // TODO: what to do with network failures. retry!
-            client
+
+            if let Some(resp) = client
                 .post(url.as_str())
                 .json(&event)
                 .headers(headers)
                 .send()
-                .ok();
+                .ok()
+            {
+                if resp.status() == StatusCode::TooManyRequests {
+                    disabled = resp.headers()
+                        .get::<RetryAfter>()
+                        .map(|x| (Instant::now(), x.clone()));
+                }
+            }
 
             let mut size = queue_size.lock().unwrap();
             *size -= 1;
@@ -52,8 +81,8 @@ fn spawn_http_sender(
 
 impl Transport {
     /// Creates a new client.
-    pub fn new(dsn: &Dsn) -> Transport {
-        let (sender, receiver) = sync_channel(20);
+    pub fn new(dsn: &Dsn, user_agent: String) -> Transport {
+        let (sender, receiver) = sync_channel(30);
         let drain_signal = Arc::new(Condvar::new());
         let queue_size = Arc::new(Mutex::new(0));
         let handle = Some(spawn_http_sender(
@@ -61,6 +90,7 @@ impl Transport {
             dsn.clone(),
             drain_signal.clone(),
             queue_size.clone(),
+            user_agent,
         ));
         Transport {
             sender: Mutex::new(sender),
@@ -76,9 +106,15 @@ impl Transport {
             event.id = Some(Uuid::new_v4());
         }
         let event_id = event.id.unwrap();
-        // ignore the error on shutdown
+
+        // we count up before we put the item on the queue and in case the
+        // queue is filled with too many items or we shut down, we decrement
+        // the count again as there is nobody that can pick it up.
         *self.queue_size.lock().unwrap() += 1;
-        self.sender.lock().unwrap().send(Some(event)).ok();
+        if self.sender.lock().unwrap().try_send(Some(event)).is_err() {
+            *self.queue_size.lock().unwrap() -= 1;
+        }
+
         event_id
     }
 
