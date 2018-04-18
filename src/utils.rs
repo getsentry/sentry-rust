@@ -33,7 +33,12 @@ mod model_support {
                 ptr::null_mut(),
                 0,
             );
-            Some(String::from_utf8_lossy(&buf).to_string())
+            Some(
+                String::from_utf8_lossy(match buf.ends_with(b"\x00") {
+                    true => &buf[..size - 1],
+                    false => &buf,
+                }).to_string(),
+            )
         }
     }
 
