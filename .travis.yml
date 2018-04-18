@@ -21,3 +21,13 @@ matrix:
     - os: linux
       env: SUITE=format-check
       install: rustup component add rustfmt-preview
+
+notifications:
+  webhooks:
+    urls:
+      - https://zeus.ci/hooks/cba2c080-4305-11e8-bbec-0a580a280224/public/provider/travis/webhook
+    on_success: always
+    on_failure: always
+    on_start: always
+    on_cancel: always
+    on_error: always
