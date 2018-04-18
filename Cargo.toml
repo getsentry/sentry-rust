@@ -6,7 +6,7 @@ license = "Apache-2.0"
 readme = "Readme.md"
 repository = "https://github.com/getsentry/sentry-rust"
 homepage = "https://github.com/getsentry/sentry-rust"
-documentation = "https://github.com/getsentry/sentry-rust"
+documentation = "https://docs.rs/sentry"
 description = """
 Sentry (getsentry.com) client for rust ;)
 """
