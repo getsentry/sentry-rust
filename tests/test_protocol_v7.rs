@@ -138,6 +138,21 @@ fn test_message_basics() {
 }
 
 #[test]
+fn test_transaction() {
+    let event = v7::Event {
+        message: Some("Hello World!".to_string()),
+        transaction: Some("bar::foo".to_string()),
+        level: v7::Level::Info,
+        ..Default::default()
+    };
+    assert_roundtrip(&event);
+    assert_eq!(
+        serde_json::to_string(&event).unwrap(),
+        "{\"level\":\"info\",\"transaction\":\"bar::foo\",\"message\":\"Hello World!\"}"
+    );
+}
+
+#[test]
 fn test_logentry_basics() {
     let event = v7::Event {
         logentry: Some(v7::LogEntry {

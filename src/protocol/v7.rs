@@ -662,9 +662,12 @@ pub struct Event<'a> {
     /// An optional fingerprint configuration to override the default.
     #[serde(skip_serializing_if = "is_default_fingerprint")]
     pub fingerprint: Cow<'a, [Cow<'a, str>]>,
-    /// The culprit or transaction name of the event.
+    /// The culprit of the event.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub culprit: Option<String>,
+    /// The transaction name of the event.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub transaction: Option<String>,
     /// A message to be sent with the event.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
@@ -760,6 +763,7 @@ impl<'a> Default for Event<'a> {
             level: Level::Error,
             fingerprint: Cow::Borrowed([Cow::Borrowed("{{ default }}")].as_ref()),
             culprit: None,
+            transaction: None,
             message: None,
             logentry: None,
             logger: None,
@@ -809,6 +813,7 @@ impl<'a> Event<'a> {
                     .collect(),
             ),
             culprit: self.culprit,
+            transaction: self.transaction,
             message: self.message,
             logentry: self.logentry,
             logger: self.logger,
