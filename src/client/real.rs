@@ -278,6 +278,12 @@ impl Client {
                 );
             }
 
+            if event.transaction.is_none() {
+                if let Some(ref txn) = scope.transaction {
+                    event.transaction = Some((**txn).clone());
+                }
+            }
+
             if event.fingerprint.len() == 1
                 && (event.fingerprint[0] == "{{ default }}"
                     || event.fingerprint[0] == "{{default}}")

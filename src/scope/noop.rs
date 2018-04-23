@@ -72,6 +72,11 @@ impl Scope {
         shim_unreachable!();
     }
 
+    pub fn set_transaction(&mut self, transaction: Option<&str>) {
+        let _transaction = transaction;
+        shim_unreachable!();
+    }
+
     pub fn set_user(&mut self, user: Option<User>) {
         let _user = user;
         shim_unreachable!();

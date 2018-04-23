@@ -56,6 +56,7 @@ pub(crate) fn scope_panic_safe() -> bool {
 #[derive(Debug, Clone)]
 pub struct Scope {
     pub(crate) fingerprint: Option<Arc<Vec<Cow<'static, str>>>>,
+    pub(crate) transaction: Option<Arc<String>>,
     pub(crate) breadcrumbs: im::Vector<Breadcrumb>,
     pub(crate) user: Option<Arc<User>>,
     pub(crate) extra: im::HashMap<String, Value>,
@@ -66,6 +67,7 @@ pub struct Scope {
 fn default_scope() -> Scope {
     Scope {
         fingerprint: None,
+        transaction: None,
         breadcrumbs: Default::default(),
         user: None,
         extra: Default::default(),
@@ -320,6 +322,11 @@ impl Scope {
     pub fn set_fingerprint(&mut self, fingerprint: Option<&[&str]>) {
         self.fingerprint =
             fingerprint.map(|fp| Arc::new(fp.iter().map(|x| Cow::Owned(x.to_string())).collect()))
+    }
+
+    /// Sets the transaction.
+    pub fn set_transaction(&mut self, transaction: Option<&str>) {
+        self.transaction = transaction.map(|txn| Arc::new(txn.to_string()));
     }
 
     /// Sets the user for the current scope.
