@@ -227,7 +227,7 @@ impl Client {
         let transport = Transport::new(dsn, options.user_agent.to_string());
         Client {
             options: options,
-            transport: Some(Arc::new(transport))
+            transport: Some(Arc::new(transport)),
         }
     }
 
