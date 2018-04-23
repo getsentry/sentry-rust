@@ -240,8 +240,13 @@ impl Client {
     /// A disabled client can be detected by inspecting the DSN.  If the DSN is `None` then
     /// the client is disabled.
     pub fn disabled() -> Client {
+        Client::disabled_with_options(Default::default())
+    }
+
+    /// Creates a new client that does not send anything with custom options.
+    pub fn disabled_with_options(options: ClientOptions) -> Client {
         Client {
-            options: Default::default(),
+            options: options,
             transport: None,
         }
     }
