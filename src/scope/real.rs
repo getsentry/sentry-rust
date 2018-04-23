@@ -131,9 +131,9 @@ impl Stack {
         self.layers.pop().unwrap();
     }
 
-    pub fn bind_client(&mut self, client: Arc<Client>) {
+    pub fn bind_client(&mut self, client: Option<Arc<Client>>) {
         let depth = self.layers.len() - 1;
-        self.layers[depth].client = Some(client);
+        self.layers[depth].client = client;
     }
 
     pub fn client(&self) -> Option<Arc<Client>> {
@@ -304,7 +304,16 @@ pub fn current_client() -> Option<Arc<Client>> {
 /// process.
 pub fn bind_client(client: Arc<Client>) {
     with_client_impl! {{
-        with_stack_mut(|stack| stack.bind_client(client));
+        with_stack_mut(|stack| stack.bind_client(Some(client)));
+    }}
+}
+
+/// Unbinds the client on the current scope.
+///
+/// This effectively prevents data collection and reporting on the current scope.
+pub fn unbind_client() {
+    with_client_impl! {{
+        with_stack_mut(|stack| stack.bind_client(None));
     }}
 }
 

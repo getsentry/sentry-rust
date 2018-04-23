@@ -13,7 +13,8 @@ pub use sentry_types::protocol::v7::{Level, User};
 pub use client::Client;
 #[cfg(feature = "with_client_implementation")]
 pub use client::{init, ClientInitGuard, ClientOptions, IntoClientConfig};
-pub use scope::{bind_client, current_client, push_scope, with_client_and_scope, Scope, ScopeGuard};
+pub use scope::{bind_client, current_client, push_scope, unbind_client, with_client_and_scope,
+                Scope, ScopeGuard};
 
 /// Captures an event on the currently active client if any.
 ///

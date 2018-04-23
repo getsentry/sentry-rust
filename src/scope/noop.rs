@@ -62,6 +62,11 @@ pub fn bind_client(client: Arc<Client>) {
     shim_unreachable!();
 }
 
+/// Unbinds a client.
+///
+/// In the shim only mode this function doesn't do anything.
+pub fn unbind_client() {}
+
 impl Scope {
     pub fn clear(&mut self) {
         shim_unreachable!();
