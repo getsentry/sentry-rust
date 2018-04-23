@@ -29,15 +29,14 @@ use constants::{SDK_INFO, USER_AGENT};
 /// [the shim client docs](shim/struct.Client.html).
 #[derive(Clone)]
 pub struct Client {
-    dsn: Dsn,
     options: ClientOptions,
-    transport: Arc<Transport>,
+    transport: Option<Arc<Transport>>,
 }
 
 impl fmt::Debug for Client {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Client")
-            .field("dsn", &self.dsn)
+            .field("dsn", &self.dsn())
             .field("options", &self.options)
             .finish()
     }
@@ -225,11 +224,25 @@ impl Client {
 
     /// Creates a new sentry client for the given DSN.
     pub fn with_dsn_and_options(dsn: Dsn, options: ClientOptions) -> Client {
-        let transport = Transport::new(&dsn, options.user_agent.to_string());
+        let transport = Transport::new(dsn, options.user_agent.to_string());
         Client {
-            dsn: dsn,
             options: options,
-            transport: Arc::new(transport),
+            transport: Some(Arc::new(transport))
+        }
+    }
+
+    /// Creates a new client that does not send anything.
+    ///
+    /// This is useful when general sentry handling is wanted but a client cannot be bound
+    /// yet as the DSN might not be available yet.  In that case a disabled client can be
+    /// bound and later replaced by another one.
+    ///
+    /// A disabled client can be detected by inspecting the DSN.  If the DSN is `None` then
+    /// the client is disabled.
+    pub fn disabled() -> Client {
+        Client {
+            options: Default::default(),
+            transport: None,
         }
     }
 
@@ -400,14 +413,20 @@ impl Client {
     }
 
     /// Returns the DSN that constructed this client.
-    pub fn dsn(&self) -> &Dsn {
-        &self.dsn
+    ///
+    /// If the client is in disabled mode this returns `None`.
+    pub fn dsn(&self) -> Option<&Dsn> {
+        self.transport.as_ref().map(|x| x.dsn())
     }
 
     /// Captures an event and sends it to sentry.
     pub fn capture_event(&self, mut event: Event<'static>, scope: Option<&Scope>) -> Uuid {
-        self.prepare_event(&mut event, scope);
-        self.transport.send_event(event)
+        if let Some(ref transport) = self.transport {
+            self.prepare_event(&mut event, scope);
+            transport.send_event(event)
+        } else {
+            Default::default()
+        }
     }
 
     /// Drains all pending events up to the current time.
@@ -416,7 +435,11 @@ impl Client {
     /// given time or `false` if not (for instance because of a timeout).
     /// If no timeout is provided the client will wait forever.
     pub fn drain_events(&self, timeout: Option<Duration>) -> bool {
-        self.transport.drain(timeout)
+        if let Some(ref transport) = self.transport {
+            transport.drain(timeout)
+        } else {
+            true
+        }
     }
 }
 

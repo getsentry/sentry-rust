@@ -13,6 +13,7 @@ use protocol::Event;
 /// A transport can send rust events.
 #[derive(Debug)]
 pub struct Transport {
+    dsn: Dsn,
     sender: Mutex<SyncSender<Option<Event<'static>>>>,
     drain_signal: Arc<Condvar>,
     queue_size: Arc<Mutex<usize>>,
@@ -81,7 +82,7 @@ fn spawn_http_sender(
 
 impl Transport {
     /// Creates a new client.
-    pub fn new(dsn: &Dsn, user_agent: String) -> Transport {
+    pub fn new(dsn: Dsn, user_agent: String) -> Transport {
         let (sender, receiver) = sync_channel(30);
         let drain_signal = Arc::new(Condvar::new());
         let queue_size = Arc::new(Mutex::new(0));
@@ -93,6 +94,7 @@ impl Transport {
             user_agent,
         ));
         Transport {
+            dsn: dsn,
             sender: Mutex::new(sender),
             drain_signal: drain_signal,
             queue_size: queue_size,
@@ -116,6 +118,11 @@ impl Transport {
         }
 
         event_id
+    }
+
+    /// Returns the dsn of the transport
+    pub fn dsn(&self) -> &Dsn {
+        &self.dsn
     }
 
     /// Drains remaining messages in the transport.
