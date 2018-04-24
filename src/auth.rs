@@ -36,7 +36,9 @@ pub struct Auth {
 
 impl Auth {
     /// Creates an auth header from key value pairs.
-    pub fn from_pairs<'a, 'b, I: Iterator<Item=(&'a str, &'b str)>>(pairs: I) -> Result<Auth, AuthParseError> {
+    pub fn from_pairs<'a, 'b, I: Iterator<Item = (&'a str, &'b str)>>(
+        pairs: I,
+    ) -> Result<Auth, AuthParseError> {
         let mut rv = Auth {
             timestamp: None,
             client: None,
@@ -51,7 +53,8 @@ impl Auth {
             }
             match key {
                 "timestamp" => {
-                    rv.timestamp = Some(value.parse().map_err(|_| AuthParseError::InvalidTimestamp)?);
+                    rv.timestamp =
+                        Some(value.parse().map_err(|_| AuthParseError::InvalidTimestamp)?);
                 }
                 "client" => {
                     rv.client = Some(value.into());
