@@ -638,6 +638,7 @@ pub struct RepoReference {
 
 /// Represents a repository reference.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde(default)]
 pub struct ClientSdkInfo {
     /// The name of the SDK.
     pub name: String,
