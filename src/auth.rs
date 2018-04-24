@@ -19,9 +19,6 @@ pub enum AuthParseError {
     /// Raised if the version value is invalid
     #[fail(display = "invalid value for version")]
     InvalidVersion,
-    /// Raised if the version is missing entirely
-    #[fail(display = "no valid version defined")]
-    MissingVersion,
     /// Raised if the public key is missing entirely
     #[fail(display = "missing public key in auth header")]
     MissingPublicKey,
@@ -38,6 +35,47 @@ pub struct Auth {
 }
 
 impl Auth {
+    /// Creates an auth header from key value pairs.
+    pub fn from_pairs<'a, 'b, I: Iterator<Item=(&'a str, &'b str)>>(pairs: I) -> Result<Auth, AuthParseError> {
+        let mut rv = Auth {
+            timestamp: None,
+            client: None,
+            version: protocol::LATEST,
+            key: "".into(),
+            secret: None,
+        };
+
+        for (mut key, value) in pairs {
+            if key.starts_with("sentry_") {
+                key = &key[7..];
+            }
+            match key {
+                "timestamp" => {
+                    rv.timestamp = Some(value.parse().map_err(|_| AuthParseError::InvalidTimestamp)?);
+                }
+                "client" => {
+                    rv.client = Some(value.into());
+                }
+                "version" => {
+                    rv.version = value.parse().map_err(|_| AuthParseError::InvalidVersion)?;
+                }
+                "key" => {
+                    rv.key = value.into();
+                }
+                "secret" => {
+                    rv.secret = Some(value.into());
+                }
+                _ => {}
+            }
+        }
+
+        if rv.key.is_empty() {
+            return Err(AuthParseError::MissingPublicKey);
+        }
+
+        Ok(rv)
+    }
+
     /// Returns the unix timestamp the client defined
     pub fn timestamp(&self) -> Option<DateTime<Utc>> {
         self.timestamp
@@ -134,9 +172,6 @@ impl FromStr for Auth {
 
         if rv.key.is_empty() {
             return Err(AuthParseError::MissingPublicKey);
-        }
-        if rv.version == 0 {
-            return Err(AuthParseError::MissingVersion);
         }
 
         Ok(rv)
