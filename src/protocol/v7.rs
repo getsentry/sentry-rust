@@ -638,14 +638,13 @@ pub struct RepoReference {
 
 /// Represents a repository reference.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[serde(default)]
 pub struct ClientSdkInfo {
     /// The name of the SDK.
     pub name: String,
     /// The version of the SDK.
     pub version: String,
     /// An optional list of integrations that are enabled in this SDK.
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(skip_serializing_if = "Vec::is_empty", default = "Vec::new")]
     pub integrations: Vec<String>,
 }
 
