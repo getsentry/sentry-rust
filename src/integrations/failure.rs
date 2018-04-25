@@ -105,7 +105,7 @@ fn parse_stacktrace(bt: &str) -> Option<Stacktrace> {
     Stacktrace::from_frames_reversed(frames)
 }
 
-fn single_fail_to_exception(f: &Fail, bt: Option<&failure::Backtrace>) -> Exception {
+fn single_fail_to_exception<F: Fail + ?Sized>(f: &F, bt: Option<&failure::Backtrace>) -> Exception {
     Exception {
         ty: error_typename(f),
         value: Some(f.to_string()),
@@ -135,12 +135,13 @@ pub fn event_from_error(err: &failure::Error) -> Event<'static> {
 }
 
 /// Helper function to create an event from a `failure::Fail`.
-pub fn event_from_fail<F: Fail>(fail: &F) -> Event<'static> {
+pub fn event_from_fail<F: Fail + ?Sized>(fail: &F) -> Event<'static> {
     let mut exceptions = vec![single_fail_to_exception(fail, fail.backtrace())];
-    let mut node = fail as &Fail;
-    while let Some(cause) = Fail::cause(node) {
+
+    let mut ptr: Option<&Fail> = None;
+    while let Some(cause) = ptr.map(Fail::cause).unwrap_or_else(|| fail.cause()) {
         exceptions.push(single_fail_to_exception(cause, cause.backtrace()));
-        node = cause;
+        ptr = Some(cause);
     }
 
     Event {
@@ -156,7 +157,7 @@ pub fn capture_error(err: &Error) -> Uuid {
 }
 
 /// Captures a `failure::Fail`.
-pub fn capture_fail<F: Fail>(fail: &F) -> Uuid {
+pub fn capture_fail<F: Fail + ?Sized>(fail: &F) -> Uuid {
     with_client_and_scope(|client, scope| client.capture_event(event_from_fail(fail), Some(scope)))
 }
 
