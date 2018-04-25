@@ -87,7 +87,15 @@ impl Default for ClientOptions {
 }
 
 lazy_static! {
-    static ref CRATE_RE: Regex = Regex::new(r"^([a-zA-Z0-9_]+?)::").unwrap();
+    static ref CRATE_RE: Regex = Regex::new(r"^(?:_<)?([a-zA-Z0-9_]+?)(?:\.\.|::)").unwrap();
+}
+
+/// Tries to parse the rust crate from a function name.
+fn parse_crate_name(func_name: &str) -> Option<String> {
+    CRATE_RE
+        .captures(func_name)
+        .and_then(|caps| caps.get(1))
+        .map(|cr| cr.as_str().into())
 }
 
 /// Helper trait to convert an object into a client config
@@ -356,10 +364,7 @@ impl Client {
 
                     // set package if missing to crate prefix
                     if frame.package.is_none() {
-                        frame.package = CRATE_RE
-                            .captures(func_name)
-                            .and_then(|caps| caps.get(1))
-                            .map(|cr| cr.as_str().into());
+                        frame.package = parse_crate_name(func_name);
                     }
 
                     match frame.in_app {
@@ -498,4 +503,33 @@ pub fn init<C: IntoClientConfig>(cfg: C) -> ClientInitGuard {
         bind_client(client.clone());
         client
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_crate_name() {
+        assert_eq!(
+            parse_crate_name("futures::task_impl::std::set"),
+            Some("futures".into())
+        );
+    }
+
+    #[test]
+    fn test_parse_crate_name_impl() {
+        assert_eq!(
+            parse_crate_name("_<futures..task_impl..Spawn<T>>::enter::_{{closure}}"),
+            Some("futures".into())
+        );
+    }
+
+    #[test]
+    fn test_parse_crate_name_unknown() {
+        assert_eq!(
+            parse_crate_name("_<F as alloc..boxed..FnBox<A>>::call_box"),
+            None
+        );
+    }
 }
