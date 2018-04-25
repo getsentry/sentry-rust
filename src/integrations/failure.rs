@@ -135,14 +135,16 @@ pub fn event_from_error(err: &failure::Error) -> Event<'static> {
 }
 
 /// Helper function to create an event from a `failure::Fail`.
-pub fn event_from_fail<F>(fail: &F) -> Event<'static>
-where
-    F: Fail + Sized,
-{
+pub fn event_from_fail<F: Fail>(fail: &F) -> Event<'static> {
+    let mut exceptions = vec![single_fail_to_exception(fail, fail.backtrace())];
+    let mut node = fail as &Fail;
+    while let Some(cause) = Fail::cause(node) {
+        exceptions.push(single_fail_to_exception(cause, cause.backtrace()));
+        node = cause;
+    }
+
     Event {
-        exceptions: failure::Fail::causes(fail)
-            .map(|cause| single_fail_to_exception(cause, cause.backtrace()))
-            .collect(),
+        exceptions: exceptions,
         level: Level::Error,
         ..Default::default()
     }
@@ -154,10 +156,7 @@ pub fn capture_error(err: &Error) -> Uuid {
 }
 
 /// Captures a `failure::Fail`.
-pub fn capture_fail<F>(fail: &F) -> Uuid
-where
-    F: Fail + Sized,
-{
+pub fn capture_fail<F: Fail>(fail: &F) -> Uuid {
     with_client_and_scope(|client, scope| client.capture_event(event_from_fail(fail), Some(scope)))
 }
 
@@ -207,10 +206,7 @@ pub fn tap_error<T>(rv: Result<T, Error>) -> Result<T, Error> {
 /// # Ok(()) }
 /// # fn main() { test().unwrap() }
 /// ```
-pub fn tap_fail<T, F>(rv: Result<T, F>) -> Result<T, F>
-where
-    F: Fail + Sized,
-{
+pub fn tap_fail<T, F: Fail>(rv: Result<T, F>) -> Result<T, F> {
     match rv {
         Ok(value) => Ok(value),
         Err(error) => {
