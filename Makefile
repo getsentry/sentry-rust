@@ -1,7 +1,7 @@
 all: test
 
 build:
-	@cargo build --all
+	@cargo build --all-features
 
 doc:
 	@cargo doc
@@ -9,7 +9,7 @@ doc:
 test: cargotest
 
 cargotest:
-	@cargo test --all
+	@cargo test --all-features
 
 format-check:
 	@cargo fmt -- --write-mode diff

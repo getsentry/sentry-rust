@@ -1,3 +1,5 @@
+#[allow(unused_imports)]
+use std::ascii::AsciiExt;
 use std::fmt;
 use std::str::FromStr;
 

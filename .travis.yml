@@ -11,9 +11,10 @@ script: make $SUITE
 matrix:
   include:
     - os: linux
-      sudo: required
       env: SUITE=test
-      install: cargo build --all
+    - os: linux
+      env: SUITE=test
+      rust: "1.19.0"
     - os: linux
       env: SUITE=format-check
       install: rustup component add rustfmt-preview

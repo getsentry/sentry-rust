@@ -758,10 +758,13 @@ fn is_default_fingerprint<'a>(fp: &Cow<'a, [Cow<'a, str>]>) -> bool {
 
 impl<'a> Default for Event<'a> {
     fn default() -> Event<'a> {
+        static DEFAULT_FINGERPRINT: &'static [Cow<'static, str>] =
+            &[Cow::Borrowed("{{ default }}")];
+
         Event {
             id: None,
             level: Level::Error,
-            fingerprint: Cow::Borrowed([Cow::Borrowed("{{ default }}")].as_ref()),
+            fingerprint: Cow::Borrowed(DEFAULT_FINGERPRINT),
             culprit: None,
             transaction: None,
             message: None,
@@ -1097,8 +1100,8 @@ where
         extra: Map<String, Value>,
     }
 
-    for (key, mut raw_context) in raw {
-        let (ty, mut data) = match raw_context {
+    for (key, raw_context) in raw {
+        let (ty, data) = match raw_context {
             Value::Object(mut map) => {
                 let has_type = if let Some(&Value::String(..)) = map.get("type") {
                     true
