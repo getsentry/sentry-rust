@@ -1,8 +1,12 @@
 all: test
 .PHONY: all
 
+clean:
+	@cargo clean
+.PHONY: clean
+
 build:
-	@cargo build --all
+	@cargo build
 .PHONY: build
 
 doc:
@@ -49,15 +53,23 @@ check-all-impls:
 	@RUSTFLAGS=-Dwarnings cargo check --no-default-features --features 'with_failure,with_log,with_panic,with_error_chain'
 .PHONY: check-all-impls
 
+check: check-no-default-features check-default-features
+.PHONY: check-all-features
+
 checkall: check-all-features check-no-default-features check-default-features check-failure check-log check-panic check-error-chain check-all-impls
 .PHONY: checkall
 
 cargotest:
 	@echo 'TESTSUITE'
-	@cargo test --all --all-features
+	@cargo test
 .PHONY: cargotest
 
-test: checkall cargotest
+cargotestall:
+	@echo 'TESTSUITE'
+	@cargo test --all-features
+.PHONY: cargotest
+
+test: checkall cargotestall
 .PHONY: test
 
 format-check:

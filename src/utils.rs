@@ -1,8 +1,5 @@
 //! Useful utilities for working with events.
-use uuid::Uuid;
-
 use api::protocol::{Context, DebugImage, DeviceContext, OsContext, RuntimeContext};
-use api::protocol::debugid::DebugId;
 
 #[cfg(all(feature = "with_device_info", target_os = "macos"))]
 mod model_support {
@@ -66,8 +63,10 @@ mod model_support {
 mod findshlibs_support {
     use super::*;
     use api::protocol::SymbolicDebugImage;
+    use api::protocol::debugid::DebugId;
     use findshlibs::{Segment, SharedLibrary, SharedLibraryId, TargetSharedLibrary,
                      TARGET_SUPPORTED};
+    use uuid::Uuid;
 
     pub fn find_shlibs() -> Option<Vec<DebugImage>> {
         if !TARGET_SUPPORTED {

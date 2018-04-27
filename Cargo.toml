@@ -16,7 +16,7 @@ build = "build.rs"
 all-features = true
 
 [features]
-default = ["with_client_implementation", "with_panic", "with_failure", "with_log", "with_device_info", "with_rust_info", "with_debug_meta"]
+default = ["with_client_implementation", "with_panic", "with_failure", "with_log", "with_device_info", "with_rust_info"]
 with_client_implementation = ["reqwest", "im", "url", "with_backtrace"]
 with_backtrace = ["backtrace", "regex"]
 with_panic = ["with_backtrace"]
@@ -35,7 +35,7 @@ failure = { version = "0.1.1", optional = true }
 log = { version = "0.4.1", optional = true }
 serde = "1.0.43"
 serde_json = "1.0.16"
-sentry-types = "0.3.2"
+sentry-types = "0.3.3"
 reqwest = { version = "0.8.5", optional = true }
 uuid = { version = "0.6.3", features = ["v4"] }
 lazy_static = "1.0.0"
