@@ -12,6 +12,12 @@ matrix:
   include:
     - os: linux
       env: SUITE=checkall
+      rust: "1.19.0"
+    - os: linux
+      env: SUITE=cargotest
+      rust: "1.19.0"
+    - os: linux
+      env: SUITE=checkall
     - os: linux
       env: SUITE=cargotest
     - os: osx
