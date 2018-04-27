@@ -11,19 +11,19 @@ script: make $SUITE
 matrix:
   include:
     - os: linux
-      env: SUITE=checkall
-      rust: "1.19.0"
+      env: SUITE=check
+      rust: "1.21.0"
     - os: linux
       env: SUITE=cargotest
-      rust: "1.19.0"
+      rust: "1.21.0"
     - os: linux
       env: SUITE=checkall
     - os: linux
-      env: SUITE=cargotest
+      env: SUITE=cargotestall
     - os: osx
       env: SUITE=checkall
     - os: osx
-      env: SUITE=cargotest
+      env: SUITE=cargotestall
     - os: linux
       env: SUITE=format-check
       install: rustup component add rustfmt-preview

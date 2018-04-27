@@ -47,7 +47,7 @@ lazy_static!{
         rv
     };
     pub static ref SECONDARY_BORDER_FRAMES: Vec<(&'static str, &'static str)> = {
-        #[allow(unused_mut)]
+        #![allow(unused_mut)]
         let mut rv = Vec::new();
         #[cfg(feature = "with_error_chain")] {
             rv.push(("error_chain::make_backtrace", "_<T as core..convert..Into<U>>::into"));
