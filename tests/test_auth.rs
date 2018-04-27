@@ -1,5 +1,7 @@
 extern crate chrono;
 extern crate sentry_types;
+extern crate serde_json;
+
 use std::collections::HashMap;
 use chrono::{TimeZone, Utc};
 use sentry_types::{protocol, Auth, Dsn};
@@ -40,10 +42,11 @@ fn test_auth_from_iterator() {
     cont.insert("sentry_key", "4bb5d94de752a36b8b87851a3f82726a");
 
     let auth = Auth::from_pairs(cont.into_iter()).unwrap();
-    assert_eq!(auth.timestamp(), None,);
+    assert_eq!(auth.timestamp(), None);
     assert_eq!(auth.client_agent(), Some("raven-js/3.23.3"));
     assert_eq!(auth.version(), 7);
     assert_eq!(auth.public_key(), "4bb5d94de752a36b8b87851a3f82726a");
+    assert_eq!(auth.secret_key(), None);
 
     let mut cont = HashMap::new();
     cont.insert("version", "7");
@@ -55,10 +58,11 @@ fn test_auth_from_iterator() {
     assert_eq!(auth.client_agent(), Some("raven-js/3.23.3"));
     assert_eq!(auth.version(), 7);
     assert_eq!(auth.public_key(), "4bb5d94de752a36b8b87851a3f82726a");
+    assert_eq!(auth.secret_key(), None);
 }
 
 #[test]
-fn auth_to_dsn() {
+fn test_auth_to_dsn() {
     let url = "https://username:password@domain:8888/23";
     let dsn = url.parse::<Dsn>().unwrap();
     let auth = dsn.to_auth(Some("sentry-rust/1.0"));
@@ -66,4 +70,30 @@ fn auth_to_dsn() {
     assert_eq!(auth.version(), protocol::LATEST);
     assert_eq!(auth.public_key(), "username");
     assert_eq!(auth.secret_key(), Some("password"));
+}
+
+#[test]
+fn test_auth_to_json() {
+    let mut cont = HashMap::new();
+    cont.insert("sentry_version", "7");
+    cont.insert("sentry_client", "raven-js/3.23.3");
+    cont.insert("sentry_key", "4bb5d94de752a36b8b87851a3f82726a");
+
+    let auth = Auth::from_pairs(cont.into_iter()).unwrap();
+    assert_eq!(
+        serde_json::to_string(&auth).expect("could not serialize").as_str(),
+        "{\"sentry_client\":\"raven-js/3.23.3\",\"sentry_version\":7,\"sentry_key\":\"4bb5d94de752a36b8b87851a3f82726a\",\"sentry_secret\":null}"
+    );
+}
+
+#[test]
+fn test_auth_from_json() {
+    let json = "{\"sentry_client\":\"raven-js/3.23.3\",\"sentry_version\":7,\"sentry_key\":\"4bb5d94de752a36b8b87851a3f82726a\"}";
+    let auth: Auth = serde_json::from_str(json).expect("could not deserialize");
+
+    assert_eq!(auth.timestamp(), None);
+    assert_eq!(auth.client_agent(), Some("raven-js/3.23.3"));
+    assert_eq!(auth.version(), 7);
+    assert_eq!(auth.public_key(), "4bb5d94de752a36b8b87851a3f82726a");
+    assert_eq!(auth.secret_key(), None);
 }

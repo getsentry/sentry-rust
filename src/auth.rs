@@ -8,7 +8,7 @@ use protocol;
 use utils::{datetime_to_timestamp, timestamp_to_datetime};
 
 /// Represents an auth header parsing error.
-#[derive(Debug, Fail)]
+#[derive(Debug, Fail, Copy, Clone, Eq, PartialEq)]
 pub enum AuthParseError {
     /// Raised if the auth header is not indicating sentry auth
     #[fail(display = "non sentry auth")]
@@ -25,12 +25,17 @@ pub enum AuthParseError {
 }
 
 /// Represents an auth header.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Auth {
+    #[serde(skip)]
     timestamp: Option<DateTime<Utc>>,
+    #[serde(rename = "sentry_client")]
     client: Option<String>,
+    #[serde(rename = "sentry_version")]
     version: u16,
+    #[serde(rename = "sentry_key")]
     key: String,
+    #[serde(rename = "sentry_secret")]
     secret: Option<String>,
 }
 
