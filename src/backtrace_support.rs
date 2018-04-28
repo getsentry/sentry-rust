@@ -4,6 +4,7 @@ use regex::{Captures, Regex};
 use backtrace::Backtrace;
 
 use api::protocol::{FileLocation, Frame, InstructionInfo, Stacktrace};
+use utils::function_starts_with;
 
 lazy_static!{
     static ref HASH_FUNC_RE: Regex = Regex::new(r#"(?x)
@@ -204,5 +205,5 @@ where
 /// Checks if a function is considered to be not in-app
 #[allow(unused)]
 pub fn is_sys_function(func: &str) -> bool {
-    WELL_KNOWN_SYS_MODULES.iter().any(|m| func.starts_with(m))
+    WELL_KNOWN_SYS_MODULES.iter().any(|m| function_starts_with(func, m))
 }
