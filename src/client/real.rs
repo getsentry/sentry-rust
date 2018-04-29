@@ -12,8 +12,8 @@ use api::Dsn;
 use scope::{bind_client, Scope};
 use protocol::{DebugMeta, Event};
 use transport::Transport;
-use backtrace_support::is_sys_function;
-use utils::{debug_images, function_starts_with, server_name, trim_stacktrace};
+use backtrace_support::{function_starts_with, is_sys_function};
+use utils::{debug_images, server_name, trim_stacktrace};
 use constants::{SDK_INFO, USER_AGENT};
 
 /// The Sentry client object.
