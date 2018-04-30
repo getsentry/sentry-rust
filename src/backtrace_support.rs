@@ -204,5 +204,57 @@ where
 /// Checks if a function is considered to be not in-app
 #[allow(unused)]
 pub fn is_sys_function(func: &str) -> bool {
-    WELL_KNOWN_SYS_MODULES.iter().any(|m| func.starts_with(m))
+    WELL_KNOWN_SYS_MODULES
+        .iter()
+        .any(|m| function_starts_with(func, m))
+}
+
+/// Checks whether the function name starts with the given pattern.
+///
+/// In trait implementations, the original type name is wrapped in "_< ... >" and colons are
+/// replaced with dots. This function accounts for differences while checking.
+pub fn function_starts_with(mut func_name: &str, pattern: &str) -> bool {
+    if func_name.starts_with("_<") {
+        func_name = &func_name[2..];
+    }
+
+    if !func_name.is_char_boundary(pattern.len()) {
+        return false;
+    }
+
+    func_name
+        .chars()
+        .zip(pattern.chars())
+        .all(|(f, p)| f == p || f == '.' && p == ':')
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_function_starts_with() {
+        assert!(function_starts_with(
+            "futures::task_impl::std::set",
+            "futures::"
+        ));
+
+        assert!(!function_starts_with(
+            "futures::task_impl::std::set",
+            "tokio::"
+        ));
+    }
+
+    #[test]
+    fn test_function_starts_with_impl() {
+        assert!(function_starts_with(
+            "_<futures..task_impl..Spawn<T>>::enter::_{{closure}}",
+            "futures::"
+        ));
+
+        assert!(!function_starts_with(
+            "_<futures..task_impl..Spawn<T>>::enter::_{{closure}}",
+            "tokio::"
+        ));
+    }
 }

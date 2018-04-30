@@ -12,7 +12,7 @@ use api::Dsn;
 use scope::{bind_client, Scope};
 use protocol::{DebugMeta, Event};
 use transport::Transport;
-use backtrace_support::is_sys_function;
+use backtrace_support::{function_starts_with, is_sys_function};
 use utils::{debug_images, server_name, trim_stacktrace};
 use constants::{SDK_INFO, USER_AGENT};
 
@@ -379,7 +379,7 @@ impl Client {
                     }
 
                     for m in &self.options.in_app_exclude {
-                        if func_name.starts_with(m) {
+                        if function_starts_with(func_name, m) {
                             frame.in_app = Some(false);
                             break;
                         }
@@ -390,7 +390,7 @@ impl Client {
                     }
 
                     for m in &self.options.in_app_include {
-                        if func_name.starts_with(m) {
+                        if function_starts_with(func_name, m) {
                             frame.in_app = Some(true);
                             any_in_app = true;
                             break;
