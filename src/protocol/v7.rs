@@ -845,6 +845,19 @@ impl<'a> Event<'a> {
     }
 }
 
+impl<'a> fmt::Display for Event<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.id {
+            Some(ref id) => write!(f, "Event(id: {}", id)?,
+            None => write!(f, "Event(id: missing")?,
+        }
+        if let Some(ref ts) = self.timestamp {
+            write!(f, ", ts: {}", ts)?;
+        }
+        write!(f, ")")
+    }
+}
+
 /// Optional device screen orientation
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 #[serde(rename_all = "lowercase")]

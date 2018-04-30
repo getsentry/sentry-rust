@@ -77,6 +77,22 @@ fn test_basic_event() {
 }
 
 #[test]
+fn test_event_to_string() {
+    let event = v7::Event {
+        id: "d43e86c9-6e42-4a93-a4fb-da156dd17341".parse().ok(),
+        ..Default::default()
+    };
+    assert_eq!(event.to_string(), "Event(id: d43e86c9-6e42-4a93-a4fb-da156dd17341)");
+
+    let event = v7::Event {
+        id: "d43e86c9-6e42-4a93-a4fb-da156dd17341".parse().ok(),
+        timestamp: Some(Utc.ymd(2017, 12, 24).and_hms(8, 12, 0)),
+        ..Default::default()
+    };
+    assert_eq!(event.to_string(), "Event(id: d43e86c9-6e42-4a93-a4fb-da156dd17341, ts: 2017-12-24 08:12:00 UTC)");
+}
+
+#[test]
 fn test_release_and_dist() {
     let event = v7::Event {
         dist: Some("42".into()),
