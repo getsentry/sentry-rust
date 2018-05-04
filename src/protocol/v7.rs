@@ -5,8 +5,9 @@
 //! a future sentry protocol will be a cleanup of the old one and is mapped
 //! to similar values on the rust side.
 use std::borrow::Cow;
+use std::cmp;
 use std::fmt;
-use std::net::IpAddr;
+use std::net::{AddrParseError, IpAddr};
 use std::num::ParseIntError;
 use std::str;
 
@@ -444,6 +445,79 @@ impl Default for Breadcrumb {
     }
 }
 
+/// An IP address, either IPv4, IPv6 or Auto.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash)]
+pub enum IpAddress {
+    /// The IP address needs to be infered from the user's context.
+    Auto,
+    /// The exact given IP address (v4 or v6).
+    Exact(IpAddr),
+}
+
+impl PartialEq<IpAddr> for IpAddress {
+    fn eq(&self, other: &IpAddr) -> bool {
+        match *self {
+            IpAddress::Auto => false,
+            IpAddress::Exact(ref addr) => addr == other,
+        }
+    }
+}
+
+impl cmp::PartialOrd<IpAddr> for IpAddress {
+    fn partial_cmp(&self, other: &IpAddr) -> Option<cmp::Ordering> {
+        match *self {
+            IpAddress::Auto => None,
+            IpAddress::Exact(ref addr) => addr.partial_cmp(other),
+        }
+    }
+}
+
+impl Default for IpAddress {
+    fn default() -> IpAddress {
+        IpAddress::Auto
+    }
+}
+
+impl fmt::Display for IpAddress {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            IpAddress::Auto => write!(f, "{{{{auto}}}}"),
+            IpAddress::Exact(ref addr) => write!(f, "{}", addr),
+        }
+    }
+}
+
+impl From<IpAddr> for IpAddress {
+    fn from(addr: IpAddr) -> IpAddress {
+        IpAddress::Exact(addr)
+    }
+}
+
+impl str::FromStr for IpAddress {
+    type Err = AddrParseError;
+
+    fn from_str(string: &str) -> Result<IpAddress, AddrParseError> {
+        match string {
+            "{{auto}}" => Ok(IpAddress::Auto),
+            other => other.parse().map(IpAddress::Exact),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for IpAddress {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<IpAddress, D::Error> {
+        String::deserialize(deserializer)?
+            .parse()
+            .map_err(DeError::custom)
+    }
+}
+
+impl Serialize for IpAddress {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
 /// Represents user info.
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 #[serde(default)]
@@ -456,7 +530,7 @@ pub struct User {
     pub email: Option<String>,
     /// The remote ip address of the user.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub ip_address: Option<IpAddr>,
+    pub ip_address: Option<IpAddress>,
     /// A human readable username of the user.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub username: Option<String>,
@@ -541,7 +615,7 @@ impl DebugImage {
 }
 
 macro_rules! into_debug_image {
-    ($kind:ident, $ty:ty) => {
+    ($kind: ident, $ty: ty) => {
         impl From<$ty> for DebugImage {
             fn from(data: $ty) -> DebugImage {
                 DebugImage::$kind(data)
@@ -1037,7 +1111,7 @@ impl From<ContextData> for Context {
 }
 
 macro_rules! into_context {
-    ($kind:ident, $ty:ty) => {
+    ($kind: ident, $ty: ty) => {
         impl From<$ty> for ContextData {
             fn from(data: $ty) -> ContextData {
                 ContextData::$kind(data)
@@ -1134,7 +1208,7 @@ where
         };
 
         macro_rules! convert_context {
-            ($enum:path, $ty:ident) => {{
+            ($enum: path, $ty: ident) => {{
                 let helper = from_value::<Helper<$ty>>(data).map_err(D::Error::custom)?;
                 ($enum(helper.data), helper.extra)
             }};

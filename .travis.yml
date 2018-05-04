@@ -14,7 +14,7 @@ matrix:
       env: SUITE=test
     - os: linux
       env: SUITE=test
-      rust: "1.19.0"
+      rust: "1.21.0"
     - os: linux
       env: SUITE=format-check
       install: rustup component add rustfmt-preview

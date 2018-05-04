@@ -82,14 +82,20 @@ fn test_event_to_string() {
         id: "d43e86c9-6e42-4a93-a4fb-da156dd17341".parse().ok(),
         ..Default::default()
     };
-    assert_eq!(event.to_string(), "Event(id: d43e86c9-6e42-4a93-a4fb-da156dd17341)");
+    assert_eq!(
+        event.to_string(),
+        "Event(id: d43e86c9-6e42-4a93-a4fb-da156dd17341)"
+    );
 
     let event = v7::Event {
         id: "d43e86c9-6e42-4a93-a4fb-da156dd17341".parse().ok(),
         timestamp: Some(Utc.ymd(2017, 12, 24).and_hms(8, 12, 0)),
         ..Default::default()
     };
-    assert_eq!(event.to_string(), "Event(id: d43e86c9-6e42-4a93-a4fb-da156dd17341, ts: 2017-12-24 08:12:00 UTC)");
+    assert_eq!(
+        event.to_string(),
+        "Event(id: d43e86c9-6e42-4a93-a4fb-da156dd17341, ts: 2017-12-24 08:12:00 UTC)"
+    );
 }
 
 #[test]
@@ -307,6 +313,23 @@ fn test_user() {
     assert_eq!(
         serde_json::to_string(&event).unwrap(),
         "{\"user\":{\"id\":\"8fd5a33b-5b0e-45b2-aff2-9e4f067756ba\"}}"
+    );
+}
+
+#[test]
+fn test_ip_address_auto() {
+    let event = v7::Event {
+        user: Some(v7::User {
+            ip_address: Some(v7::IpAddress::Auto),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+
+    assert_roundtrip(&event);
+    assert_eq!(
+        serde_json::to_string(&event).unwrap(),
+        "{\"user\":{\"ip_address\":\"{{auto}}\"}}"
     );
 }
 
