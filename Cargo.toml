@@ -59,3 +59,15 @@ pretty_env_logger = "0.2.2"
 [[example]]
 name = "error-chain-demo"
 required-features = ["with_error_chain"]
+
+# TODO: Remove these once autoexamples are stable
+[[example]]
+name = "failure-demo"
+[[example]]
+name = "log-demo"
+[[example]]
+name = "message-demo"
+[[example]]
+name = "panic-demo"
+[[example]]
+name = "thread-demo"
