@@ -36,6 +36,8 @@
 //! };
 //! ```
 #![warn(missing_docs)]
+#![cfg_attr(feature = "cargo-clippy", allow(cast_lossless))]
+
 extern crate chrono;
 extern crate debugid;
 extern crate failure;

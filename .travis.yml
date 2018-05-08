@@ -1,3 +1,4 @@
+os: linux
 language: rust
 cache:
   cargo: true
@@ -10,14 +11,14 @@ script: make $SUITE
 
 matrix:
   include:
-    - os: linux
-      env: SUITE=test
-    - os: linux
-      env: SUITE=test
+    - env: SUITE=test
+    - env: SUITE=test
       rust: "1.21.0"
-    - os: linux
-      env: SUITE=format-check
+    - env: SUITE=format-check
       install: rustup component add rustfmt-preview
+    - env: SUITE=lint
+      rust: nightly
+      install: cargo install clippy || echo "clippy already installed"
 
 notifications:
   webhooks:

@@ -26,11 +26,11 @@ travis-ci = { repository = "getsentry/rust-sentry-types" }
 failure = "0.1.1"
 failure_derive = "0.1.1"
 url = "1.7.0"
-serde = { version = "1.0.45", optional = true }
-serde_derive = { version = "1.0.45", optional = true }
+serde = { version = "1.0.50", optional = true }
+serde_derive = { version = "1.0.50", optional = true }
 serde_json = { version = "1.0.17", features = ["preserve_order"], optional = true }
 url_serde = { version = "0.2.0", optional = true }
 chrono = "0.4.2"
 uuid = { version = "0.6.3", features = ["v4"] }
 linked-hash-map = "0.5.1"
-debugid = "0.1.1"
+debugid = "0.2.0"

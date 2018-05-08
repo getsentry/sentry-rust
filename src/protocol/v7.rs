@@ -38,7 +38,7 @@ pub mod map {
 
 /// Represents a debug ID.
 pub mod debugid {
-    pub use debugid::{BreakpadFormat, DebugId, DebugIdParseError};
+    pub use debugid::{BreakpadFormat, DebugId, ParseDebugIdError};
 }
 
 /// An arbitrary (JSON) value (`serde_json::value::Value`)
@@ -309,7 +309,7 @@ impl Into<u64> for Addr {
 }
 
 fn is_false(value: &bool) -> bool {
-    *value == false
+    !*value
 }
 
 /// Represents a single thread.
@@ -826,6 +826,7 @@ fn is_other(value: &str) -> bool {
     value == "other"
 }
 
+#[cfg_attr(feature = "cargo-clippy", allow(ptr_arg))]
 fn is_default_fingerprint<'a>(fp: &Cow<'a, [Cow<'a, str>]>) -> bool {
     fp.len() == 1 && ((&fp)[0] == "{{ default }}" || (&fp)[0] == "{{default}}")
 }
@@ -966,15 +967,15 @@ pub enum ContextData {
     /// Arbitrary contextual information
     Default,
     /// Device data.
-    Device(DeviceContext),
+    Device(Box<DeviceContext>),
     /// Operating system data.
-    Os(OsContext),
+    Os(Box<OsContext>),
     /// Runtime data.
-    Runtime(RuntimeContext),
+    Runtime(Box<RuntimeContext>),
     /// Application data.
-    App(AppContext),
+    App(Box<AppContext>),
     /// Web browser data.
-    Browser(BrowserContext),
+    Browser(Box<BrowserContext>),
 }
 
 /// Holds device information.
@@ -1104,7 +1105,7 @@ pub struct BrowserContext {
 impl From<ContextData> for Context {
     fn from(data: ContextData) -> Context {
         Context {
-            data: data,
+            data,
             extra: Map::new(),
         }
     }
@@ -1114,13 +1115,13 @@ macro_rules! into_context {
     ($kind: ident, $ty: ty) => {
         impl From<$ty> for ContextData {
             fn from(data: $ty) -> ContextData {
-                ContextData::$kind(data)
+                ContextData::$kind(Box::new(data))
             }
         }
 
         impl From<$ty> for Context {
             fn from(data: $ty) -> Context {
-                ContextData::$kind(data).into()
+                ContextData::$kind(Box::new(data)).into()
             }
         }
     };
@@ -1165,7 +1166,7 @@ fn serialize_event_id<S>(value: &Option<Uuid>, serializer: S) -> Result<S::Ok, S
 where
     S: Serializer,
 {
-    if let &Some(uuid) = value {
+    if let Some(ref uuid) = *value {
         serializer.serialize_some(&uuid.simple().to_string())
     } else {
         serializer.serialize_none()
@@ -1210,7 +1211,7 @@ where
         macro_rules! convert_context {
             ($enum: path, $ty: ident) => {{
                 let helper = from_value::<Helper<$ty>>(data).map_err(D::Error::custom)?;
-                ($enum(helper.data), helper.extra)
+                ($enum(Box::new(helper.data)), helper.extra)
             }};
         }
 
@@ -1277,6 +1278,7 @@ where
     })
 }
 
+#[cfg_attr(feature = "cargo-clippy", allow(ptr_arg))]
 fn serialize_exceptions<S>(value: &Vec<Exception>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -1304,6 +1306,7 @@ where
     })
 }
 
+#[cfg_attr(feature = "cargo-clippy", allow(ptr_arg))]
 fn serialize_threads<S>(value: &Vec<Thread>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,

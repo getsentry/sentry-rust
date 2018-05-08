@@ -165,7 +165,7 @@ impl FromStr for Dsn {
         };
 
         let secret_key = url.password().map(|s| s.into());
-        let port = url.port().map(|s| s.into());
+        let port = url.port();
         let host = match url.host_str() {
             Some(host) => host.into(),
             None => return Err(DsnParseError::InvalidUrl),

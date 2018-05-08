@@ -56,11 +56,11 @@ fn test_basic_event() {
     };
     event.contexts.insert(
         "os".into(),
-        v7::ContextData::Os(v7::OsContext {
+        v7::OsContext {
             name: Some("linux".into()),
             rooted: Some(true),
             ..Default::default()
-        }).into(),
+        }.into(),
     );
 
     let json = serde_json::to_string(&event).unwrap();
@@ -985,10 +985,10 @@ fn test_contexts() {
             m.insert(
                 "othervm".into(),
                 v7::Context {
-                    data: v7::ContextData::Runtime(v7::RuntimeContext {
+                    data: v7::RuntimeContext {
                         name: Some("magicvm".into()),
                         version: Some("5.3".into()),
-                    }),
+                    }.into(),
                     extra: {
                         let mut m = v7::Map::new();
                         m.insert("extra_stuff".into(), "extra_value".into());

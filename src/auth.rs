@@ -1,4 +1,4 @@
-#[allow(unused_imports)]
+#[allow(unused_imports, deprecated)]
 use std::ascii::AsciiExt;
 use std::fmt;
 use std::str::FromStr;
