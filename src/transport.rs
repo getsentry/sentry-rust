@@ -141,3 +141,11 @@ impl Transport {
         }
     }
 }
+
+impl Drop for Transport {
+    fn drop(&self) {
+        if let Ok(sender) = self.sender.lock() {
+            sender.send(None);
+        }
+    }
+}
