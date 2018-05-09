@@ -145,7 +145,7 @@ impl Transport {
 impl Drop for Transport {
     fn drop(&mut self) {
         if let Ok(sender) = self.sender.lock() {
-            sender.send(None);
+            sender.send(None).ok();
         }
     }
 }
