@@ -5,9 +5,9 @@ use uuid::Uuid;
 use api::protocol::{Breadcrumb, Event};
 
 // public api from other crates
-pub use sentry_types::{Dsn, DsnParseError, ProjectId, ProjectIdParseError};
 pub use sentry_types::protocol::v7 as protocol;
 pub use sentry_types::protocol::v7::{Level, User};
+pub use sentry_types::{Dsn, DsnParseError, ProjectId, ProjectIdParseError};
 
 // public exports from this crate
 pub use client::Client;

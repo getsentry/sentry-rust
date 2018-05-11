@@ -1,7 +1,7 @@
 use std::fmt;
 
-use regex::{Captures, Regex};
 use backtrace::Backtrace;
+use regex::{Captures, Regex};
 
 use api::protocol::{FileLocation, Frame, InstructionInfo, Stacktrace};
 

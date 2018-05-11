@@ -26,12 +26,12 @@
 //! ```
 use std::fmt::{Debug, Display};
 
-use uuid::Uuid;
 use error_chain::ChainedError;
+use uuid::Uuid;
 
 use api::protocol::{Event, Exception, Level};
-use scope::with_client_and_scope;
 use backtrace_support::{backtrace_to_stacktrace, error_typename};
+use scope::with_client_and_scope;
 
 fn exceptions_from_error_chain<T>(error: &T) -> Vec<Exception>
 where

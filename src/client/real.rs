@@ -1,20 +1,20 @@
+use std::borrow::Cow;
 use std::env;
+use std::ffi::{OsStr, OsString};
 use std::fmt;
 use std::sync::Arc;
 use std::time::Duration;
-use std::borrow::Cow;
-use std::ffi::{OsStr, OsString};
 
-use uuid::Uuid;
 use regex::Regex;
+use uuid::Uuid;
 
 use api::Dsn;
-use scope::{bind_client, Scope};
-use protocol::{DebugMeta, Event};
-use transport::Transport;
 use backtrace_support::{function_starts_with, is_sys_function};
-use utils::{debug_images, server_name, trim_stacktrace};
 use constants::{SDK_INFO, USER_AGENT};
+use protocol::{DebugMeta, Event};
+use scope::{bind_client, Scope};
+use transport::Transport;
+use utils::{debug_images, server_name, trim_stacktrace};
 
 /// The Sentry client object.
 ///

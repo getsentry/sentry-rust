@@ -1,10 +1,10 @@
-use std::time::{Duration, Instant, SystemTime};
-use std::sync::{Arc, Condvar, Mutex};
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
+use std::sync::{Arc, Condvar, Mutex};
 use std::thread::{self, JoinHandle};
+use std::time::{Duration, Instant, SystemTime};
 
-use reqwest::{Client, StatusCode};
 use reqwest::header::{Headers, RetryAfter};
+use reqwest::{Client, StatusCode};
 use uuid::Uuid;
 
 use Dsn;

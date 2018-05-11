@@ -133,19 +133,19 @@ extern crate findshlibs;
 #[macro_use]
 mod macros;
 
+mod api;
 mod client;
 mod scope;
-mod api;
 
+#[cfg(feature = "with_backtrace")]
+mod backtrace_support;
 #[cfg(feature = "with_client_implementation")]
 mod constants;
+pub mod integrations;
 #[cfg(feature = "with_client_implementation")]
 mod transport;
 #[cfg(feature = "with_client_implementation")]
 pub mod utils;
-pub mod integrations;
-#[cfg(feature = "with_backtrace")]
-mod backtrace_support;
 
 /// The shim only API (documentation only).
 ///

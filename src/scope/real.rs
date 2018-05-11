@@ -1,9 +1,9 @@
-use std::mem;
-use std::fmt;
-use std::thread;
-use std::cell::RefCell;
-use std::sync::{Arc, RwLock};
 use std::borrow::Cow;
+use std::cell::RefCell;
+use std::fmt;
+use std::mem;
+use std::sync::{Arc, RwLock};
+use std::thread;
 
 use api::protocol::{Breadcrumb, Context, User, Value};
 use client::Client;

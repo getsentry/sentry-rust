@@ -13,13 +13,15 @@ lazy_static! {
         integrations: {
             #[allow(unused_mut)]
             let mut rv = vec![];
-            #[cfg(feature = "with_failure")] {
+            #[cfg(feature = "with_failure")]
+            {
                 rv.push("failure".to_string());
             }
-            #[cfg(feature = "with_log")] {
+            #[cfg(feature = "with_log")]
+            {
                 rv.push("log".to_string());
             }
             rv
-        }
+        },
     };
 }
