@@ -3,10 +3,10 @@ use api::protocol::{Context, DebugImage, DeviceContext, OsContext, RuntimeContex
 
 #[cfg(all(feature = "with_device_info", target_os = "macos"))]
 mod model_support {
-    use std::ptr;
     use libc;
     use libc::c_void;
     use regex::Regex;
+    use std::ptr;
 
     lazy_static! {
         static ref FAMILY_RE: Regex = Regex::new(r#"([a-zA-Z]+)\d"#).unwrap();
@@ -31,9 +31,10 @@ mod model_support {
                 0,
             );
             Some(
-                String::from_utf8_lossy(match buf.ends_with(b"\x00") {
-                    true => &buf[..size - 1],
-                    false => &buf,
+                String::from_utf8_lossy(if buf.ends_with(b"\x00") {
+                    &buf[..size - 1]
+                } else {
+                    &buf
                 }).to_string(),
             )
         }
@@ -161,9 +162,9 @@ pub fn os_context() -> Option<Context> {
         if let Ok(info) = uname() {
             Some(
                 OsContext {
-                    name: Some(info.sysname.into()),
-                    kernel_version: Some(info.version.into()),
-                    version: Some(info.release.into()),
+                    name: Some(info.sysname),
+                    kernel_version: Some(info.version),
+                    version: Some(info.release),
                     ..Default::default()
                 }.into(),
             )
@@ -216,9 +217,9 @@ pub fn device_context() -> Option<Context> {
         let arch = cpu_arch();
         Some(
             DeviceContext {
-                model: model,
-                family: family,
-                arch: arch,
+                model,
+                family,
+                arch,
                 ..Default::default()
             }.into(),
         )
@@ -231,7 +232,7 @@ pub fn device_context() -> Option<Context> {
 
 /// Returns the loaded debug images.
 pub fn debug_images() -> Vec<DebugImage> {
-    findshlibs_support::find_shlibs().unwrap_or_else(|| Vec::new())
+    findshlibs_support::find_shlibs().unwrap_or_else(Vec::new)
 }
 
 #[cfg(feature = "with_backtrace")]

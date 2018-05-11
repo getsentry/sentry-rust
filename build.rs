@@ -51,13 +51,13 @@ fn main() {
     write!(f, "/// The platform identifier\n").ok();
     write!(
         f,
-        "#[allow(dead_code)] pub const PLATFORM: &'static str = \"{}\";\n",
+        "#[allow(dead_code)] pub const PLATFORM: &str = \"{}\";\n",
         platform
     ).ok();
     write!(f, "/// The CPU architecture identifier\n").ok();
     write!(
         f,
-        "#[allow(dead_code)] pub const ARCH: &'static str = \"{}\";\n",
+        "#[allow(dead_code)] pub const ARCH: &str = \"{}\";\n",
         arch
     ).ok();
     println!("cargo:rerun-if-changed=build.rs\n");

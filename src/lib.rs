@@ -89,12 +89,12 @@
 //! * `with_error_chain`: enables the error-chain integration
 //! * `with_shim_api`: compiles the shim only api into a dummy `shim` module for inspection.
 //!   This API cannot be used but it can be inspected for documentation purposes.
-#[warn(missing_docs)]
+#![warn(missing_docs)]
+
 #[cfg(feature = "with_backtrace")]
 extern crate backtrace;
 #[cfg(feature = "with_client_implementation")]
 extern crate im;
-#[allow(unused_imports)]
 #[macro_use]
 extern crate lazy_static;
 #[cfg(feature = "with_client_implementation")]

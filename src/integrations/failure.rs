@@ -90,8 +90,8 @@ fn parse_stacktrace(bt: &str) -> Option<Stacktrace> {
                     ..Default::default()
                 },
                 location: FileLocation {
-                    abs_path: abs_path,
-                    filename: filename,
+                    abs_path,
+                    filename,
                     line: captures
                         .name("lineno")
                         .map(|x| x.as_str().parse::<u64>().unwrap()),
@@ -145,7 +145,7 @@ pub fn event_from_fail<F: Fail + ?Sized>(fail: &F) -> Event<'static> {
     }
 
     Event {
-        exceptions: exceptions,
+        exceptions,
         level: Level::Error,
         ..Default::default()
     }

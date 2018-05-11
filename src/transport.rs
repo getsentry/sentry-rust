@@ -57,17 +57,16 @@ fn spawn_http_sender(
             let mut headers = Headers::new();
             headers.set_raw("X-Sentry-Auth", auth.to_string());
 
-            if let Some(resp) = client
+            if let Ok(resp) = client
                 .post(url.as_str())
                 .json(&event)
                 .headers(headers)
                 .send()
-                .ok()
             {
                 if resp.status() == StatusCode::TooManyRequests {
                     disabled = resp.headers()
                         .get::<RetryAfter>()
-                        .map(|x| (Instant::now(), x.clone()));
+                        .map(|x| (Instant::now(), *x));
                 }
             }
 
@@ -85,8 +84,9 @@ impl Transport {
     pub fn new(dsn: Dsn, user_agent: String) -> Transport {
         let (sender, receiver) = sync_channel(30);
         let drain_signal = Arc::new(Condvar::new());
+        #[cfg_attr(feature = "cargo-clippy", allow(mutex_atomic))]
         let queue_size = Arc::new(Mutex::new(0));
-        let handle = Some(spawn_http_sender(
+        let _handle = Some(spawn_http_sender(
             receiver,
             dsn.clone(),
             drain_signal.clone(),
@@ -94,11 +94,11 @@ impl Transport {
             user_agent,
         ));
         Transport {
-            dsn: dsn,
+            dsn,
             sender: Mutex::new(sender),
-            drain_signal: drain_signal,
-            queue_size: queue_size,
-            _handle: handle,
+            drain_signal,
+            queue_size,
+            _handle,
         }
     }
 

@@ -344,6 +344,7 @@ impl Scope {
     }
 
     /// Sets a tag to a specific value.
+    #[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
     pub fn set_tag<V: ToString>(&mut self, key: &str, value: V) {
         self.tags = self.tags.insert(key.to_string(), value.to_string());
     }

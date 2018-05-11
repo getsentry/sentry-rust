@@ -61,7 +61,7 @@ pub fn capture_exception(ty: &str, value: Option<String>) -> Uuid {
                 exceptions: vec![
                     Exception {
                         ty: ty.to_string(),
-                        value: value,
+                        value,
                         stacktrace: current_stacktrace(),
                         ..Default::default()
                     },
@@ -80,7 +80,7 @@ pub fn capture_message(msg: &str, level: Level) -> Uuid {
         with_client_and_scope(|client, scope| {
             let event = Event {
                 message: Some(msg.to_string()),
-                level: level,
+                level,
                 ..Default::default()
             };
             client.capture_event(event, Some(scope))
