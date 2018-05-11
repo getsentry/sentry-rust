@@ -25,7 +25,7 @@ matrix:
       install: rustup component add rustfmt-preview
     - env: SUITE=lint
       rust: nightly
-      install: cargo install clippy || echo "clippy already installed"
+      install: cargo install --force clippy
 
 notifications:
   webhooks:
