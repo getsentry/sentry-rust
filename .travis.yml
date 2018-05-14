@@ -23,6 +23,7 @@ matrix:
       env: SUITE=cargotestall
     - env: SUITE=format-check
       install: rustup component add rustfmt-preview
+  allow_failures:
     - env: SUITE=lint
       rust: nightly
       install: cargo install --force clippy
