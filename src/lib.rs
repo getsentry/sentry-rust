@@ -95,6 +95,8 @@
 extern crate backtrace;
 #[cfg(feature = "with_client_implementation")]
 extern crate im;
+#[cfg(any(feature = "with_backtrace", feature = "with_client_implementation",
+          feature = "with_failure", feature = "with_device_info"))]
 #[macro_use]
 extern crate lazy_static;
 #[cfg(feature = "with_client_implementation")]
