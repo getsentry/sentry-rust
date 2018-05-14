@@ -89,12 +89,14 @@
 //! * `with_error_chain`: enables the error-chain integration
 //! * `with_shim_api`: compiles the shim only api into a dummy `shim` module for inspection.
 //!   This API cannot be used but it can be inspected for documentation purposes.
-#[warn(missing_docs)]
+#![warn(missing_docs)]
+
 #[cfg(feature = "with_backtrace")]
 extern crate backtrace;
 #[cfg(feature = "with_client_implementation")]
 extern crate im;
-#[allow(unused_imports)]
+#[cfg(any(feature = "with_backtrace", feature = "with_client_implementation",
+          feature = "with_failure", feature = "with_device_info"))]
 #[macro_use]
 extern crate lazy_static;
 #[cfg(feature = "with_client_implementation")]
@@ -133,19 +135,19 @@ extern crate findshlibs;
 #[macro_use]
 mod macros;
 
+mod api;
 mod client;
 mod scope;
-mod api;
 
+#[cfg(feature = "with_backtrace")]
+mod backtrace_support;
 #[cfg(feature = "with_client_implementation")]
 mod constants;
+pub mod integrations;
 #[cfg(feature = "with_client_implementation")]
 mod transport;
 #[cfg(feature = "with_client_implementation")]
 pub mod utils;
-pub mod integrations;
-#[cfg(feature = "with_backtrace")]
-mod backtrace_support;
 
 /// The shim only API (documentation only).
 ///

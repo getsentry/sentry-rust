@@ -1,7 +1,7 @@
 use std::fmt;
 
-use regex::{Captures, Regex};
 use backtrace::Backtrace;
+use regex::{Captures, Regex};
 
 use api::protocol::{FileLocation, Frame, InstructionInfo, Stacktrace};
 
@@ -74,7 +74,7 @@ pub fn strip_symbol(s: &str) -> &str {
         .unwrap_or(s)
 }
 
-pub fn demangle_symbol<'a>(s: &'a str) -> String {
+pub fn demangle_symbol(s: &str) -> String {
     COMMON_RUST_SYMBOL_ESCAPES_RE
         .replace_all(s, |caps: &Captures| {
             match &caps[1] {
@@ -135,9 +135,9 @@ pub fn backtrace_to_stacktrace(bt: &Backtrace) -> Option<Stacktrace> {
                         ..Default::default()
                     },
                     location: FileLocation {
-                        abs_path: abs_path,
-                        filename: filename,
-                        line: sym.lineno().map(|l| l as u64),
+                        abs_path,
+                        filename,
+                        line: sym.lineno().map(|l| l.into()),
                         column: None,
                     },
                     ..Default::default()

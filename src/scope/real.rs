@@ -1,9 +1,9 @@
-use std::mem;
-use std::fmt;
-use std::thread;
-use std::cell::RefCell;
-use std::sync::{Arc, RwLock};
 use std::borrow::Cow;
+use std::cell::RefCell;
+use std::fmt;
+use std::mem;
+use std::sync::{Arc, RwLock};
+use std::thread;
 
 use api::protocol::{Breadcrumb, Context, User, Value};
 use client::Client;
@@ -344,6 +344,7 @@ impl Scope {
     }
 
     /// Sets a tag to a specific value.
+    #[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
     pub fn set_tag<V: ToString>(&mut self, key: &str, value: V) {
         self.tags = self.tags.insert(key.to_string(), value.to_string());
     }

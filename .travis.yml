@@ -1,3 +1,4 @@
+os: linux
 language: rust
 cache:
   cargo: true
@@ -8,25 +9,28 @@ git:
 if: tag IS blank
 script: make $SUITE
 
+env: # Needed for allow_failures
+
 matrix:
   include:
-    - os: linux
-      env: SUITE=check
-      rust: "1.21.0"
-    - os: linux
-      env: SUITE=cargotest
-      rust: "1.21.0"
-    - os: linux
-      env: SUITE=checkall
-    - os: linux
-      env: SUITE=cargotestall
+    - env: SUITE=check
+      rust: "1.22.0"
+    - env: SUITE=cargotest
+      rust: "1.22.0"
+    - env: SUITE=checkall
+    - env: SUITE=cargotestall
     - os: osx
       env: SUITE=checkall
     - os: osx
       env: SUITE=cargotestall
-    - os: linux
-      env: SUITE=format-check
+    - env: SUITE=format-check
       install: rustup component add rustfmt-preview
+    - env: SUITE=lint
+      rust: nightly
+      install: cargo install --force clippy
+  allow_failures:
+    - env: SUITE=lint
+      rust: nightly
 
 notifications:
   webhooks:

@@ -23,9 +23,9 @@
 //! ```
 use log;
 
-use protocol::{Breadcrumb, Event, Exception, Level};
 use api::add_breadcrumb;
 use backtrace_support::current_stacktrace;
+use protocol::{Breadcrumb, Event, Exception, Level};
 use scope::with_client_and_scope;
 
 /// Logger specific options.

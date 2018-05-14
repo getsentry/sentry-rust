@@ -43,17 +43,18 @@
 //! ```
 //!
 //! To capture fails and not errors use `capture_fail`.
-use uuid::Uuid;
-use regex::Regex;
 use failure;
 use failure::{Error, Fail};
+use regex::Regex;
+use uuid::Uuid;
 
 use api::protocol::{Event, Exception, FileLocation, Frame, InstructionInfo, Level, Stacktrace};
 use backtrace_support::{demangle_symbol, error_typename, filename, strip_symbol};
 use scope::with_client_and_scope;
 
 lazy_static! {
-    static ref FRAME_RE: Regex = Regex::new(r#"(?xm)
+    static ref FRAME_RE: Regex = Regex::new(
+        r#"(?xm)
         ^
             [\ ]*(?:\d+:)[\ ]*                  # leading frame number
             (?P<addr>0x[a-f0-9]+)               # addr
@@ -66,7 +67,8 @@ lazy_static! {
                 (?::(?P<lineno>\d+))?
             )?
         $
-    "#).unwrap();
+    "#
+    ).unwrap();
 }
 
 fn parse_stacktrace(bt: &str) -> Option<Stacktrace> {
@@ -90,8 +92,8 @@ fn parse_stacktrace(bt: &str) -> Option<Stacktrace> {
                     ..Default::default()
                 },
                 location: FileLocation {
-                    abs_path: abs_path,
-                    filename: filename,
+                    abs_path,
+                    filename,
                     line: captures
                         .name("lineno")
                         .map(|x| x.as_str().parse::<u64>().unwrap()),
@@ -145,7 +147,7 @@ pub fn event_from_fail<F: Fail + ?Sized>(fail: &F) -> Event<'static> {
     }
 
     Event {
-        exceptions: exceptions,
+        exceptions,
         level: Level::Error,
         ..Default::default()
     }

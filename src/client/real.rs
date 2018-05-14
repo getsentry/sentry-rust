@@ -1,20 +1,20 @@
+use std::borrow::Cow;
 use std::env;
+use std::ffi::{OsStr, OsString};
 use std::fmt;
 use std::sync::Arc;
 use std::time::Duration;
-use std::borrow::Cow;
-use std::ffi::{OsStr, OsString};
 
-use uuid::Uuid;
 use regex::Regex;
+use uuid::Uuid;
 
 use api::Dsn;
-use scope::{bind_client, Scope};
-use protocol::{DebugMeta, Event};
-use transport::Transport;
 use backtrace_support::{function_starts_with, is_sys_function};
-use utils::{debug_images, server_name, trim_stacktrace};
 use constants::{SDK_INFO, USER_AGENT};
+use protocol::{DebugMeta, Event};
+use scope::{bind_client, Scope};
+use transport::Transport;
+use utils::{debug_images, server_name, trim_stacktrace};
 
 /// The Sentry client object.
 ///
@@ -234,7 +234,7 @@ impl Client {
     pub fn with_dsn_and_options(dsn: Dsn, options: ClientOptions) -> Client {
         let transport = Transport::new(dsn, options.user_agent.to_string());
         Client {
-            options: options,
+            options,
             transport: Some(Arc::new(transport)),
         }
     }
@@ -254,11 +254,12 @@ impl Client {
     /// Creates a new client that does not send anything with custom options.
     pub fn disabled_with_options(options: ClientOptions) -> Client {
         Client {
-            options: options,
+            options,
             transport: None,
         }
     }
 
+    #[cfg_attr(feature = "cargo-clippy", allow(cyclomatic_complexity))]
     fn prepare_event(&self, event: &mut Event, scope: Option<&Scope>) {
         lazy_static! {
             static ref DEBUG_META: DebugMeta = DebugMeta {
@@ -341,7 +342,7 @@ impl Client {
             event.debug_meta = Cow::Borrowed(&DEBUG_META);
         }
 
-        for exc in event.exceptions.iter_mut() {
+        for exc in &mut event.exceptions {
             if let Some(ref mut stacktrace) = exc.stacktrace {
                 // automatically trim backtraces
                 if self.options.trim_backtraces {
@@ -356,7 +357,7 @@ impl Client {
 
                 // automatically prime in_app and set package
                 let mut any_in_app = false;
-                for frame in stacktrace.frames.iter_mut() {
+                for frame in &mut stacktrace.frames {
                     let func_name = match frame.function {
                         Some(ref func) => func,
                         None => continue,
@@ -407,7 +408,7 @@ impl Client {
                 }
 
                 if !any_in_app {
-                    for frame in stacktrace.frames.iter_mut() {
+                    for frame in &mut stacktrace.frames {
                         if frame.in_app.is_none() {
                             frame.in_app = Some(true);
                         }

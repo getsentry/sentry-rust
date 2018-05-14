@@ -26,14 +26,14 @@
 //! ```
 use std::fmt::{Debug, Display};
 
-use uuid::Uuid;
 use error_chain::ChainedError;
+use uuid::Uuid;
 
 use api::protocol::{Event, Exception, Level};
-use scope::with_client_and_scope;
 use backtrace_support::{backtrace_to_stacktrace, error_typename};
+use scope::with_client_and_scope;
 
-fn exceptions_from_error_chain<'a, T>(error: &'a T) -> Vec<Exception>
+fn exceptions_from_error_chain<T>(error: &T) -> Vec<Exception>
 where
     T: ChainedError,
     T::ErrorKind: Debug + Display,
@@ -59,7 +59,7 @@ where
 }
 
 /// Creates an event from an error chain.
-pub fn event_from_error_chain<'a, T>(e: &'a T) -> Event<'static>
+pub fn event_from_error_chain<T>(e: &T) -> Event<'static>
 where
     T: ChainedError,
     T::ErrorKind: Debug + Display,
@@ -72,7 +72,7 @@ where
 }
 
 /// Captures an error chain.
-pub fn capture_error_chain<'a, T>(e: &'a T) -> Uuid
+pub fn capture_error_chain<T>(e: &T) -> Uuid
 where
     T: ChainedError,
     T::ErrorKind: Debug + Display,

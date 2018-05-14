@@ -6,14 +6,13 @@
 #[cfg(feature = "with_client_implementation")]
 macro_rules! sentry_crate_release {
     () => {{
-        use ::std::sync::{Once, ONCE_INIT};
+        use std::sync::{Once, ONCE_INIT};
         static mut INIT: Once = ONCE_INIT;
         static mut RELEASE: Option<String> = None;
         unsafe {
             INIT.call_once(|| {
                 RELEASE = option_env!("CARGO_PKG_NAME").and_then(|name| {
-                    option_env!("CARGO_PKG_VERSION")
-                        .map(|version| format!("{}@{}", name, version))
+                    option_env!("CARGO_PKG_VERSION").map(|version| format!("{}@{}", name, version))
                 });
             });
             RELEASE.as_ref().map(|x| {
@@ -21,7 +20,7 @@ macro_rules! sentry_crate_release {
                 ::std::borrow::Cow::Borrowed(release)
             })
         }
-    }}
+    }};
 }
 
 macro_rules! with_client_impl {
@@ -34,13 +33,15 @@ macro_rules! with_client_impl {
         {
             Default::default()
         }
-    }
+    };
 }
 
 #[allow(unused_macros)]
 macro_rules! shim_unreachable {
     () => {
-        panic!("this code should not be reachable. It's stubbed out for shim usage. \
-                If you get this error this is a bug in the sentry shim");
-    }
+        panic!(
+            "this code should not be reachable. It's stubbed out for shim usage. \
+             If you get this error this is a bug in the sentry shim"
+        );
+    };
 }

@@ -75,3 +75,7 @@ test: checkall cargotestall
 format-check:
 	@cargo fmt -- --write-mode diff
 .PHONY: format-check
+
+lint:
+	@cargo +nightly clippy --all-features -- -D clippy
+.PHONY: lint
