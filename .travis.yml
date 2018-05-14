@@ -9,6 +9,8 @@ git:
 if: tag IS blank
 script: make $SUITE
 
+env: # Needed for allow_failures
+
 matrix:
   include:
     - env: SUITE=check
@@ -23,10 +25,12 @@ matrix:
       env: SUITE=cargotestall
     - env: SUITE=format-check
       install: rustup component add rustfmt-preview
-  allow_failures:
     - env: SUITE=lint
       rust: nightly
       install: cargo install --force clippy
+  allow_failures:
+    - env: SUITE=lint
+      rust: nightly
 
 notifications:
   webhooks:
