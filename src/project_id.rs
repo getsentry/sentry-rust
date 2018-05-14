@@ -41,7 +41,7 @@ impl fmt::Debug for ProjectId {
 }
 
 macro_rules! impl_from {
-    ($ty: ty) => {
+    ($ty:ty) => {
         impl From<$ty> for ProjectId {
             fn from(val: $ty) -> ProjectId {
                 ProjectId { val: val as u64 }

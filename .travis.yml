@@ -16,9 +16,10 @@ matrix:
       rust: "1.21.0"
     - env: SUITE=format-check
       install: rustup component add rustfmt-preview
+  allow_failures:
     - env: SUITE=lint
       rust: nightly
-      install: cargo install clippy || echo "clippy already installed"
+      install: cargo install clippy --force
 
 notifications:
   webhooks:

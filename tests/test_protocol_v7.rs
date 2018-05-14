@@ -754,6 +754,7 @@ fn test_minimal_exception_stacktrace() {
                     ..Default::default()
                 }),
                 raw_stacktrace: None,
+                ..Default::default()
             },
         ],
         ..Default::default()
@@ -804,6 +805,7 @@ fn test_slightly_larger_exception_stacktrace() {
                     ..Default::default()
                 }),
                 raw_stacktrace: None,
+                ..Default::default()
             },
         ],
         ..Default::default()
@@ -861,6 +863,46 @@ fn test_full_exception_stacktrace() {
                         },
                     ],
                     frames_omitted: Some((1, 2)),
+                    registers: {
+                        let mut m = v7::Map::new();
+                        m.insert("x8".into(), v7::RegVal(0x0));
+                        m.insert("x20".into(), v7::RegVal(0x1));
+                        m.insert("x21".into(), v7::RegVal(0x1));
+                        m.insert("x28".into(), v7::RegVal(0x17025f650));
+                        m.insert("x4".into(), v7::RegVal(0x1702eb100));
+                        m.insert("x24".into(), v7::RegVal(0x1b1399c20));
+                        m.insert("sp".into(), v7::RegVal(0x16fd75060));
+                        m.insert("x1".into(), v7::RegVal(0x1b1399bb1));
+                        m.insert("x23".into(), v7::RegVal(0x1afe10040));
+                        m.insert("x14".into(), v7::RegVal(0x1));
+                        m.insert("x19".into(), v7::RegVal(0x0));
+                        m.insert("x18".into(), v7::RegVal(0x0));
+                        m.insert("x3".into(), v7::RegVal(0x1));
+                        m.insert("pc".into(), v7::RegVal(0x18a310ea4));
+                        m.insert("x7".into(), v7::RegVal(0x0));
+                        m.insert("x10".into(), v7::RegVal(0x57b));
+                        m.insert("x6".into(), v7::RegVal(0x0));
+                        m.insert("x13".into(), v7::RegVal(0x1));
+                        m.insert("x2".into(), v7::RegVal(0x1));
+                        m.insert("x27".into(), v7::RegVal(0x1));
+                        m.insert("x26".into(), v7::RegVal(0x191ec48d1));
+                        m.insert("x9".into(), v7::RegVal(0x1b1399c20));
+                        m.insert("x29".into(), v7::RegVal(0x16fd75060));
+                        m.insert("x5".into(), v7::RegVal(0x1702eb100));
+                        m.insert("fp".into(), v7::RegVal(0x16fd75060));
+                        m.insert("x0".into(), v7::RegVal(0x1));
+                        m.insert("lr".into(), v7::RegVal(0x18a31aadc));
+                        m.insert("x25".into(), v7::RegVal(0x0));
+                        m.insert("x16".into(), v7::RegVal(0x18a31aa34));
+                        m.insert("x11".into(), v7::RegVal(0x1b3b37b1d));
+                        m.insert("cpsr".into(), v7::RegVal(0x20000000));
+                        m.insert("x17".into(), v7::RegVal(0x0));
+                        m.insert("x15".into(), v7::RegVal(0x881));
+                        m.insert("x22".into(), v7::RegVal(0x1b1399bb0));
+                        m.insert("x12".into(), v7::RegVal(0x1b3b37b1d));
+                        m
+                    },
+                    ..Default::default()
                 }),
                 raw_stacktrace: Some(v7::Stacktrace {
                     frames: vec![
@@ -875,7 +917,9 @@ fn test_full_exception_stacktrace() {
                         },
                     ],
                     frames_omitted: Some((1, 2)),
+                    ..Default::default()
                 }),
+                ..Default::default()
             },
         ],
         ..Default::default()
@@ -892,9 +936,19 @@ fn test_full_exception_stacktrace() {
          bar\"],\"context_line\":\"hey hey hey\",\"post_context\":[\"foo\",\"bar\"]\
          ,\"in_app\":true,\"vars\":{\"var\":\"value\"},\"image_addr\":\"0x0\",\
          \"instruction_addr\":\"0x0\",\"symbol_addr\":\"0x0\"}],\"frames_omitted\":\
-         [1,2]},\"raw_stacktrace\":{\"frames\":[{\"function\":\"main\",\
-         \"image_addr\":\"0x0\",\"instruction_addr\":\"0x0\",\"symbol_addr\":\"0x0\"}\
-         ],\"frames_omitted\":[1,2]}}]}}"
+         [1,2],\"registers\":{\"x8\":\"0x0\",\"x20\":\"0x1\",\"x21\":\"0x1\",\"x28\
+         \":\"0x17025f650\",\"x4\":\"0x1702eb100\",\"x24\":\"0x1b1399c20\",\"sp\":\
+         \"0x16fd75060\",\"x1\":\"0x1b1399bb1\",\"x23\":\"0x1afe10040\",\"x14\":\
+         \"0x1\",\"x19\":\"0x0\",\"x18\":\"0x0\",\"x3\":\"0x1\",\"pc\":\"0x18a310ea4\
+         \",\"x7\":\"0x0\",\"x10\":\"0x57b\",\"x6\":\"0x0\",\"x13\":\"0x1\",\"x2\":\
+         \"0x1\",\"x27\":\"0x1\",\"x26\":\"0x191ec48d1\",\"x9\":\"0x1b1399c20\",\
+         \"x29\":\"0x16fd75060\",\"x5\":\"0x1702eb100\",\"fp\":\"0x16fd75060\",\
+         \"x0\":\"0x1\",\"lr\":\"0x18a31aadc\",\"x25\":\"0x0\",\"x16\":\
+         \"0x18a31aa34\",\"x11\":\"0x1b3b37b1d\",\"cpsr\":\"0x20000000\",\"x17\":\
+         \"0x0\",\"x15\":\"0x881\",\"x22\":\"0x1b1399bb0\",\"x12\":\"0x1b3b37b1d\"}\
+         },\"raw_stacktrace\":{\"frames\":[{\"function\":\"main\",\"image_addr\":\
+         \"0x0\",\"instruction_addr\":\"0x0\",\"symbol_addr\":\"0x0\"}],\
+         \"frames_omitted\":[1,2]}}]}}"
     );
 }
 

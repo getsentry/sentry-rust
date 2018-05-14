@@ -2,9 +2,9 @@ extern crate chrono;
 extern crate sentry_types;
 extern crate serde_json;
 
-use std::collections::HashMap;
 use chrono::{TimeZone, Utc};
 use sentry_types::{protocol, Auth, Dsn};
+use std::collections::HashMap;
 
 #[test]
 fn test_auth_parsing() {
