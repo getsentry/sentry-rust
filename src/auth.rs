@@ -1,8 +1,8 @@
 #[allow(unused_imports, deprecated)]
 use std::ascii::AsciiExt;
+use std::borrow::Cow;
 use std::fmt;
 use std::str::FromStr;
-use std::borrow::Cow;
 
 use chrono::{DateTime, Utc};
 use url::form_urlencoded;

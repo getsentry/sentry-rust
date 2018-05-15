@@ -72,7 +72,9 @@ fn test_auth_from_querystring() {
     assert_eq!(auth.public_key(), "4bb5d94de752a36b8b87851a3f82726a");
     assert_eq!(auth.secret_key(), None);
 
-    let auth = Auth::from_querystring(b"version=7&client=raven-js/3.23.3&key=4bb5d94de752a36b8b87851a3f82726a").unwrap();
+    let auth = Auth::from_querystring(
+        b"version=7&client=raven-js/3.23.3&key=4bb5d94de752a36b8b87851a3f82726a",
+    ).unwrap();
 
     assert_eq!(auth.timestamp(), None);
     assert_eq!(auth.client_agent(), Some("raven-js/3.23.3"));
