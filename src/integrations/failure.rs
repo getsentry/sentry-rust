@@ -120,15 +120,17 @@ fn single_fail_to_exception<F: Fail + ?Sized>(f: &F, bt: Option<&failure::Backtr
 /// Helper function to create an event from a `failure::Error`.
 pub fn event_from_error(err: &failure::Error) -> Event<'static> {
     let mut exceptions = vec![];
+
     for (idx, cause) in err.causes().enumerate() {
         let bt = match cause.backtrace() {
             Some(bt) => Some(bt),
-            // TODO: not 0, but effectively -1
             None if idx == 0 => Some(err.backtrace()),
             None => None,
         };
         exceptions.push(single_fail_to_exception(cause, bt));
     }
+
+    exceptions.reverse();
     Event {
         exceptions,
         level: Level::Error,
@@ -146,6 +148,7 @@ pub fn event_from_fail<F: Fail + ?Sized>(fail: &F) -> Event<'static> {
         ptr = Some(cause);
     }
 
+    exceptions.reverse();
     Event {
         exceptions,
         level: Level::Error,
