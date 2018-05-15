@@ -2,8 +2,10 @@
 use std::ascii::AsciiExt;
 use std::fmt;
 use std::str::FromStr;
+use std::borrow::Cow;
 
 use chrono::{DateTime, Utc};
+use url::form_urlencoded;
 
 use dsn::Dsn;
 use protocol;
@@ -43,7 +45,7 @@ pub struct Auth {
 
 impl Auth {
     /// Creates an auth header from key value pairs.
-    pub fn from_pairs<'a, 'b, I: Iterator<Item = (&'a str, &'b str)>>(
+    pub fn from_pairs<'a, 'b, I: Iterator<Item = (Cow<'a, str>, Cow<'b, str>)>>(
         pairs: I,
     ) -> Result<Auth, AuthParseError> {
         let mut rv = Auth {
@@ -54,7 +56,8 @@ impl Auth {
             secret: None,
         };
 
-        for (mut key, value) in pairs {
+        for (key, value) in pairs {
+            let mut key = &key[..];
             if key.starts_with("sentry_") {
                 key = &key[7..];
             }
@@ -84,6 +87,11 @@ impl Auth {
         }
 
         Ok(rv)
+    }
+
+    /// Creates an auth header from a query string.
+    pub fn from_querystring(qs: &[u8]) -> Result<Auth, AuthParseError> {
+        Auth::from_pairs(form_urlencoded::parse(qs))
     }
 
     /// Returns the unix timestamp the client defined
