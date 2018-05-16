@@ -35,7 +35,7 @@ failure = { version = "0.1.1", optional = true }
 log = { version = "0.4.1", optional = true }
 serde = "1.0.50"
 serde_json = "1.0.17"
-sentry-types = "0.3.4"
+sentry-types = "0.5.0"
 reqwest = { version = "0.8.5", optional = true }
 uuid = { version = "0.6.3", features = ["v4"] }
 lazy_static = "1.0.0"
