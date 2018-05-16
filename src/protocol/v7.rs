@@ -22,6 +22,8 @@ use uuid::Uuid;
 
 use utils::ts_seconds_float;
 
+static KNOWN_LEVELS: &[&str] = &["debug", "info", "warning", "error", "fatal"];
+
 /// An arbitrary (JSON) value (`serde_json::value::Value`)
 pub mod value {
     pub use serde_json::value::{from_value, to_value, Index, Map, Number, Value};
@@ -512,7 +514,7 @@ pub struct Exception {
 }
 
 /// Represents the level of severity of an event or breadcrumb.
-#[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Serialize, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[serde(rename_all = "lowercase")]
 pub enum Level {
     /// Indicates very spammy debug information.
@@ -557,6 +559,19 @@ impl Level {
     /// A quick way to check if the level is `fatal`.
     pub fn is_fatal(&self) -> bool {
         *self == Level::Fatal
+    }
+}
+
+impl<'de> Deserialize<'de> for Level {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Level, D::Error> {
+        match <&str>::deserialize(deserializer)? {
+            "debug" => Ok(Level::Debug),
+            "info" | "log" => Ok(Level::Info),
+            "warning" => Ok(Level::Warning),
+            "error" => Ok(Level::Error),
+            "fatal" => Ok(Level::Fatal),
+            other => return Err(DeError::unknown_variant(other, KNOWN_LEVELS)),
+        }
     }
 }
 
@@ -659,7 +674,7 @@ impl str::FromStr for IpAddress {
 
 impl<'de> Deserialize<'de> for IpAddress {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<IpAddress, D::Error> {
-        String::deserialize(deserializer)?
+        <&str>::deserialize(deserializer)?
             .parse()
             .map_err(DeError::custom)
     }

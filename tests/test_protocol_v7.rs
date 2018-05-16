@@ -334,6 +334,11 @@ fn test_ip_address_auto() {
 }
 
 #[test]
+fn test_level_log() {
+    assert_eq!(v7::Level::Info, serde_json::from_str("\"log\"").unwrap());
+}
+
+#[test]
 fn test_breadcrumbs() {
     let event = v7::Event {
         breadcrumbs: vec![
