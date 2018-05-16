@@ -107,7 +107,17 @@ fn parse_stacktrace(bt: &str) -> Option<Stacktrace> {
     Stacktrace::from_frames_reversed(frames)
 }
 
-fn single_fail_to_exception<F: Fail + ?Sized>(f: &F, bt: Option<&failure::Backtrace>) -> Exception {
+/// This converts a single fail instance into an exception.
+///
+/// This is typically not very useful as the `event_from_error` and
+/// `event_from_fail` methods will assemble an entire event with all the
+/// causes of a failure, however for certain more complex situations where
+/// fails are contained within a non fail error type that might also carry
+/// useful information it can be useful to call this method instead.
+pub fn exception_from_single_fail<F: Fail + ?Sized>(
+    f: &F,
+    bt: Option<&failure::Backtrace>,
+) -> Exception {
     Exception {
         ty: error_typename(f),
         value: Some(f.to_string()),
@@ -127,7 +137,7 @@ pub fn event_from_error(err: &failure::Error) -> Event<'static> {
             None if idx == 0 => Some(err.backtrace()),
             None => None,
         };
-        exceptions.push(single_fail_to_exception(cause, bt));
+        exceptions.push(exception_from_single_fail(cause, bt));
     }
 
     exceptions.reverse();
@@ -140,11 +150,11 @@ pub fn event_from_error(err: &failure::Error) -> Event<'static> {
 
 /// Helper function to create an event from a `failure::Fail`.
 pub fn event_from_fail<F: Fail + ?Sized>(fail: &F) -> Event<'static> {
-    let mut exceptions = vec![single_fail_to_exception(fail, fail.backtrace())];
+    let mut exceptions = vec![exception_from_single_fail(fail, fail.backtrace())];
 
     let mut ptr: Option<&Fail> = None;
     while let Some(cause) = ptr.map(Fail::cause).unwrap_or_else(|| fail.cause()) {
-        exceptions.push(single_fail_to_exception(cause, cause.backtrace()));
+        exceptions.push(exception_from_single_fail(cause, cause.backtrace()));
         ptr = Some(cause);
     }
 
