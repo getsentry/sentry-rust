@@ -953,6 +953,54 @@ fn test_full_exception_stacktrace() {
 }
 
 #[test]
+fn test_exception_mechanism() {
+    let event: v7::Event = v7::Event {
+        exceptions: vec![
+            v7::Exception {
+                ty: "EXC_BAD_ACCESS".into(),
+                value: Some("Attempted to dereference garbage pointer 0x1".into()),
+                mechanism: Some(v7::Mechanism {
+                    ty: "mach".into(),
+                    description: None,
+                    help_link: Some(
+                        "https://developer.apple.com/library/content/qa/qa1367/_index.html"
+                            .parse()
+                            .unwrap(),
+                    ),
+                    handled: Some(false),
+                    data: {
+                        let mut map = v7::Map::new();
+                        map.insert("relevant_address".into(), "0x1".into());
+                        map
+                    },
+                    meta: v7::MechanismMeta {
+                        signal: Some(11.into()),
+                        mach_exception: Some(v7::MachException {
+                            ty: 1,
+                            code: 1,
+                            subcode: 8,
+                        }),
+                        ..Default::default()
+                    },
+                }),
+                ..Default::default()
+            },
+        ],
+        ..Default::default()
+    };
+
+    assert_roundtrip(&event);
+    assert_eq!(
+        serde_json::to_string(&event).unwrap(),
+        "{\"exception\":{\"values\":[{\"type\":\"EXC_BAD_ACCESS\",\"value\":\"Attempted to \
+         dereference garbage pointer 0x1\",\"mechanism\":{\"type\":\"mach\",\"help_link\":\"\
+         https://developer.apple.com/library/content/qa/qa1367/_index.html\",\"handled\":false,\"\
+         data\":{\"relevant_address\":\"0x1\"},\"meta\":{\"signal\":11,\"mach_exception\":{\"\
+         exception\":1,\"code\":1,\"subcode\":8}}}}]}}"
+    );
+}
+
+#[test]
 fn test_sdk_info() {
     let event = v7::Event {
         sdk_info: Some(Cow::Owned(v7::ClientSdkInfo {
