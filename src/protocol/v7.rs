@@ -305,7 +305,7 @@ impl<T> From<*mut T> for Addr {
 }
 
 impl Into<u64> for Addr {
-    fn into(self: Addr) -> u64 {
+    fn into(self) -> u64 {
         self.0
     }
 }
@@ -357,7 +357,7 @@ impl<T> From<*mut T> for RegVal {
 }
 
 impl Into<u64> for RegVal {
-    fn into(self: RegVal) -> u64 {
+    fn into(self) -> u64 {
         self.0
     }
 }
@@ -401,7 +401,7 @@ impl From<u32> for HResult {
 }
 
 impl Into<u32> for HResult {
-    fn into(self: HResult) -> u32 {
+    fn into(self) -> u32 {
         self.0
     }
 }
@@ -419,13 +419,13 @@ impl From<u32> for Win32ErrorCode {
 }
 
 impl Into<u32> for Win32ErrorCode {
-    fn into(self: Win32ErrorCode) -> u32 {
+    fn into(self) -> u32 {
         self.0
     }
 }
 
 /// Mach exception information.
-#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct MachException {
     /// The mach exception type.
     #[serde(rename = "exception")]
@@ -436,6 +436,38 @@ pub struct MachException {
     pub subcode: u64,
 }
 
+/// POSIX signal with optional extended data.
+#[derive(Serialize, Deserialize, Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct PosixSignal {
+    /// The POSIX signal number.
+    pub number: i32,
+    /// An optional signal code present on Apple systems.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub code: Option<i32>,
+}
+
+impl From<i32> for PosixSignal {
+    fn from(number: i32) -> PosixSignal {
+        PosixSignal { number, code: None }
+    }
+}
+
+impl From<(i32, i32)> for PosixSignal {
+    fn from(tuple: (i32, i32)) -> PosixSignal {
+        let (number, code) = tuple;
+        PosixSignal {
+            number,
+            code: Some(code),
+        }
+    }
+}
+
+impl Into<i32> for PosixSignal {
+    fn into(self) -> i32 {
+        self.number
+    }
+}
+
 /// Operating system or runtime meta information to an exception mechanism.
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub struct MechanismMeta {
@@ -444,7 +476,7 @@ pub struct MechanismMeta {
     pub errno: Option<i32>,
     /// Optional POSIX signal number.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub signal: Option<i32>,
+    pub signal: Option<PosixSignal>,
     /// Optional mach exception information.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mach_exception: Option<MachException>,
