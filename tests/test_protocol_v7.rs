@@ -979,16 +979,22 @@ fn test_exception_mechanism() {
                         map
                     },
                     meta: v7::MechanismMeta {
+                        errno: Some(v7::CError {
+                            number: 2,
+                            name: None,
+                        }),
                         signal: Some(v7::PosixSignal {
                             number: 11,
                             code: None,
+                            name: None,
+                            code_name: None,
                         }),
                         mach_exception: Some(v7::MachException {
                             ty: 1,
                             code: 1,
                             subcode: 8,
+                            name: None,
                         }),
-                        ..Default::default()
                     },
                 }),
                 ..Default::default()
@@ -1003,8 +1009,8 @@ fn test_exception_mechanism() {
         "{\"exception\":{\"values\":[{\"type\":\"EXC_BAD_ACCESS\",\"value\":\"Attempted to \
          dereference garbage pointer 0x1\",\"mechanism\":{\"type\":\"mach\",\"help_link\":\"\
          https://developer.apple.com/library/content/qa/qa1367/_index.html\",\"handled\":false,\"\
-         data\":{\"relevant_address\":\"0x1\"},\"meta\":{\"signal\":{\"number\":11},\"mach_exception\
-         \":{\"exception\":1,\"code\":1,\"subcode\":8}}}}]}}"
+         data\":{\"relevant_address\":\"0x1\"},\"meta\":{\"errno\":{\"number\":2},\"signal\":{\"\
+         number\":11},\"mach_exception\":{\"exception\":1,\"code\":1,\"subcode\":8}}}}]}}"
     );
 }
 

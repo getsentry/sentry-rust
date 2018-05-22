@@ -388,44 +388,30 @@ pub struct Thread {
     pub current: bool,
 }
 
-/// Error code used in Windows COM.
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash)]
-pub struct HResult(pub u32);
+/// POSIX signal with optional extended data.
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq, Eq)]
+pub struct CError {
+    /// The error code as specified by ISO C99, POSIX.1-2001 or POSIX.1-2008.
+    pub number: i32,
+    /// Optional name of the errno constant.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+}
 
-impl_serde_hex!(HResult, u32);
-
-impl From<u32> for HResult {
-    fn from(hresult: u32) -> HResult {
-        HResult(hresult)
+impl From<i32> for CError {
+    fn from(number: i32) -> CError {
+        CError { number, name: None }
     }
 }
 
-impl Into<u32> for HResult {
-    fn into(self) -> u32 {
-        self.0
-    }
-}
-
-/// Error code used for Win32 user space and NTSTATUS kernel errors.
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash)]
-pub struct Win32ErrorCode(pub u32);
-
-impl_serde_hex!(Win32ErrorCode, u32);
-
-impl From<u32> for Win32ErrorCode {
-    fn from(code: u32) -> Win32ErrorCode {
-        Win32ErrorCode(code)
-    }
-}
-
-impl Into<u32> for Win32ErrorCode {
-    fn into(self) -> u32 {
-        self.0
+impl Into<i32> for CError {
+    fn into(self) -> i32 {
+        self.number
     }
 }
 
 /// Mach exception information.
-#[derive(Serialize, Deserialize, Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq, Eq)]
 pub struct MachException {
     /// The mach exception type.
     #[serde(rename = "exception")]
@@ -434,21 +420,35 @@ pub struct MachException {
     pub code: u64,
     /// The mach exception subcode.
     pub subcode: u64,
+    /// Optional name of the mach exception.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
 }
 
 /// POSIX signal with optional extended data.
-#[derive(Serialize, Deserialize, Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq, Eq)]
 pub struct PosixSignal {
     /// The POSIX signal number.
     pub number: i32,
     /// An optional signal code present on Apple systems.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub code: Option<i32>,
+    /// Optional name of the errno constant.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// Optional name of the errno constant.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub code_name: Option<String>,
 }
 
 impl From<i32> for PosixSignal {
     fn from(number: i32) -> PosixSignal {
-        PosixSignal { number, code: None }
+        PosixSignal {
+            number,
+            code: None,
+            name: None,
+            code_name: None,
+        }
     }
 }
 
@@ -458,6 +458,8 @@ impl From<(i32, i32)> for PosixSignal {
         PosixSignal {
             number,
             code: Some(code),
+            name: None,
+            code_name: None,
         }
     }
 }
@@ -473,25 +475,18 @@ impl Into<i32> for PosixSignal {
 pub struct MechanismMeta {
     /// Optional ISO C standard error code.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub errno: Option<i32>,
+    pub errno: Option<CError>,
     /// Optional POSIX signal number.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub signal: Option<PosixSignal>,
     /// Optional mach exception information.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mach_exception: Option<MachException>,
-    /// Optional Windows COM error code.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub hresult: Option<HResult>,
-    /// Optional Win32 / NTSTATUS error code.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub seh_code: Option<Win32ErrorCode>,
 }
 
 impl MechanismMeta {
     fn is_empty(&self) -> bool {
         self.errno.is_none() && self.signal.is_none() && self.mach_exception.is_none()
-            && self.hresult.is_none() && self.seh_code.is_none()
     }
 }
 
