@@ -20,7 +20,7 @@ use url::Url;
 use url_serde;
 use uuid::Uuid;
 
-use utils::ts_seconds_float;
+use utils::{ts_seconds_float, ts_seconds_float_opt};
 
 static KNOWN_LEVELS: &[&str] = &["debug", "info", "warning", "error", "fatal"];
 
@@ -956,7 +956,7 @@ pub struct Event<'a> {
     /// The timestamp of when the event was created.
     ///
     /// This can be set to `None` in which case the server will set a timestamp.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", with = "ts_seconds_float_opt")]
     pub timestamp: Option<DateTime<Utc>>,
     /// Optionally the server (or device) name of this event.
     #[serde(skip_serializing_if = "Option::is_none")]

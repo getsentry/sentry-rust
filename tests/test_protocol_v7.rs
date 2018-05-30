@@ -269,7 +269,22 @@ fn test_platform_and_timestamp() {
     assert_roundtrip(&event);
     assert_eq!(
         serde_json::to_string(&event).unwrap(),
-        "{\"platform\":\"python\",\"timestamp\":\"2017-12-24T08:12:00Z\"}"
+        "{\"platform\":\"python\",\"timestamp\":1514103120}"
+    );
+}
+
+#[test]
+fn test_platform_and_timestamp_float() {
+    let event = v7::Event {
+        platform: "python".into(),
+        timestamp: Some(Utc.ymd(2017, 12, 24).and_hms_milli(8, 12, 0, 500)),
+        ..Default::default()
+    };
+
+    assert_roundtrip(&event);
+    assert_eq!(
+        serde_json::to_string(&event).unwrap(),
+        "{\"platform\":\"python\",\"timestamp\":1514103120.5}"
     );
 }
 
