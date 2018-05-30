@@ -922,8 +922,11 @@ pub struct ClientSdkInfo {
 #[serde(default)]
 pub struct Event<'a> {
     /// The ID of the event
-    #[serde(serialize_with = "serialize_event_id", rename = "event_id",
-            skip_serializing_if = "Option::is_none")]
+    #[serde(
+        serialize_with = "serialize_event_id",
+        rename = "event_id",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub id: Option<Uuid>,
     /// The level of the event (defaults to error)
     #[serde(skip_serializing_if = "Level::is_error")]
@@ -980,15 +983,22 @@ pub struct Event<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub request: Option<Request>,
     /// Optional contexts.
-    #[serde(skip_serializing_if = "Map::is_empty", serialize_with = "serialize_context",
-            deserialize_with = "deserialize_context")]
+    #[serde(
+        skip_serializing_if = "Map::is_empty",
+        serialize_with = "serialize_context",
+        deserialize_with = "deserialize_context"
+    )]
     pub contexts: Map<String, Context>,
     /// List of breadcrumbs to send along.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub breadcrumbs: Vec<Breadcrumb>,
     /// Exceptions to be attached (one or multiple if chained).
-    #[serde(skip_serializing_if = "Vec::is_empty", serialize_with = "serialize_exceptions",
-            deserialize_with = "deserialize_exceptions", rename = "exception")]
+    #[serde(
+        skip_serializing_if = "Vec::is_empty",
+        serialize_with = "serialize_exceptions",
+        deserialize_with = "deserialize_exceptions",
+        rename = "exception"
+    )]
     pub exceptions: Vec<Exception>,
     /// A single stacktrace (deprecated)
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -997,8 +1007,11 @@ pub struct Event<'a> {
     #[serde(skip_serializing_if = "Option::is_none", rename = "template")]
     pub template_info: Option<TemplateInfo>,
     /// A list of threads.
-    #[serde(skip_serializing_if = "Vec::is_empty", serialize_with = "serialize_threads",
-            deserialize_with = "deserialize_threads")]
+    #[serde(
+        skip_serializing_if = "Vec::is_empty",
+        serialize_with = "serialize_threads",
+        deserialize_with = "deserialize_threads"
+    )]
     pub threads: Vec<Thread>,
     /// Optional tags to be attached to the event.
     #[serde(skip_serializing_if = "Map::is_empty")]
@@ -1466,10 +1479,11 @@ where
         Unqualified(Vec<Exception>),
         Single(Exception),
     }
-    Repr::deserialize(deserializer).map(|x| match x {
-        Repr::Qualified { values } => values,
-        Repr::Unqualified(values) => values,
-        Repr::Single(exc) => vec![exc],
+    Option::<Repr>::deserialize(deserializer).map(|x| match x {
+        None => vec![],
+        Some(Repr::Qualified { values }) => values,
+        Some(Repr::Unqualified(values)) => values,
+        Some(Repr::Single(exc)) => vec![exc],
     })
 }
 

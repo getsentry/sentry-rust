@@ -394,17 +394,15 @@ fn test_breadcrumbs() {
 fn test_stacktrace() {
     let event = v7::Event {
         stacktrace: Some(v7::Stacktrace {
-            frames: vec![
-                v7::Frame {
-                    function: Some("main".into()),
-                    location: v7::FileLocation {
-                        filename: Some("hello.py".into()),
-                        line: Some(1),
-                        ..Default::default()
-                    },
+            frames: vec![v7::Frame {
+                function: Some("main".into()),
+                location: v7::FileLocation {
+                    filename: Some("hello.py".into()),
+                    line: Some(1),
                     ..Default::default()
                 },
-            ],
+                ..Default::default()
+            }],
             ..Default::default()
         }),
         ..Default::default()
@@ -448,13 +446,11 @@ fn test_template_info() {
 #[test]
 fn test_threads() {
     let event = v7::Event {
-        threads: vec![
-            v7::Thread {
-                id: Some("#1".into()),
-                name: Some("Awesome Thread".into()),
-                ..Default::default()
-            },
-        ],
+        threads: vec![v7::Thread {
+            id: Some("#1".into()),
+            name: Some("Awesome Thread".into()),
+            ..Default::default()
+        }],
         ..Default::default()
     };
 
@@ -465,15 +461,13 @@ fn test_threads() {
     );
 
     let event = v7::Event {
-        threads: vec![
-            v7::Thread {
-                id: Some(42.into()),
-                name: Some("Awesome Thread".into()),
-                crashed: true,
-                current: true,
-                ..Default::default()
-            },
-        ],
+        threads: vec![v7::Thread {
+            id: Some(42.into()),
+            name: Some("Awesome Thread".into()),
+            crashed: true,
+            current: true,
+            ..Default::default()
+        }],
         ..Default::default()
     };
 
@@ -485,39 +479,33 @@ fn test_threads() {
     );
 
     let event = v7::Event {
-        threads: vec![
-            v7::Thread {
-                stacktrace: Some(v7::Stacktrace {
-                    frames: vec![
-                        v7::Frame {
-                            function: Some("main".into()),
-                            location: v7::FileLocation {
-                                filename: Some("hello.py".into()),
-                                line: Some(1),
-                                ..Default::default()
-                            },
-                            ..Default::default()
-                        },
-                    ],
+        threads: vec![v7::Thread {
+            stacktrace: Some(v7::Stacktrace {
+                frames: vec![v7::Frame {
+                    function: Some("main".into()),
+                    location: v7::FileLocation {
+                        filename: Some("hello.py".into()),
+                        line: Some(1),
+                        ..Default::default()
+                    },
                     ..Default::default()
-                }),
-                raw_stacktrace: Some(v7::Stacktrace {
-                    frames: vec![
-                        v7::Frame {
-                            function: Some("main".into()),
-                            location: v7::FileLocation {
-                                filename: Some("hello.py".into()),
-                                line: Some(1),
-                                ..Default::default()
-                            },
-                            ..Default::default()
-                        },
-                    ],
-                    ..Default::default()
-                }),
+                }],
                 ..Default::default()
-            },
-        ],
+            }),
+            raw_stacktrace: Some(v7::Stacktrace {
+                frames: vec![v7::Frame {
+                    function: Some("main".into()),
+                    location: v7::FileLocation {
+                        filename: Some("hello.py".into()),
+                        line: Some(1),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                }],
+                ..Default::default()
+            }),
+            ..Default::default()
+        }],
         ..Default::default()
     };
 
@@ -754,29 +742,25 @@ fn test_multi_exception_list() {
 #[test]
 fn test_minimal_exception_stacktrace() {
     let event: v7::Event = v7::Event {
-        exceptions: vec![
-            v7::Exception {
-                ty: "DivisionByZero".into(),
-                value: Some("integer division or modulo by zero".into()),
-                module: None,
-                stacktrace: Some(v7::Stacktrace {
-                    frames: vec![
-                        v7::Frame {
-                            function: Some("main".into()),
-                            location: v7::FileLocation {
-                                filename: Some("hello.py".into()),
-                                line: Some(1),
-                                ..Default::default()
-                            },
-                            ..Default::default()
-                        },
-                    ],
+        exceptions: vec![v7::Exception {
+            ty: "DivisionByZero".into(),
+            value: Some("integer division or modulo by zero".into()),
+            module: None,
+            stacktrace: Some(v7::Stacktrace {
+                frames: vec![v7::Frame {
+                    function: Some("main".into()),
+                    location: v7::FileLocation {
+                        filename: Some("hello.py".into()),
+                        line: Some(1),
+                        ..Default::default()
+                    },
                     ..Default::default()
-                }),
-                raw_stacktrace: None,
+                }],
                 ..Default::default()
-            },
-        ],
+            }),
+            raw_stacktrace: None,
+            ..Default::default()
+        }],
         ..Default::default()
     };
 
@@ -793,41 +777,37 @@ fn test_minimal_exception_stacktrace() {
 #[test]
 fn test_slightly_larger_exception_stacktrace() {
     let event: v7::Event = v7::Event {
-        exceptions: vec![
-            v7::Exception {
-                ty: "DivisionByZero".into(),
-                value: Some("integer division or modulo by zero".into()),
-                module: None,
-                stacktrace: Some(v7::Stacktrace {
-                    frames: vec![
-                        v7::Frame {
-                            function: Some("main".into()),
-                            location: v7::FileLocation {
-                                filename: Some("hello.py".into()),
-                                line: Some(7),
-                                column: Some(42),
-                                ..Default::default()
-                            },
-                            source: v7::EmbeddedSources {
-                                pre_lines: vec!["foo".into(), "bar".into()],
-                                current_line: Some("hey hey hey".into()),
-                                post_lines: vec!["foo".into(), "bar".into()],
-                            },
-                            in_app: Some(true),
-                            vars: {
-                                let mut m = v7::Map::new();
-                                m.insert("var".into(), "value".into());
-                                m
-                            },
-                            ..Default::default()
-                        },
-                    ],
+        exceptions: vec![v7::Exception {
+            ty: "DivisionByZero".into(),
+            value: Some("integer division or modulo by zero".into()),
+            module: None,
+            stacktrace: Some(v7::Stacktrace {
+                frames: vec![v7::Frame {
+                    function: Some("main".into()),
+                    location: v7::FileLocation {
+                        filename: Some("hello.py".into()),
+                        line: Some(7),
+                        column: Some(42),
+                        ..Default::default()
+                    },
+                    source: v7::EmbeddedSources {
+                        pre_lines: vec!["foo".into(), "bar".into()],
+                        current_line: Some("hey hey hey".into()),
+                        post_lines: vec!["foo".into(), "bar".into()],
+                    },
+                    in_app: Some(true),
+                    vars: {
+                        let mut m = v7::Map::new();
+                        m.insert("var".into(), "value".into());
+                        m
+                    },
                     ..Default::default()
-                }),
-                raw_stacktrace: None,
+                }],
                 ..Default::default()
-            },
-        ],
+            }),
+            raw_stacktrace: None,
+            ..Default::default()
+        }],
         ..Default::default()
     };
 
@@ -846,102 +826,96 @@ fn test_slightly_larger_exception_stacktrace() {
 #[test]
 fn test_full_exception_stacktrace() {
     let event: v7::Event = v7::Event {
-        exceptions: vec![
-            v7::Exception {
-                ty: "DivisionByZero".into(),
-                value: Some("integer division or modulo by zero".into()),
-                module: Some("x".into()),
-                stacktrace: Some(v7::Stacktrace {
-                    frames: vec![
-                        v7::Frame {
-                            function: Some("main".into()),
-                            symbol: Some("main".into()),
-                            location: v7::FileLocation {
-                                filename: Some("hello.py".into()),
-                                abs_path: Some("/app/hello.py".into()),
-                                line: Some(7),
-                                column: Some(42),
-                            },
-                            source: v7::EmbeddedSources {
-                                pre_lines: vec!["foo".into(), "bar".into()],
-                                current_line: Some("hey hey hey".into()),
-                                post_lines: vec!["foo".into(), "bar".into()],
-                            },
-                            in_app: Some(true),
-                            vars: {
-                                let mut m = v7::Map::new();
-                                m.insert("var".into(), "value".into());
-                                m
-                            },
-                            package: Some("hello.whl".into()),
-                            module: Some("hello".into()),
-                            instruction_info: v7::InstructionInfo {
-                                image_addr: Some(v7::Addr(0)),
-                                instruction_addr: Some(v7::Addr(0)),
-                                symbol_addr: Some(v7::Addr(0)),
-                            },
-                        },
-                    ],
-                    frames_omitted: Some((1, 2)),
-                    registers: {
+        exceptions: vec![v7::Exception {
+            ty: "DivisionByZero".into(),
+            value: Some("integer division or modulo by zero".into()),
+            module: Some("x".into()),
+            stacktrace: Some(v7::Stacktrace {
+                frames: vec![v7::Frame {
+                    function: Some("main".into()),
+                    symbol: Some("main".into()),
+                    location: v7::FileLocation {
+                        filename: Some("hello.py".into()),
+                        abs_path: Some("/app/hello.py".into()),
+                        line: Some(7),
+                        column: Some(42),
+                    },
+                    source: v7::EmbeddedSources {
+                        pre_lines: vec!["foo".into(), "bar".into()],
+                        current_line: Some("hey hey hey".into()),
+                        post_lines: vec!["foo".into(), "bar".into()],
+                    },
+                    in_app: Some(true),
+                    vars: {
                         let mut m = v7::Map::new();
-                        m.insert("x8".into(), v7::RegVal(0x0));
-                        m.insert("x20".into(), v7::RegVal(0x1));
-                        m.insert("x21".into(), v7::RegVal(0x1));
-                        m.insert("x28".into(), v7::RegVal(0x17025f650));
-                        m.insert("x4".into(), v7::RegVal(0x1702eb100));
-                        m.insert("x24".into(), v7::RegVal(0x1b1399c20));
-                        m.insert("sp".into(), v7::RegVal(0x16fd75060));
-                        m.insert("x1".into(), v7::RegVal(0x1b1399bb1));
-                        m.insert("x23".into(), v7::RegVal(0x1afe10040));
-                        m.insert("x14".into(), v7::RegVal(0x1));
-                        m.insert("x19".into(), v7::RegVal(0x0));
-                        m.insert("x18".into(), v7::RegVal(0x0));
-                        m.insert("x3".into(), v7::RegVal(0x1));
-                        m.insert("pc".into(), v7::RegVal(0x18a310ea4));
-                        m.insert("x7".into(), v7::RegVal(0x0));
-                        m.insert("x10".into(), v7::RegVal(0x57b));
-                        m.insert("x6".into(), v7::RegVal(0x0));
-                        m.insert("x13".into(), v7::RegVal(0x1));
-                        m.insert("x2".into(), v7::RegVal(0x1));
-                        m.insert("x27".into(), v7::RegVal(0x1));
-                        m.insert("x26".into(), v7::RegVal(0x191ec48d1));
-                        m.insert("x9".into(), v7::RegVal(0x1b1399c20));
-                        m.insert("x29".into(), v7::RegVal(0x16fd75060));
-                        m.insert("x5".into(), v7::RegVal(0x1702eb100));
-                        m.insert("fp".into(), v7::RegVal(0x16fd75060));
-                        m.insert("x0".into(), v7::RegVal(0x1));
-                        m.insert("lr".into(), v7::RegVal(0x18a31aadc));
-                        m.insert("x25".into(), v7::RegVal(0x0));
-                        m.insert("x16".into(), v7::RegVal(0x18a31aa34));
-                        m.insert("x11".into(), v7::RegVal(0x1b3b37b1d));
-                        m.insert("cpsr".into(), v7::RegVal(0x20000000));
-                        m.insert("x17".into(), v7::RegVal(0x0));
-                        m.insert("x15".into(), v7::RegVal(0x881));
-                        m.insert("x22".into(), v7::RegVal(0x1b1399bb0));
-                        m.insert("x12".into(), v7::RegVal(0x1b3b37b1d));
+                        m.insert("var".into(), "value".into());
                         m
                     },
-                    ..Default::default()
-                }),
-                raw_stacktrace: Some(v7::Stacktrace {
-                    frames: vec![
-                        v7::Frame {
-                            function: Some("main".into()),
-                            instruction_info: v7::InstructionInfo {
-                                image_addr: Some(v7::Addr(0)),
-                                instruction_addr: Some(v7::Addr(0)),
-                                symbol_addr: Some(v7::Addr(0)),
-                            },
-                            ..Default::default()
-                        },
-                    ],
-                    frames_omitted: Some((1, 2)),
-                    ..Default::default()
-                }),
+                    package: Some("hello.whl".into()),
+                    module: Some("hello".into()),
+                    instruction_info: v7::InstructionInfo {
+                        image_addr: Some(v7::Addr(0)),
+                        instruction_addr: Some(v7::Addr(0)),
+                        symbol_addr: Some(v7::Addr(0)),
+                    },
+                }],
+                frames_omitted: Some((1, 2)),
+                registers: {
+                    let mut m = v7::Map::new();
+                    m.insert("x8".into(), v7::RegVal(0x0));
+                    m.insert("x20".into(), v7::RegVal(0x1));
+                    m.insert("x21".into(), v7::RegVal(0x1));
+                    m.insert("x28".into(), v7::RegVal(0x17025f650));
+                    m.insert("x4".into(), v7::RegVal(0x1702eb100));
+                    m.insert("x24".into(), v7::RegVal(0x1b1399c20));
+                    m.insert("sp".into(), v7::RegVal(0x16fd75060));
+                    m.insert("x1".into(), v7::RegVal(0x1b1399bb1));
+                    m.insert("x23".into(), v7::RegVal(0x1afe10040));
+                    m.insert("x14".into(), v7::RegVal(0x1));
+                    m.insert("x19".into(), v7::RegVal(0x0));
+                    m.insert("x18".into(), v7::RegVal(0x0));
+                    m.insert("x3".into(), v7::RegVal(0x1));
+                    m.insert("pc".into(), v7::RegVal(0x18a310ea4));
+                    m.insert("x7".into(), v7::RegVal(0x0));
+                    m.insert("x10".into(), v7::RegVal(0x57b));
+                    m.insert("x6".into(), v7::RegVal(0x0));
+                    m.insert("x13".into(), v7::RegVal(0x1));
+                    m.insert("x2".into(), v7::RegVal(0x1));
+                    m.insert("x27".into(), v7::RegVal(0x1));
+                    m.insert("x26".into(), v7::RegVal(0x191ec48d1));
+                    m.insert("x9".into(), v7::RegVal(0x1b1399c20));
+                    m.insert("x29".into(), v7::RegVal(0x16fd75060));
+                    m.insert("x5".into(), v7::RegVal(0x1702eb100));
+                    m.insert("fp".into(), v7::RegVal(0x16fd75060));
+                    m.insert("x0".into(), v7::RegVal(0x1));
+                    m.insert("lr".into(), v7::RegVal(0x18a31aadc));
+                    m.insert("x25".into(), v7::RegVal(0x0));
+                    m.insert("x16".into(), v7::RegVal(0x18a31aa34));
+                    m.insert("x11".into(), v7::RegVal(0x1b3b37b1d));
+                    m.insert("cpsr".into(), v7::RegVal(0x20000000));
+                    m.insert("x17".into(), v7::RegVal(0x0));
+                    m.insert("x15".into(), v7::RegVal(0x881));
+                    m.insert("x22".into(), v7::RegVal(0x1b1399bb0));
+                    m.insert("x12".into(), v7::RegVal(0x1b3b37b1d));
+                    m
+                },
                 ..Default::default()
-            },
-        ],
+            }),
+            raw_stacktrace: Some(v7::Stacktrace {
+                frames: vec![v7::Frame {
+                    function: Some("main".into()),
+                    instruction_info: v7::InstructionInfo {
+                        image_addr: Some(v7::Addr(0)),
+                        instruction_addr: Some(v7::Addr(0)),
+                        symbol_addr: Some(v7::Addr(0)),
+                    },
+                    ..Default::default()
+                }],
+                frames_omitted: Some((1, 2)),
+                ..Default::default()
+            }),
+            ..Default::default()
+        }],
         ..Default::default()
     };
 
@@ -973,48 +947,52 @@ fn test_full_exception_stacktrace() {
 }
 
 #[test]
+fn test_exception_null() {
+    let event: v7::Event = serde_json::from_slice(b"{\"exception\":null}").unwrap();
+    assert_eq!(event.exceptions, vec![]);
+}
+
+#[test]
 fn test_exception_mechanism() {
     let event: v7::Event = v7::Event {
-        exceptions: vec![
-            v7::Exception {
-                ty: "EXC_BAD_ACCESS".into(),
-                value: Some("Attempted to dereference garbage pointer 0x1".into()),
-                mechanism: Some(v7::Mechanism {
-                    ty: "mach".into(),
-                    description: None,
-                    help_link: Some(
-                        "https://developer.apple.com/library/content/qa/qa1367/_index.html"
-                            .parse()
-                            .unwrap(),
-                    ),
-                    handled: Some(false),
-                    data: {
-                        let mut map = v7::Map::new();
-                        map.insert("relevant_address".into(), "0x1".into());
-                        map
-                    },
-                    meta: v7::MechanismMeta {
-                        errno: Some(v7::CError {
-                            number: 2,
-                            name: None,
-                        }),
-                        signal: Some(v7::PosixSignal {
-                            number: 11,
-                            code: None,
-                            name: None,
-                            code_name: None,
-                        }),
-                        mach_exception: Some(v7::MachException {
-                            ty: 1,
-                            code: 1,
-                            subcode: 8,
-                            name: None,
-                        }),
-                    },
-                }),
-                ..Default::default()
-            },
-        ],
+        exceptions: vec![v7::Exception {
+            ty: "EXC_BAD_ACCESS".into(),
+            value: Some("Attempted to dereference garbage pointer 0x1".into()),
+            mechanism: Some(v7::Mechanism {
+                ty: "mach".into(),
+                description: None,
+                help_link: Some(
+                    "https://developer.apple.com/library/content/qa/qa1367/_index.html"
+                        .parse()
+                        .unwrap(),
+                ),
+                handled: Some(false),
+                data: {
+                    let mut map = v7::Map::new();
+                    map.insert("relevant_address".into(), "0x1".into());
+                    map
+                },
+                meta: v7::MechanismMeta {
+                    errno: Some(v7::CError {
+                        number: 2,
+                        name: None,
+                    }),
+                    signal: Some(v7::PosixSignal {
+                        number: 11,
+                        code: None,
+                        name: None,
+                        code_name: None,
+                    }),
+                    mach_exception: Some(v7::MachException {
+                        ty: 1,
+                        code: 1,
+                        subcode: 8,
+                        name: None,
+                    }),
+                },
+            }),
+            ..Default::default()
+        }],
         ..Default::default()
     };
 
