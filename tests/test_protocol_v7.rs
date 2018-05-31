@@ -194,6 +194,22 @@ fn test_logentry_basics() {
 }
 
 #[test]
+fn test_logentry_no_params() {
+    let event = v7::Event {
+        logentry: Some(v7::LogEntry {
+            message: "Hello World!".to_string(),
+            params: vec![],
+        }),
+        ..Default::default()
+    };
+    assert_roundtrip(&event);
+    assert_eq!(
+        serde_json::to_string(&event).unwrap(),
+        "{\"logentry\":{\"message\":\"Hello World!\"}}"
+    );
+}
+
+#[test]
 fn test_modules() {
     let event = v7::Event {
         modules: {

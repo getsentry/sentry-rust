@@ -58,7 +58,7 @@ pub struct LogEntry {
     /// The log message with parameters replaced by `%s`
     pub message: String,
     /// Positional parameters to be inserted into the log entry.
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub params: Vec<Value>,
 }
 
