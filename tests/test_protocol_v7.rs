@@ -287,6 +287,10 @@ fn test_platform_and_timestamp() {
         serde_json::to_string(&event).unwrap(),
         "{\"platform\":\"python\",\"timestamp\":1514103120}"
     );
+
+    let event: v7::Event =
+        serde_json::from_slice(b"{\"timestamp\":\"2014-05-06T07:08:09Z\"}").unwrap();
+    assert_eq!(event.timestamp, Some(Utc.ymd(2014, 5, 6).and_hms(7, 8, 9)));
 }
 
 #[test]

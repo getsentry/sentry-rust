@@ -73,6 +73,13 @@ pub mod ts_seconds_float {
         {
             Ok(Utc.timestamp_opt(value as i64, 0).unwrap())
         }
+
+        fn visit_str<E>(self, value: &str) -> Result<DateTime<Utc>, E>
+        where
+            E: de::Error,
+        {
+            value.parse().map_err(|e| E::custom(format!("{}", e)))
+        }
     }
 }
 
