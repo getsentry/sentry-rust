@@ -186,7 +186,7 @@ impl FromStr for Dsn {
     }
 }
 
-impl_str_serialization!(Dsn, "a sentry dsn");
+impl_str_serialization!(Dsn);
 
 #[cfg(test)]
 mod test {

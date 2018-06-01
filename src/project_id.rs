@@ -74,7 +74,7 @@ impl FromStr for ProjectId {
     }
 }
 
-impl_str_serialization!(ProjectId, "a project id");
+impl_str_serialization!(ProjectId);
 
 #[cfg(test)]
 mod test {

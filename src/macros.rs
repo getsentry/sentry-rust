@@ -2,10 +2,9 @@
 ///
 /// If a type implements `FromStr` and `Display` then this automatically
 /// implements a serializer/deserializer for that type that dispatches
-/// appropriately.  First argument is the name of the type, the second
-/// is a message for the expectation error (human readable type effectively).
+/// appropriately.
 macro_rules! impl_str_serialization {
-    ($type:ty, $expectation:expr) => {
+    ($type:ty) => {
         #[cfg(feature = "with_serde")]
         impl ::serde::ser::Serialize for $type {
             fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

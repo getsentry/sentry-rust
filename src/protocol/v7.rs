@@ -22,8 +22,6 @@ use uuid::Uuid;
 
 use utils::{ts_seconds_float, ts_seconds_float_opt};
 
-static KNOWN_LEVELS: &[&str] = &["debug", "info", "warning", "error", "fatal"];
-
 /// An arbitrary (JSON) value (`serde_json::value::Value`)
 pub mod value {
     pub use serde_json::value::{from_value, to_value, Index, Map, Number, Value};
@@ -540,9 +538,13 @@ pub struct Exception {
     pub mechanism: Option<Mechanism>,
 }
 
+/// An error used when parsing `Level`.
+#[derive(Debug, Fail)]
+#[fail(display = "invalid level")]
+pub struct ParseLevelError;
+
 /// Represents the level of severity of an event or breadcrumb.
-#[derive(Serialize, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[serde(rename_all = "lowercase")]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Level {
     /// Indicates very spammy debug information.
     Debug,
@@ -559,6 +561,33 @@ pub enum Level {
 impl Default for Level {
     fn default() -> Level {
         Level::Info
+    }
+}
+
+impl str::FromStr for Level {
+    type Err = ParseLevelError;
+
+    fn from_str(string: &str) -> Result<Level, Self::Err> {
+        Ok(match string {
+            "debug" => Level::Debug,
+            "info" | "log" => Level::Info,
+            "warning" => Level::Warning,
+            "error" => Level::Error,
+            "fatal" => Level::Fatal,
+            _ => return Err(ParseLevelError),
+        })
+    }
+}
+
+impl fmt::Display for Level {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Level::Debug => write!(f, "debug"),
+            Level::Info => write!(f, "info"),
+            Level::Warning => write!(f, "warning"),
+            Level::Error => write!(f, "error"),
+            Level::Fatal => write!(f, "fatal"),
+        }
     }
 }
 
@@ -589,18 +618,7 @@ impl Level {
     }
 }
 
-impl<'de> Deserialize<'de> for Level {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Level, D::Error> {
-        match <&str>::deserialize(deserializer)? {
-            "debug" => Ok(Level::Debug),
-            "info" | "log" => Ok(Level::Info),
-            "warning" => Ok(Level::Warning),
-            "error" => Ok(Level::Error),
-            "fatal" => Ok(Level::Fatal),
-            other => return Err(DeError::unknown_variant(other, KNOWN_LEVELS)),
-        }
-    }
-}
+impl_str_serialization!(Level);
 
 /// Represents a single breadcrumb.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
