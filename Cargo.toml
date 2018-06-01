@@ -1,6 +1,6 @@
 [package]
 name = "sentry"
-version = "0.5.1"
+version = "0.5.2"
 authors = ["Sentry <hello@sentry.io>"]
 license = "Apache-2.0"
 readme = "README.md"
@@ -29,21 +29,21 @@ with_debug_meta = ["findshlibs", "with_client_implementation"]
 with_shim_api = []
 
 [dependencies]
-backtrace = { version = "0.3.7", optional = true }
+backtrace = { version = "0.3.8", optional = true }
 url = { version = "1.7.0", optional = true }
 failure = { version = "0.1.1", optional = true }
 log = { version = "0.4.1", optional = true }
-serde = "1.0.50"
-serde_json = "1.0.17"
-sentry-types = "0.5.0"
-reqwest = { version = "0.8.5", optional = true }
-uuid = { version = "0.6.3", features = ["v4"] }
-lazy_static = "1.0.0"
+serde = "1.0.64"
+serde_json = "1.0.19"
+sentry-types = "0.5.2"
+reqwest = { version = "0.8.6", optional = true }
+uuid = { version = "0.6.5", features = ["v4"] }
+lazy_static = "1.0.1"
 regex = { version = "1.0.0", optional = true }
 error-chain = { version = "0.11.0", optional = true }
 im = { version = "10.2.0", optional = true }
-libc = { version = "0.2.40", optional = true }
-hostname = { version = "0.1.4", optional = true }
+libc = { version = "0.2.41", optional = true }
+hostname = { version = "0.1.5", optional = true }
 findshlibs = { version = "0.4.0", optional = true }
 
 [target."cfg(not(windows))".dependencies]
@@ -54,7 +54,7 @@ rustc_version = { version = "0.2.2", optional = true }
 
 [dev-dependencies]
 failure_derive = "0.1.1"
-pretty_env_logger = "0.2.2"
+pretty_env_logger = "0.2.3"
 
 [[example]]
 name = "error-chain-demo"
