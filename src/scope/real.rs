@@ -97,24 +97,20 @@ struct StackLayer {
 impl Stack {
     pub fn for_process() -> Stack {
         Stack {
-            layers: vec![
-                StackLayer {
-                    client: None,
-                    scope: default_scope(),
-                },
-            ],
+            layers: vec![StackLayer {
+                client: None,
+                scope: default_scope(),
+            }],
             ty: StackType::Process,
         }
     }
 
     pub fn for_thread() -> Stack {
         Stack {
-            layers: vec![
-                with_process_stack(|stack| StackLayer {
-                    client: stack.client(),
-                    scope: stack.scope().clone(),
-                }),
-            ],
+            layers: vec![with_process_stack(|stack| StackLayer {
+                client: stack.client(),
+                scope: stack.scope().clone(),
+            })],
             ty: StackType::Thread,
         }
     }

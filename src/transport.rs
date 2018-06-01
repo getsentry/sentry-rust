@@ -7,8 +7,8 @@ use reqwest::header::{Headers, RetryAfter};
 use reqwest::{Client, StatusCode};
 use uuid::Uuid;
 
-use Dsn;
 use protocol::Event;
+use Dsn;
 
 /// A transport can send rust events.
 #[derive(Debug)]

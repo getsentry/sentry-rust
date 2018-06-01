@@ -63,8 +63,8 @@ mod model_support {
 #[cfg(feature = "with_debug_meta")]
 mod findshlibs_support {
     use super::*;
-    use api::protocol::SymbolicDebugImage;
     use api::protocol::debugid::DebugId;
+    use api::protocol::SymbolicDebugImage;
     use findshlibs::{Segment, SharedLibrary, SharedLibraryId, TargetSharedLibrary,
                      TARGET_SUPPORTED};
     use uuid::Uuid;

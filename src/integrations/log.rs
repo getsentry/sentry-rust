@@ -97,18 +97,16 @@ pub fn event_from_record(record: &log::Record, with_stacktrace: bool) -> Event<'
     Event {
         logger: Some(record.target().into()),
         level: convert_log_level(record.level()),
-        exceptions: vec![
-            Exception {
-                ty: record.target().into(),
-                value: Some(format!("{}", record.args())),
-                stacktrace: if with_stacktrace {
-                    current_stacktrace()
-                } else {
-                    None
-                },
-                ..Default::default()
+        exceptions: vec![Exception {
+            ty: record.target().into(),
+            value: Some(format!("{}", record.args())),
+            stacktrace: if with_stacktrace {
+                current_stacktrace()
+            } else {
+                None
             },
-        ],
+            ..Default::default()
+        }],
         ..Default::default()
     }
 }

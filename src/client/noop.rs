@@ -1,8 +1,8 @@
 //! The noop fallback client for shim only users.
 use uuid::Uuid;
 
-use api::Dsn;
 use api::protocol::Event;
+use api::Dsn;
 use scope::noop::Scope;
 
 /// The "shim only" Sentry client.
