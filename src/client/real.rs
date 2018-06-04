@@ -11,7 +11,7 @@ use uuid::Uuid;
 use api::Dsn;
 use backtrace_support::{function_starts_with, is_sys_function};
 use constants::{SDK_INFO, USER_AGENT};
-use protocol::{DebugMeta, Event, Context};
+use protocol::{Context, DebugMeta, Event};
 use scope::{bind_client, Scope};
 use transport::Transport;
 use utils::{self, debug_images, server_name, trim_stacktrace};
@@ -311,41 +311,51 @@ impl Client {
                     .extend(scope.tags.iter().map(|(k, v)| ((*k).clone(), (*v).clone())));
             }
 
-            {
-                let mut add_os = true;
-                let mut add_rust = true;
-                let mut add_device = true;
+            let mut add_os = true;
+            let mut add_rust = true;
+            let mut add_device = true;
 
-                for (key, value) in scope.contexts.iter() {
-                    match *value {
-                        None => {
-                            match key.as_str() {
-                                "os" => add_os = false,
-                                "rust" => add_rust = false,
-                                "device" => add_device = false,
-                                _ => {},
-                            }
-                        }
-                        Some(ref value) => {
-                            event.contexts.insert((*key).clone(), (*value).clone());
-                        }
+            for (key, value) in scope.contexts.iter() {
+                match *value {
+                    None => match key.as_str() {
+                        "os" => add_os = false,
+                        "rust" => add_rust = false,
+                        "device" => add_device = false,
+                        _ => {}
+                    },
+                    Some(ref value) => {
+                        event
+                            .contexts
+                            .entry((*key).clone())
+                            .or_insert_with(|| (*value).clone());
                     }
                 }
+            }
 
-                if add_os {
-                    if let Some(ref os) = CONTEXT_DEFAULTS.os {
-                        event.contexts.insert("os".to_string(), os.clone());
-                    }
+            if add_os {
+                if let Some(ref os) = CONTEXT_DEFAULTS.os {
+                    event
+                        .contexts
+                        .entry("os".to_string())
+                        .or_insert_with(|| os.clone());
                 }
-                if add_rust {
-                    if let Some(ref rust) = CONTEXT_DEFAULTS.rust {
-                        event.contexts.insert("rust".to_string(), rust.clone());
-                    }
+            }
+
+            if add_rust {
+                if let Some(ref rust) = CONTEXT_DEFAULTS.rust {
+                    event
+                        .contexts
+                        .entry("rust".to_string())
+                        .or_insert_with(|| rust.clone());
                 }
-                if add_device {
-                    if let Some(ref device) = CONTEXT_DEFAULTS.device {
-                        event.contexts.insert("device".to_string(), device.clone());
-                    }
+            }
+
+            if add_device {
+                if let Some(ref device) = CONTEXT_DEFAULTS.device {
+                    event
+                        .contexts
+                        .entry("device".to_string())
+                        .or_insert_with(|| device.clone());
                 }
             }
 
