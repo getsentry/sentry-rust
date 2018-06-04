@@ -63,15 +63,17 @@ pub struct Scope {
     pub(crate) contexts: im::HashMap<String, Option<Context>>,
 }
 
-fn default_scope() -> Scope {
-    Scope {
-        fingerprint: None,
-        transaction: None,
-        breadcrumbs: Default::default(),
-        user: None,
-        extra: Default::default(),
-        tags: Default::default(),
-        contexts: Default::default(),
+impl Default for Scope {
+    fn default() {
+        Scope {
+            fingerprint: None,
+            transaction: None,
+            breadcrumbs: Default::default(),
+            user: None,
+            extra: Default::default(),
+            tags: Default::default(),
+            contexts: Default::default(),
+        }
     }
 }
 
@@ -86,7 +88,7 @@ impl Stack {
         Stack {
             layers: vec![StackLayer {
                 client: None,
-                scope: default_scope(),
+                scope: Default::default(),
             }],
             ty: StackType::Process,
         }
@@ -307,7 +309,7 @@ impl Scope {
     /// In some situations this might not be what a user wants.  Calling
     /// this method will wipe all data contained within.
     pub fn clear(&mut self) {
-        *self = default_scope();
+        *self = Default::default();
     }
 
     /// Sets the fingerprint.
