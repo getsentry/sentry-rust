@@ -16,7 +16,7 @@ incompatible version of this crate.
 
 ## Requirements
 
-We currently only verify this crate against a recent version fo Sentry hosted on
+We currently only verify this crate against a recent version of Sentry hosted on
 [sentry.io](https://sentry.io/) but it should work with on-prem Sentry versions
 8.20 and later.
 
