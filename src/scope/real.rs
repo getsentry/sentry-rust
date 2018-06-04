@@ -64,7 +64,7 @@ pub struct Scope {
 }
 
 impl Default for Scope {
-    fn default() {
+    fn default() -> Scope {
         Scope {
             fingerprint: None,
             transaction: None,
