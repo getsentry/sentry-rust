@@ -32,7 +32,7 @@ pub mod value {
 /// It is currently backed by the `linked-hash-map` crate's hash map so that
 /// insertion order is preserved.
 pub mod map {
-    pub use linked_hash_map::{Entries, IntoIter, Iter, IterMut, Keys, LinkedHashMap,
+    pub use linked_hash_map::{Entries, Entry, IntoIter, Iter, IterMut, Keys, LinkedHashMap,
                               OccupiedEntry, VacantEntry, Values};
 }
 
