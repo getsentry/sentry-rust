@@ -7,7 +7,6 @@ use std::thread;
 
 use api::protocol::{Breadcrumb, Context, User, Value};
 use client::Client;
-use utils;
 
 use im;
 
@@ -61,7 +60,7 @@ pub struct Scope {
     pub(crate) user: Option<Arc<User>>,
     pub(crate) extra: im::HashMap<String, Value>,
     pub(crate) tags: im::HashMap<String, String>,
-    pub(crate) contexts: im::HashMap<String, Context>,
+    pub(crate) contexts: im::HashMap<String, Option<Context>>,
 }
 
 fn default_scope() -> Scope {
@@ -72,19 +71,7 @@ fn default_scope() -> Scope {
         user: None,
         extra: Default::default(),
         tags: Default::default(),
-        contexts: {
-            let mut contexts = im::HashMap::new();
-            if let Some(c) = utils::os_context() {
-                contexts = contexts.insert("os".to_string(), c);
-            }
-            if let Some(c) = utils::rust_context() {
-                contexts = contexts.insert("rust".to_string(), c);
-            }
-            if let Some(c) = utils::device_context() {
-                contexts = contexts.insert("device".to_string(), c);
-            }
-            contexts
-        },
+        contexts: Default::default(),
     }
 }
 
@@ -353,13 +340,13 @@ impl Scope {
 
     /// Sets a context for a key.
     pub fn set_context<C: Into<Context>>(&mut self, key: &str, value: C) {
-        self.contexts = self.contexts.insert(key.to_string(), value.into());
+        self.contexts = self.contexts.insert(key.to_string(), Some(value.into()));
     }
 
     /// Removes a context for a key.
     pub fn remove_context(&mut self, key: &str) {
         // annoyingly this needs a String :(
-        self.contexts = self.contexts.remove(&key.to_string());
+        self.contexts = self.contexts.insert(&key.to_string(), None);
     }
 
     /// Sets a extra to a specific value.

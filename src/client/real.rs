@@ -11,10 +11,25 @@ use uuid::Uuid;
 use api::Dsn;
 use backtrace_support::{function_starts_with, is_sys_function};
 use constants::{SDK_INFO, USER_AGENT};
-use protocol::{DebugMeta, Event};
+use protocol::{DebugMeta, Event, Context};
 use scope::{bind_client, Scope};
 use transport::Transport;
-use utils::{debug_images, server_name, trim_stacktrace};
+use utils::{self, debug_images, server_name, trim_stacktrace};
+
+#[derive(Debug)]
+struct ContextDefaults {
+    pub os: Option<Context>,
+    pub rust: Option<Context>,
+    pub device: Option<Context>,
+}
+
+lazy_static! {
+    static ref CONTEXT_DEFAULTS: ContextDefaults = ContextDefaults {
+        os: utils::os_context(),
+        rust: utils::rust_context(),
+        device: utils::device_context(),
+    };
+}
 
 /// The Sentry client object.
 ///
@@ -296,13 +311,42 @@ impl Client {
                     .extend(scope.tags.iter().map(|(k, v)| ((*k).clone(), (*v).clone())));
             }
 
-            if !scope.contexts.is_empty() {
-                event.contexts.extend(
-                    scope
-                        .contexts
-                        .iter()
-                        .map(|(k, v)| ((*k).clone(), (*v).clone())),
-                );
+            {
+                let mut add_os = true;
+                let mut add_rust = true;
+                let mut add_device = true;
+
+                for (key, value) in scope.contexts.iter() {
+                    match *value {
+                        None => {
+                            match key.as_str() {
+                                "os" => add_os = false,
+                                "rust" => add_rust = false,
+                                "device" => add_device = false,
+                                _ => {},
+                            }
+                        }
+                        Some(ref value) => {
+                            event.contexts.insert((*key).clone(), (*value).clone());
+                        }
+                    }
+                }
+
+                if add_os {
+                    if let Some(ref os) = CONTEXT_DEFAULTS.os {
+                        event.contexts.insert("os".to_string(), os.clone());
+                    }
+                }
+                if add_rust {
+                    if let Some(ref rust) = CONTEXT_DEFAULTS.rust {
+                        event.contexts.insert("rust".to_string(), rust.clone());
+                    }
+                }
+                if add_device {
+                    if let Some(ref device) = CONTEXT_DEFAULTS.device {
+                        event.contexts.insert("device".to_string(), device.clone());
+                    }
+                }
             }
 
             if event.transaction.is_none() {
