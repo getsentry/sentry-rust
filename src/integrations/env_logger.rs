@@ -27,16 +27,14 @@ use env_logger;
 
 use integrations::log::{self as sentry_log, LoggerOptions};
 
-
 /// Initializes the environment logger.
 ///
 /// If a logger is given then it is used, otherwise a new logger is created in the same
 /// way as `env_logger::init` does normally.  The `global_filter` on the options is set
 /// to the filter of the logger.
 pub fn init(logger: Option<env_logger::Logger>, mut options: LoggerOptions) {
-    let logger = logger.unwrap_or_else(|| {
-        env_logger::Builder::from_env(env_logger::Env::default()).build()
-    });
+    let logger =
+        logger.unwrap_or_else(|| env_logger::Builder::from_env(env_logger::Env::default()).build());
     let filter = logger.filter();
     if options.global_filter.is_none() {
         options.global_filter = Some(filter);
