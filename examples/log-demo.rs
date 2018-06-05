@@ -15,7 +15,7 @@ fn main() {
 
     let mut log_builder = pretty_env_logger::formatted_builder().unwrap();
     log_builder.parse("info");
-    sentry::integrations::log::init(Some(Box::new(log_builder.build())), Default::default());
+    sentry::integrations::env_logger::init(Some(log_builder.build()), Default::default());
     sentry::integrations::panic::register_panic_handler();
 
     info!("System is booting");

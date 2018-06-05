@@ -135,6 +135,9 @@ extern crate error_chain;
 #[cfg(feature = "with_log")]
 extern crate log;
 
+#[cfg(feature = "with_env_logger")]
+extern crate env_logger;
+
 #[cfg(feature = "with_debug_meta")]
 extern crate findshlibs;
 

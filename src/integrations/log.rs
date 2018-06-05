@@ -18,9 +18,17 @@
 //! # extern crate pretty_env_logger;
 //! let mut log_builder = pretty_env_logger::formatted_builder().unwrap();
 //! log_builder.parse("info");  // or env::var("RUST_LOG")
-//! sentry::integrations::log::init(Some(
-//!     Box::new(log_builder.build())), Default::default());
+//! let logger = log_builder.build();
+//! let options = sentry::integrations::log::LoggerOptions {
+//!     global_filter: Some(logger.filter()),
+//!     ..Default::default()
+//! };
+//! sentry::integrations::log::init(Some(Box::new(logger)), options);
 //! ```
+//!
+//! For loggers based on `env_logger` (like `pretty_env_logger`) you can also
+//! use the [`env_logger`](../env_logger/index.html) integration which is
+//! much easier to use.
 use log;
 
 use api::add_breadcrumb;
@@ -48,6 +56,25 @@ impl Default for LoggerOptions {
             filter: log::LevelFilter::Info,
             emit_breadcrumbs: true,
             emit_error_events: true,
+        }
+    }
+}
+
+impl LoggerOptions {
+    /// Returns the effective global filter.
+    ///
+    /// This is what is set for these logger options when the log level
+    /// needs to be set globally.  This is the greater of `global_filter`
+    /// and `filter`.
+    fn effective_global_filter(&self) -> log::LevelFilter {
+        if let Some(filter) = self.global_filter {
+            if filter < self.filter {
+                self.filter
+            } else {
+                filter
+            }
+        } else {
+            self.filter
         }
     }
 }
@@ -170,14 +197,20 @@ fn convert_log_level(level: log::Level) -> Level {
 /// use env_logger;
 ///
 /// let builder = env_logger::Builder::from_default_env();
-/// log::init(Some(Box::new(builder.build())), Default::default());
+/// let logger = builder.build();
+/// log::init(Some(Box::new(builder.build())), LoggerOptions {
+///     global_filter: Some(logger.filter()),
+///     ..Default::default()
+/// });
 /// ```
+///
+/// (For using `env_logger` you can also use the `env_logger` integration
+/// which simplifies this).
 pub fn init(dest: Option<Box<log::Log>>, options: LoggerOptions) {
     let logger = Logger::new(dest, options);
-    if let Some(filter) = logger.options().global_filter {
+    let filter = logger.options().effective_global_filter();
+    if filter > log::max_level() {
         log::set_max_level(filter);
-    } else {
-        log::set_max_level(logger.options().filter);
     }
     log::set_boxed_logger(Box::new(logger)).unwrap();
 }
