@@ -18,6 +18,7 @@ fn main() {
     sentry::integrations::env_logger::init(Some(log_builder.build()), Default::default());
     sentry::integrations::panic::register_panic_handler();
 
+    debug!("System is booting");
     info!("System is booting");
     warn!("System is warning");
     error!("Holy shit everything is on fire!");

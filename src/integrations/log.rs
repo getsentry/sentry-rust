@@ -30,6 +30,7 @@
 //! use the [`env_logger`](../env_logger/index.html) integration which is
 //! much easier to use.
 use log;
+use std::cmp;
 
 use api::add_breadcrumb;
 use backtrace_support::current_stacktrace;
@@ -47,6 +48,8 @@ pub struct LoggerOptions {
     pub emit_breadcrumbs: bool,
     /// If set to `true` error events are sent for errors in the log. (defaults to `true`)
     pub emit_error_events: bool,
+    /// If set to `true` warning events are sent for warnings in the log. (defaults to `false`)
+    pub emit_warning_events: bool,
 }
 
 impl Default for LoggerOptions {
@@ -56,6 +59,7 @@ impl Default for LoggerOptions {
             filter: log::LevelFilter::Info,
             emit_breadcrumbs: true,
             emit_error_events: true,
+            emit_warning_events: false,
         }
     }
 }
@@ -66,8 +70,9 @@ impl LoggerOptions {
     /// This is what is set for these logger options when the log level
     /// needs to be set globally.  This is the greater of `global_filter`
     /// and `filter`.
+    #[inline(always)]
     fn effective_global_filter(&self) -> log::LevelFilter {
-        if let Some(filter) = self.global_filter {
+        let filter = if let Some(filter) = self.global_filter {
             if filter < self.filter {
                 self.filter
             } else {
@@ -75,6 +80,30 @@ impl LoggerOptions {
             }
         } else {
             self.filter
+        };
+        cmp::max(filter, self.issue_filter())
+    }
+
+    /// Returns the level for which issues should be created.
+    ///
+    /// This is controlled by `emit_error_events` and `emit_warning_events`.
+    #[inline(always)]
+    fn issue_filter(&self) -> log::LevelFilter {
+        if self.emit_warning_events {
+            log::LevelFilter::Warn
+        } else if self.emit_error_events {
+            log::LevelFilter::Error
+        } else {
+            log::LevelFilter::Off
+        }
+    }
+
+    /// Checks if an issue should be created.
+    fn create_issue_for_record(&self, record: &log::Record) -> bool {
+        match record.level() {
+            log::Level::Warn => self.emit_warning_events,
+            log::Level::Error => self.emit_error_events,
+            _ => false,
         }
     }
 }
@@ -149,7 +178,7 @@ impl log::Log for Logger {
     }
 
     fn log(&self, record: &log::Record) {
-        if self.options.emit_error_events && record.level() <= log::Level::Error {
+        if self.options.create_issue_for_record(record) {
             with_client_and_scope(|client, scope| {
                 client.capture_event(event_from_record(record, true), Some(scope))
             });
@@ -213,4 +242,39 @@ pub fn init(dest: Option<Box<log::Log>>, options: LoggerOptions) {
         log::set_max_level(filter);
     }
     log::set_boxed_logger(Box::new(logger)).unwrap();
+}
+
+#[test]
+fn test_filters() {
+    let opt_warn = LoggerOptions {
+        filter: log::LevelFilter::Warn,
+        ..Default::default()
+    };
+    assert_eq!(opt_warn.effective_global_filter(), log::LevelFilter::Warn);
+    assert_eq!(opt_warn.issue_filter(), log::LevelFilter::Error);
+
+    let opt_debug = LoggerOptions {
+        global_filter: Some(log::LevelFilter::Debug),
+        filter: log::LevelFilter::Warn,
+        ..Default::default()
+    };
+    assert_eq!(opt_debug.effective_global_filter(), log::LevelFilter::Debug);
+
+    let opt_debug_inverse = LoggerOptions {
+        global_filter: Some(log::LevelFilter::Warn),
+        filter: log::LevelFilter::Debug,
+        ..Default::default()
+    };
+    assert_eq!(
+        opt_debug_inverse.effective_global_filter(),
+        log::LevelFilter::Debug
+    );
+
+    let opt_weird = LoggerOptions {
+        filter: log::LevelFilter::Error,
+        emit_warning_events: true,
+        ..Default::default()
+    };
+    assert_eq!(opt_weird.issue_filter(), log::LevelFilter::Warn);
+    assert_eq!(opt_weird.effective_global_filter(), log::LevelFilter::Warn);
 }
