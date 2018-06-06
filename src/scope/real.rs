@@ -5,8 +5,9 @@ use std::mem;
 use std::sync::{Arc, RwLock};
 use std::thread;
 
-use api::protocol::{Breadcrumb, Context, User, Value};
+use api::protocol::{map::Entry, Breadcrumb, Context, Event, User, Value};
 use client::Client;
+use utils;
 
 use im;
 
@@ -15,6 +16,21 @@ lazy_static! {
 }
 thread_local! {
     static THREAD_STACK: RefCell<Stack> = RefCell::new(Stack::for_thread());
+}
+
+lazy_static! {
+    static ref CONTEXT_DEFAULTS: ContextDefaults = ContextDefaults {
+        os: utils::os_context(),
+        rust: utils::rust_context(),
+        device: utils::device_context(),
+    };
+}
+
+#[derive(Debug)]
+struct ContextDefaults {
+    pub os: Option<Context>,
+    pub rust: Option<Context>,
+    pub device: Option<Context>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -360,5 +376,91 @@ impl Scope {
     pub fn remove_extra(&mut self, key: &str) {
         // annoyingly this needs a String :(
         self.extra = self.extra.remove(&key.to_string());
+    }
+
+    /// Applies the contained scoped data to fill an event.
+    pub fn apply_to_event(&self, event: &mut Event) {
+        let mut add_os = true;
+        let mut add_rust = true;
+        let mut add_device = true;
+
+        if !self.breadcrumbs.is_empty() {
+            event
+                .breadcrumbs
+                .extend(self.breadcrumbs.iter().map(|x| (*x).clone()));
+        }
+
+        if event.user.is_none() {
+            if let Some(ref user) = self.user {
+                event.user = Some((**user).clone());
+            }
+        }
+
+        if !self.extra.is_empty() {
+            event
+                .extra
+                .extend(self.extra.iter().map(|(k, v)| ((*k).clone(), (*v).clone())));
+        }
+
+        if !self.tags.is_empty() {
+            event
+                .tags
+                .extend(self.tags.iter().map(|(k, v)| ((*k).clone(), (*v).clone())));
+        }
+
+        for (key, value) in self.contexts.iter() {
+            match *value {
+                None => match key.as_str() {
+                    "os" => add_os = false,
+                    "rust" => add_rust = false,
+                    "device" => add_device = false,
+                    _ => {}
+                },
+                Some(ref value) => {
+                    event
+                        .contexts
+                        .entry((*key).clone())
+                        .or_insert_with(|| (*value).clone());
+                }
+            }
+        }
+
+        if event.transaction.is_none() {
+            if let Some(ref txn) = self.transaction {
+                event.transaction = Some((**txn).clone());
+            }
+        }
+
+        if event.fingerprint.len() == 1
+            && (event.fingerprint[0] == "{{ default }}" || event.fingerprint[0] == "{{default}}")
+        {
+            if let Some(ref fp) = self.fingerprint {
+                event.fingerprint = Cow::Owned((**fp).clone());
+            }
+        }
+
+        if add_os {
+            if let Entry::Vacant(entry) = event.contexts.entry("os".to_string()) {
+                if let Some(ref os) = CONTEXT_DEFAULTS.os {
+                    entry.insert(os.clone());
+                }
+            }
+        }
+
+        if add_rust {
+            if let Entry::Vacant(entry) = event.contexts.entry("rust".to_string()) {
+                if let Some(ref rust) = CONTEXT_DEFAULTS.rust {
+                    entry.insert(rust.clone());
+                }
+            }
+        }
+
+        if add_device {
+            if let Entry::Vacant(entry) = event.contexts.entry("device".to_string()) {
+                if let Some(ref device) = CONTEXT_DEFAULTS.device {
+                    entry.insert(device.clone());
+                }
+            }
+        }
     }
 }

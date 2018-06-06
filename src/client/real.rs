@@ -11,26 +11,10 @@ use uuid::Uuid;
 use api::Dsn;
 use backtrace_support::{function_starts_with, is_sys_function};
 use constants::{SDK_INFO, USER_AGENT};
-use protocol::map::Entry;
-use protocol::{Context, DebugMeta, Event};
+use protocol::{DebugMeta, Event};
 use scope::{bind_client, Scope};
 use transport::Transport;
-use utils::{self, debug_images, server_name, trim_stacktrace};
-
-#[derive(Debug)]
-struct ContextDefaults {
-    pub os: Option<Context>,
-    pub rust: Option<Context>,
-    pub device: Option<Context>,
-}
-
-lazy_static! {
-    static ref CONTEXT_DEFAULTS: ContextDefaults = ContextDefaults {
-        os: utils::os_context(),
-        rust: utils::rust_context(),
-        device: utils::device_context(),
-    };
-}
+use utils::{debug_images, server_name, trim_stacktrace};
 
 /// The Sentry client object.
 ///
@@ -284,93 +268,8 @@ impl Client {
             };
         }
 
-        let mut add_os = true;
-        let mut add_rust = true;
-        let mut add_device = true;
-
         if let Some(scope) = scope {
-            if !scope.breadcrumbs.is_empty() {
-                event
-                    .breadcrumbs
-                    .extend(scope.breadcrumbs.iter().map(|x| (*x).clone()));
-            }
-
-            if event.user.is_none() {
-                if let Some(ref user) = scope.user {
-                    event.user = Some((**user).clone());
-                }
-            }
-
-            if !scope.extra.is_empty() {
-                event.extra.extend(
-                    scope
-                        .extra
-                        .iter()
-                        .map(|(k, v)| ((*k).clone(), (*v).clone())),
-                );
-            }
-
-            if !scope.tags.is_empty() {
-                event
-                    .tags
-                    .extend(scope.tags.iter().map(|(k, v)| ((*k).clone(), (*v).clone())));
-            }
-
-            for (key, value) in scope.contexts.iter() {
-                match *value {
-                    None => match key.as_str() {
-                        "os" => add_os = false,
-                        "rust" => add_rust = false,
-                        "device" => add_device = false,
-                        _ => {}
-                    },
-                    Some(ref value) => {
-                        event
-                            .contexts
-                            .entry((*key).clone())
-                            .or_insert_with(|| (*value).clone());
-                    }
-                }
-            }
-
-            if event.transaction.is_none() {
-                if let Some(ref txn) = scope.transaction {
-                    event.transaction = Some((**txn).clone());
-                }
-            }
-
-            if event.fingerprint.len() == 1
-                && (event.fingerprint[0] == "{{ default }}"
-                    || event.fingerprint[0] == "{{default}}")
-            {
-                if let Some(ref fp) = scope.fingerprint {
-                    event.fingerprint = Cow::Owned((**fp).clone());
-                }
-            }
-        }
-
-        if add_os {
-            if let Entry::Vacant(entry) = event.contexts.entry("os".to_string()) {
-                if let Some(ref os) = CONTEXT_DEFAULTS.os {
-                    entry.insert(os.clone());
-                }
-            }
-        }
-
-        if add_rust {
-            if let Entry::Vacant(entry) = event.contexts.entry("rust".to_string()) {
-                if let Some(ref rust) = CONTEXT_DEFAULTS.rust {
-                    entry.insert(rust.clone());
-                }
-            }
-        }
-
-        if add_device {
-            if let Entry::Vacant(entry) = event.contexts.entry("device".to_string()) {
-                if let Some(ref device) = CONTEXT_DEFAULTS.device {
-                    entry.insert(device.clone());
-                }
-            }
+            scope.apply_to_event(event);
         }
 
         if event.release.is_none() {
