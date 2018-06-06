@@ -7,14 +7,16 @@
 use std::borrow::Cow;
 use std::cmp;
 use std::fmt;
+use std::iter::FromIterator;
 use std::net::{AddrParseError, IpAddr};
 use std::num::ParseIntError;
+use std::ops;
 use std::str;
 
 use chrono::{DateTime, Utc};
 use debugid::DebugId;
 use serde::de::{Deserialize, Deserializer, Error as DeError};
-use serde::ser::{Error as SerError, Serialize, SerializeMap, Serializer};
+use serde::ser::{Error as SerError, Serialize, Serializer};
 use serde_json::{from_value, to_value};
 use url::Url;
 use url_serde;
@@ -46,6 +48,135 @@ pub use self::value::Value;
 
 /// The internally use arbitrary data map type (`linked_hash_map::LinkedHashMap`)
 pub use self::map::LinkedHashMap as Map;
+
+/// A wrapper type for collections with attached meta data.
+///
+/// The JSON payload can either directly be an array or an object containing a `values` field and
+/// arbitrary other fields. All other fields will be collected into `Values::data` when
+/// deserializing and re-serialized in the same place. The shorthand array notation is always
+/// reserialized as object.
+#[derive(Serialize, Clone, Debug, PartialEq)]
+#[serde(default)]
+pub struct Values<T> {
+    /// The values of the collection.
+    pub values: Vec<T>,
+    /// Additional data passed as fields next to `values`.
+    #[serde(flatten)]
+    pub data: Map<String, Value>,
+}
+
+impl<T> Values<T> {
+    /// Creates an empty values struct.
+    pub fn new() -> Values<T> {
+        Values {
+            values: Vec::new(),
+            data: Map::new(),
+        }
+    }
+
+    /// Checks whether this struct is empty in both values and data.
+    pub fn is_empty(&self) -> bool {
+        self.values.is_empty() && self.data.is_empty()
+    }
+}
+
+impl<T> Default for Values<T> {
+    fn default() -> Values<T> {
+        // Default implemented manually even if <T> does not impl Default.
+        Values::new()
+    }
+}
+
+impl<T> From<Vec<T>> for Values<T> {
+    fn from(values: Vec<T>) -> Values<T> {
+        Values {
+            values,
+            data: Map::new(),
+        }
+    }
+}
+
+impl<T> ops::Deref for Values<T> {
+    type Target = [T];
+
+    fn deref(&self) -> &Self::Target {
+        &self.values
+    }
+}
+
+impl<T> ops::DerefMut for Values<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.values
+    }
+}
+
+impl<T> FromIterator<T> for Values<T> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        Vec::<T>::from_iter(iter).into()
+    }
+}
+
+impl<T> Extend<T> for Values<T> {
+    fn extend<I>(&mut self, iter: I)
+    where
+        I: IntoIterator<Item = T>,
+    {
+        self.values.extend(iter)
+    }
+}
+
+impl<'a, T> IntoIterator for &'a mut Values<T> {
+    type Item = <&'a mut Vec<T> as IntoIterator>::Item;
+    type IntoIter = <&'a mut Vec<T> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        (&mut self.values).into_iter()
+    }
+}
+
+impl<'a, T> IntoIterator for &'a Values<T> {
+    type Item = <&'a Vec<T> as IntoIterator>::Item;
+    type IntoIter = <&'a Vec<T> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        (&self.values).into_iter()
+    }
+}
+
+impl<T> IntoIterator for Values<T> {
+    type Item = <Vec<T> as IntoIterator>::Item;
+    type IntoIter = <Vec<T> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.values.into_iter()
+    }
+}
+
+#[cfg(feature = "with_serde")]
+impl<'de, T> Deserialize<'de> for Values<T>
+where
+    T: Deserialize<'de>,
+{
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Repr<T> {
+            Qualified {
+                values: Vec<T>,
+                #[serde(flatten)]
+                data: Map<String, Value>,
+            },
+            Unqualified(Vec<T>),
+            Single(T),
+        }
+
+        Deserialize::deserialize(deserializer).map(|x| match x {
+            Repr::Qualified { values, data } => Values { values, data },
+            Repr::Unqualified(values) => values.into(),
+            Repr::Single(value) => vec![value].into(),
+        })
+    }
+}
 
 /// Represents a log entry message.
 ///
@@ -936,7 +1067,7 @@ pub struct ClientSdkInfo {
 }
 
 /// Represents a full event for Sentry.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Debug, Clone, PartialEq)]
 #[serde(default)]
 pub struct Event<'a> {
     /// The ID of the event
@@ -1001,23 +1132,14 @@ pub struct Event<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub request: Option<Request>,
     /// Optional contexts.
-    #[serde(
-        skip_serializing_if = "Map::is_empty",
-        serialize_with = "serialize_context",
-        deserialize_with = "deserialize_context"
-    )]
+    #[serde(skip_serializing_if = "Map::is_empty", with = "serde_context")]
     pub contexts: Map<String, Context>,
     /// List of breadcrumbs to send along.
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub breadcrumbs: Vec<Breadcrumb>,
+    #[serde(skip_serializing_if = "Values::is_empty")]
+    pub breadcrumbs: Values<Breadcrumb>,
     /// Exceptions to be attached (one or multiple if chained).
-    #[serde(
-        skip_serializing_if = "Vec::is_empty",
-        serialize_with = "serialize_exceptions",
-        deserialize_with = "deserialize_exceptions",
-        rename = "exception"
-    )]
-    pub exceptions: Vec<Exception>,
+    #[serde(skip_serializing_if = "Values::is_empty", rename = "exception")]
+    pub exceptions: Values<Exception>,
     /// A single stacktrace (deprecated)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stacktrace: Option<Stacktrace>,
@@ -1025,12 +1147,8 @@ pub struct Event<'a> {
     #[serde(skip_serializing_if = "Option::is_none", rename = "template")]
     pub template_info: Option<TemplateInfo>,
     /// A list of threads.
-    #[serde(
-        skip_serializing_if = "Vec::is_empty",
-        serialize_with = "serialize_threads",
-        deserialize_with = "deserialize_threads"
-    )]
-    pub threads: Vec<Thread>,
+    #[serde(skip_serializing_if = "Values::is_empty")]
+    pub threads: Values<Thread>,
     /// Optional tags to be attached to the event.
     #[serde(skip_serializing_if = "Map::is_empty")]
     pub tags: Map<String, String>,
@@ -1046,6 +1164,179 @@ pub struct Event<'a> {
     /// Additional arbitrary keys for forwards compatibility.
     #[serde(flatten)]
     pub other: Map<String, Value>,
+}
+
+#[cfg(feature = "with_serde")]
+impl<'a, 'de> Deserialize<'de> for Event<'a> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        /// A lenient representation of the `Event` struct used for aliasing field names.
+        #[derive(Deserialize)]
+        #[serde(default)]
+        pub struct LenientEvent<'a> {
+            #[serde(rename = "event_id")]
+            pub id: Option<Uuid>,
+            pub level: Level,
+            pub fingerprint: Cow<'a, [Cow<'a, str>]>,
+            pub culprit: Option<String>,
+            pub transaction: Option<String>,
+            pub message: Option<String>,
+            pub logentry: Option<LogEntry>,
+            #[serde(rename = "sentry.interfaces.Message")]
+            pub logentry_iface: Option<LogEntry>,
+            pub logger: Option<String>,
+            pub modules: Map<String, String>,
+            pub platform: Cow<'a, str>,
+            #[serde(with = "ts_seconds_float_opt")]
+            pub timestamp: Option<DateTime<Utc>>,
+            pub server_name: Option<Cow<'a, str>>,
+            pub release: Option<Cow<'a, str>>,
+            pub dist: Option<Cow<'a, str>>,
+            pub repos: Map<String, RepoReference>,
+            pub environment: Option<Cow<'a, str>>,
+            pub user: Option<User>,
+            #[serde(rename = "sentry.interfaces.User")]
+            pub user_iface: Option<User>,
+            pub request: Option<Request>,
+            #[serde(rename = "sentry.interfaces.Http")]
+            pub request_iface: Option<Request>,
+            #[serde(with = "serde_context")]
+            pub contexts: Map<String, Context>,
+            #[serde(with = "serde_context", rename = "sentry.interfaces.Contexts")]
+            pub contexts_iface: Map<String, Context>,
+            pub breadcrumbs: Option<Values<Breadcrumb>>,
+            #[serde(rename = "sentry.interfaces.Breadcrumbs")]
+            pub breadcrumbs_iface: Option<Values<Breadcrumb>>,
+            #[serde(rename = "exception")]
+            pub exceptions: Option<Values<Exception>>,
+            #[serde(rename = "sentry.interfaces.Exception")]
+            pub exceptions_iface: Option<Values<Exception>>,
+            pub stacktrace: Option<Stacktrace>,
+            #[serde(rename = "sentry.interfaces.Stacktrace")]
+            pub stacktrace_iface: Option<Stacktrace>,
+            #[serde(rename = "template")]
+            pub template_info: Option<TemplateInfo>,
+            #[serde(rename = "sentry.interfaces.Template")]
+            pub template_info_iface: Option<TemplateInfo>,
+            pub threads: Option<Values<Thread>>,
+            #[serde(rename = "sentry.interfaces.Threads")]
+            pub threads_iface: Option<Values<Thread>>,
+            pub tags: Map<String, String>,
+            pub extra: Map<String, Value>,
+            pub debug_meta: Cow<'a, DebugMeta>,
+            #[serde(rename = "sentry.interfaces.DebugMeta")]
+            pub debug_meta_iface: Cow<'a, DebugMeta>,
+            #[serde(rename = "sdk")]
+            pub sdk_info: Option<Cow<'a, ClientSdkInfo>>,
+            #[serde(flatten)]
+            pub other: Map<String, Value>,
+        }
+
+        impl<'a> Default for LenientEvent<'a> {
+            fn default() -> LenientEvent<'a> {
+                let default = Event::default();
+
+                LenientEvent {
+                    id: default.id,
+                    level: default.level,
+                    fingerprint: default.fingerprint,
+                    culprit: default.culprit,
+                    transaction: default.transaction,
+                    message: default.message,
+                    logentry: default.logentry,
+                    logentry_iface: None,
+                    logger: default.logger,
+                    modules: default.modules,
+                    platform: default.platform,
+                    timestamp: default.timestamp,
+                    server_name: default.server_name,
+                    release: default.release,
+                    dist: default.dist,
+                    repos: default.repos,
+                    environment: default.environment,
+                    user: None,
+                    user_iface: default.user,
+                    request: default.request,
+                    request_iface: None,
+                    contexts: default.contexts,
+                    contexts_iface: Default::default(),
+                    breadcrumbs: None,
+                    breadcrumbs_iface: None,
+                    exceptions: None,
+                    exceptions_iface: None,
+                    stacktrace: default.stacktrace,
+                    stacktrace_iface: None,
+                    template_info: default.template_info,
+                    template_info_iface: None,
+                    threads: None,
+                    threads_iface: None,
+                    tags: default.tags,
+                    extra: default.extra,
+                    debug_meta: default.debug_meta,
+                    debug_meta_iface: Default::default(),
+                    sdk_info: default.sdk_info,
+                    other: default.other,
+                }
+            }
+        }
+
+        impl<'a> From<LenientEvent<'a>> for Event<'a> {
+            fn from(lenient: LenientEvent) -> Event {
+                Event {
+                    id: lenient.id,
+                    level: lenient.level,
+                    fingerprint: lenient.fingerprint,
+                    culprit: lenient.culprit,
+                    transaction: lenient.transaction,
+                    message: lenient.message,
+                    logentry: lenient.logentry.or(lenient.logentry_iface),
+                    logger: lenient.logger,
+                    modules: lenient.modules,
+                    platform: lenient.platform,
+                    timestamp: lenient.timestamp,
+                    server_name: lenient.server_name,
+                    release: lenient.release,
+                    dist: lenient.dist,
+                    repos: lenient.repos,
+                    environment: lenient.environment,
+                    user: lenient.user.or(lenient.user_iface),
+                    request: lenient.request.or(lenient.request_iface),
+                    contexts: if lenient.contexts.is_empty() {
+                        lenient.contexts_iface
+                    } else {
+                        lenient.contexts
+                    },
+                    breadcrumbs: lenient
+                        .breadcrumbs
+                        .or(lenient.breadcrumbs_iface)
+                        .unwrap_or_default(),
+                    exceptions: lenient
+                        .exceptions
+                        .or(lenient.exceptions_iface)
+                        .unwrap_or_default(),
+                    stacktrace: lenient.stacktrace.or(lenient.stacktrace_iface),
+                    template_info: lenient.template_info.or(lenient.template_info_iface),
+                    threads: lenient
+                        .threads
+                        .or(lenient.threads_iface)
+                        .unwrap_or_default(),
+                    tags: lenient.tags,
+                    extra: lenient.extra,
+                    debug_meta: if lenient.debug_meta.is_empty() {
+                        lenient.debug_meta_iface
+                    } else {
+                        lenient.debug_meta
+                    },
+                    sdk_info: lenient.sdk_info,
+                    other: lenient.other,
+                }
+            }
+        }
+
+        Ok(LenientEvent::deserialize(deserializer)?.into())
+    }
 }
 
 fn is_other(value: &str) -> bool {
@@ -1082,11 +1373,11 @@ impl<'a> Default for Event<'a> {
             user: None,
             request: None,
             contexts: Map::new(),
-            breadcrumbs: Vec::new(),
-            exceptions: Vec::new(),
+            breadcrumbs: Values::new(),
+            exceptions: Values::new(),
             stacktrace: None,
             template_info: None,
-            threads: Vec::new(),
+            threads: Values::new(),
             tags: Map::new(),
             extra: Map::new(),
             debug_meta: Default::default(),
@@ -1399,150 +1690,103 @@ where
     }
 }
 
-fn deserialize_context<'de, D>(deserializer: D) -> Result<Map<String, Context>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let raw = <Map<String, Value>>::deserialize(deserializer)?;
-    let mut rv = Map::new();
+#[cfg(feature = "with_serde")]
+mod serde_context {
+    use std::str;
 
-    #[derive(Deserialize)]
-    pub struct Helper<T> {
-        #[serde(flatten)]
-        data: T,
-        #[serde(flatten)]
-        extra: Map<String, Value>,
-    }
+    use serde::de::{Deserialize, Deserializer, Error as DeError};
+    use serde::ser::{Error as SerError, SerializeMap, Serializer};
+    use serde_json::{from_value, to_value};
 
-    for (key, raw_context) in raw {
-        let (ty, data) = match raw_context {
-            Value::Object(mut map) => {
-                let has_type = if let Some(&Value::String(..)) = map.get("type") {
-                    true
-                } else {
-                    false
-                };
-                let ty = if has_type {
-                    map.remove("type")
-                        .and_then(|x| x.as_str().map(|x| x.to_string()))
-                        .unwrap()
-                } else {
-                    key.to_string()
-                };
-                (ty, Value::Object(map))
-            }
-            _ => continue,
-        };
+    use super::{value, AppContext, BrowserContext, Context, ContextData, DeviceContext, Map,
+                OsContext, RuntimeContext, Value};
 
-        macro_rules! convert_context {
-            ($enum:path, $ty:ident) => {{
-                let helper = from_value::<Helper<$ty>>(data).map_err(D::Error::custom)?;
-                ($enum(Box::new(helper.data)), helper.extra)
-            }};
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Map<String, Context>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let raw = <Map<String, Value>>::deserialize(deserializer)?;
+        let mut rv = Map::new();
+
+        #[derive(Deserialize)]
+        pub struct Helper<T> {
+            #[serde(flatten)]
+            data: T,
+            #[serde(flatten)]
+            extra: Map<String, Value>,
         }
 
-        let (data, extra) = match ty.as_str() {
-            "device" => convert_context!(ContextData::Device, DeviceContext),
-            "os" => convert_context!(ContextData::Os, OsContext),
-            "runtime" => convert_context!(ContextData::Runtime, RuntimeContext),
-            "app" => convert_context!(ContextData::App, AppContext),
-            "browser" => convert_context!(ContextData::Browser, BrowserContext),
-            _ => (
-                ContextData::Default,
-                from_value(data).map_err(D::Error::custom)?,
-            ),
-        };
-        rv.insert(key, Context { data, extra });
-    }
+        for (key, raw_context) in raw {
+            let (ty, data) = match raw_context {
+                Value::Object(mut map) => {
+                    let has_type = if let Some(&Value::String(..)) = map.get("type") {
+                        true
+                    } else {
+                        false
+                    };
+                    let ty = if has_type {
+                        map.remove("type")
+                            .and_then(|x| x.as_str().map(|x| x.to_string()))
+                            .unwrap()
+                    } else {
+                        key.to_string()
+                    };
+                    (ty, Value::Object(map))
+                }
+                _ => continue,
+            };
 
-    Ok(rv)
-}
-
-fn serialize_context<S>(value: &Map<String, Context>, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    let mut map = try!(serializer.serialize_map(None));
-
-    for (key, value) in value {
-        let mut c = if let ContextData::Default = value.data {
-            value::Map::new()
-        } else {
-            match to_value(&value.data).map_err(S::Error::custom)? {
-                Value::Object(map) => map,
-                _ => unreachable!(),
+            macro_rules! convert_context {
+                ($enum:path, $ty:ident) => {{
+                    let helper = from_value::<Helper<$ty>>(data).map_err(D::Error::custom)?;
+                    ($enum(Box::new(helper.data)), helper.extra)
+                }};
             }
-        };
-        c.insert("type".into(), value.data.type_name().into());
-        c.extend(
-            value
-                .extra
-                .iter()
-                .map(|(key, value)| (key.to_string(), value.clone())),
-        );
-        try!(map.serialize_entry(key, &c));
+
+            let (data, extra) = match ty.as_str() {
+                "device" => convert_context!(ContextData::Device, DeviceContext),
+                "os" => convert_context!(ContextData::Os, OsContext),
+                "runtime" => convert_context!(ContextData::Runtime, RuntimeContext),
+                "app" => convert_context!(ContextData::App, AppContext),
+                "browser" => convert_context!(ContextData::Browser, BrowserContext),
+                _ => (
+                    ContextData::Default,
+                    from_value(data).map_err(D::Error::custom)?,
+                ),
+            };
+            rv.insert(key, Context { data, extra });
+        }
+
+        Ok(rv)
     }
 
-    map.end()
-}
+    pub fn serialize<S>(value: &Map<String, Context>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut map = try!(serializer.serialize_map(None));
 
-fn deserialize_exceptions<'de, D>(deserializer: D) -> Result<Vec<Exception>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum Repr {
-        Qualified { values: Vec<Exception> },
-        Unqualified(Vec<Exception>),
-        Single(Exception),
-    }
-    Option::<Repr>::deserialize(deserializer).map(|x| match x {
-        None => vec![],
-        Some(Repr::Qualified { values }) => values,
-        Some(Repr::Unqualified(values)) => values,
-        Some(Repr::Single(exc)) => vec![exc],
-    })
-}
+        for (key, value) in value {
+            let mut c = if let ContextData::Default = value.data {
+                value::Map::new()
+            } else {
+                match to_value(&value.data).map_err(S::Error::custom)? {
+                    Value::Object(map) => map,
+                    _ => unreachable!(),
+                }
+            };
+            c.insert("type".into(), value.data.type_name().into());
+            c.extend(
+                value
+                    .extra
+                    .iter()
+                    .map(|(key, value)| (key.to_string(), value.clone())),
+            );
+            try!(map.serialize_entry(key, &c));
+        }
 
-#[cfg_attr(feature = "cargo-clippy", allow(ptr_arg))]
-fn serialize_exceptions<S>(value: &Vec<Exception>, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    #[derive(Serialize)]
-    struct Helper<'a> {
-        values: &'a [Exception],
+        map.end()
     }
-    Helper { values: &value }.serialize(serializer)
-}
-
-fn deserialize_threads<'de, D>(deserializer: D) -> Result<Vec<Thread>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum Repr {
-        Qualified { values: Vec<Thread> },
-        Unqualified(Vec<Thread>),
-    }
-    Repr::deserialize(deserializer).map(|x| match x {
-        Repr::Qualified { values } => values,
-        Repr::Unqualified(values) => values,
-    })
-}
-
-#[cfg_attr(feature = "cargo-clippy", allow(ptr_arg))]
-fn serialize_threads<S>(value: &Vec<Thread>, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    #[derive(Serialize)]
-    struct Helper<'a> {
-        values: &'a [Thread],
-    }
-    Helper { values: &value }.serialize(serializer)
 }
 
 impl<'de> Deserialize<'de> for DebugImage {

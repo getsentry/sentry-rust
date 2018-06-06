@@ -6,7 +6,10 @@ cache:
 git:
   depth: 1
 
-if: tag IS blank
+branches:
+  only:
+    - master
+
 script: make $SUITE
 
 matrix:
