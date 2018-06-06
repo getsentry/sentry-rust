@@ -9,9 +9,9 @@ use regex::Regex;
 use uuid::Uuid;
 
 use api::Dsn;
+use api::protocol::{DebugMeta, Event};
 use backtrace_support::{function_starts_with, is_sys_function};
 use constants::{SDK_INFO, USER_AGENT};
-use protocol::{DebugMeta, Event};
 use scope::{bind_client, Scope};
 use transport::Transport;
 use utils::{debug_images, server_name, trim_stacktrace};
