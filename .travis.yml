@@ -17,9 +17,9 @@ env: # Needed for allow_failures
 matrix:
   include:
     - env: SUITE=check
-      rust: "1.22.2"
+      rust: "1.22.0"
     - env: SUITE=cargotest
-      rust: "1.22.2"
+      rust: "1.22.0"
     - env: SUITE=checkall
     - env: SUITE=cargotestall
     - os: osx
