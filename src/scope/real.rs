@@ -5,8 +5,8 @@ use std::mem;
 use std::sync::{Arc, RwLock};
 use std::thread;
 
-use api::protocol::{Breadcrumb, Context, Event, User, Value};
 use api::protocol::map::Entry;
+use api::protocol::{Breadcrumb, Context, Event, User, Value};
 use client::Client;
 use utils;
 

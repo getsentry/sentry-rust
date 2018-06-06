@@ -8,8 +8,8 @@ use std::time::Duration;
 use regex::Regex;
 use uuid::Uuid;
 
-use api::Dsn;
 use api::protocol::{DebugMeta, Event};
+use api::Dsn;
 use backtrace_support::{function_starts_with, is_sys_function};
 use constants::{SDK_INFO, USER_AGENT};
 use scope::{bind_client, Scope};
