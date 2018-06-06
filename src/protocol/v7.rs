@@ -56,13 +56,12 @@ pub use self::map::LinkedHashMap as Map;
 /// deserializing and re-serialized in the same place. The shorthand array notation is always
 /// reserialized as object.
 #[derive(Serialize, Clone, Debug, PartialEq)]
-#[serde(default)]
 pub struct Values<T> {
     /// The values of the collection.
     pub values: Vec<T>,
-    /// Additional data passed as fields next to `values`.
-    #[serde(flatten)]
-    pub data: Map<String, Value>,
+    /// Additional arbitrary fields for forwards compatibility.
+    #[serde(flatten, default)]
+    pub other: Map<String, Value>,
 }
 
 impl<T> Values<T> {
@@ -70,13 +69,13 @@ impl<T> Values<T> {
     pub fn new() -> Values<T> {
         Values {
             values: Vec::new(),
-            data: Map::new(),
+            other: Map::new(),
         }
     }
 
     /// Checks whether this struct is empty in both values and data.
     pub fn is_empty(&self) -> bool {
-        self.values.is_empty() && self.data.is_empty()
+        self.values.is_empty() && self.other.is_empty()
     }
 }
 
@@ -91,7 +90,7 @@ impl<T> From<Vec<T>> for Values<T> {
     fn from(values: Vec<T>) -> Values<T> {
         Values {
             values,
-            data: Map::new(),
+            other: Map::new(),
         }
     }
 }
@@ -164,14 +163,14 @@ where
             Qualified {
                 values: Vec<T>,
                 #[serde(flatten)]
-                data: Map<String, Value>,
+                other: Map<String, Value>,
             },
             Unqualified(Vec<T>),
             Single(T),
         }
 
         Deserialize::deserialize(deserializer).map(|x| match x {
-            Repr::Qualified { values, data } => Values { values, data },
+            Repr::Qualified { values, other } => Values { values, other },
             Repr::Unqualified(values) => values.into(),
             Repr::Single(value) => vec![value].into(),
         })
@@ -189,6 +188,9 @@ pub struct LogEntry {
     /// Positional parameters to be inserted into the log entry.
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub params: Vec<Value>,
+    /// Additional arbitrary fields for forwards compatibility.
+    #[serde(flatten, default)]
+    pub other: Map<String, Value>,
 }
 
 /// Represents a frame.
@@ -235,6 +237,9 @@ pub struct Frame {
     /// Optional instruction information for native languages.
     #[serde(flatten)]
     pub instruction_info: InstructionInfo,
+    /// Additional arbitrary fields for forwards compatibility.
+    #[serde(flatten)]
+    pub other: Map<String, Value>,
 }
 
 /// Represents location information.
@@ -277,6 +282,9 @@ pub struct TemplateInfo {
     /// Embedded sourcecode in the frame.
     #[serde(flatten)]
     pub source: EmbeddedSources,
+    /// Additional arbitrary fields for forwards compatibility.
+    #[serde(flatten, default)]
+    pub other: Map<String, Value>,
 }
 
 /// Represents contextual information in a frame.
@@ -306,6 +314,9 @@ pub struct Stacktrace {
     /// Optional register values of the thread.
     #[serde(skip_serializing_if = "Map::is_empty")]
     pub registers: Map<String, RegVal>,
+    /// Additional arbitrary fields for forwards compatibility.
+    #[serde(flatten)]
+    pub other: Map<String, Value>,
 }
 
 impl Stacktrace {
@@ -515,6 +526,9 @@ pub struct Thread {
     /// event was created.
     #[serde(skip_serializing_if = "is_false")]
     pub current: bool,
+    /// Additional arbitrary fields for forwards compatibility.
+    #[serde(flatten)]
+    pub other: Map<String, Value>,
 }
 
 /// POSIX signal with optional extended data.
@@ -611,6 +625,9 @@ pub struct MechanismMeta {
     /// Optional mach exception information.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mach_exception: Option<MachException>,
+    /// Additional arbitrary fields for forwards compatibility.
+    #[serde(flatten, default)]
+    pub other: Map<String, Value>,
 }
 
 impl MechanismMeta {
@@ -641,6 +658,9 @@ pub struct Mechanism {
     /// Operating system or runtime meta information.
     #[serde(skip_serializing_if = "MechanismMeta::is_empty")]
     pub meta: MechanismMeta,
+    /// Additional arbitrary fields for forwards compatibility.
+    #[serde(flatten)]
+    pub other: Map<String, Value>,
 }
 
 /// Represents a single exception.
@@ -667,6 +687,9 @@ pub struct Exception {
     /// The mechanism of the exception including OS specific exception values.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mechanism: Option<Mechanism>,
+    /// Additional arbitrary fields for forwards compatibility.
+    #[serde(flatten, default)]
+    pub other: Map<String, Value>,
 }
 
 /// An error used when parsing `Level`.
@@ -774,6 +797,9 @@ pub struct Breadcrumb {
     /// Arbitrary breadcrumb data that should be send along.
     #[serde(skip_serializing_if = "Map::is_empty")]
     pub data: Map<String, Value>,
+    /// Additional arbitrary fields for forwards compatibility.
+    #[serde(flatten)]
+    pub other: Map<String, Value>,
 }
 
 impl Default for Breadcrumb {
@@ -785,6 +811,7 @@ impl Default for Breadcrumb {
             level: Level::Info,
             message: None,
             data: Map::new(),
+            other: Map::new(),
         }
     }
 }
@@ -878,9 +905,9 @@ pub struct User {
     /// A human readable username of the user.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub username: Option<String>,
-    /// Additional data that should be send along.
+    /// Additional arbitrary fields for forwards compatibility.
     #[serde(flatten)]
-    pub data: Map<String, Value>,
+    pub other: Map<String, Value>,
 }
 
 /// Represents http request data.
@@ -909,7 +936,7 @@ pub struct Request {
     /// Optionally a CGI/WSGI etc. environment dictionary.
     #[serde(skip_serializing_if = "Map::is_empty")]
     pub env: Map<String, String>,
-    /// Additional unhandled keys.
+    /// Additional arbitrary fields for forwards compatibility.
     #[serde(flatten)]
     pub other: Map<String, Value>,
 }
@@ -1029,6 +1056,9 @@ pub struct DebugMeta {
     /// A list of debug information files.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub images: Vec<DebugImage>,
+    /// Additional arbitrary fields for forwards compatibility.
+    #[serde(flatten)]
+    pub other: Map<String, Value>,
 }
 
 impl DebugMeta {
@@ -1161,7 +1191,7 @@ pub struct Event<'a> {
     /// SDK metadata
     #[serde(rename = "sdk", skip_serializing_if = "Option::is_none")]
     pub sdk_info: Option<Cow<'a, ClientSdkInfo>>,
-    /// Additional arbitrary keys for forwards compatibility.
+    /// Additional arbitrary fields for forwards compatibility.
     #[serde(flatten)]
     pub other: Map<String, Value>,
 }
@@ -1473,8 +1503,8 @@ pub enum Orientation {
 pub struct Context {
     /// Typed context data.
     pub data: ContextData,
-    /// Additional keys sent along not known to the context type.
-    pub extra: Map<String, Value>,
+    /// Additional arbitrary fields for forwards compatibility.
+    pub other: Map<String, Value>,
 }
 
 /// Typed contextual data
@@ -1623,7 +1653,7 @@ impl From<ContextData> for Context {
     fn from(data: ContextData) -> Context {
         Context {
             data,
-            extra: Map::new(),
+            other: Map::new(),
         }
     }
 }
@@ -1654,7 +1684,7 @@ impl From<Map<String, Value>> for Context {
     fn from(data: Map<String, Value>) -> Context {
         Context {
             data: ContextData::Default,
-            extra: data,
+            other: data,
         }
     }
 }
@@ -1713,7 +1743,7 @@ mod serde_context {
             #[serde(flatten)]
             data: T,
             #[serde(flatten)]
-            extra: Map<String, Value>,
+            other: Map<String, Value>,
         }
 
         for (key, raw_context) in raw {
@@ -1739,11 +1769,11 @@ mod serde_context {
             macro_rules! convert_context {
                 ($enum:path, $ty:ident) => {{
                     let helper = from_value::<Helper<$ty>>(data).map_err(D::Error::custom)?;
-                    ($enum(Box::new(helper.data)), helper.extra)
+                    ($enum(Box::new(helper.data)), helper.other)
                 }};
             }
 
-            let (data, extra) = match ty.as_str() {
+            let (data, other) = match ty.as_str() {
                 "device" => convert_context!(ContextData::Device, DeviceContext),
                 "os" => convert_context!(ContextData::Os, OsContext),
                 "runtime" => convert_context!(ContextData::Runtime, RuntimeContext),
@@ -1754,7 +1784,7 @@ mod serde_context {
                     from_value(data).map_err(D::Error::custom)?,
                 ),
             };
-            rv.insert(key, Context { data, extra });
+            rv.insert(key, Context { data, other });
         }
 
         Ok(rv)
@@ -1778,7 +1808,7 @@ mod serde_context {
             c.insert("type".into(), value.data.type_name().into());
             c.extend(
                 value
-                    .extra
+                    .other
                     .iter()
                     .map(|(key, value)| (key.to_string(), value.clone())),
             );

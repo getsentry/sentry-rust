@@ -157,7 +157,7 @@ mod test_values {
     fn test_values_array() {
         let values = v7::Values {
             values: vec![1, 2, 3],
-            data: v7::Map::new(),
+            other: v7::Map::new(),
         };
 
         assert_eq!(values, serde_json::from_str("[1,2,3]").unwrap());
@@ -171,7 +171,7 @@ mod test_values {
     fn test_values_object() {
         let values = v7::Values {
             values: vec![1, 2, 3],
-            data: v7::Map::new(),
+            other: v7::Map::new(),
         };
 
         assert_eq!(
@@ -189,7 +189,7 @@ mod test_values {
     fn test_values_additional_data() {
         let values = v7::Values {
             values: vec![1, 2, 3],
-            data: {
+            other: {
                 let mut m = v7::Map::new();
                 m.insert("foo".into(), "bar".into());
                 m
@@ -231,6 +231,7 @@ mod test_logentry {
             logentry: Some(v7::LogEntry {
                 message: "Hello %s!".to_string(),
                 params: vec!["World".into()],
+                other: Default::default(),
             }),
             culprit: Some("foo in bar".to_string()),
             level: v7::Level::Debug,
@@ -250,6 +251,7 @@ mod test_logentry {
             logentry: Some(v7::LogEntry {
                 message: "Hello World!".to_string(),
                 params: vec![],
+                other: Default::default(),
             }),
             ..Default::default()
         };
@@ -267,6 +269,7 @@ mod test_logentry {
                 logentry: Some(v7::LogEntry {
                     message: "Hello World!".to_string(),
                     params: vec![],
+                    other: Default::default(),
                 }),
                 ..Default::default()
             },
@@ -416,7 +419,7 @@ mod test_user {
                 email: Some("foo@example.invalid".into()),
                 ip_address: Some("127.0.0.1".parse().unwrap()),
                 username: Some("john-doe".into()),
-                data: {
+                other: {
                     let mut hm = v7::Map::new();
                     hm.insert("foo".into(), "bar".into());
                     hm
@@ -616,6 +619,7 @@ mod test_template_info {
                     current_line: Some("hey hey hey3".into()),
                     post_lines: vec!["foo4".into(), "bar5".into()],
                 },
+                other: Default::default(),
             }),
             ..Default::default()
         };
@@ -644,6 +648,7 @@ mod test_template_info {
                         current_line: Some("hey hey hey3".into()),
                         post_lines: vec!["foo4".into(), "bar5".into()],
                     },
+                    other: Default::default(),
                 }),
                 ..Default::default()
             },
@@ -1202,6 +1207,11 @@ mod test_exception {
                             instruction_addr: Some(v7::Addr(0)),
                             symbol_addr: Some(v7::Addr(0)),
                         },
+                        other: {
+                            let mut m = v7::Map::new();
+                            m.insert("zzz".into(), "foo".into());
+                            m
+                        },
                     }],
                     frames_omitted: Some((1, 2)),
                     registers: {
@@ -1273,7 +1283,7 @@ mod test_exception {
              :\"/app/hello.py\",\"lineno\":7,\"colno\":42,\"pre_context\":[\"foo\",\"\
              bar\"],\"context_line\":\"hey hey hey\",\"post_context\":[\"foo\",\"bar\"]\
              ,\"in_app\":true,\"vars\":{\"var\":\"value\"},\"image_addr\":\"0x0\",\
-             \"instruction_addr\":\"0x0\",\"symbol_addr\":\"0x0\"}],\"frames_omitted\":\
+             \"instruction_addr\":\"0x0\",\"symbol_addr\":\"0x0\",\"zzz\":\"foo\"}],\"frames_omitted\":\
              [1,2],\"registers\":{\"x8\":\"0x0\",\"x20\":\"0x1\",\"x21\":\"0x1\",\"x28\
              \":\"0x17025f650\",\"x4\":\"0x1702eb100\",\"x24\":\"0x1b1399c20\",\"sp\":\
              \"0x16fd75060\",\"x1\":\"0x1b1399bb1\",\"x23\":\"0x1afe10040\",\"x14\":\
@@ -1327,7 +1337,9 @@ mod test_exception {
                             subcode: 8,
                             name: None,
                         }),
+                        other: Default::default(),
                     },
+                    other: Default::default(),
                 }),
                 ..Default::default()
             }].into(),
@@ -1525,7 +1537,7 @@ mod test_contexts {
             contexts: {
                 let mut m = v7::Map::new();
                 m.insert(
-                    "othervm".into(),
+                    "runtime".into(),
                     v7::RuntimeContext {
                         name: Some("magicvm".into()),
                         version: Some("5.3".into()),
@@ -1539,7 +1551,7 @@ mod test_contexts {
         assert_roundtrip(&event);
         assert_eq!(
             serde_json::to_string(&event).unwrap(),
-            "{\"contexts\":{\"othervm\":{\"name\":\"magicvm\",\"version\":\"5.3\",\"type\":\
+            "{\"contexts\":{\"runtime\":{\"name\":\"magicvm\",\"version\":\"5.3\",\"type\":\
              \"runtime\"}}}"
         );
     }
@@ -1588,7 +1600,7 @@ mod test_contexts {
                             name: Some("magicvm".into()),
                             version: Some("5.3".into()),
                         }.into(),
-                        extra: {
+                        other: {
                             let mut m = v7::Map::new();
                             m.insert("extra_stuff".into(), "extra_value".into());
                             m
