@@ -9,7 +9,6 @@ use std::cmp;
 use std::fmt;
 use std::iter::FromIterator;
 use std::net::{AddrParseError, IpAddr};
-use std::num::ParseIntError;
 use std::ops;
 use std::str;
 
