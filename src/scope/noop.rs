@@ -133,6 +133,12 @@ impl Scope {
         let _key = key;
         shim_unreachable!();
     }
+
+    /// Applies the contained scoped data to fill an event.
+    pub fn apply_to_event(&self, event: &mut Event) {
+        let _event = event;
+        shim_unreachable!();
+    }
 }
 
 #[allow(unused)]
