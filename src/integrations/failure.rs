@@ -171,63 +171,17 @@ pub fn capture_error(err: &Error) -> Uuid {
     Hub::with_active(|hub| hub.capture_event(event_from_error(err)))
 }
 
+/// Captures a boxed failure (`failure::Error`) in a specific hub.
+pub fn capture_error_with_hub<H: AsRef<Hub>>(err: &Error, hub: H) -> Uuid {
+    hub.as_ref().capture_event(event_from_error(err))
+}
+
 /// Captures a `failure::Fail`.
 pub fn capture_fail<F: Fail + ?Sized>(fail: &F) -> Uuid {
     Hub::with_active(|hub| hub.capture_event(event_from_fail(fail)))
 }
 
-/// Log a result of `failure::Error` but return the value unchanged.
-///
-/// This taps into a `Result<T, Error>` and logs an error that might be
-/// contained in it with Sentry.  This makes it very convenient to log
-/// an error that is otherwise already handled by the system:
-///
-/// ```no_run
-/// # extern crate sentry;
-/// # extern crate failure;
-/// # fn function_that_might_fail() -> Result<(), failure::Error> { Ok(()) }
-/// use sentry::integrations::failure::tap_error;
-/// # fn test() -> Result<(), failure::Error> {
-/// let result = tap_error(function_that_might_fail())?;
-/// # Ok(()) }
-/// # fn main() { test().unwrap() }
-/// ```
-pub fn tap_error<T>(rv: Result<T, Error>) -> Result<T, Error> {
-    match rv {
-        Ok(value) => Ok(value),
-        Err(error) => {
-            capture_error(&error);
-            Err(error)
-        }
-    }
-}
-
-/// Log a result of `failure::Fail` but return the value unchanged.
-///
-/// This taps into a `Result<T, Fail>` and logs an error that might be
-/// contained in it with Sentry.  This makes it very convenient to log
-/// an error that is otherwise already handled by the system:
-///
-/// ```no_run
-/// # use std::fmt;
-/// # extern crate sentry;
-/// # extern crate failure;
-/// # #[derive(Debug)] struct E;
-/// # impl fmt::Display for E { fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { unreachable!() } }
-/// # impl failure::Fail for E {}
-/// # fn function_that_might_fail() -> Result<(), E> { Ok(()) }
-/// use sentry::integrations::failure::tap_fail;
-/// # fn test() -> Result<(), E> {
-/// let result = tap_fail(function_that_might_fail())?;
-/// # Ok(()) }
-/// # fn main() { test().unwrap() }
-/// ```
-pub fn tap_fail<T, F: Fail>(rv: Result<T, F>) -> Result<T, F> {
-    match rv {
-        Ok(value) => Ok(value),
-        Err(error) => {
-            capture_fail(&error);
-            Err(error)
-        }
-    }
+/// Captures a `failure::Fail` in a specific hub.
+pub fn capture_fail_with_hub<F: Fail + ?Sized, H: AsRef<Hub>>(fail: &F, hub: H) -> Uuid {
+    hub.as_ref().capture_event(event_from_fail(fail))
 }

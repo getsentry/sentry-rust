@@ -79,3 +79,12 @@ where
 {
     Hub::with_active(|hub| hub.capture_event(event_from_error_chain(e)))
 }
+
+/// Captures an error chain on a specific hub.
+pub fn capture_error_chain_with_hub<T, H: AsRef<Hub>>(e: &T, hub: H) -> Uuid
+where
+    T: ChainedError,
+    T::ErrorKind: Debug + Display,
+{
+    hub.as_ref().capture_event(event_from_error_chain(e))
+}
