@@ -147,6 +147,7 @@ mod macros;
 
 mod api;
 mod client;
+mod hub;
 mod scope;
 
 #[cfg(feature = "with_backtrace")]

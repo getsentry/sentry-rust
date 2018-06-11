@@ -12,7 +12,8 @@ use api::protocol::{DebugMeta, Event};
 use api::Dsn;
 use backtrace_support::{function_starts_with, is_sys_function};
 use constants::{SDK_INFO, USER_AGENT};
-use scope::{bind_client, Scope};
+use hub::Hub;
+use scope::Scope;
 use transport::Transport;
 use utils::{debug_images, server_name, trim_stacktrace};
 
@@ -452,7 +453,7 @@ impl Drop for ClientInitGuard {
 pub fn init<C: IntoClientConfig>(cfg: C) -> ClientInitGuard {
     ClientInitGuard(Client::from_config(cfg).map(|client| {
         let client = Arc::new(client);
-        bind_client(client.clone());
+        Hub::with(|hub| hub.bind_client(Some(client.clone())));
         client
     }))
 }

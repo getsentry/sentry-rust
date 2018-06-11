@@ -17,7 +17,7 @@ use std::panic;
 
 use api::protocol::{Event, Exception, Level};
 use backtrace_support::current_stacktrace;
-use scope::{scope_panic_safe, with_client_and_scope};
+use hub::Hub;
 
 /// Extract the message of a panic.
 pub fn message_from_panic_info<'a>(info: &'a panic::PanicInfo) -> &'a str {
@@ -53,14 +53,9 @@ pub fn event_from_panic_info(info: &panic::PanicInfo) -> Event<'static> {
 /// double faults in some cases where it's known to be unsafe to invoke the
 /// Sentry panic handler.
 pub fn panic_handler(info: &panic::PanicInfo) {
-    // if the process stack lock is acquired we would cause a double fault
-    // when invoking `with_client_and_scope`.  To prevent this we automatically
-    // disabled our panic handler in that case.
-    if scope_panic_safe() {
-        with_client_and_scope(|client, scope| {
-            client.capture_event(event_from_panic_info(info), Some(scope));
-        });
-    }
+    Hub::with_active(|hub| {
+        hub.capture_event(event_from_panic_info(info));
+    });
 }
 
 /// Registes the panic handler.
