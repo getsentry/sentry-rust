@@ -128,7 +128,7 @@ impl Hub {
         with_client_impl! {{
             let stack = self.read_stack();
             let top = stack.top();
-            if let Some(ref client) = &top.client {
+            if let Some(ref client) = top.client {
                 client.capture_event(event, Some(&top.scope))
             } else {
                 Default::default()

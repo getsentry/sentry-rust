@@ -38,20 +38,20 @@ pub struct StackLayerToken(*const Stack, usize);
 /// This can be used to propagate a scope to another thread easily. The parent
 /// thread retrieves a handle and the child thread binds it. A handle can be
 /// cloned so that it can be used in multiple threads.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct ScopeHandle(pub(crate) Option<Arc<Scope>>);
 
 impl ScopeHandle {
     /// Returns the handle to the current scope.
-    pub fn bind(&self) {
+    pub fn bind(self) {
         Hub::with(|hub| self.bind_to_hub(hub))
     }
 
     /// Binds the scope handle to a specific hub.
-    pub fn bind_to_hub<H: AsRef<Hub>>(&self, hub: H) {
-        if let Some(ref other_scope) = self.0 {
+    pub fn bind_to_hub<H: AsRef<Hub>>(self, hub: H) {
+        if let Some(other_scope) = self.0 {
             hub.as_ref()
-                .with_scope_mut(|scope| *scope = (**other_scope).clone());
+                .with_scope_mut(|scope| *scope = (*other_scope).clone());
         }
     }
 }
