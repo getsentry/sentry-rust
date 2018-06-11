@@ -206,7 +206,7 @@ impl Hub {
             let mut stack = self.write_stack();
             let top = stack.top_mut();
             if let Some(ref client) = top.client {
-                let mut scope = Arc::make_mut(&mut top.scope);
+                let scope = Arc::make_mut(&mut top.scope);
                 let limit = client.options().max_breadcrumbs;
                 scope.breadcrumbs = scope.breadcrumbs.push_back(breadcrumb);
                 while scope.breadcrumbs.len() > limit {
