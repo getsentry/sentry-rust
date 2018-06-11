@@ -36,7 +36,7 @@ thread_local! {
 ///
 /// Most common operations:
 ///
-/// * `Hub::from_client_and_scope`: creates a brand new hub
+/// * `Hub::new`: creates a brand new hub
 /// * `Hub::current`: returns the default hub
 /// * `Hub::with`: invoke a callback with the default hub
 /// * `Hub::with_active`: like `Hub::with` but does not invoke the callback if
@@ -62,6 +62,14 @@ impl Clone for Hub {
 }
 
 impl Hub {
+    /// Creates a new hub from the given client and scope.
+    #[cfg(feature = "with_client_implementation")]
+    pub fn new(client: Option<Arc<Client>>, scope: Arc<Scope>) -> Hub {
+        Hub {
+            stack: RwLock::new(Stack::from_client_and_scope(client, scope)),
+        }
+    }
+
     /// Returns the default hub.
     ///
     /// This method is unavailable if the client implementation is disabled.
@@ -110,15 +118,6 @@ impl Hub {
                 }
             })
         }}
-    }
-
-    /// Creates a new hub.
-    #[cfg(feature = "with_client_implementation")]
-    pub(crate) fn new(client: Option<Arc<Client>>, scope: Arc<Scope>) -> Hub {
-        Hub {
-            #[cfg(feature = "with_client_implementation")]
-            stack: RwLock::new(Stack::from_client_and_scope(client, scope)),
-        }
     }
 
     /// Sends the event to the current client with the current scope.
