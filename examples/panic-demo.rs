@@ -11,10 +11,11 @@ fn main() {
     ));
     sentry::integrations::panic::register_panic_handler();
 
-    sentry::with_scope(|| {
+    {
+        let _guard = sentry::Hub::current().push_scope();
         sentry::configure_scope(|scope| {
             scope.set_tag("foo", "bar");
         });
         panic!("Holy shit everything is on fire!");
-    });
+    }
 }
