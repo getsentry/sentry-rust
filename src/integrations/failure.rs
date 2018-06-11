@@ -26,22 +26,6 @@
 //! # fn main() { test().unwrap() }
 //! ```
 //!
-//! # Tapping
-//!
-//! For convenience you can also use the tapping feature where an error is logged
-//! but passed through a call.  So the above example can also be written like this:
-//!
-//! ```no_run
-//! # extern crate sentry;
-//! # extern crate failure;
-//! # fn function_that_might_fail() -> Result<(), failure::Error> { Ok(()) }
-//! use sentry::integrations::failure::tap_error;
-//! # fn test() -> Result<(), failure::Error> {
-//! let result = tap_error(function_that_might_fail())?;
-//! # Ok(()) }
-//! # fn main() { test().unwrap() }
-//! ```
-//!
 //! To capture fails and not errors use `capture_fail`.
 use failure;
 use failure::{Error, Fail};
