@@ -1,4 +1,6 @@
 //! The noop fallback client for shim only users.
+use std::time::Duration;
+
 use uuid::Uuid;
 
 use api::protocol::Event;
@@ -31,5 +33,13 @@ impl Client {
         let _event = event;
         let _scope = scope;
         shim_unreachable!()
+    }
+
+    /// Drains all pending events up to the current time.
+    ///
+    /// In shim only mode this just doesn't do anything.
+    pub fn drain_events(&self, timeout: Option<Duration>) -> bool {
+        let _timeout = timeout;
+        true
     }
 }

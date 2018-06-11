@@ -1,5 +1,3 @@
-use std::sync::Arc;
-use std::time::Duration;
 use uuid::Uuid;
 
 use api::protocol::{Breadcrumb, Event};
@@ -13,8 +11,8 @@ pub use sentry_types::{Dsn, DsnParseError, ProjectId, ProjectIdParseError};
 pub use client::Client;
 #[cfg(feature = "with_client_implementation")]
 pub use client::{init, ClientInitGuard, ClientOptions, IntoClientConfig};
-pub use scope::{bind_client, current_client, push_scope, unbind_client, with_client_and_scope,
-                Scope, ScopeGuard};
+pub use hub::Hub;
+pub use scope::{Scope, ScopeGuard, ScopeHandle};
 
 /// Captures an event on the currently active client if any.
 ///
@@ -37,53 +35,18 @@ pub use scope::{bind_client, current_client, push_scope, unbind_client, with_cli
 #[allow(unused_variables)]
 pub fn capture_event(event: Event<'static>) -> Uuid {
     with_client_impl! {{
-        with_client_and_scope(|client, scope| client.capture_event(event, Some(scope)))
-    }}
-}
-
-/// Captures an error.
-///
-/// This attaches the current stacktrace automatically.
-///
-/// # Example
-///
-/// ```
-/// sentry::capture_exception("MyError", Some("This went horribly wrong".into()));
-/// ```
-#[allow(unused_variables)]
-pub fn capture_exception(ty: &str, value: Option<String>) -> Uuid {
-    with_client_impl! {{
-        use api::protocol::Exception;
-        use utils::current_stacktrace;
-
-        with_client_and_scope(|client, scope| {
-            let event = Event {
-                exceptions: vec![
-                    Exception {
-                        ty: ty.to_string(),
-                        value,
-                        stacktrace: current_stacktrace(),
-                        ..Default::default()
-                    },
-                ],
-                ..Default::default()
-            };
-            client.capture_event(event, Some(scope))
-        })
+        Hub::with(|hub| hub.capture_event(event))
     }}
 }
 
 /// Captures an arbitrary message.
+///
+/// This creates an event form the given message and sends it to the current hub.
 #[allow(unused_variables)]
 pub fn capture_message(msg: &str, level: Level) -> Uuid {
     with_client_impl! {{
-        with_client_and_scope(|client, scope| {
-            let event = Event {
-                message: Some(msg.to_string()),
-                level,
-                ..Default::default()
-            };
-            client.capture_event(event, Some(scope))
+        Hub::with_active(|hub| {
+            hub.capture_message(msg, level)
         })
     }}
 }
@@ -92,7 +55,8 @@ pub fn capture_message(msg: &str, level: Level) -> Uuid {
 ///
 /// The total number of breadcrumbs that can be recorded are limited by the
 /// configuration on the client.  This takes a callback because if the client
-/// is not interested in breadcrumbs none will be recorded.
+/// is not interested in breadcrumbs none will be recorded.  This records
+/// the breadcrumb to the currently active hub.
 ///
 /// # Example
 ///
@@ -114,31 +78,9 @@ pub fn capture_message(msg: &str, level: Level) -> Uuid {
 #[allow(unused_variables)]
 pub fn add_breadcrumb<F: FnOnce() -> Breadcrumb>(f: F) {
     with_client_impl! {{
-        use scope::with_client_and_scope_mut;
-        with_client_and_scope_mut(|client, scope| {
-            let limit = client.options().max_breadcrumbs;
-            if limit > 0 {
-                scope.breadcrumbs = scope.breadcrumbs.push_back(f());
-                while scope.breadcrumbs.len() > limit {
-                    if let Some((_, new)) = scope.breadcrumbs.pop_front() {
-                        scope.breadcrumbs = new;
-                    }
-                }
-            }
+        Hub::with_active(|hub| {
+            hub.add_breadcrumb(f())
         })
-    }}
-}
-
-/// Drain events that are not yet sent of the current client.
-///
-/// This calls into `drain_events` of the currently active client.  See that function
-/// for more information.
-#[allow(unused_variables)]
-pub fn drain_events(timeout: Option<Duration>) {
-    with_client_impl! {{
-        with_client_and_scope(|client, _| {
-            client.drain_events(timeout);
-        });
     }}
 }
 
@@ -174,66 +116,19 @@ where
     F: FnOnce(&mut Scope) -> R,
 {
     with_client_impl! {{
-        use scope::with_client_and_scope_mut;
-        if let Some((new_scope, rv)) = with_client_and_scope(|_, scope| {
-            let mut new_scope = scope.clone();
-            let rv = f(&mut new_scope);
-            Some((new_scope, rv))
-        }) {
-            with_client_and_scope_mut(|_, scope| *scope = new_scope);
-            rv
-        } else {
-            Default::default()
-        }
+        Hub::with_active(|hub| {
+            hub.configure_scope(f)
+        })
     }}
 }
 
-/// A callback based alternative to using `push_scope`.
-///
-/// This that might look a bit nicer and is more consistent with some other
-/// language integerations.
-///
-/// # Example
-///
-/// ```rust
-/// # macro_rules! panic { ($e:expr) => {} }
-/// sentry::with_scope(|| {
-///     sentry::configure_scope(|scope| {
-///         scope.set_user(Some(sentry::User {
-///             username: Some("john_doe".into()),
-///             ..Default::default()
-///         }));
-///     });
-///     panic!("Something went wrong!");
-/// });
-/// ```
-#[allow(unused_variables)]
-pub fn with_scope<F, R>(f: F) -> R
-where
-    F: FnOnce() -> R,
-{
-    let _guard = push_scope();
-    f()
-}
-
-/// A handle to the current scope.
-///
-/// A scope handle is returned by the `sentry::scope_handle` function and can be used to
-/// transfer a scope to another thread.  The handle can be cloned to be used in multiple
-/// threads.
-///
-/// A scope handle also implements `Default` which returns a dummy scope handle that does
-/// not do anything on bind.
-#[derive(Default, Clone)]
-pub struct ScopeHandle(Option<(Arc<Client>, Arc<Scope>)>);
-
 /// Returns the handle to the current scope.
 ///
-/// This can be used to propagate a scope to another thread easily.  The parent thread
-/// retrieves a handle and the child thread binds it.  A handle can be cloned so that
-/// it can be used in multiple threads.
+/// This can be used to propagate a scope to another thread easily.  The
+/// parent thread retrieves a handle and the child thread binds it. A handle
+/// can be cloned so that it can be used in multiple threads.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// use std::thread;
@@ -247,26 +142,7 @@ pub struct ScopeHandle(Option<(Arc<Client>, Arc<Scope>)>);
 ///     // ...
 /// });
 /// ```
+#[cfg(feature = "with_client_implementation")]
 pub fn scope_handle() -> ScopeHandle {
-    with_client_impl! {{
-        with_client_and_scope(|client, scope| {
-            ScopeHandle(Some((client, Arc::new(scope.clone()))))
-        })
-    }}
-}
-
-impl ScopeHandle {
-    /// Binds the scope behind the handle to the current scope.
-    pub fn bind(self) {
-        with_client_impl! {{
-            use scope::with_client_and_scope_mut;
-            if let Some((src_client, src_scope)) = self.0 {
-                bind_client(src_client);
-                with_client_and_scope_mut(|_, scope| {
-                    *scope = Arc::try_unwrap(src_scope)
-                        .unwrap_or_else(|arc| (*arc).clone());
-                })
-            }
-        }}
-    }
+    Hub::with(|hub| hub.scope_handle())
 }

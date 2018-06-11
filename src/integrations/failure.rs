@@ -50,7 +50,7 @@ use uuid::Uuid;
 
 use api::protocol::{Event, Exception, FileLocation, Frame, InstructionInfo, Level, Stacktrace};
 use backtrace_support::{demangle_symbol, error_typename, filename, strip_symbol};
-use scope::with_client_and_scope;
+use hub::Hub;
 
 lazy_static! {
     static ref FRAME_RE: Regex = Regex::new(
@@ -168,12 +168,12 @@ pub fn event_from_fail<F: Fail + ?Sized>(fail: &F) -> Event<'static> {
 
 /// Captures a boxed failure (`failure::Error`).
 pub fn capture_error(err: &Error) -> Uuid {
-    with_client_and_scope(|client, scope| client.capture_event(event_from_error(err), Some(scope)))
+    Hub::with_active(|hub| hub.capture_event(event_from_error(err)))
 }
 
 /// Captures a `failure::Fail`.
 pub fn capture_fail<F: Fail + ?Sized>(fail: &F) -> Uuid {
-    with_client_and_scope(|client, scope| client.capture_event(event_from_fail(fail), Some(scope)))
+    Hub::with_active(|hub| hub.capture_event(event_from_fail(fail)))
 }
 
 /// Log a result of `failure::Error` but return the value unchanged.

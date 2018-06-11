@@ -1,23 +1,14 @@
 use std::borrow::Cow;
-use std::cell::RefCell;
 use std::fmt;
-use std::mem;
-use std::sync::{Arc, RwLock};
-use std::thread;
+use std::sync::Arc;
 
 use api::protocol::map::Entry;
 use api::protocol::{Breadcrumb, Context, Event, User, Value};
 use client::Client;
+use hub::Hub;
 use utils;
 
 use im;
-
-lazy_static! {
-    static ref PROCESS_STACK: RwLock<Stack> = RwLock::new(Stack::for_process());
-}
-thread_local! {
-    static THREAD_STACK: RefCell<Stack> = RefCell::new(Stack::for_thread());
-}
 
 lazy_static! {
     static ref CONTEXT_DEFAULTS: ContextDefaults = ContextDefaults {
@@ -34,24 +25,35 @@ struct ContextDefaults {
     pub device: Option<Context>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum StackType {
-    Process,
-    Thread,
-}
-
 #[derive(Debug)]
 pub struct Stack {
     layers: Vec<StackLayer>,
-    ty: StackType,
 }
 
 #[derive(PartialEq, Clone, Copy)]
-struct StackLayerToken(*const Stack, usize);
+pub struct StackLayerToken(*const Stack, usize);
 
-#[allow(unused)]
-pub(crate) fn scope_panic_safe() -> bool {
-    PROCESS_STACK.try_read().is_ok() && THREAD_STACK.with(|x| x.try_borrow().is_ok())
+/// Returns the handle to the current scope.
+///
+/// This can be used to propagate a scope to another thread easily. The parent
+/// thread retrieves a handle and the child thread binds it. A handle can be
+/// cloned so that it can be used in multiple threads.
+#[derive(Clone)]
+pub struct ScopeHandle(pub(crate) Option<Arc<Scope>>);
+
+impl ScopeHandle {
+    /// Returns the handle to the current scope.
+    pub fn bind(&self) {
+        Hub::with(|hub| self.bind_to_hub(hub))
+    }
+
+    /// Binds the scope handle to a specific hub.
+    pub fn bind_to_hub<H: AsRef<Hub>>(&self, hub: H) {
+        if let Some(ref other_scope) = self.0 {
+            hub.as_ref()
+                .with_scope_mut(|scope| *scope = (**other_scope).clone());
+        }
+    }
 }
 
 /// Holds contextual data for the current scope.
@@ -95,29 +97,15 @@ impl Default for Scope {
 }
 
 #[derive(Debug, Clone)]
-struct StackLayer {
-    client: Option<Arc<Client>>,
-    scope: Scope,
+pub struct StackLayer {
+    pub client: Option<Arc<Client>>,
+    pub scope: Arc<Scope>,
 }
 
 impl Stack {
-    pub fn for_process() -> Stack {
+    pub fn from_client_and_scope(client: Option<Arc<Client>>, scope: Arc<Scope>) -> Stack {
         Stack {
-            layers: vec![StackLayer {
-                client: None,
-                scope: Default::default(),
-            }],
-            ty: StackType::Process,
-        }
-    }
-
-    pub fn for_thread() -> Stack {
-        Stack {
-            layers: vec![with_process_stack(|stack| StackLayer {
-                client: stack.client(),
-                scope: stack.scope().clone(),
-            })],
-            ty: StackType::Thread,
+            layers: vec![StackLayer { client, scope }],
         }
     }
 
@@ -128,118 +116,28 @@ impl Stack {
 
     pub fn pop(&mut self) {
         if self.layers.len() <= 1 {
-            panic!("Pop from empty {:?} stack", self.ty)
+            panic!("Pop from empty stack");
         }
         self.layers.pop().unwrap();
     }
 
-    pub fn bind_client(&mut self, client: Option<Arc<Client>>) {
-        let depth = self.layers.len() - 1;
-        self.layers[depth].client = client;
+    pub fn top(&self) -> &StackLayer {
+        &self.layers[self.layers.len() - 1]
     }
 
-    pub fn client(&self) -> Option<Arc<Client>> {
-        self.layers[self.layers.len() - 1].client.clone()
+    pub fn top_mut(&mut self) -> &mut StackLayer {
+        let top = self.layers.len() - 1;
+        &mut self.layers[top]
     }
 
-    pub fn scope(&self) -> &Scope {
-        let idx = self.layers.len() - 1;
-        &self.layers[idx].scope
-    }
-
-    pub fn scope_mut(&mut self) -> &mut Scope {
-        let idx = self.layers.len() - 1;
-        &mut self.layers[idx].scope
-    }
-
-    fn layer_token(&self) -> StackLayerToken {
+    pub fn layer_token(&self) -> StackLayerToken {
         StackLayerToken(self as *const Stack, self.layers.len())
     }
 }
 
-fn is_main_thread() -> bool {
-    let thread = thread::current();
-    let raw_id: u64 = unsafe { mem::transmute(thread.id()) };
-    raw_id == 0
-}
-
-fn with_process_stack<F, R>(f: F) -> R
-where
-    F: FnOnce(&Stack) -> R,
-{
-    f(&mut PROCESS_STACK.read().unwrap_or_else(|x| x.into_inner()))
-}
-
-fn with_process_stack_mut<F, R>(f: F) -> R
-where
-    F: FnOnce(&mut Stack) -> R,
-{
-    f(&mut PROCESS_STACK.write().unwrap_or_else(|x| x.into_inner()))
-}
-
-fn with_stack_mut<F, R>(f: F) -> R
-where
-    F: FnOnce(&mut Stack) -> R,
-{
-    if is_main_thread() {
-        with_process_stack_mut(f)
-    } else {
-        THREAD_STACK.with(|stack| f(&mut *stack.borrow_mut()))
-    }
-}
-
-fn with_stack<F, R>(f: F) -> R
-where
-    F: FnOnce(&Stack) -> R,
-{
-    if is_main_thread() {
-        with_process_stack(f)
-    } else {
-        THREAD_STACK.with(|stack| f(&*stack.borrow()))
-    }
-}
-
-/// Invokes a function if the sentry client is available with client and scope.
-///
-/// The function is invoked with the client and current scope (read-only) and permits
-/// operations to be executed on the client.  This is useful when writing integration
-/// code where potentially expensive operations should not be executed if Sentry is
-/// not configured.
-///
-/// The return value must be `Default` so that it can be created even if Sentry is not
-/// configured.
-pub fn with_client_and_scope<F, R>(f: F) -> R
-where
-    F: FnOnce(Arc<Client>, &Scope) -> R,
-    R: Default,
-{
-    with_stack(|stack| {
-        if let Some(client) = stack.client() {
-            f(client, stack.scope())
-        } else {
-            Default::default()
-        }
-    })
-}
-
-/// Crate internal helper for working with clients and mutable scopes.
-pub(crate) fn with_client_and_scope_mut<F, R>(f: F) -> R
-where
-    F: FnOnce(Arc<Client>, &mut Scope) -> R,
-    R: Default,
-{
-    with_stack_mut(|stack| {
-        if let Some(client) = stack.client() {
-            f(client, stack.scope_mut())
-        } else {
-            Default::default()
-        }
-    })
-}
-
 /// A scope guard.
 #[derive(Default)]
-pub struct ScopeGuard(Option<StackLayerToken>);
+pub struct ScopeGuard(pub(crate) Option<StackLayerToken>);
 
 impl fmt::Debug for ScopeGuard {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -250,73 +148,9 @@ impl fmt::Debug for ScopeGuard {
 impl Drop for ScopeGuard {
     fn drop(&mut self) {
         if let Some(token) = self.0 {
-            with_stack_mut(|stack| {
-                if stack.layer_token() != token {
-                    panic!("Current active stack does not match scope guard");
-                } else {
-                    stack.pop();
-                }
-            })
+            Hub::with(|hub| hub.pop_scope(token))
         }
     }
-}
-
-/// Pushes a new scope on the stack.
-///
-/// The currently bound client is propagated to the new scope and already existing
-/// data on the scope is inherited.  Modifications done to the inner scope however
-/// are isolated from the outer scope.
-///
-/// This returns a guard.  When the guard is collected the scope is popped again.
-///
-/// # Example
-///
-/// ```no_run
-/// {
-///     let _guard = sentry::push_scope();
-///     sentry::configure_scope(|scope| {
-///         scope.set_tag("some_tag", "some_value");
-///     });
-///     // until the end of the block the scope is changed.
-/// }
-/// ```
-pub fn push_scope() -> ScopeGuard {
-    with_stack_mut(|stack| {
-        stack.push();
-        ScopeGuard(Some(stack.layer_token()))
-    })
-}
-
-/// Returns the currently bound client if there is one.
-///
-/// This might return `None` in case there is no client.  For the most part
-/// code will not use this function but instead directly call `capture_event`
-/// and similar functions which work on the currently active client.
-pub fn current_client() -> Option<Arc<Client>> {
-    with_client_impl! {{
-        with_stack(|stack| stack.client())
-    }}
-}
-
-/// Rebinds the client on the current scope.
-///
-/// The current scope is defined as the current thread.  If a new thread spawns
-/// it inherits the client of the process.  The main thread is specially handled
-/// in the sense that if the main thread binds a client it becomes bound to the
-/// process.
-pub fn bind_client(client: Arc<Client>) {
-    with_client_impl! {{
-        with_stack_mut(|stack| stack.bind_client(Some(client)));
-    }}
-}
-
-/// Unbinds the client on the current scope.
-///
-/// This effectively prevents data collection and reporting on the current scope.
-pub fn unbind_client() {
-    with_client_impl! {{
-        with_stack_mut(|stack| stack.bind_client(None));
-    }}
 }
 
 impl Scope {

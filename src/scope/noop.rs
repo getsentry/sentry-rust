@@ -1,8 +1,7 @@
 use std::fmt;
-use std::sync::Arc;
 
-use api::protocol::{Context, User, Value, Event};
-use client::noop::Client;
+use api::protocol::{Context, Event, User, Value};
+use hub::Hub;
 
 /// The "shim only" scope.
 ///
@@ -11,61 +10,36 @@ use client::noop::Client;
 #[derive(Debug, Clone)]
 pub struct Scope;
 
-/// Invokes a function if the sentry client is available with client and scope.
-///
-/// In shim only mode the closure is never actually executed.
-pub fn with_client_and_scope<F, R>(f: F) -> R
-where
-    F: FnOnce(Arc<Client>, &Scope) -> R,
-    R: Default,
-{
-    let _f = f;
-    Default::default()
-}
-
 /// A "shim only" scope guard.
 ///
 /// Doesn't do anything but can be debug formatted.
 #[derive(Default)]
 pub struct ScopeGuard;
 
+/// A "shim only" scope handle.
+///
+/// This doesn't do anything.
+#[derive(Clone, Default)]
+pub struct ScopeHandle;
+
+impl ScopeHandle {
+    /// Returns the handle to the current scope.
+    pub fn bind(&self) {
+        shim_unreachable!();
+    }
+
+    /// Binds the scope handle to a specific hub.
+    pub fn bind_to_hub<H: AsRef<Hub>>(&self, hub: H) {
+        let _hub = hub;
+        shim_unreachable!();
+    }
+}
+
 impl fmt::Debug for ScopeGuard {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "ScopeGuard")
     }
 }
-
-/// Pushes a new scope on the stack.
-///
-/// A "shim only" scope guard is a zero sized type that doesn't do anything.
-#[inline(always)]
-pub fn push_scope() -> ScopeGuard {
-    ScopeGuard
-}
-
-/// Never returns a client.
-///
-/// In normal situations this would return the client but in shim-only mode
-/// this will always return `None`.
-pub fn current_client() -> Option<Arc<Client>> {
-    None
-}
-
-/// Binds a client.
-///
-/// As its impossible to construct a client in shim only mode this function
-/// cannot actually ever be called (it will panic).  The reason this is exposed
-/// API in shimmed mode is mostly to propage a client into another thread or
-/// similar.
-pub fn bind_client(client: Arc<Client>) {
-    let _client = client;
-    shim_unreachable!();
-}
-
-/// Unbinds a client.
-///
-/// In the shim only mode this function doesn't do anything.
-pub fn unbind_client() {}
 
 impl Scope {
     /// Clear the scope.
@@ -139,9 +113,4 @@ impl Scope {
         let _event = event;
         shim_unreachable!();
     }
-}
-
-#[allow(unused)]
-pub(crate) fn scope_panic_safe() -> bool {
-    true
 }

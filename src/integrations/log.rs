@@ -35,7 +35,7 @@ use std::cmp;
 use api::add_breadcrumb;
 use api::protocol::{Breadcrumb, Event, Exception, Level};
 use backtrace_support::current_stacktrace;
-use scope::with_client_and_scope;
+use hub::Hub;
 
 /// Logger specific options.
 pub struct LoggerOptions {
@@ -179,9 +179,7 @@ impl log::Log for Logger {
 
     fn log(&self, record: &log::Record) {
         if self.options.create_issue_for_record(record) {
-            with_client_and_scope(|client, scope| {
-                client.capture_event(event_from_record(record, true), Some(scope))
-            });
+            Hub::with_active(|hub| hub.capture_event(event_from_record(record, true)));
         }
         if record.level() <= self.options.filter {
             add_breadcrumb(|| breadcrumb_from_record(record))

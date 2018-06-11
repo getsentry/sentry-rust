@@ -31,7 +31,7 @@ use uuid::Uuid;
 
 use api::protocol::{Event, Exception, Level};
 use backtrace_support::{backtrace_to_stacktrace, error_typename};
-use scope::with_client_and_scope;
+use hub::Hub;
 
 fn exceptions_from_error_chain<T>(error: &T) -> Vec<Exception>
 where
@@ -77,7 +77,5 @@ where
     T: ChainedError,
     T::ErrorKind: Debug + Display,
 {
-    with_client_and_scope(|client, scope| {
-        client.capture_event(event_from_error_chain(e), Some(scope))
-    })
+    Hub::with_active(|hub| hub.capture_event(event_from_error_chain(e)))
 }
