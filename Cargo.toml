@@ -75,3 +75,5 @@ name = "panic-demo"
 name = "thread-demo"
 [[example]]
 name = "init-with-client"
+[[example]]
+name = "scope-processors"

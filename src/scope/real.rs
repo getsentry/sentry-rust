@@ -71,7 +71,7 @@ impl ScopeHandle {
 ///
 /// Note that the scope can only be modified but not inspected.  Only the
 /// client can use the scope to extract information currently.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Scope {
     pub(crate) fingerprint: Option<Arc<Vec<Cow<'static, str>>>>,
     pub(crate) transaction: Option<Arc<String>>,
@@ -80,6 +80,21 @@ pub struct Scope {
     pub(crate) extra: im::HashMap<String, Value>,
     pub(crate) tags: im::HashMap<String, String>,
     pub(crate) contexts: im::HashMap<String, Option<Context>>,
+    pub(crate) event_processors: im::Vector<Box<Fn(&mut Event) + Sync + Send>>,
+}
+
+impl fmt::Debug for Scope {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Scope")
+            .field("fingerprint", &self.fingerprint)
+            .field("transaction", &self.transaction)
+            .field("breadcrumbs", &self.breadcrumbs)
+            .field("user", &self.user)
+            .field("extra", &self.extra)
+            .field("tags", &self.tags)
+            .field("contexts", &self.contexts)
+            .finish()
+    }
 }
 
 impl Default for Scope {
@@ -92,6 +107,7 @@ impl Default for Scope {
             extra: Default::default(),
             tags: Default::default(),
             contexts: Default::default(),
+            event_processors: Default::default(),
         }
     }
 }
@@ -213,6 +229,15 @@ impl Scope {
         self.extra = self.extra.remove(&key.to_string());
     }
 
+    /// Registers a processing function with the scope.
+    pub fn add_event_processor<F, B>(&mut self, f: Box<F>)
+    where
+        F: Fn(&mut Event) + Sync + Send + ?Sized,
+        Box<F>: im::shared::Shared<Box<Fn(&mut Event) + Sync + Send>>,
+    {
+        self.event_processors = self.event_processors.push_back(f);
+    }
+
     /// Applies the contained scoped data to fill an event.
     pub fn apply_to_event(&self, event: &mut Event) {
         let mut add_os = true;
@@ -296,6 +321,10 @@ impl Scope {
                     entry.insert(device.clone());
                 }
             }
+        }
+
+        for processor in self.event_processors.iter() {
+            processor(event);
         }
     }
 }
