@@ -83,24 +83,10 @@ impl<F: FnOnce() -> I, I: IntoBreadcrumbs> IntoBreadcrumbs for F {
 /// * `Hub::with`: invoke a callback with the default hub
 /// * `Hub::with_active`: like `Hub::with` but does not invoke the callback if
 ///   the client is not in a supported state or not bound
-/// * `Hub::clone`: creates a new hub with just the top scope
+/// * `Hub::derive`: creates a new hub with just the top scope
 pub struct Hub {
     #[cfg(feature = "with_client_implementation")]
     stack: RwLock<Stack>,
-}
-
-impl Clone for Hub {
-    #[cfg(feature = "with_client_implementation")]
-    fn clone(&self) -> Hub {
-        let stack = self.read_stack();
-        let top = stack.top();
-        Hub::new(top.client.clone(), top.scope.clone())
-    }
-
-    #[cfg(not(feature = "with_client_implementation"))]
-    fn clone(&self) -> Hub {
-        Hub {}
-    }
 }
 
 impl Hub {
@@ -110,6 +96,14 @@ impl Hub {
         Hub {
             stack: RwLock::new(Stack::from_client_and_scope(client, scope)),
         }
+    }
+
+    /// Creates a new hub based on the top scope of the given hub.
+    #[cfg(feature = "with_client_implementation")]
+    pub fn derive(&self) -> Hub {
+        let stack = self.read_stack();
+        let top = stack.top();
+        Hub::new(top.client.clone(), top.scope.clone())
     }
 
     /// Returns the default hub.

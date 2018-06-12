@@ -57,12 +57,15 @@ rustc_version = { version = "0.2.2", optional = true }
 [dev-dependencies]
 failure_derive = "0.1.1"
 pretty_env_logger = "0.2.3"
+actix-web = "0.6.12"
 
 [[example]]
 name = "error-chain-demo"
 required-features = ["with_error_chain"]
 
 # TODO: Remove these once autoexamples are stable
+[[example]]
+name = "actix-demo"
 [[example]]
 name = "failure-demo"
 [[example]]
