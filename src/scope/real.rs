@@ -230,7 +230,12 @@ impl Scope {
     }
 
     /// Registers a processing function with the scope.
-    pub fn add_event_processor<F, B>(&mut self, f: Box<F>)
+    ///
+    /// This function invoked with the event after the scope data has been filled into
+    /// the event but before the client does its own event processing and sending.
+    /// This can be used to register code that integrations want to run before the
+    /// event has been sent.
+    pub fn add_event_processor<F>(&mut self, f: Box<F>)
     where
         F: Fn(&mut Event) + Sync + Send + ?Sized,
         Box<F>: im::shared::Shared<Box<Fn(&mut Event) + Sync + Send>>,
