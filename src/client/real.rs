@@ -102,30 +102,59 @@ fn parse_crate_name(func_name: &str) -> Option<String> {
         .map(|cr| cr.as_str().into())
 }
 
-/// Helper trait to convert an object into a client config
-/// for create.
-pub trait IntoClientConfig {
+/// Helper trait to convert an object into a client config and/or client
+/// for `init`.
+pub trait IntoClient: Sized {
     /// Converts the object into a client config tuple of
     /// DSN and options.
     ///
     /// This can panic in cases where the conversion cannot be
     /// performed due to an error.
     fn into_client_config(self) -> (Option<Dsn>, Option<ClientOptions>);
+
+    /// Converts the object into a client right away.
+    fn into_client(self) -> Option<Client> {
+        let (dsn, options) = self.into_client_config();
+        let dsn = dsn.or_else(|| {
+            env::var("SENTRY_DSN")
+                .ok()
+                .and_then(|dsn| dsn.parse::<Dsn>().ok())
+        });
+        if let Some(dsn) = dsn {
+            Some(if let Some(options) = options {
+                Client::with_dsn_and_options(dsn, options)
+            } else {
+                Client::with_dsn(dsn)
+            })
+        } else {
+            None
+        }
+    }
 }
 
-impl IntoClientConfig for () {
+impl IntoClient for Client {
+    fn into_client_config(self) -> (Option<Dsn>, Option<ClientOptions>) {
+        (self.dsn().map(|x| x.clone()), Some(self.options().clone()))
+    }
+
+    fn into_client(self) -> Option<Client> {
+        Some(self)
+    }
+}
+
+impl IntoClient for () {
     fn into_client_config(self) -> (Option<Dsn>, Option<ClientOptions>) {
         (None, None)
     }
 }
 
-impl<C: IntoClientConfig> IntoClientConfig for Option<C> {
+impl<C: IntoClient> IntoClient for Option<C> {
     fn into_client_config(self) -> (Option<Dsn>, Option<ClientOptions>) {
         self.map(|x| x.into_client_config()).unwrap_or((None, None))
     }
 }
 
-impl<'a> IntoClientConfig for &'a str {
+impl<'a> IntoClient for &'a str {
     fn into_client_config(self) -> (Option<Dsn>, Option<ClientOptions>) {
         if self.is_empty() {
             (None, None)
@@ -135,7 +164,7 @@ impl<'a> IntoClientConfig for &'a str {
     }
 }
 
-impl<'a> IntoClientConfig for &'a OsStr {
+impl<'a> IntoClient for &'a OsStr {
     fn into_client_config(self) -> (Option<Dsn>, Option<ClientOptions>) {
         if self.is_empty() {
             (None, None)
@@ -145,7 +174,7 @@ impl<'a> IntoClientConfig for &'a OsStr {
     }
 }
 
-impl IntoClientConfig for OsString {
+impl IntoClient for OsString {
     fn into_client_config(self) -> (Option<Dsn>, Option<ClientOptions>) {
         if self.is_empty() {
             (None, None)
@@ -155,7 +184,7 @@ impl IntoClientConfig for OsString {
     }
 }
 
-impl IntoClientConfig for String {
+impl IntoClient for String {
     fn into_client_config(self) -> (Option<Dsn>, Option<ClientOptions>) {
         if self.is_empty() {
             (None, None)
@@ -165,19 +194,19 @@ impl IntoClientConfig for String {
     }
 }
 
-impl<'a> IntoClientConfig for &'a Dsn {
+impl<'a> IntoClient for &'a Dsn {
     fn into_client_config(self) -> (Option<Dsn>, Option<ClientOptions>) {
         (Some(self.clone()), None)
     }
 }
 
-impl IntoClientConfig for Dsn {
+impl IntoClient for Dsn {
     fn into_client_config(self) -> (Option<Dsn>, Option<ClientOptions>) {
         (Some(self), None)
     }
 }
 
-impl<C: IntoClientConfig> IntoClientConfig for (C, ClientOptions) {
+impl<C: IntoClient> IntoClient for (C, ClientOptions) {
     fn into_client_config(self) -> (Option<Dsn>, Option<ClientOptions>) {
         let (dsn, _) = self.0.into_client_config();
         (dsn, Some(self.1))
@@ -192,7 +221,7 @@ impl Client {
     /// the client.
     ///
     /// The client config can be of one of many formats as implemented by the
-    /// `IntoClientConfig` trait.  The most common form is to just supply a
+    /// `IntoClient` trait.  The most common form is to just supply a
     /// string with the DSN.
     ///
     /// # Supported Configs
@@ -208,25 +237,11 @@ impl Client {
     ///
     /// # Panics
     ///
-    /// The `IntoClientConfig` can panic for the forms where a DSN needs to be parsed.
+    /// The `IntoClient` can panic for the forms where a DSN needs to be parsed.
     /// If you want to handle invalid DSNs you need to parse them manually by calling
     /// parse on it and handle the error.
-    pub fn from_config<C: IntoClientConfig>(cfg: C) -> Option<Client> {
-        let (dsn, options) = cfg.into_client_config();
-        let dsn = dsn.or_else(|| {
-            env::var("SENTRY_DSN")
-                .ok()
-                .and_then(|dsn| dsn.parse::<Dsn>().ok())
-        });
-        if let Some(dsn) = dsn {
-            Some(if let Some(options) = options {
-                Client::with_dsn_and_options(dsn, options)
-            } else {
-                Client::with_dsn(dsn)
-            })
-        } else {
-            None
-        }
+    pub fn from_config<C: IntoClient>(cfg: C) -> Option<Client> {
+        cfg.into_client()
     }
 
     /// Creates a new sentry client for the given DSN.
@@ -453,7 +468,7 @@ impl Drop for ClientInitGuard {
 /// but gives a simplified interface that transparently handles clients not
 /// being created by the Dsn being empty.
 #[cfg(feature = "with_client_implementation")]
-pub fn init<C: IntoClientConfig>(cfg: C) -> ClientInitGuard {
+pub fn init<C: IntoClient>(cfg: C) -> ClientInitGuard {
     ClientInitGuard(Client::from_config(cfg).map(|client| {
         let client = Arc::new(client);
         Hub::with(|hub| hub.bind_client(Some(client.clone())));

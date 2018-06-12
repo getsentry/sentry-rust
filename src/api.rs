@@ -10,7 +10,7 @@ pub use sentry_types::{Dsn, DsnParseError, ProjectId, ProjectIdParseError};
 // public exports from this crate
 pub use client::Client;
 #[cfg(feature = "with_client_implementation")]
-pub use client::{init, ClientInitGuard, ClientOptions, IntoClientConfig};
+pub use client::{init, ClientInitGuard, ClientOptions, IntoClient};
 pub use hub::{Hub, IntoBreadcrumbs};
 pub use scope::{Scope, ScopeGuard, ScopeHandle};
 
