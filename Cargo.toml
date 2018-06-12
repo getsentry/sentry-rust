@@ -73,3 +73,5 @@ name = "message-demo"
 name = "panic-demo"
 [[example]]
 name = "thread-demo"
+[[example]]
+name = "init-with-client"
