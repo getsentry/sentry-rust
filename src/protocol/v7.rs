@@ -1208,6 +1208,7 @@ impl<'a, 'de> Deserialize<'de> for Event<'a> {
             #[serde(rename = "event_id")]
             pub id: Option<Uuid>,
             pub level: Level,
+            #[serde(deserialize_with = "deserialize_fingerprint")]
             pub fingerprint: Cow<'a, [Cow<'a, str>]>,
             pub culprit: Option<String>,
             pub transaction: Option<String>,
@@ -1372,16 +1373,62 @@ fn is_other(value: &str) -> bool {
     value == "other"
 }
 
+static DEFAULT_FINGERPRINT: &'static [Cow<'static, str>] = &[Cow::Borrowed("{{ default }}")];
+
 #[cfg_attr(feature = "cargo-clippy", allow(ptr_arg))]
 fn is_default_fingerprint<'a>(fp: &Cow<'a, [Cow<'a, str>]>) -> bool {
     fp.len() == 1 && ((&fp)[0] == "{{ default }}" || (&fp)[0] == "{{default}}")
 }
 
+/// Recursively collects values into a fingerprint list.
+///
+/// - Booleans, strings and integers are directly converted to string
+/// - Floating point numbers are truncated and then converted to string
+/// - Arrays are transformed recursively with the above rules and appended to the list
+/// - Objects and null values are ignored at all levels
+fn collect_fingerprint<'a>(fingerprint: &mut Vec<Cow<'a, str>>, value: Value) {
+    match value {
+        Value::Null => (),
+        Value::Object(_) => (),
+        Value::Bool(b) => fingerprint.push(b.to_string().into()),
+        Value::String(s) => fingerprint.push(s.into()),
+        Value::Number(n) => {
+            if let Some(u) = n.as_u64() {
+                fingerprint.push(u.to_string().into());
+            } else if let Some(i) = n.as_i64() {
+                fingerprint.push(i.to_string().into());
+            } else if let Some(f) = n.as_f64() {
+                if f.trunc() as i64 as f64 == f {
+                    fingerprint.push(f.trunc().to_string().into());
+                }
+            }
+        }
+        Value::Array(values) => {
+            for v in values {
+                collect_fingerprint(fingerprint, v);
+            }
+        }
+    }
+}
+
+/// Deserializes fingerprints into a flat list of strings.
+fn deserialize_fingerprint<'a, 'de, D>(deserializer: D) -> Result<Cow<'a, [Cow<'a, str>]>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = Value::deserialize(deserializer)?;
+    let mut fingerprint = Vec::new();
+    collect_fingerprint(&mut fingerprint, value);
+
+    Ok(if fingerprint.is_empty() {
+        Cow::Borrowed(DEFAULT_FINGERPRINT)
+    } else {
+        Cow::Owned(fingerprint)
+    })
+}
+
 impl<'a> Default for Event<'a> {
     fn default() -> Event<'a> {
-        static DEFAULT_FINGERPRINT: &'static [Cow<'static, str>] =
-            &[Cow::Borrowed("{{ default }}")];
-
         Event {
             id: None,
             level: Level::Error,

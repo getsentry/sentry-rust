@@ -89,23 +89,6 @@ mod test_event {
     }
 
     #[test]
-    fn test_fingerprint() {
-        let mut event: v7::Event = Default::default();
-        assert_eq!(serde_json::to_string(&event).unwrap(), "{}");
-
-        event.fingerprint = {
-            let mut fp = event.fingerprint.into_owned();
-            fp.push("extra".into());
-            Cow::Owned(fp)
-        };
-        assert_roundtrip(&event);
-        assert_eq!(
-            serde_json::to_string(&event).unwrap(),
-            "{\"fingerprint\":[\"{{ default }}\",\"extra\"]}"
-        );
-    }
-
-    #[test]
     fn test_transaction() {
         let event = v7::Event {
             message: Some("Hello World!".to_string()),
@@ -147,6 +130,126 @@ mod test_event {
             serde_json::to_string(&event).unwrap(),
             "{\"level\":\"info\",\"culprit\":\"foo in bar\",\"message\":\"Hello World!\"}"
         );
+    }
+}
+
+mod test_fingerprint {
+    use super::*;
+
+    #[test]
+    fn test_fingerprint_simple() {
+        let mut event: v7::Event = Default::default();
+        assert_eq!(serde_json::to_string(&event).unwrap(), "{}");
+
+        event.fingerprint = {
+            let mut fp = event.fingerprint.into_owned();
+            fp.push("extra".into());
+            Cow::Owned(fp)
+        };
+        assert_roundtrip(&event);
+        assert_eq!(
+            serde_json::to_string(&event).unwrap(),
+            "{\"fingerprint\":[\"{{ default }}\",\"extra\"]}"
+        );
+    }
+
+    #[test]
+    fn test_fingerprint_string() {
+        assert_eq!(
+            v7::Event {
+                fingerprint: Cow::Borrowed(&["fingerprint".into()]),
+                ..Default::default()
+            },
+            serde_json::from_str("{\"fingerprint\":[\"fingerprint\"]}").unwrap()
+        )
+    }
+
+    #[test]
+    fn test_fingerprint_number() {
+        assert_eq!(
+            v7::Event {
+                fingerprint: Cow::Borrowed(&["-22".into()]),
+                ..Default::default()
+            },
+            serde_json::from_str("{\"fingerprint\":[-22]}").unwrap()
+        )
+    }
+
+    #[test]
+    fn test_fingerprint_float() {
+        assert_eq!(
+            v7::Event {
+                fingerprint: Cow::Borrowed(&["3".into()]),
+                ..Default::default()
+            },
+            serde_json::from_str("{\"fingerprint\":[3.0]}").unwrap()
+        )
+    }
+
+    #[test]
+    fn test_fingerprint_array() {
+        assert_eq!(
+            v7::Event {
+                fingerprint: Cow::Borrowed(&["a".into(), "b".into(), "c".into(), "d".into()]),
+                ..Default::default()
+            },
+            serde_json::from_str("{\"fingerprint\":[\"a\",[\"b\",[\"c\"]],\"d\"]}").unwrap()
+        )
+    }
+
+    #[test]
+    fn test_fingerprint_object() {
+        assert_eq!(
+            v7::Event {
+                fingerprint: Cow::Borrowed(&["a".into(), "d".into()]),
+                ..Default::default()
+            },
+            serde_json::from_str("{\"fingerprint\":[\"a\",{\"b\":\"c\"},\"d\"]}").unwrap()
+        )
+    }
+
+    #[test]
+    fn test_fingerprint_null() {
+        assert_eq!(
+            v7::Event {
+                fingerprint: Cow::Borrowed(&["a".into(), "b".into()]),
+                ..Default::default()
+            },
+            serde_json::from_str("{\"fingerprint\":[\"a\",null,\"b\"]}").unwrap()
+        )
+    }
+
+    #[test]
+    fn test_fingerprint_default() {
+        assert_eq!(
+            v7::Event {
+                fingerprint: Cow::Borrowed(&["{{ default }}".into()]),
+                ..Default::default()
+            },
+            serde_json::from_str("{\"fingerprint\":[null, {}, [[]]]}").unwrap()
+        )
+    }
+
+    #[test]
+    fn test_fingerprint_toplevel() {
+        assert_eq!(
+            v7::Event {
+                fingerprint: Cow::Borrowed(&["toplevel".into()]),
+                ..Default::default()
+            },
+            serde_json::from_str("{\"fingerprint\":\"toplevel\"}").unwrap()
+        )
+    }
+
+    #[test]
+    fn test_fingerprint_float_bounds() {
+        assert_eq!(
+            v7::Event {
+                fingerprint: Cow::Borrowed(&["a".into()]),
+                ..Default::default()
+            },
+            serde_json::from_str("{\"fingerprint\":[\"a\",1.7976931348623157e+308]}").unwrap()
+        )
     }
 }
 
