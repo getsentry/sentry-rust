@@ -236,8 +236,16 @@ impl Hub {
                 let rv = f(&mut new_scope);
                 (new_scope, rv)
             });
-            self.with_scope_mut(|scope| *scope = new_scope);
+            self.replace_scope(new_scope);
             rv
+        }}
+    }
+
+    /// Replaces the current scope with the new one.
+    #[allow(unused_variables)]
+    pub fn replace_scope(&self, scope: Scope) {
+        with_client_impl! {{
+            self.with_scope_mut(|ptr| *ptr = scope);
         }}
     }
 
