@@ -1,6 +1,6 @@
 use uuid::Uuid;
 
-use api::protocol::{Breadcrumb, Event};
+use api::protocol::Event;
 
 // public api from other crates
 pub use sentry_types::protocol::v7 as protocol;
@@ -11,7 +11,7 @@ pub use sentry_types::{Dsn, DsnParseError, ProjectId, ProjectIdParseError};
 pub use client::Client;
 #[cfg(feature = "with_client_implementation")]
 pub use client::{init, ClientInitGuard, ClientOptions, IntoClientConfig};
-pub use hub::Hub;
+pub use hub::{Hub, IntoBreadcrumbs};
 pub use scope::{Scope, ScopeGuard, ScopeHandle};
 
 /// Captures an event on the currently active client if any.
@@ -54,9 +54,18 @@ pub fn capture_message(msg: &str, level: Level) -> Uuid {
 /// Records a breadcrumb by calling a function.
 ///
 /// The total number of breadcrumbs that can be recorded are limited by the
-/// configuration on the client.  This takes a callback because if the client
-/// is not interested in breadcrumbs none will be recorded.  This records
-/// the breadcrumb to the currently active hub.
+/// configuration on the client.  This function accepts any object that
+/// implements `IntoBreadcrumbs` which is implemented for a varienty of
+/// common types.  For efficiency reasons you can also pass a closure returning
+/// a breadcrumb in which case the closure is only called if the client is
+/// enabled.
+///
+/// The most common implementations that can be passed:
+///
+/// * `Breadcrumb`: to record a breadcrumb
+/// * `Vec<Breadcrumb>`: to record more than one breadcrumb in one go.
+/// * `Option<Breadcrumb>`: to record a breadcrumb or not
+/// * additionally all of these can also be returned from an `FnOnce()`
 ///
 /// # Example
 ///
@@ -76,10 +85,10 @@ pub fn capture_message(msg: &str, level: Level) -> Uuid {
 /// });
 /// ```
 #[allow(unused_variables)]
-pub fn add_breadcrumb<F: FnOnce() -> Breadcrumb>(f: F) {
+pub fn add_breadcrumb<B: IntoBreadcrumbs>(breadcrumb: B) {
     with_client_impl! {{
         Hub::with_active(|hub| {
-            hub.add_breadcrumb(f())
+            hub.add_breadcrumb(breadcrumb)
         })
     }}
 }
