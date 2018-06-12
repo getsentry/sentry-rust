@@ -65,6 +65,8 @@ pub struct ClientOptions {
     pub server_name: Option<Cow<'static, str>>,
     /// The user agent that should be reported.
     pub user_agent: Cow<'static, str>,
+    /// The timeout on client drop for draining events.
+    pub drop_drain_timeout: Option<Duration>,
 }
 
 impl Default for ClientOptions {
@@ -83,6 +85,7 @@ impl Default for ClientOptions {
             }),
             server_name: server_name().map(Cow::Owned),
             user_agent: Cow::Borrowed(&USER_AGENT),
+            drop_drain_timeout: Some(Duration::from_secs(2)),
         }
     }
 }
@@ -426,7 +429,7 @@ impl ClientInitGuard {
 impl Drop for ClientInitGuard {
     fn drop(&mut self) {
         if let Some(ref client) = self.0 {
-            client.drain_events(Some(Duration::from_secs(2)));
+            client.drain_events(client.options.drop_drain_timeout);
         }
     }
 }

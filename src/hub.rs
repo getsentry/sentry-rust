@@ -1,3 +1,4 @@
+use std::iter;
 #[allow(unused)]
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard, TryLockError};
 #[allow(unused)]
@@ -20,6 +21,47 @@ lazy_static! {
 #[cfg(feature = "with_client_implementation")]
 thread_local! {
     static THREAD_HUB: Arc<Hub> = PROCESS_HUB.clone();
+}
+
+/// A helper trait that converts an object into a breadcrumb.
+pub trait IntoBreadcrumbs {
+    /// The iterator type for the breadcrumbs.
+    type Output: Iterator<Item = Breadcrumb>;
+
+    /// This converts the object into an optional breadcrumb.
+    fn into_breadcrumbs(self) -> Self::Output;
+}
+
+impl IntoBreadcrumbs for Breadcrumb {
+    type Output = iter::Once<Breadcrumb>;
+
+    fn into_breadcrumbs(self) -> Self::Output {
+        return iter::once(self);
+    }
+}
+
+impl IntoBreadcrumbs for Vec<Breadcrumb> {
+    type Output = ::std::vec::IntoIter<Breadcrumb>;
+
+    fn into_breadcrumbs(self) -> Self::Output {
+        self.into_iter()
+    }
+}
+
+impl IntoBreadcrumbs for Option<Breadcrumb> {
+    type Output = ::std::option::IntoIter<Breadcrumb>;
+
+    fn into_breadcrumbs(self) -> Self::Output {
+        self.into_iter()
+    }
+}
+
+impl<F: FnOnce() -> I, I: IntoBreadcrumbs> IntoBreadcrumbs for F {
+    type Output = I::Output;
+
+    fn into_breadcrumbs(self) -> Self::Output {
+        self().into_breadcrumbs()
+    }
 }
 
 /// The central object that can manages scopes and clients.
@@ -200,18 +242,23 @@ impl Hub {
     }
 
     /// Adds a new breadcrumb to the current scope.
+    ///
+    /// This is equivalent to the global [`sentry::add_breadcrumb`](fn.add_breadcrumb.html) but
+    /// sends the breadcrumb into the hub instead.
     #[allow(unused_variables)]
-    pub fn add_breadcrumb(&self, breadcrumb: Breadcrumb) {
+    pub fn add_breadcrumb<B: IntoBreadcrumbs>(&self, breadcrumb: B) {
         with_client_impl! {{
             let mut stack = self.write_stack();
             let top = stack.top_mut();
             if let Some(ref client) = top.client {
                 let scope = Arc::make_mut(&mut top.scope);
                 let limit = client.options().max_breadcrumbs;
+                for breadcrumb in breadcrumb.into_breadcrumbs() {
                 scope.breadcrumbs = scope.breadcrumbs.push_back(breadcrumb);
-                while scope.breadcrumbs.len() > limit {
-                    if let Some((_, new)) = scope.breadcrumbs.pop_front() {
-                        scope.breadcrumbs = new;
+                    while scope.breadcrumbs.len() > limit {
+                        if let Some((_, new)) = scope.breadcrumbs.pop_front() {
+                            scope.breadcrumbs = new;
+                        }
                     }
                 }
             }
