@@ -82,18 +82,6 @@ struct HubImpl {
     has_pending_processors: AtomicBool,
 }
 
-/// Different scope stack implementations for the hub.
-pub trait ScopeStack {
-    #[doc(hidden)]
-    fn with<F: FnOnce(&Stack) -> R, R>(&self, f: F) -> R;
-    #[doc(hidden)]
-    fn with_mut<F: FnOnce(&mut Stack) -> R, R>(&self, f: F) -> R;
-    #[doc(hidden)]
-    fn with_processors_mut<F: FnOnce(&mut PendingProcessors) -> R, R>(&self, f: F) -> R;
-    #[doc(hidden)]
-    fn is_active_and_usage_safe(&self) -> bool;
-}
-
 impl HubImpl {
     fn with<F: FnOnce(&Stack) -> R, R>(&self, f: F) -> R {
         let guard = self.stack.read().unwrap_or_else(|x| x.into_inner());
@@ -188,7 +176,7 @@ impl Hub {
         PROCESS_HUB.0.clone()
     }
 
-    /// Invokes the callback with the global hub.
+    /// Invokes the callback with the default hub.
     ///
     /// This is a slightly more efficient version than `Hub::current()` and
     /// also unavailable in shim-only mode.
@@ -200,7 +188,7 @@ impl Hub {
         if thread::current().id() == PROCESS_HUB.1 {
             f(&PROCESS_HUB.0)
         } else {
-            THREAD_HUB.with(|stack| f(&*stack))
+            THREAD_HUB.with(|stack| f(stack))
         }
     }
 
@@ -225,9 +213,7 @@ impl Hub {
             })
         }}
     }
-}
 
-impl Hub {
     /// Sends the event to the current client with the current scope.
     ///
     /// In case no client is bound this does nothing instead.
