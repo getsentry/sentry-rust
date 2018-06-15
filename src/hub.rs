@@ -179,6 +179,15 @@ impl Hub {
         Hub::with(|hub| hub.clone())
     }
 
+    /// Returns the main thread's hub.
+    ///
+    /// This is similar to `current` but instead of picking the current
+    /// thread's hub it returns the main thread's hub instead.
+    #[cfg(feature = "with_client_implementation")]
+    pub fn main() -> Arc<Hub> {
+        PROCESS_HUB.0.clone()
+    }
+
     /// Invokes the callback with the global hub.
     ///
     /// This is a slightly more efficient version than `Hub::current()` and
