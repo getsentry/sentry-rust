@@ -80,7 +80,7 @@ pub struct Scope {
     pub(crate) extra: im::HashMap<String, Value>,
     pub(crate) tags: im::HashMap<String, String>,
     pub(crate) contexts: im::HashMap<String, Option<Context>>,
-    pub(crate) event_processors: im::Vector<Box<Fn(&mut Event) + Sync + Send>>,
+    pub(crate) event_processors: im::Vector<Box<Fn(&mut Event) + Send + Sync>>,
 }
 
 impl fmt::Debug for Scope {
@@ -229,20 +229,6 @@ impl Scope {
         self.extra = self.extra.remove(&key.to_string());
     }
 
-    /// Registers a processing function with the scope.
-    ///
-    /// This function invoked with the event after the scope data has been filled into
-    /// the event but before the client does its own event processing and sending.
-    /// This can be used to register code that integrations want to run before the
-    /// event has been sent.
-    pub fn add_event_processor<F>(&mut self, f: Box<F>)
-    where
-        F: Fn(&mut Event) + Sync + Send + ?Sized,
-        Box<F>: im::shared::Shared<Box<Fn(&mut Event) + Sync + Send>>,
-    {
-        self.event_processors = self.event_processors.push_back(f);
-    }
-
     /// Applies the contained scoped data to fill an event.
     pub fn apply_to_event(&self, event: &mut Event) {
         let mut add_os = true;
@@ -326,10 +312,6 @@ impl Scope {
                     entry.insert(device.clone());
                 }
             }
-        }
-
-        for processor in self.event_processors.iter() {
-            processor(event);
         }
     }
 }
