@@ -15,10 +15,12 @@ use sentry::Hub;
 /// Reports certain failures to sentry.
 pub struct CaptureSentryError;
 
-impl<S> Middleware<S> for CaptureSentryError {
+impl<S: 'static> Middleware<S> for CaptureSentryError {
     fn start(&self, req: &mut HttpRequest<S>) -> Result<Started, Error> {
-        let hub = Hub::current().derive();
-        hub.configure_scope(|scope| {
+        let hub = Hub::new_from_top(Hub::current());
+        let outer_req = req;
+        let req = outer_req.clone();
+        hub.add_event_processor(Box::new(move || {
             let req = sentry::protocol::Request {
                 url: format!(
                     "{}://{}{}",
@@ -34,11 +36,11 @@ impl<S> Middleware<S> for CaptureSentryError {
                     .collect(),
                 ..Default::default()
             };
-            scope.add_event_processor(Box::new(move |event| {
+            Box::new(move |event| {
                 event.request = Some(req.clone());
-            }));
-        });
-        req.extensions_mut().insert(hub);
+            })
+        }));
+        outer_req.extensions_mut().insert(hub);
         Ok(Started::Done)
     }
 

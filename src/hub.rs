@@ -1,4 +1,6 @@
 use std::iter;
+use std::mem;
+use std::sync::atomic::{AtomicBool, Ordering};
 #[allow(unused)]
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard, TryLockError};
 #[allow(unused)]
@@ -20,7 +22,7 @@ lazy_static! {
 }
 #[cfg(feature = "with_client_implementation")]
 thread_local! {
-    static THREAD_HUB: Arc<Hub> = PROCESS_HUB.clone();
+    static THREAD_HUB: Arc<Hub> = Arc::new(Hub::new_from_top(&*PROCESS_HUB));
 }
 
 /// A helper trait that converts an object into a breadcrumb.
@@ -64,6 +66,60 @@ impl<F: FnOnce() -> I, I: IntoBreadcrumbs> IntoBreadcrumbs for F {
     }
 }
 
+#[doc(hidden)]
+pub struct PendingProcessors(Vec<Box<FnOnce() -> Box<Fn(&mut Event) + Send + Sync>>>);
+
+// this is not actually sync but our uses of it are
+unsafe impl Sync for PendingProcessors {}
+unsafe impl Send for PendingProcessors {}
+
+struct HubImpl {
+    stack: RwLock<Stack>,
+    pending_processors: RwLock<PendingProcessors>,
+    has_pending_processors: AtomicBool,
+}
+
+/// Different scope stack implementations for the hub.
+pub trait ScopeStack {
+    #[doc(hidden)]
+    fn with<F: FnOnce(&Stack) -> R, R>(&self, f: F) -> R;
+    #[doc(hidden)]
+    fn with_mut<F: FnOnce(&mut Stack) -> R, R>(&self, f: F) -> R;
+    #[doc(hidden)]
+    fn with_processors_mut<F: FnOnce(&mut PendingProcessors) -> R, R>(&self, f: F)
+        -> R;
+    #[doc(hidden)]
+    fn is_active_and_usage_safe(&self) -> bool;
+}
+
+impl HubImpl {
+    fn with<F: FnOnce(&Stack) -> R, R>(&self, f: F) -> R {
+        let guard = self.stack.read().unwrap_or_else(|x| x.into_inner());
+        f(&*guard)
+    }
+
+    fn with_mut<F: FnOnce(&mut Stack) -> R, R>(&self, f: F) -> R {
+        let mut guard = self.stack.write().unwrap_or_else(|x| x.into_inner());
+        f(&mut *guard)
+    }
+
+    fn with_processors_mut<F: FnOnce(&mut PendingProcessors) -> R, R>(
+        &self,
+        f: F,
+    ) -> R {
+        f(&mut *self.pending_processors.write().unwrap_or_else(|x| x.into_inner()))
+    }
+
+    fn is_active_and_usage_safe(&self) -> bool {
+        let guard = match self.stack.try_read() {
+            Err(TryLockError::Poisoned(err)) => err.into_inner(),
+            Err(TryLockError::WouldBlock) => return false,
+            Ok(guard) => guard,
+        };
+        guard.top().client.is_some()
+    }
+}
+
 /// The central object that can manages scopes and clients.
 ///
 /// This can be used to capture events and manage the scope.  This object is
@@ -86,7 +142,7 @@ impl<F: FnOnce() -> I, I: IntoBreadcrumbs> IntoBreadcrumbs for F {
 /// * `Hub::derive`: creates a new hub with just the top scope
 pub struct Hub {
     #[cfg(feature = "with_client_implementation")]
-    stack: RwLock<Stack>,
+    inner: HubImpl,
 }
 
 impl Hub {
@@ -94,16 +150,23 @@ impl Hub {
     #[cfg(feature = "with_client_implementation")]
     pub fn new(client: Option<Arc<Client>>, scope: Arc<Scope>) -> Hub {
         Hub {
-            stack: RwLock::new(Stack::from_client_and_scope(client, scope)),
+            inner: HubImpl {
+                stack: RwLock::new(Stack::from_client_and_scope(client, scope)),
+                pending_processors: RwLock::new(PendingProcessors(vec![])),
+                has_pending_processors: AtomicBool::new(false),
+            }
         }
     }
 
     /// Creates a new hub based on the top scope of the given hub.
     #[cfg(feature = "with_client_implementation")]
-    pub fn derive(&self) -> Hub {
-        let stack = self.read_stack();
-        let top = stack.top();
-        Hub::new(top.client.clone(), top.scope.clone())
+    pub fn new_from_top<H: AsRef<Hub>>(other: H) -> Hub {
+        let hub = other.as_ref();
+        hub.flush_pending_processors();
+        hub.inner.with(|stack| {
+            let top = stack.top();
+            Hub::new(top.client.clone(), top.scope.clone())
+        })
     }
 
     /// Returns the default hub.
@@ -124,7 +187,6 @@ impl Hub {
     where
         F: FnOnce(&Arc<Hub>) -> R,
     {
-        use std::mem;
         let thread = thread::current();
         let raw_id: u64 = unsafe { mem::transmute(thread.id()) };
         if raw_id == 0 {
@@ -155,20 +217,24 @@ impl Hub {
             })
         }}
     }
+}
 
+impl Hub {
     /// Sends the event to the current client with the current scope.
     ///
     /// In case no client is bound this does nothing instead.
     #[allow(unused_variables)]
     pub fn capture_event(&self, event: Event<'static>) -> Uuid {
+        self.flush_pending_processors();
         with_client_impl! {{
-            let stack = self.read_stack();
-            let top = stack.top();
-            if let Some(ref client) = top.client {
-                client.capture_event(event, Some(&top.scope))
-            } else {
-                Default::default()
-            }
+            self.inner.with(|stack| {
+                let top = stack.top();
+                if let Some(ref client) = top.client {
+                    client.capture_event(event, Some(&top.scope))
+                } else {
+                    Default::default()
+                }
+            })
         }}
     }
 
@@ -194,7 +260,9 @@ impl Hub {
     /// Returns the currently bound client.
     pub fn client(&self) -> Option<Arc<Client>> {
         with_client_impl! {{
-            self.read_stack().top().client.clone()
+            self.inner.with(|stack| {
+                stack.top().client.clone()
+            })
         }}
     }
 
@@ -202,7 +270,9 @@ impl Hub {
     #[cfg(feature = "with_client_implementation")]
     pub fn bind_client(&self, client: Option<Arc<Client>>) {
         with_client_impl! {{
-            self.write_stack().top_mut().client = client;
+            self.inner.with_mut(|stack| {
+                stack.top_mut().client = client;
+            })
         }}
     }
 
@@ -210,10 +280,12 @@ impl Hub {
     ///
     /// This returns a guard that when dropped will pop the scope again.
     pub fn push_scope(&self) -> ScopeGuard {
+        self.flush_pending_processors();
         with_client_impl! {{
-            let mut stack = self.write_stack();
-            stack.push();
-            ScopeGuard(Some(stack.layer_token()))
+            self.inner.with_mut(|stack| {
+                stack.push();
+                ScopeGuard(Some(stack.layer_token()))
+            })
         }}
     }
 
@@ -230,16 +302,8 @@ impl Hub {
                 let rv = f(&mut new_scope);
                 (new_scope, rv)
             });
-            self.replace_scope(new_scope);
+            self.with_scope_mut(|ptr| *ptr = new_scope);
             rv
-        }}
-    }
-
-    /// Replaces the current scope with the new one.
-    #[allow(unused_variables)]
-    pub fn replace_scope(&self, scope: Scope) {
-        with_client_impl! {{
-            self.with_scope_mut(|ptr| *ptr = scope);
         }}
     }
 
@@ -250,20 +314,21 @@ impl Hub {
     #[allow(unused_variables)]
     pub fn add_breadcrumb<B: IntoBreadcrumbs>(&self, breadcrumb: B) {
         with_client_impl! {{
-            let mut stack = self.write_stack();
-            let top = stack.top_mut();
-            if let Some(ref client) = top.client {
-                let scope = Arc::make_mut(&mut top.scope);
-                let limit = client.options().max_breadcrumbs;
-                for breadcrumb in breadcrumb.into_breadcrumbs() {
-                scope.breadcrumbs = scope.breadcrumbs.push_back(breadcrumb);
-                    while scope.breadcrumbs.len() > limit {
-                        if let Some((_, new)) = scope.breadcrumbs.pop_front() {
-                            scope.breadcrumbs = new;
+            self.inner.with_mut(|stack| {
+                let top = stack.top_mut();
+                if let Some(ref client) = top.client {
+                    let scope = Arc::make_mut(&mut top.scope);
+                    let limit = client.options().max_breadcrumbs;
+                    for breadcrumb in breadcrumb.into_breadcrumbs() {
+                    scope.breadcrumbs = scope.breadcrumbs.push_back(breadcrumb);
+                        while scope.breadcrumbs.len() > limit {
+                            if let Some((_, new)) = scope.breadcrumbs.pop_front() {
+                                scope.breadcrumbs = new;
+                            }
                         }
                     }
                 }
-            }
+            })
         }}
     }
 
@@ -293,44 +358,73 @@ impl Hub {
         }}
     }
 
+    /// Registers an event processor with the topmost scope.
+    ///
+    /// An event processor here is returned by an `FnOnce()` function that returns a
+    /// function taking an Event that needs to be `Send + Sync`.  By having the
+    /// function be a factory for the actual event processor the outer function does
+    /// not have to be `Sync` as sentry will execute it before a hub crosses a thread
+    /// boundary.
+    pub fn add_event_processor(&self, f: Box<FnOnce() -> Box<Fn(&mut Event) + Send + Sync>>) {
+        with_client_impl! {{
+            self.inner.with_processors_mut(|pending| {
+                pending.0.push(f);
+            });
+            self.inner.has_pending_processors.store(true, Ordering::AcqRel);
+        }}
+    }
+
+    fn flush_pending_processors(&self) {
+        with_client_impl! {{
+            if !self.inner.has_pending_processors.load(Ordering::AcqRel) {
+                return;
+            }
+            let mut new_processors = vec![];
+            self.inner.with_processors_mut(|pending| {
+                for processor in pending.0.iter_mut() {
+                    let processor: &mut Box<FnMut() -> Box<Fn(&mut Event) + Send + Sync>> = unsafe {
+                        mem::transmute(processor)
+                    };
+                    new_processors.push(processor());
+                }
+                pending.0.clear();
+            });
+            self.inner.has_pending_processors.store(false, Ordering::AcqRel);
+            if !new_processors.is_empty() {
+                self.configure_scope(|scope| {
+                    for func in new_processors.into_iter() {
+                        scope.event_processors = scope.event_processors.push_back(func);
+                    }
+                });
+            }
+        }}
+    }
+
     #[cfg(feature = "with_client_implementation")]
     pub(crate) fn is_active_and_usage_safe(&self) -> bool {
-        let guard = match self.stack.try_read() {
-            Err(TryLockError::Poisoned(err)) => err.into_inner(),
-            Err(TryLockError::WouldBlock) => return false,
-            Ok(guard) => guard,
-        };
-        guard.top().client.is_some()
-    }
-
-    #[cfg(feature = "with_client_implementation")]
-    pub(crate) fn read_stack(&self) -> RwLockReadGuard<Stack> {
-        self.stack.read().unwrap_or_else(|x| x.into_inner())
-    }
-
-    #[cfg(feature = "with_client_implementation")]
-    pub(crate) fn write_stack(&self) -> RwLockWriteGuard<Stack> {
-        self.stack.write().unwrap_or_else(|x| x.into_inner())
+        self.inner.is_active_and_usage_safe()
     }
 
     #[cfg(feature = "with_client_implementation")]
     pub(crate) fn with_scope<F: FnOnce(&Arc<Scope>) -> R, R>(&self, f: F) -> R {
-        f(&self.read_stack().top().scope)
+        self.inner.with(|stack| f(&stack.top().scope))
     }
 
     #[cfg(feature = "with_client_implementation")]
     pub(crate) fn with_scope_mut<F: FnOnce(&mut Scope) -> R, R>(&self, f: F) -> R {
-        f(Arc::make_mut(&mut self.write_stack().top_mut().scope))
+        self.inner
+            .with_mut(|stack| f(Arc::make_mut(&mut stack.top_mut().scope)))
     }
 
     #[cfg(feature = "with_client_implementation")]
     pub(crate) fn pop_scope(&self, token: StackLayerToken) {
         with_client_impl! {{
-            let mut stack = self.write_stack();
-            if stack.layer_token() != token {
-                panic!("Current active stack does not match scope guard");
-            }
-            stack.pop();
+            self.inner.with_mut(|stack| {
+                if stack.layer_token() != token {
+                    panic!("Current active stack does not match scope guard");
+                }
+                stack.pop();
+            })
         }}
     }
 }
