@@ -18,11 +18,14 @@ use uuid::Uuid;
 
 #[cfg(feature = "with_client_implementation")]
 lazy_static! {
-    static ref PROCESS_HUB: Arc<Hub> = Arc::new(Hub::new(None, Arc::new(Default::default())));
+    static ref PROCESS_HUB: (Arc<Hub>, thread::ThreadId) = (
+        Arc::new(Hub::new(None, Arc::new(Default::default()))),
+        thread::current().id()
+    );
 }
 #[cfg(feature = "with_client_implementation")]
 thread_local! {
-    static THREAD_HUB: Arc<Hub> = Arc::new(Hub::new_from_top(&*PROCESS_HUB));
+    static THREAD_HUB: Arc<Hub> = Arc::new(Hub::new_from_top(&PROCESS_HUB.0));
 }
 
 /// A helper trait that converts an object into a breadcrumb.
@@ -86,8 +89,7 @@ pub trait ScopeStack {
     #[doc(hidden)]
     fn with_mut<F: FnOnce(&mut Stack) -> R, R>(&self, f: F) -> R;
     #[doc(hidden)]
-    fn with_processors_mut<F: FnOnce(&mut PendingProcessors) -> R, R>(&self, f: F)
-        -> R;
+    fn with_processors_mut<F: FnOnce(&mut PendingProcessors) -> R, R>(&self, f: F) -> R;
     #[doc(hidden)]
     fn is_active_and_usage_safe(&self) -> bool;
 }
@@ -103,11 +105,10 @@ impl HubImpl {
         f(&mut *guard)
     }
 
-    fn with_processors_mut<F: FnOnce(&mut PendingProcessors) -> R, R>(
-        &self,
-        f: F,
-    ) -> R {
-        f(&mut *self.pending_processors.write().unwrap_or_else(|x| x.into_inner()))
+    fn with_processors_mut<F: FnOnce(&mut PendingProcessors) -> R, R>(&self, f: F) -> R {
+        f(&mut *self.pending_processors
+            .write()
+            .unwrap_or_else(|x| x.into_inner()))
     }
 
     fn is_active_and_usage_safe(&self) -> bool {
@@ -154,7 +155,7 @@ impl Hub {
                 stack: RwLock::new(Stack::from_client_and_scope(client, scope)),
                 pending_processors: RwLock::new(PendingProcessors(vec![])),
                 has_pending_processors: AtomicBool::new(false),
-            }
+            },
         }
     }
 
@@ -187,10 +188,8 @@ impl Hub {
     where
         F: FnOnce(&Arc<Hub>) -> R,
     {
-        let thread = thread::current();
-        let raw_id: u64 = unsafe { mem::transmute(thread.id()) };
-        if raw_id == 0 {
-            f(&*PROCESS_HUB)
+        if thread::current().id() == PROCESS_HUB.1 {
+            f(&PROCESS_HUB.0)
         } else {
             THREAD_HUB.with(|stack| f(&*stack))
         }
