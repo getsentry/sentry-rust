@@ -12,7 +12,7 @@ pub use client::Client;
 #[cfg(feature = "with_client_implementation")]
 pub use client::{init, ClientInitGuard, ClientOptions, IntoClient};
 pub use hub::{Hub, IntoBreadcrumbs};
-pub use scope::{Scope, ScopeGuard, ScopeHandle};
+pub use scope::{Scope, ScopeGuard};
 
 /// Captures an event on the currently active client if any.
 ///
@@ -129,29 +129,4 @@ where
             hub.configure_scope(f)
         })
     }}
-}
-
-/// Returns the handle to the current scope.
-///
-/// This can be used to propagate a scope to another thread easily.  The
-/// parent thread retrieves a handle and the child thread binds it. A handle
-/// can be cloned so that it can be used in multiple threads.
-///
-/// ## Example
-///
-/// ```
-/// use std::thread;
-///
-/// sentry::configure_scope(|scope| {
-///     scope.set_tag("task", "task-name");
-/// });
-/// let handle = sentry::scope_handle();
-/// thread::spawn(move || {
-///     handle.bind();
-///     // ...
-/// });
-/// ```
-#[cfg(feature = "with_client_implementation")]
-pub fn scope_handle() -> ScopeHandle {
-    Hub::with(|hub| hub.scope_handle())
 }
