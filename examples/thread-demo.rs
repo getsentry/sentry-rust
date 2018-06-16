@@ -4,9 +4,13 @@ extern crate pretty_env_logger;
 #[macro_use]
 extern crate sentry;
 
+use std::sync::Arc;
 use std::thread;
 
 fn main() {
+    // this initializes sentry.  It also gives the thread that calls this some
+    // special behavior in that all other threads spawned will get a hub based on
+    // the hub from here.
     let _sentry = sentry::init((
         "https://a94ae32be2584e0bbd7a4cbb95971fee@sentry.io/1041156",
         sentry::ClientOptions {
@@ -20,24 +24,31 @@ fn main() {
     sentry::integrations::log::init(Some(Box::new(log_builder.build())), Default::default());
     sentry::integrations::panic::register_panic_handler();
 
+    // the log integration sends to Hub::current()
     info!("Spawning thread");
 
     thread::spawn(|| {
+        // The thread spawned here gets a new hub cloned from the hub of the
+        // main thread.
         info!("Spawned thread, configuring scope.");
-        // configure the current thread's scope
-        sentry::configure_scope(|scope| {
+
+        // now we want to create a new hub based on the thread's normal hub for
+        // working with it explicitly.
+        let hub = Arc::new(sentry::Hub::new_from_top(sentry::Hub::current()));
+
+        // reconfigure that scope.
+        hub.configure_scope(|scope| {
             scope.set_tag("worker", "worker1");
         });
 
-        // get the current scope's token so it can be propagated into a new thread.
-        info!("Creating scope token.");
-        let scope_handle = sentry::scope_handle();
-
-        thread::spawn(|| {
-            info!("Activating scope token in new thread.");
-            // activates the scope token which binds the current context to the token's context.
-            scope_handle.bind();
-            error!("Failing!");
+        // we can now bind a new thread and have the other thread run some code
+        // bound to the hub we just created.
+        thread::spawn(move || {
+            sentry::Hub::run_bound(hub, || {
+                // the log integration picks up the Hub::current which is now bound
+                // to the outer hub.
+                error!("Failing!");
+            });
         }).join()
             .unwrap();
     }).join()

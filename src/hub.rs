@@ -1,5 +1,7 @@
+use std::cell::{Cell, UnsafeCell};
 use std::iter;
 use std::mem;
+use std::panic;
 use std::sync::atomic::{AtomicBool, Ordering};
 #[allow(unused)]
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard, TryLockError};
@@ -9,7 +11,7 @@ use std::time::Duration;
 
 use client::Client;
 use protocol::{Breadcrumb, Event, Level};
-use scope::{Scope, ScopeGuard, ScopeHandle};
+use scope::{Scope, ScopeGuard};
 
 #[cfg(feature = "with_client_implementation")]
 use scope::{Stack, StackLayerToken};
@@ -25,7 +27,9 @@ lazy_static! {
 }
 #[cfg(feature = "with_client_implementation")]
 thread_local! {
-    static THREAD_HUB: Arc<Hub> = Arc::new(Hub::new_from_top(&PROCESS_HUB.0));
+    static THREAD_HUB: UnsafeCell<Arc<Hub>> = UnsafeCell::new(
+        Arc::new(Hub::new_from_top(&PROCESS_HUB.0)));
+    static USE_PROCESS_HUB: Cell<bool> = Cell::new(PROCESS_HUB.1 == thread::current().id());
 }
 
 /// A helper trait that converts an object into a breadcrumb.
@@ -121,14 +125,17 @@ impl HubImpl {
 /// possible in which case it might become necessary to manually work with the
 /// hub.  This is for instance the case when working with async code.
 ///
+/// Hubs that are wrapped in `Arc`s can be bound to the current thread with
+/// the `run_bound` static method.
+///
 /// Most common operations:
 ///
 /// * `Hub::new`: creates a brand new hub
-/// * `Hub::current`: returns the default hub
-/// * `Hub::with`: invoke a callback with the default hub
+/// * `Hub::current`: returns the thread local hub
+/// * `Hub::with`: invoke a callback with the thread local hub
 /// * `Hub::with_active`: like `Hub::with` but does not invoke the callback if
 ///   the client is not in a supported state or not bound
-/// * `Hub::derive`: creates a new hub with just the top scope
+/// * `Hub::new_from_top`: creates a new hub with just the top scope of another hub.
 pub struct Hub {
     #[cfg(feature = "with_client_implementation")]
     inner: HubImpl,
@@ -158,7 +165,11 @@ impl Hub {
         })
     }
 
-    /// Returns the default hub.
+    /// Returns the current hub.
+    ///
+    /// By default each thread gets a different thread local hub.  If an
+    /// atomically reference counted hub is available it can override this
+    /// one here by calling `Hub::run_bound` with a closure.
     ///
     /// This method is unavailable if the client implementation is disabled.
     /// For shim-only usage use `Hub::with_active`.
@@ -185,10 +196,16 @@ impl Hub {
     where
         F: FnOnce(&Arc<Hub>) -> R,
     {
-        if thread::current().id() == PROCESS_HUB.1 {
+        if USE_PROCESS_HUB.with(|x| x.get()) {
             f(&PROCESS_HUB.0)
         } else {
-            THREAD_HUB.with(|stack| f(stack))
+            // not on safety: this is safe because even though we change the Arc
+            // by temorary binding we guarantee that the original Arc stays alive.
+            // For more information see: run_bound
+            THREAD_HUB.with(|stack| unsafe {
+                let ptr = stack.get();
+                f(&*ptr)
+            })
         }
     }
 
@@ -212,6 +229,49 @@ impl Hub {
                 }
             })
         }}
+    }
+
+    /// Binds a hub to the current thread for the duration of the call.
+    pub fn run_bound<F: FnOnce() -> R, R>(hub: Arc<Hub>, f: F) -> R {
+        let mut restore_process_hub = false;
+        let did_switch = THREAD_HUB.with(|ctx| unsafe {
+            let ptr = ctx.get();
+            if &**ptr as *const _ == &*hub as *const _ {
+                None
+            } else {
+                USE_PROCESS_HUB.with(|x| {
+                    if x.get() {
+                        restore_process_hub = true;
+                        x.set(false);
+                    }
+                });
+                let old = (*ptr).clone();
+                *ptr = hub.clone();
+                Some(old)
+            }
+        });
+
+        match did_switch {
+            None => {
+                // None means no switch happened.  We can invoke the function
+                // just like that, no changes necessary.
+                f()
+            }
+            Some(old_hub) => {
+                // this is for the case where we just switched the hub.  This
+                // means we need to catch the panic, restore the
+                // old context and resume the panic if needed.
+                let rv = panic::catch_unwind(panic::AssertUnwindSafe(|| f()));
+                THREAD_HUB.with(|ctx| unsafe { *ctx.get() = old_hub });
+                if restore_process_hub {
+                    USE_PROCESS_HUB.with(|x| x.set(true));
+                }
+                match rv {
+                    Err(err) => panic::resume_unwind(err),
+                    Ok(rv) => rv,
+                }
+            }
+        }
     }
 
     /// Sends the event to the current client with the current scope.
@@ -326,32 +386,6 @@ impl Hub {
         }}
     }
 
-    /// Returns the handle to the current scope.
-    ///
-    /// This can be used to propagate a scope to another thread easily.  The
-    /// parent thread retrieves a handle and the child thread binds it. A handle
-    /// can be cloned so that it can be used in multiple threads.
-    ///
-    /// ## Example
-    ///
-    /// ```
-    /// use std::thread;
-    ///
-    /// sentry::configure_scope(|scope| {
-    ///     scope.set_tag("task", "task-name");
-    /// });
-    /// let handle = sentry::scope_handle();
-    /// thread::spawn(move || {
-    ///     handle.bind();
-    ///     // ...
-    /// });
-    /// ```
-    pub fn scope_handle(&self) -> ScopeHandle {
-        with_client_impl! {{
-            self.with_scope(|scope| ScopeHandle(Some(scope.clone())))
-        }}
-    }
-
     /// Registers an event processor with the topmost scope.
     ///
     /// An event processor here is returned by an `FnOnce()` function that returns a
@@ -364,13 +398,13 @@ impl Hub {
             self.inner.with_processors_mut(|pending| {
                 pending.0.push(f);
             });
-            self.inner.has_pending_processors.store(true, Ordering::AcqRel);
+            self.inner.has_pending_processors.store(true, Ordering::Release);
         }}
     }
 
     fn flush_pending_processors(&self) {
         with_client_impl! {{
-            if !self.inner.has_pending_processors.load(Ordering::AcqRel) {
+            if !self.inner.has_pending_processors.load(Ordering::Acquire) {
                 return;
             }
             let mut new_processors = vec![];

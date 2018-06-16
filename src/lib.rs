@@ -90,6 +90,15 @@
 //! * `with_error_chain`: enables the error-chain integration
 //! * `with_shim_api`: compiles the shim only api into a dummy `shim` module for inspection.
 //!   This API cannot be used but it can be inspected for documentation purposes.
+//!
+//! # Threading
+//!
+//! The thread that calls `sentry::init` initializes the first hub which then automatically
+//! becomes the base of new hubs (You can get that hub by calling `Hub::main()`).  If a
+//! new thread is spawned it gets a new hub based on that one (the thread calls
+//! `Hub::new_from_top(Hub::main())`).  The current thread's hub is returned from
+//! `Hub::current()`.  Any hub that is wrapped in an `Arc` can be temporarily bound to a
+//! thread with `Hub::run_bound`.  For more information see [`Hub`](struct.Hub.html).
 #![warn(missing_docs)]
 
 #[cfg(feature = "with_backtrace")]
