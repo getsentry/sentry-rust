@@ -1,14 +1,16 @@
+#[allow(unused)]
 use std::cell::{Cell, UnsafeCell};
 use std::iter;
-use std::mem;
-use std::panic;
-use std::sync::atomic::{AtomicBool, Ordering};
 #[allow(unused)]
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard, TryLockError};
 #[allow(unused)]
 use std::thread;
 use std::time::Duration;
 
+#[allow(unused)]
+use std::sync::atomic::{AtomicBool, Ordering};
+
+#[cfg(feature = "with_client_implementation")]
 use client::Client;
 use protocol::{Breadcrumb, Event, Level};
 use scope::{Scope, ScopeGuard};
@@ -74,18 +76,23 @@ impl<F: FnOnce() -> I, I: IntoBreadcrumbs> IntoBreadcrumbs for F {
 }
 
 #[doc(hidden)]
+#[cfg(feature = "with_client_implementation")]
 pub struct PendingProcessors(Vec<Box<FnOnce() -> Box<Fn(&mut Event) + Send + Sync>>>);
 
 // this is not actually sync but our uses of it are
+#[cfg(feature = "with_client_implementation")]
 unsafe impl Sync for PendingProcessors {}
+#[cfg(feature = "with_client_implementation")]
 unsafe impl Send for PendingProcessors {}
 
+#[cfg(feature = "with_client_implementation")]
 struct HubImpl {
     stack: RwLock<Stack>,
     pending_processors: RwLock<PendingProcessors>,
     has_pending_processors: AtomicBool,
 }
 
+#[cfg(feature = "with_client_implementation")]
 impl HubImpl {
     fn with<F: FnOnce(&Stack) -> R, R>(&self, f: F) -> R {
         let guard = self.stack.read().unwrap_or_else(|x| x.into_inner());
@@ -172,7 +179,7 @@ impl Hub {
     /// one here by calling `Hub::run_bound` with a closure.
     ///
     /// This method is unavailable if the client implementation is disabled.
-    /// For shim-only usage use `Hub::with_active`.
+    /// When using the minimal API set use `Hub::with_active` instead.
     #[cfg(feature = "with_client_implementation")]
     pub fn current() -> Arc<Hub> {
         Hub::with(|hub| hub.clone())
@@ -190,7 +197,7 @@ impl Hub {
     /// Invokes the callback with the default hub.
     ///
     /// This is a slightly more efficient version than `Hub::current()` and
-    /// also unavailable in shim-only mode.
+    /// also unavailable in minimal mode.
     #[cfg(feature = "with_client_implementation")]
     pub fn with<F, R>(f: F) -> R
     where
@@ -232,6 +239,7 @@ impl Hub {
     }
 
     /// Binds a hub to the current thread for the duration of the call.
+    #[cfg(feature = "with_client_implementation")]
     pub fn run_bound<F: FnOnce() -> R, R>(hub: Arc<Hub>, f: F) -> R {
         let mut restore_process_hub = false;
         let did_switch = THREAD_HUB.with(|ctx| unsafe {
@@ -258,6 +266,8 @@ impl Hub {
                 f()
             }
             Some(old_hub) => {
+                use std::panic;
+
                 // this is for the case where we just switched the hub.  This
                 // means we need to catch the panic, restore the
                 // old context and resume the panic if needed.
@@ -312,6 +322,7 @@ impl Hub {
     }
 
     /// Returns the currently bound client.
+    #[cfg(feature = "with_client_implementation")]
     pub fn client(&self) -> Option<Arc<Client>> {
         with_client_impl! {{
             self.inner.with(|stack| {
@@ -393,6 +404,7 @@ impl Hub {
     /// function be a factory for the actual event processor the outer function does
     /// not have to be `Sync` as sentry will execute it before a hub crosses a thread
     /// boundary.
+    #[allow(unused)]
     pub fn add_event_processor(&self, f: Box<FnOnce() -> Box<Fn(&mut Event) + Send + Sync>>) {
         with_client_impl! {{
             self.inner.with_processors_mut(|pending| {
@@ -411,6 +423,7 @@ impl Hub {
             self.inner.with_processors_mut(|pending| {
                 for processor in pending.0.iter_mut() {
                     let processor: &mut Box<FnMut() -> Box<Fn(&mut Event) + Send + Sync>> = unsafe {
+                        use std::mem;
                         mem::transmute(processor)
                     };
                     new_processors.push(processor());

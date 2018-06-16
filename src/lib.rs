@@ -53,20 +53,21 @@
 //! [`scope_handle`](fn.scope_handle.html) can be acquired and passed to a thread
 //! where it can be bound.
 //!
-//! # Shim Only API
+//! # Minimal API
 //!
-//! This crate can also be used in "shim only" mode.  This is enabled by disabling all
+//! This crate can also be used in "minimal" mode.  This is enabled by disabling all
 //! default features of the crate.  In that mode a minimal API set is retained that
 //! can be used to instrument code for Sentry without actually using Sentry.  The
-//! shim is a small set of APIs that dispatch to the underlying implementations on
-//! the configured Sentry client.  If the client is not there the shim will blackhole
+//! minimal API is a small set of APIs that dispatch to the underlying implementations on
+//! the configured Sentry client.  If the client is not there the minimal API will blackhole
 //! a lot of operations.
 //!
 //! Only if a user then also uses and configures Sentry this code becomes used.
 //!
-//! In shim mode some types are restricted in functionality.  For instance the `Client` in shim
-//! mode does not retain all API functionality.  To see what the APIs in shim-only
-//! mode look like refer to [the shim only docs](shim/index.html).
+//! In minimal mode some types are restricted in functionality.  For instance the
+//! `Client` is not available and the `Hub` does not retain all API functionality.
+//! To see what the APIs in mnimal mode look like refer to
+//! [the minimal only docs](minimal/index.html).
 //!
 //! # Features
 //!
@@ -88,8 +89,9 @@
 //! additional features:
 //!
 //! * `with_error_chain`: enables the error-chain integration
-//! * `with_shim_api`: compiles the shim only api into a dummy `shim` module for inspection.
-//!   This API cannot be used but it can be inspected for documentation purposes.
+//! * `with_minimal_api`: compiles the minimal only api into a dummy `minimal`
+//!   module for inspection.  This API cannot be used but it can be inspected for
+//!   documentation purposes.
 //!
 //! # Threading
 //!
@@ -155,6 +157,7 @@ extern crate findshlibs;
 mod macros;
 
 mod api;
+#[cfg(feature = "with_client_implementation")]
 mod client;
 mod hub;
 mod scope;
@@ -169,15 +172,14 @@ mod transport;
 #[cfg(feature = "with_client_implementation")]
 pub mod utils;
 
-/// The shim only API (documentation only).
+/// The minimal API (documentation only).
 ///
 /// This module does not exist normally but it's typically compiled for documentation
 /// purposes so that users can see the API subset trivially that is available for
 /// environments where all features are disabled.
-#[cfg(feature = "with_shim_api")]
-pub mod shim {
-    pub use client::shim::*;
-    pub use scope::shim::*;
+#[cfg(feature = "with_minimal_api")]
+pub mod minimal {
+    pub use scope::minimal::*;
 }
 
 pub use api::*;
