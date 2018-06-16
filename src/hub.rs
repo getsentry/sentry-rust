@@ -430,7 +430,7 @@ impl Hub {
                 }
                 pending.0.clear();
             });
-            self.inner.has_pending_processors.store(false, Ordering::AcqRel);
+            self.inner.has_pending_processors.store(false, Ordering::Release);
             if !new_processors.is_empty() {
                 self.configure_scope(|scope| {
                     for func in new_processors.into_iter() {
