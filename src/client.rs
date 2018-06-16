@@ -18,16 +18,6 @@ use transport::Transport;
 use utils::{debug_images, server_name, trim_stacktrace};
 
 /// The Sentry client object.
-///
-/// ## Minimal API Behavior
-///
-/// This type is technically available in Shim mode but cannot be constructed.
-/// It's passed to some callbacks but those callbacks will never be executed if
-/// the minimal API is not used so a lot of the implementations are irrelevant as
-/// the code is effectively dead.
-///
-/// To see what types are available in minimal API mode refer to
-/// [the minimal API client docs](minimal/struct.Client.html).
 #[derive(Clone)]
 pub struct Client {
     options: ClientOptions,
