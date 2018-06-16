@@ -37,11 +37,11 @@ macro_rules! with_client_impl {
 }
 
 #[allow(unused_macros)]
-macro_rules! shim_unreachable {
+macro_rules! minimal_unreachable {
     () => {
         panic!(
-            "this code should not be reachable. It's stubbed out for shim usage. \
-             If you get this error this is a bug in the sentry shim"
+            "this code should not be reachable. It's stubbed out for minimal usage. \
+             If you get this error this is a bug in the sentry minimal support"
         );
     };
 }
