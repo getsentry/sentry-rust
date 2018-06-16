@@ -77,7 +77,12 @@ impl<F: FnOnce() -> I, I: IntoBreadcrumbs> IntoBreadcrumbs for F {
 
 #[doc(hidden)]
 #[cfg(feature = "with_client_implementation")]
-pub struct PendingProcessors(Vec<Box<FnOnce() -> Box<Fn(&mut Event) + Send + Sync>>>);
+pub struct PendingProcessors(
+    Vec<(
+        thread::ThreadId,
+        Box<FnOnce() -> Box<Fn(&mut Event) + Send + Sync>>,
+    )>,
+);
 
 // this is not actually sync but our uses of it are
 #[cfg(feature = "with_client_implementation")]
@@ -241,6 +246,7 @@ impl Hub {
     /// Binds a hub to the current thread for the duration of the call.
     #[cfg(feature = "with_client_implementation")]
     pub fn run_bound<F: FnOnce() -> R, R>(hub: Arc<Hub>, f: F) -> R {
+        hub.flush_pending_processors();
         let mut restore_process_hub = false;
         let did_switch = THREAD_HUB.with(|ctx| unsafe {
             let ptr = ctx.get();
@@ -408,7 +414,7 @@ impl Hub {
     pub fn add_event_processor(&self, f: Box<FnOnce() -> Box<Fn(&mut Event) + Send + Sync>>) {
         with_client_impl! {{
             self.inner.with_processors_mut(|pending| {
-                pending.0.push(f);
+                pending.0.push((thread::current().id(), f));
             });
             self.inner.has_pending_processors.store(true, Ordering::Release);
         }}
@@ -420,17 +426,25 @@ impl Hub {
                 return;
             }
             let mut new_processors = vec![];
-            self.inner.with_processors_mut(|pending| {
-                for processor in pending.0.iter_mut() {
-                    let processor: &mut Box<FnMut() -> Box<Fn(&mut Event) + Send + Sync>> = unsafe {
-                        use std::mem;
-                        mem::transmute(processor)
-                    };
-                    new_processors.push(processor());
+            let this_thread = thread::current().id();
+            let any_left = self.inner.with_processors_mut(|pending| {
+                let vec = &mut pending.0;
+                let mut i = 0;
+                while i < vec.len() {
+                    if vec[i].0 != this_thread {
+                        let mut item = vec.remove(i);
+                        let processor: &mut Box<FnMut() -> Box<Fn(&mut Event) + Send + Sync>> = unsafe {
+                            use std::mem;
+                            mem::transmute(&mut item.1)
+                        };
+                        new_processors.push(processor());
+                    } else {
+                        i += 1;
+                    }
                 }
-                pending.0.clear();
+                !vec.is_empty()
             });
-            self.inner.has_pending_processors.store(false, Ordering::Release);
+            self.inner.has_pending_processors.store(any_left, Ordering::Release);
             if !new_processors.is_empty() {
                 self.configure_scope(|scope| {
                     for func in new_processors.into_iter() {
