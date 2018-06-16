@@ -66,8 +66,8 @@
 //!
 //! In minimal mode some types are restricted in functionality.  For instance the
 //! `Client` is not available and the `Hub` does not retain all API functionality.
-//! To see what the APIs in mnimal mode look like refer to
-//! [the minimal only docs](minimal/index.html).
+//! To see what the APIs in mnimal mode look like you can build the docs for this
+//! crate without any features enabled.
 //!
 //! # Features
 //!
@@ -89,9 +89,6 @@
 //! additional features:
 //!
 //! * `with_error_chain`: enables the error-chain integration
-//! * `with_minimal_api`: compiles the minimal only api into a dummy `minimal`
-//!   module for inspection.  This API cannot be used but it can be inspected for
-//!   documentation purposes.
 //!
 //! # Threading
 //!
@@ -171,15 +168,5 @@ pub mod integrations;
 mod transport;
 #[cfg(feature = "with_client_implementation")]
 pub mod utils;
-
-/// The minimal API (documentation only).
-///
-/// This module does not exist normally but it's typically compiled for documentation
-/// purposes so that users can see the API subset trivially that is available for
-/// environments where all features are disabled.
-#[cfg(feature = "with_minimal_api")]
-pub mod minimal {
-    pub use scope::minimal::*;
-}
 
 pub use api::*;
