@@ -19,7 +19,7 @@ matrix:
     - env: SUITE=check
       rust: "1.22.0"
     - env: SUITE=cargotest
-      rust: "1.22.0"
+      rust: "1.24.0"
     - env: SUITE=checkall
     - env: SUITE=cargotestall
     - os: osx
