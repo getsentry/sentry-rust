@@ -30,7 +30,6 @@ enum TransportImpl {
     Test(TestTransportImpl),
 }
 
-
 /// A transport can send rust events.
 #[derive(Debug)]
 pub struct Transport {
@@ -128,7 +127,7 @@ impl Transport {
         Transport {
             dsn,
             inner: TransportImpl::Test(TestTransportImpl {
-                collected: Mutex::new(vec![])
+                collected: Mutex::new(vec![]),
             }),
         }
     }
@@ -175,7 +174,7 @@ impl Transport {
                 }
             }
             #[cfg(any(test, feature = "with_test_support"))]
-            TransportImpl::Test(..) => true
+            TransportImpl::Test(..) => true,
         }
     }
 
@@ -187,7 +186,7 @@ impl Transport {
         match self.inner {
             TransportImpl::Real(..) => {
                 panic!("Can only fetch events from testable transports");
-            },
+            }
             #[cfg(any(test, feature = "with_test_support"))]
             TransportImpl::Test(ref ti) => {
                 use std::mem;

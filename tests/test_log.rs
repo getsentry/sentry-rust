@@ -2,7 +2,6 @@
 extern crate log;
 extern crate sentry;
 
-
 #[test]
 fn test_log() {
     sentry::integrations::log::init(None, Default::default());
