@@ -19,9 +19,9 @@ pub use scope::Scope;
 /// have to directly interface with directly.  These are often returned
 /// from methods on other types.
 pub mod internals {
-    pub use sentry_types::{Auth, ProjectId, ProjectIdParseError, Scheme};
     pub use client::ClientInitGuard;
     pub use scope::ScopeGuard;
+    pub use sentry_types::{Auth, ProjectId, ProjectIdParseError, Scheme};
 }
 
 /// Captures an event on the currently active client if any.
