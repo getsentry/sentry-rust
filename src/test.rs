@@ -104,8 +104,7 @@ impl TestableHubExt for Arc<Hub> {
     }
 }
 
-/// Runs some code in the context of the default test hub and returns the
-/// captured events.
+/// Runs some code with the default test hub and returns the captured events.
 ///
 /// This is a shortcut for creating a testable hub with default options and
 /// to call `run_and_capture_events` on it.
@@ -113,8 +112,8 @@ pub fn with_captured_events<F: FnOnce()>(f: F) -> Vec<Event<'static>> {
     with_captured_events_options(f, Default::default())
 }
 
-/// Runs some code in the context of the default test hub and returns the
-/// captured events.
+/// Runs some code with the default test hub with the given optoins and
+/// returns the captured events.
 ///
 /// This is a shortcut for creating a testable hub with the supplied options
 /// and to call `run_and_capture_events` on it.
