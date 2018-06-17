@@ -77,7 +77,7 @@ where
     T: ChainedError,
     T::ErrorKind: Debug + Display,
 {
-    Hub::with_active(|hub| hub.capture_event(event_from_error_chain(e)))
+    Hub::with_active(|hub| hub.capture_error_chain(e))
 }
 
 /// Hub extension methods for working with error chain
