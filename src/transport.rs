@@ -195,6 +195,16 @@ impl Transport {
             }
         }
     }
+
+    /// Checks if this transport is testable.
+    #[cfg(any(test, feature = "with_test_support"))]
+    pub fn is_test(&self) -> bool {
+        match self.inner {
+            TransportImpl::Real(..) => false,
+            #[cfg(any(test, feature = "with_test_support"))]
+            TransportImpl::Test(..) => true,
+        }
+    }
 }
 
 impl Drop for Transport {

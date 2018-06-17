@@ -441,6 +441,7 @@ impl Hub {
         f: Box<FnOnce() -> Box<Fn(&mut Event) + Send + Sync> + Send>,
     ) {
         with_client_impl! {{
+            use std::mem;
             self.inner.with_processors_mut(|pending| {
                 pending.0.push((None, unsafe { mem::transmute(f) }));
             });
