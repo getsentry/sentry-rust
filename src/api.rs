@@ -4,7 +4,7 @@ use api::protocol::Event;
 
 // public api from other crates
 pub use sentry_types::protocol::v7 as protocol;
-pub use sentry_types::protocol::v7::{Level, User};
+pub use sentry_types::protocol::v7::{Level, User, Breadcrumb};
 pub use sentry_types::{Dsn, DsnParseError};
 
 // public exports from this crate
