@@ -41,17 +41,29 @@
 //! the ecosystem a feature flag needs to be enabled.  For the available
 //! integrations and how to use them see [integrations](integrations/index.html).
 //!
-//! # Scope Management
+//! # Scopes, Threads and Hubs
 //!
-//! Data is typically bound to a scope.  A new scope can be introduced by pushing it
-//! with the [`push_scope`](fn.push_scope.html) function.  That scope can then be
-//! configured with [`configure_scope`](fn.configure_scope.html) which lets you
-//! attach data to it that will be sent along with errors.
+//! Data is typically bound to a [`Scope`](struct.Scope.html).  Scopes are stored
+//! in a hidden stack on a [`Hub`](struct.Hub.html).  Once the library has been
+//! initialized a hub is automatically available.  In the default config a new
+//! hub is created for each thread and they act independently.
 //!
-//! If a new scope is pushed the data and currently bound client are inherited.  To
-//! propagate that scope to a completely different thread a
-//! [`scope_handle`](fn.scope_handle.html) can be acquired and passed to a thread
-//! where it can be bound.
+//! The thread that calls `sentry::init` initializes the first hub which then automatically
+//! becomes the base of new hubs (You can get that hub by calling `Hub::main()`).  If a
+//! new thread is spawned it gets a new hub based on that one (the thread calls
+//! `Hub::new_from_top(Hub::main())`).  The current thread's hub is returned from
+//! `Hub::current()`.  Any hub that is wrapped in an `Arc` can be temporarily bound to a
+//! thread with `Hub::run_bound`.  For more information see [`Hub`](struct.Hub.html).
+//!
+//! Users are expected to reconfigure the scope with
+//! [`configure_scope`](fn.configure_scope.html).  For more elaborate scope management
+//! the hub needs to be interfaced with directly.
+//!
+//! In some situations (particularly in async code) it's often not possible to use
+//! the thread local hub.  In that case a hub can be explicitly created and passed
+//! around.  However due to the nature of some integrations some functionality like
+//! automatic breadcrumb recording depends on the thread local hub being correctly
+//! configured.
 //!
 //! # Minimal API
 //!
@@ -90,15 +102,6 @@
 //!
 //! * `with_error_chain`: enables the error-chain integration
 //! * `with_test_support`: enables the test support module
-//!
-//! # Threading
-//!
-//! The thread that calls `sentry::init` initializes the first hub which then automatically
-//! becomes the base of new hubs (You can get that hub by calling `Hub::main()`).  If a
-//! new thread is spawned it gets a new hub based on that one (the thread calls
-//! `Hub::new_from_top(Hub::main())`).  The current thread's hub is returned from
-//! `Hub::current()`.  Any hub that is wrapped in an `Arc` can be temporarily bound to a
-//! thread with `Hub::run_bound`.  For more information see [`Hub`](struct.Hub.html).
 #![warn(missing_docs)]
 
 #[cfg(feature = "with_backtrace")]
