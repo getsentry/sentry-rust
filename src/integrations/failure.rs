@@ -151,21 +151,33 @@ pub fn event_from_fail<F: Fail + ?Sized>(fail: &F) -> Event<'static> {
 }
 
 /// Captures a boxed failure (`failure::Error`).
+///
+/// This dispatches to the current hub.
 pub fn capture_error(err: &Error) -> Uuid {
     Hub::with_active(|hub| hub.capture_event(event_from_error(err)))
 }
 
-/// Captures a boxed failure (`failure::Error`) in a specific hub.
-pub fn capture_error_with_hub<H: AsRef<Hub>>(err: &Error, hub: H) -> Uuid {
-    hub.as_ref().capture_event(event_from_error(err))
-}
-
 /// Captures a `failure::Fail`.
+///
+/// This dispatches to the current hub.
 pub fn capture_fail<F: Fail + ?Sized>(fail: &F) -> Uuid {
     Hub::with_active(|hub| hub.capture_event(event_from_fail(fail)))
 }
 
-/// Captures a `failure::Fail` in a specific hub.
-pub fn capture_fail_with_hub<F: Fail + ?Sized, H: AsRef<Hub>>(fail: &F, hub: H) -> Uuid {
-    hub.as_ref().capture_event(event_from_fail(fail))
+/// Hub extension methods for working with failure.
+pub trait HubExt {
+    /// Captures a boxed failure (`failure::Error`).
+    fn capture_error(&self, err: &Error) -> Uuid;
+    /// Captures a `failure::Fail`.
+    fn capture_fail<F: Fail + ?Sized>(&self, fail: &F) -> Uuid;
+}
+
+impl HubExt for Hub {
+    fn capture_error(&self, err: &Error) -> Uuid {
+        self.capture_event(event_from_error(err))
+    }
+
+    fn capture_fail<F: Fail + ?Sized>(&self, fail: &F) -> Uuid {
+        self.capture_event(event_from_fail(fail))
+    }
 }
