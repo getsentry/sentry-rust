@@ -1,6 +1,7 @@
 #[allow(unused)]
 use std::cell::{Cell, UnsafeCell};
 use std::iter;
+use std::mem;
 #[allow(unused)]
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard, TryLockError};
 #[allow(unused)]
@@ -79,7 +80,7 @@ impl<F: FnOnce() -> I, I: IntoBreadcrumbs> IntoBreadcrumbs for F {
 #[cfg(feature = "with_client_implementation")]
 pub struct PendingProcessors(
     Vec<(
-        thread::ThreadId,
+        Option<thread::ThreadId>,
         Box<FnOnce() -> Box<Fn(&mut Event) + Send + Sync>>,
     )>,
 );
@@ -410,11 +411,39 @@ impl Hub {
     /// function be a factory for the actual event processor the outer function does
     /// not have to be `Sync` as sentry will execute it before a hub crosses a thread
     /// boundary.
+    ///
+    /// # Threading
+    ///
+    /// If a hub is used from multiple threads event processors might not be executed
+    /// if another thread triggers an event processor first.  For such cases
+    /// `add_send_event_processor` must be used instead.  This means that if thread 1
+    /// will add the processor but thread 2 will send the next event, then processors
+    /// are not run until thread 1 sends an event.  Processors are also triggered
+    /// if a scope is pushed or a hub is created from this hub via `Hub::new_from_top`.
     #[allow(unused)]
     pub fn add_event_processor(&self, f: Box<FnOnce() -> Box<Fn(&mut Event) + Send + Sync>>) {
         with_client_impl! {{
             self.inner.with_processors_mut(|pending| {
-                pending.0.push((thread::current().id(), f));
+                pending.0.push((Some(thread::current().id()), f));
+            });
+            self.inner.has_pending_processors.store(true, Ordering::Release);
+        }}
+    }
+
+    /// Registers a sendable event processor with the topmost scope.
+    ///
+    /// This works like `add_event_processor` but registers functions that are `Send`
+    /// which permits them to be used from multiple threads.  If a hub is used from
+    /// multiple threads at once then only sendable event processors will be guaranteed
+    /// to run.
+    #[allow(unused)]
+    pub fn add_send_event_processor(
+        &self,
+        f: Box<FnOnce() -> Box<Fn(&mut Event) + Send + Sync> + Send>,
+    ) {
+        with_client_impl! {{
+            self.inner.with_processors_mut(|pending| {
+                pending.0.push((None, unsafe { mem::transmute(f) }));
             });
             self.inner.has_pending_processors.store(true, Ordering::Release);
         }}
@@ -431,7 +460,11 @@ impl Hub {
                 let vec = &mut pending.0;
                 let mut i = 0;
                 while i < vec.len() {
-                    if vec[i].0 != this_thread {
+                    let is_safe_call = match vec[i].0 {
+                        None => true,
+                        Some(thread_id) => thread_id == this_thread,
+                    };
+                    if is_safe_call {
                         let mut item = vec.remove(i);
                         let processor: &mut Box<FnMut() -> Box<Fn(&mut Event) + Send + Sync>> = unsafe {
                             use std::mem;
