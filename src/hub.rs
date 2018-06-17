@@ -1,7 +1,6 @@
 #[allow(unused)]
 use std::cell::{Cell, UnsafeCell};
 use std::iter;
-use std::mem;
 #[allow(unused)]
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard, TryLockError};
 #[allow(unused)]
