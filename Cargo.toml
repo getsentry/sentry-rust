@@ -27,6 +27,7 @@ with_error_chain = ["error-chain", "with_backtrace"]
 with_device_info = ["libc", "hostname", "uname", "with_client_implementation"]
 with_rust_info = ["rustc_version", "with_client_implementation"]
 with_debug_meta = ["findshlibs", "with_client_implementation"]
+with_test_support = []
 
 [dependencies]
 backtrace = { version = "0.3.8", optional = true }

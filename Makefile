@@ -61,7 +61,7 @@ checkall: check-all-features check-no-default-features check-default-features ch
 
 cargotest:
 	@echo 'TESTSUITE'
-	@cargo test
+	@cargo test --features=with_test_support
 .PHONY: cargotest
 
 cargotestall:
