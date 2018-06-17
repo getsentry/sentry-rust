@@ -51,13 +51,23 @@ fn test_breadcrumbs() {
     assert_eq!(events.len(), 1);
     let event = events.into_iter().next().unwrap();
 
-    let messages: Vec<_> = event.breadcrumbs.iter().map(|x| {
-        (x.message.as_ref().map(|x| x.as_str()).unwrap(), x.ty.as_str())
-    }).collect();
-    assert_eq!(messages, vec![
-        ("First breadcrumb", "log"),
-        ("Second breadcrumb", "log"),
-        ("Third breadcrumb", "log"),
-        ("Fourth breadcrumb", "log"),
-    ]);
+    let messages: Vec<_> = event
+        .breadcrumbs
+        .iter()
+        .map(|x| {
+            (
+                x.message.as_ref().map(|x| x.as_str()).unwrap(),
+                x.ty.as_str(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        messages,
+        vec![
+            ("First breadcrumb", "log"),
+            ("Second breadcrumb", "log"),
+            ("Third breadcrumb", "log"),
+            ("Fourth breadcrumb", "log"),
+        ]
+    );
 }
