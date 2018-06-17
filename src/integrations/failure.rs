@@ -154,14 +154,14 @@ pub fn event_from_fail<F: Fail + ?Sized>(fail: &F) -> Event<'static> {
 ///
 /// This dispatches to the current hub.
 pub fn capture_error(err: &Error) -> Uuid {
-    Hub::with_active(|hub| hub.capture_event(event_from_error(err)))
+    Hub::with_active(|hub| hub.capture_error(err))
 }
 
 /// Captures a `failure::Fail`.
 ///
 /// This dispatches to the current hub.
 pub fn capture_fail<F: Fail + ?Sized>(fail: &F) -> Uuid {
-    Hub::with_active(|hub| hub.capture_event(event_from_fail(fail)))
+    Hub::with_active(|hub| hub.capture_fail(fail))
 }
 
 /// Hub extension methods for working with failure.
