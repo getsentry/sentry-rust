@@ -5,19 +5,37 @@ use std::time::{Duration, Instant, SystemTime};
 
 use reqwest::header::{Headers, RetryAfter};
 use reqwest::{Client, StatusCode};
-use uuid::Uuid;
 
 use api::protocol::Event;
 use Dsn;
+
+#[derive(Debug)]
+struct RealTransportImpl {
+    sender: Mutex<SyncSender<Option<Event<'static>>>>,
+    drain_signal: Arc<Condvar>,
+    queue_size: Arc<Mutex<usize>>,
+    _handle: Option<JoinHandle<()>>,
+}
+
+#[cfg(any(test, feature = "with_test_support"))]
+#[derive(Debug)]
+struct TestTransportImpl {
+    collected: Mutex<Vec<Event<'static>>>,
+}
+
+#[derive(Debug)]
+enum TransportImpl {
+    Real(RealTransportImpl),
+    #[cfg(any(test, feature = "with_test_support"))]
+    Test(TestTransportImpl),
+}
+
 
 /// A transport can send rust events.
 #[derive(Debug)]
 pub struct Transport {
     dsn: Dsn,
-    sender: Mutex<SyncSender<Option<Event<'static>>>>,
-    drain_signal: Arc<Condvar>,
-    queue_size: Arc<Mutex<usize>>,
-    _handle: Option<JoinHandle<()>>,
+    inner: TransportImpl,
 }
 
 fn spawn_http_sender(
@@ -80,7 +98,7 @@ fn spawn_http_sender(
 }
 
 impl Transport {
-    /// Creates a new client.
+    /// Creates a new transport.
     pub fn new(dsn: Dsn, user_agent: String) -> Transport {
         let (sender, receiver) = sync_channel(30);
         let drain_signal = Arc::new(Condvar::new());
@@ -95,29 +113,24 @@ impl Transport {
         ));
         Transport {
             dsn,
-            sender: Mutex::new(sender),
-            drain_signal,
-            queue_size,
-            _handle,
+            inner: TransportImpl::Real(RealTransportImpl {
+                sender: Mutex::new(sender),
+                drain_signal,
+                queue_size,
+                _handle,
+            }),
         }
     }
 
-    /// Sends a sentry event and return the event ID.
-    pub fn send_event(&self, mut event: Event<'static>) -> Uuid {
-        if event.id.is_none() {
-            event.id = Some(Uuid::new_v4());
+    /// Creates a transport for testing.
+    #[cfg(any(test, feature = "with_test_support"))]
+    pub fn testable(dsn: Dsn) -> Transport {
+        Transport {
+            dsn,
+            inner: TransportImpl::Test(TestTransportImpl {
+                collected: Mutex::new(vec![])
+            }),
         }
-        let event_id = event.id.unwrap();
-
-        // we count up before we put the item on the queue and in case the
-        // queue is filled with too many items or we shut down, we decrement
-        // the count again as there is nobody that can pick it up.
-        *self.queue_size.lock().unwrap() += 1;
-        if self.sender.lock().unwrap().try_send(Some(event)).is_err() {
-            *self.queue_size.lock().unwrap() -= 1;
-        }
-
-        event_id
     }
 
     /// Returns the dsn of the transport
@@ -125,27 +138,76 @@ impl Transport {
         &self.dsn
     }
 
+    /// Sends a sentry event and return the event ID.
+    pub fn send_event(&self, event: Event<'static>) {
+        match self.inner {
+            TransportImpl::Real(ref ti) => {
+                // we count up before we put the item on the queue and in case the
+                // queue is filled with too many items or we shut down, we decrement
+                // the count again as there is nobody that can pick it up.
+                *ti.queue_size.lock().unwrap() += 1;
+                if ti.sender.lock().unwrap().try_send(Some(event)).is_err() {
+                    *ti.queue_size.lock().unwrap() -= 1;
+                }
+            }
+            #[cfg(any(test, feature = "with_test_support"))]
+            TransportImpl::Test(ref ti) => {
+                ti.collected.lock().unwrap().push(event);
+            }
+        }
+    }
+
     /// Drains remaining messages in the transport.
     ///
     /// This returns `true` if the queue was successfully drained in the
     /// given time or `false` if not.
     pub fn drain(&self, timeout: Option<Duration>) -> bool {
-        let guard = self.queue_size.lock().unwrap();
-        if *guard == 0 {
-            return true;
+        match self.inner {
+            TransportImpl::Real(ref ti) => {
+                let guard = ti.queue_size.lock().unwrap();
+                if *guard == 0 {
+                    return true;
+                }
+                if let Some(timeout) = timeout {
+                    ti.drain_signal.wait_timeout(guard, timeout).is_ok()
+                } else {
+                    ti.drain_signal.wait(guard).is_ok()
+                }
+            }
+            #[cfg(any(test, feature = "with_test_support"))]
+            TransportImpl::Test(..) => true
         }
-        if let Some(timeout) = timeout {
-            self.drain_signal.wait_timeout(guard, timeout).is_ok()
-        } else {
-            self.drain_signal.wait(guard).is_ok()
+    }
+
+    /// Returns all events currently in the transport.
+    ///
+    /// Only available for the testable client.
+    #[cfg(any(test, feature = "with_test_support"))]
+    pub fn fetch_and_clear_events(&self) -> Vec<Event<'static>> {
+        match self.inner {
+            TransportImpl::Real(..) => {
+                panic!("Can only fetch events from testable transports");
+            },
+            #[cfg(any(test, feature = "with_test_support"))]
+            TransportImpl::Test(ref ti) => {
+                use std::mem;
+                let mut guard = ti.collected.lock().unwrap();
+                mem::replace(&mut *guard, vec![])
+            }
         }
     }
 }
 
 impl Drop for Transport {
     fn drop(&mut self) {
-        if let Ok(sender) = self.sender.lock() {
-            sender.send(None).ok();
+        match self.inner {
+            TransportImpl::Real(ref ti) => {
+                if let Ok(sender) = ti.sender.lock() {
+                    sender.send(None).ok();
+                }
+            }
+            #[cfg(any(test, feature = "with_test_support"))]
+            TransportImpl::Test(..) => {}
         }
     }
 }

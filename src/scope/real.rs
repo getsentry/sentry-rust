@@ -290,5 +290,9 @@ impl Scope {
                 }
             }
         }
+
+        for processor in &self.event_processors {
+            processor(event);
+        }
     }
 }

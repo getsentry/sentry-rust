@@ -89,6 +89,7 @@
 //! additional features:
 //!
 //! * `with_error_chain`: enables the error-chain integration
+//! * `with_test_support`: enables the test support module
 //!
 //! # Threading
 //!
@@ -168,5 +169,7 @@ pub mod integrations;
 mod transport;
 #[cfg(feature = "with_client_implementation")]
 pub mod utils;
+#[cfg(any(test, feature = "with_test_support"))]
+pub mod test;
 
 pub use api::*;

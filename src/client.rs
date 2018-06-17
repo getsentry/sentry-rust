@@ -260,6 +260,17 @@ impl Client {
         Client::disabled_with_options(Default::default())
     }
 
+    /// Creates a testable client for unittests.
+    ///
+    /// This requires that the `with_test_support` feature was enabled.
+    #[cfg(any(test, feature = "with_test_support"))]
+    pub(crate) fn testable(dsn: Dsn, options: ClientOptions) -> Client {
+        Client {
+            options,
+            transport: Some(Arc::new(Transport::testable(dsn))),
+        }
+    }
+
     /// Creates a new client that does not send anything with custom options.
     pub fn disabled_with_options(options: ClientOptions) -> Client {
         Client {
@@ -269,12 +280,16 @@ impl Client {
     }
 
     #[cfg_attr(feature = "cargo-clippy", allow(cyclomatic_complexity))]
-    fn prepare_event(&self, event: &mut Event, scope: Option<&Scope>) {
+    fn prepare_event(&self, event: &mut Event, scope: Option<&Scope>) -> Uuid {
         lazy_static! {
             static ref DEBUG_META: DebugMeta = DebugMeta {
                 images: debug_images(),
                 ..Default::default()
             };
+        }
+
+        if event.id.is_none() {
+            event.id = Some(Uuid::new_v4());
         }
 
         if let Some(scope) = scope {
@@ -376,6 +391,8 @@ impl Client {
                 }
             }
         }
+
+        event.id.unwrap()
     }
 
     /// Returns the options of this client.
@@ -393,8 +410,9 @@ impl Client {
     /// Captures an event and sends it to sentry.
     pub fn capture_event(&self, mut event: Event<'static>, scope: Option<&Scope>) -> Uuid {
         if let Some(ref transport) = self.transport {
-            self.prepare_event(&mut event, scope);
-            transport.send_event(event)
+            let event_id = self.prepare_event(&mut event, scope);
+            transport.send_event(event);
+            event_id
         } else {
             Default::default()
         }
@@ -411,6 +429,11 @@ impl Client {
         } else {
             true
         }
+    }
+
+    #[cfg(any(test, feature = "with_test_support"))]
+    pub(crate) fn transport(&self) -> &Transport {
+        self.transport.as_ref().expect("Client has no associated transport")
     }
 }
 
