@@ -165,11 +165,11 @@ mod backtrace_support;
 #[cfg(feature = "with_client_implementation")]
 mod constants;
 pub mod integrations;
+#[cfg(any(test, feature = "with_test_support"))]
+pub mod test;
 #[cfg(feature = "with_client_implementation")]
 mod transport;
 #[cfg(feature = "with_client_implementation")]
 pub mod utils;
-#[cfg(any(test, feature = "with_test_support"))]
-pub mod test;
 
 pub use api::*;

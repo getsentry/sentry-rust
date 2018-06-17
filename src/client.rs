@@ -433,7 +433,9 @@ impl Client {
 
     #[cfg(any(test, feature = "with_test_support"))]
     pub(crate) fn transport(&self) -> &Transport {
-        self.transport.as_ref().expect("Client has no associated transport")
+        self.transport
+            .as_ref()
+            .expect("Client has no associated transport")
     }
 }
 

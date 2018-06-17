@@ -1,6 +1,5 @@
 extern crate sentry;
 
-
 #[test]
 fn test_basic_capture_message() {
     let events = sentry::test::with_captured_events(|| {
@@ -13,7 +12,8 @@ fn test_basic_capture_message() {
     let event = events.into_iter().next().unwrap();
     assert_eq!(event.message.unwrap(), "Hello World!");
     assert_eq!(event.level, sentry::Level::Warning);
-    assert_eq!(event.tags.into_iter().collect::<Vec<(String, String)>>(), vec![
-        ("worker".to_string(), "worker1".to_string()),
-    ]);
+    assert_eq!(
+        event.tags.into_iter().collect::<Vec<(String, String)>>(),
+        vec![("worker".to_string(), "worker1".to_string())]
+    );
 }
