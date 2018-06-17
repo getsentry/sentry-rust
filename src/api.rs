@@ -19,6 +19,7 @@ pub use scope::Scope;
 /// have to directly interface with directly.  These are often returned
 /// from methods on other types.
 pub mod internals {
+    #[cfg(feature = "with_client_implementation")]
     pub use client::ClientInitGuard;
     pub use scope::ScopeGuard;
     pub use sentry_types::{Auth, ProjectId, ProjectIdParseError, Scheme};
