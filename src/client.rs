@@ -56,8 +56,13 @@ pub struct ClientOptions {
     /// The user agent that should be reported.
     pub user_agent: Cow<'static, str>,
     /// An optional HTTP proxy to use.
+    ///
+    /// This will default to the `http_proxy` environment variable.
     pub http_proxy: Option<Cow<'static, str>>,
     /// An optional HTTPS proxy to use.
+    ///
+    /// This will default to the `HTTPS_PROXY` environment variable
+    /// or `http_proxy` if that one exists.
     pub https_proxy: Option<Cow<'static, str>>,
     /// The timeout on client drop for draining events.
     pub drop_drain_timeout: Option<Duration>,
