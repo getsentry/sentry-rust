@@ -5,13 +5,24 @@ use api::protocol::Event;
 // public api from other crates
 pub use sentry_types::protocol::v7 as protocol;
 pub use sentry_types::protocol::v7::{Level, User};
-pub use sentry_types::{Dsn, DsnParseError, ProjectId, ProjectIdParseError};
+pub use sentry_types::{Dsn, DsnParseError};
 
 // public exports from this crate
 #[cfg(feature = "with_client_implementation")]
-pub use client::{init, Client, ClientInitGuard, ClientOptions, IntoClient};
+pub use client::{init, Client, ClientOptions, IntoClient};
 pub use hub::{Hub, IntoBreadcrumbs};
-pub use scope::{Scope, ScopeGuard};
+pub use scope::Scope;
+
+/// Useful internals.
+///
+/// This module contains types that users of the create typically do not
+/// have to directly interface with directly.  These are often returned
+/// from methods on other types.
+pub mod internals {
+    pub use sentry_types::{Auth, ProjectId, ProjectIdParseError, Scheme};
+    pub use client::ClientInitGuard;
+    pub use scope::ScopeGuard;
+}
 
 /// Captures an event on the currently active client if any.
 ///
