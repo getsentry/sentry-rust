@@ -4,7 +4,7 @@ use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant, SystemTime};
 
 use reqwest::header::{Headers, RetryAfter};
-use reqwest::{Client, StatusCode};
+use reqwest::{Client, Proxy, StatusCode};
 
 use api::protocol::Event;
 use Dsn;
@@ -38,13 +38,13 @@ pub struct Transport {
 }
 
 fn spawn_http_sender(
+    client: Client,
     receiver: Receiver<Option<Event<'static>>>,
     dsn: Dsn,
     signal: Arc<Condvar>,
     queue_size: Arc<Mutex<usize>>,
     user_agent: String,
 ) -> JoinHandle<()> {
-    let client = Client::new();
     let mut disabled: Option<(Instant, RetryAfter)> = None;
 
     thread::spawn(move || {
@@ -98,12 +98,25 @@ fn spawn_http_sender(
 
 impl Transport {
     /// Creates a new transport.
-    pub fn new(dsn: Dsn, user_agent: String) -> Transport {
+    pub fn new(
+        dsn: Dsn,
+        user_agent: String,
+        http_proxy: Option<&str>,
+        https_proxy: Option<&str>,
+    ) -> Transport {
         let (sender, receiver) = sync_channel(30);
         let drain_signal = Arc::new(Condvar::new());
         #[cfg_attr(feature = "cargo-clippy", allow(mutex_atomic))]
         let queue_size = Arc::new(Mutex::new(0));
+        let mut client = Client::builder();
+        if let Some(url) = http_proxy {
+            client.proxy(Proxy::http(url).unwrap());
+        };
+        if let Some(url) = https_proxy {
+            client.proxy(Proxy::https(url).unwrap());
+        };
         let _handle = Some(spawn_http_sender(
+            client.build().unwrap(),
             receiver,
             dsn.clone(),
             drain_signal.clone(),

@@ -55,6 +55,10 @@ pub struct ClientOptions {
     pub server_name: Option<Cow<'static, str>>,
     /// The user agent that should be reported.
     pub user_agent: Cow<'static, str>,
+    /// An optional HTTP proxy to use.
+    pub http_proxy: Option<Cow<'static, str>>,
+    /// An optional HTTPS proxy to use.
+    pub https_proxy: Option<Cow<'static, str>>,
     /// The timeout on client drop for draining events.
     pub drop_drain_timeout: Option<Duration>,
 }
@@ -75,6 +79,12 @@ impl Default for ClientOptions {
             }),
             server_name: server_name().map(Cow::Owned),
             user_agent: Cow::Borrowed(&USER_AGENT),
+            http_proxy: env::var("http_proxy").ok().map(Cow::Owned),
+            https_proxy: env::var("https_proxy")
+                .ok()
+                .map(Cow::Owned)
+                .or_else(|| env::var("HTTPS_PROXY").ok().map(Cow::Owned))
+                .or_else(|| env::var("http_proxy").ok().map(Cow::Owned)),
             drop_drain_timeout: Some(Duration::from_secs(2)),
         }
     }
@@ -241,7 +251,12 @@ impl Client {
 
     /// Creates a new sentry client for the given DSN.
     pub fn with_dsn_and_options(dsn: Dsn, options: ClientOptions) -> Client {
-        let transport = Transport::new(dsn, options.user_agent.to_string());
+        let transport = Transport::new(
+            dsn,
+            options.user_agent.to_string(),
+            options.http_proxy.as_ref().map(|x| &x[..]),
+            options.https_proxy.as_ref().map(|x| &x[..]),
+        );
         Client {
             options,
             transport: Some(Arc::new(transport)),

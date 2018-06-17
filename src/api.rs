@@ -5,7 +5,7 @@ use api::protocol::Event;
 // public api from other crates
 pub use sentry_types::protocol::v7 as protocol;
 pub use sentry_types::protocol::v7::{Breadcrumb, Level, User};
-pub use sentry_types::{Dsn, DsnParseError};
+pub use sentry_types::Dsn;
 
 // public exports from this crate
 #[cfg(feature = "with_client_implementation")]
@@ -25,7 +25,7 @@ pub mod internals {
     pub use client::{ClientInitGuard, IntoClient};
     pub use hub::IntoBreadcrumbs;
     pub use scope::ScopeGuard;
-    pub use sentry_types::{Auth, ProjectId, ProjectIdParseError, Scheme};
+    pub use sentry_types::{Auth, DsnParseError, ProjectId, ProjectIdParseError, Scheme};
 }
 
 /// Captures an event on the currently active client if any.
