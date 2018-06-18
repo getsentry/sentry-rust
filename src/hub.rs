@@ -138,7 +138,7 @@ impl HubImpl {
 /// hub.  This is for instance the case when working with async code.
 ///
 /// Hubs that are wrapped in `Arc`s can be bound to the current thread with
-/// the `run_bound` static method.
+/// the `run` static method.
 ///
 /// Most common operations:
 ///
@@ -181,7 +181,7 @@ impl Hub {
     ///
     /// By default each thread gets a different thread local hub.  If an
     /// atomically reference counted hub is available it can override this
-    /// one here by calling `Hub::run_bound` with a closure.
+    /// one here by calling `Hub::run` with a closure.
     ///
     /// This method is unavailable if the client implementation is disabled.
     /// When using the minimal API set use `Hub::with_active` instead.
@@ -213,7 +213,7 @@ impl Hub {
         } else {
             // not on safety: this is safe because even though we change the Arc
             // by temorary binding we guarantee that the original Arc stays alive.
-            // For more information see: run_bound
+            // For more information see: run
             THREAD_HUB.with(|stack| unsafe {
                 let ptr = stack.get();
                 f(&*ptr)
@@ -245,7 +245,7 @@ impl Hub {
 
     /// Binds a hub to the current thread for the duration of the call.
     #[cfg(feature = "with_client_implementation")]
-    pub fn run_bound<F: FnOnce() -> R, R>(hub: Arc<Hub>, f: F) -> R {
+    pub fn run<F: FnOnce() -> R, R>(hub: Arc<Hub>, f: F) -> R {
         hub.flush_pending_processors();
         let mut restore_process_hub = false;
         let did_switch = THREAD_HUB.with(|ctx| unsafe {

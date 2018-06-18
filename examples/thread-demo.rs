@@ -44,7 +44,7 @@ fn main() {
         // we can now bind a new thread and have the other thread run some code
         // bound to the hub we just created.
         thread::spawn(move || {
-            sentry::Hub::run_bound(hub, || {
+            sentry::Hub::run(hub, || {
                 // the log integration picks up the Hub::current which is now bound
                 // to the outer hub.
                 error!("Failing!");

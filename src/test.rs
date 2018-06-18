@@ -99,7 +99,7 @@ impl TestableHubExt for Arc<Hub> {
     }
 
     fn run_and_capture_events<F: FnOnce()>(&self, f: F) -> Vec<Event<'static>> {
-        Hub::run_bound(self.clone(), f);
+        Hub::run(self.clone(), f);
         self.fetch_events()
     }
 }

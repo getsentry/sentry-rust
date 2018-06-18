@@ -50,7 +50,7 @@ fn test_non_send_event_processor_other_thread() {
         // the event processor is not send, so it should not fire in the
         // other thread.
         thread::spawn(|| {
-            sentry::Hub::run_bound(hub, || {
+            sentry::Hub::run(hub, || {
                 sentry::capture_message("Hello World!", sentry::Level::Warning);
             });
         }).join()
@@ -82,7 +82,7 @@ fn test_send_event_processor_other_thread() {
         // the event processor is send, so it should fire in the
         // other thread.
         thread::spawn(|| {
-            sentry::Hub::run_bound(hub, || {
+            sentry::Hub::run(hub, || {
                 sentry::capture_message("Hello World!", sentry::Level::Warning);
             });
         }).join()

@@ -53,7 +53,7 @@
 //! new thread is spawned it gets a new hub based on that one (the thread calls
 //! `Hub::new_from_top(Hub::main())`).  The current thread's hub is returned from
 //! `Hub::current()`.  Any hub that is wrapped in an `Arc` can be temporarily bound to a
-//! thread with `Hub::run_bound`.  For more information see [`Hub`](struct.Hub.html).
+//! thread with `Hub::run`.  For more information see [`Hub`](struct.Hub.html).
 //!
 //! Users are expected to reconfigure the scope with
 //! [`configure_scope`](fn.configure_scope.html).  For more elaborate scope management
