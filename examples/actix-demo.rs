@@ -21,6 +21,7 @@ impl<S: 'static> Middleware<S> for CaptureSentryError {
         let outer_req = req;
         let req = outer_req.clone();
         hub.add_event_processor(Box::new(move || {
+            let resource = req.resource().pattern().to_string();
             let req = sentry::protocol::Request {
                 url: format!(
                     "{}://{}{}",
@@ -37,6 +38,9 @@ impl<S: 'static> Middleware<S> for CaptureSentryError {
                 ..Default::default()
             };
             Box::new(move |event| {
+                if event.transaction.is_none() {
+                    event.transaction = Some(resource.clone());
+                }
                 event.request = Some(req.clone());
             })
         }));
