@@ -92,16 +92,6 @@ For instance to report a ``failure::Error`` this code can be used:
         }
     };
 
-For this particular case a shortcut is also provided:
-
-.. sourcecode:: rust
-
-    use sentry::integrations::failure::tap_error;
-
-    let result = tap_error(a_function_that_might_fail())?;
-
-Similarly the functions ``capture_fail`` and ``tap_fail`` can be used to
-work with `Fail` trait objects instead.
 
 Catching Panics
 ---------------
@@ -130,19 +120,6 @@ implementation (it will wait up to 2 seconds for this):
 
     fn main() {
         let _guard = sentry::init(...);
-    }
-
-Alternatively you can call ``sentry::drain_events`` which takes an
-explicit timeout:
-
-.. sourcecode:: rust
-
-    use std::time::Duration;
-
-    fn main() {
-        sentry::init(...);
-        // ...
-        sentry::drain_events(Some(Duration::from_secs(2)));
     }
 
 More Information
