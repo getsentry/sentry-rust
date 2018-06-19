@@ -10,7 +10,6 @@ documentation = "https://docs.rs/sentry-actix"
 description = """
 Sentry client extension for actix-web
 """
-build = "build.rs"
 
 [dependencies]
 actix-web = "0.6.13"
