@@ -1,0 +1,10 @@
+[package]
+name = "sentry-actix"
+version = "0.1.0"
+authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
+
+[dependencies]
+actix-web = "0.6.13"
+sentry = { version = "0.6.0", path = "../../" }
+failure = "0.1.1"
+uuid = "0.6.5"
