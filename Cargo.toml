@@ -65,8 +65,6 @@ required-features = ["with_error_chain"]
 
 # TODO: Remove these once autoexamples are stable
 [[example]]
-name = "actix-demo"
-[[example]]
 name = "failure-demo"
 [[example]]
 name = "log-demo"
