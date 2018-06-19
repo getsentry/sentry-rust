@@ -81,7 +81,7 @@ where
 }
 
 /// Hub extension methods for working with error chain
-pub trait HubExt {
+pub trait ErrorChainHubExt {
     /// Captures an error chain on a specific hub.
     fn capture_error_chain<T>(&self, e: &T) -> Uuid
     where
@@ -89,7 +89,7 @@ pub trait HubExt {
         T::ErrorKind: Debug + Display;
 }
 
-impl HubExt for Hub {
+impl ErrorChainHubExt for Hub {
     fn capture_error_chain<T>(&self, e: &T) -> Uuid
     where
         T: ChainedError,

@@ -165,14 +165,14 @@ pub fn capture_fail<F: Fail + ?Sized>(fail: &F) -> Uuid {
 }
 
 /// Hub extension methods for working with failure.
-pub trait HubExt {
+pub trait FailureHubExt {
     /// Captures a boxed failure (`failure::Error`).
     fn capture_error(&self, err: &Error) -> Uuid;
     /// Captures a `failure::Fail`.
     fn capture_fail<F: Fail + ?Sized>(&self, fail: &F) -> Uuid;
 }
 
-impl HubExt for Hub {
+impl FailureHubExt for Hub {
     fn capture_error(&self, err: &Error) -> Uuid {
         self.capture_event(event_from_error(err))
     }

@@ -1,7 +1,16 @@
 [package]
 name = "sentry-actix"
 version = "0.1.0"
-authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
+authors = ["Sentry <hello@sentry.io>"]
+license = "Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/getsentry/sentry-rust"
+homepage = "https://github.com/getsentry/sentry-rust"
+documentation = "https://docs.rs/sentry-actix"
+description = """
+Sentry client extension for actix-web
+"""
+build = "build.rs"
 
 [dependencies]
 actix-web = "0.6.13"

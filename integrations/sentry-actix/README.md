@@ -5,14 +5,12 @@
   <br />
 </p>
 
-# Sentry Rust
+# Sentry-Actix
 
 [![Build Status](https://travis-ci.org/getsentry/sentry-rust.svg?branch=master)](https://travis-ci.org/getsentry/sentry-rust)
 [![Crates.io](https://img.shields.io/crates/v/sentry.svg?style=flat)](https://crates.io/crates/sentry)
 
-This is a new work in progress Sentry library. It will eventually be published to
-crates.io as `sentry`. At the moment the crate on creates.io is an older and
-incompatible version of this crate.
+This is an actix-web integration for the Sentry crate.
 
 ## Requirements
 

@@ -2,11 +2,11 @@ extern crate actix_web;
 extern crate sentry;
 extern crate sentry_actix;
 
-use std::io;
 use std::env;
+use std::io;
 
-use sentry_actix::CaptureSentryError;
 use actix_web::{server, App, Error, HttpRequest};
+use sentry_actix::SentryMiddleware;
 
 fn failing(_req: HttpRequest) -> Result<String, Error> {
     Err(io::Error::new(io::ErrorKind::Other, "Something went really wrong here").into())
@@ -19,7 +19,7 @@ fn main() {
 
     server::new(|| {
         App::new()
-            .middleware(CaptureSentryError)
+            .middleware(SentryMiddleware::builder().emit_header(true).finish())
             .resource("/", |r| r.f(failing))
     }).bind("127.0.0.1:3001")
         .unwrap()
