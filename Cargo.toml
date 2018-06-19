@@ -78,3 +78,6 @@ name = "thread-demo"
 name = "init-with-client"
 [[example]]
 name = "event-processors"
+
+[workspace]
+members = [".", "integrations/sentry-actix"]
