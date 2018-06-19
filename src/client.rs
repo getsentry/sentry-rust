@@ -65,7 +65,7 @@ pub struct ClientOptions {
     /// or `http_proxy` if that one exists.
     pub https_proxy: Option<Cow<'static, str>>,
     /// The timeout on client drop for draining events.
-    pub drop_drain_timeout: Option<Duration>,
+    pub shutdown_timeout: Option<Duration>,
 }
 
 impl Default for ClientOptions {
@@ -90,7 +90,7 @@ impl Default for ClientOptions {
                 .map(Cow::Owned)
                 .or_else(|| env::var("HTTPS_PROXY").ok().map(Cow::Owned))
                 .or_else(|| env::var("http_proxy").ok().map(Cow::Owned)),
-            drop_drain_timeout: Some(Duration::from_secs(2)),
+            shutdown_timeout: Some(Duration::from_secs(2)),
         }
     }
 }
@@ -479,7 +479,7 @@ impl ClientInitGuard {
 impl Drop for ClientInitGuard {
     fn drop(&mut self) {
         if let Some(ref client) = self.0 {
-            client.drain_events(client.options.drop_drain_timeout);
+            client.drain_events(client.options.shutdown_timeout);
         }
     }
 }
