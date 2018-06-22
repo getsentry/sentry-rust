@@ -165,6 +165,17 @@ mod test_fingerprint {
     }
 
     #[test]
+    fn test_fingerprint_bool() {
+        assert_eq!(
+            v7::Event {
+                fingerprint: Cow::Borrowed(&["True".into(), "False".into()]),
+                ..Default::default()
+            },
+            serde_json::from_str("{\"fingerprint\":[true, false]}").unwrap()
+        )
+    }
+
+    #[test]
     fn test_fingerprint_number() {
         assert_eq!(
             v7::Event {
@@ -187,57 +198,46 @@ mod test_fingerprint {
     }
 
     #[test]
-    fn test_fingerprint_array() {
+    fn test_fingerprint_float_trunc() {
         assert_eq!(
             v7::Event {
-                fingerprint: Cow::Borrowed(&["a".into(), "b".into(), "c".into(), "d".into()]),
+                fingerprint: Cow::Borrowed(&["3".into()]),
                 ..Default::default()
             },
-            serde_json::from_str("{\"fingerprint\":[\"a\",[\"b\",[\"c\"]],\"d\"]}").unwrap()
+            serde_json::from_str("{\"fingerprint\":[3.5]}").unwrap()
         )
     }
 
     #[test]
-    fn test_fingerprint_object() {
+    fn test_fingerprint_float_strip() {
         assert_eq!(
             v7::Event {
-                fingerprint: Cow::Borrowed(&["a".into(), "d".into()]),
+                fingerprint: Cow::Borrowed(&[]),
                 ..Default::default()
             },
-            serde_json::from_str("{\"fingerprint\":[\"a\",{\"b\":\"c\"},\"d\"]}").unwrap()
+            serde_json::from_str("{\"fingerprint\":[-1e100]}").unwrap()
         )
     }
 
     #[test]
-    fn test_fingerprint_null() {
-        assert_eq!(
-            v7::Event {
-                fingerprint: Cow::Borrowed(&["a".into(), "b".into()]),
-                ..Default::default()
-            },
-            serde_json::from_str("{\"fingerprint\":[\"a\",null,\"b\"]}").unwrap()
-        )
-    }
-
-    #[test]
-    fn test_fingerprint_default() {
+    fn test_fingerprint_invalid_fallback() {
         assert_eq!(
             v7::Event {
                 fingerprint: Cow::Borrowed(&["{{ default }}".into()]),
                 ..Default::default()
             },
-            serde_json::from_str("{\"fingerprint\":[null, {}, [[]]]}").unwrap()
+            serde_json::from_str("{\"fingerprint\":[\"a\",null,\"d\"]}").unwrap()
         )
     }
 
     #[test]
-    fn test_fingerprint_toplevel() {
+    fn test_fingerprint_empty() {
         assert_eq!(
             v7::Event {
-                fingerprint: Cow::Borrowed(&["toplevel".into()]),
+                fingerprint: Cow::Borrowed(&[]),
                 ..Default::default()
             },
-            serde_json::from_str("{\"fingerprint\":\"toplevel\"}").unwrap()
+            serde_json::from_str("{\"fingerprint\":[]}").unwrap()
         )
     }
 
@@ -245,10 +245,10 @@ mod test_fingerprint {
     fn test_fingerprint_float_bounds() {
         assert_eq!(
             v7::Event {
-                fingerprint: Cow::Borrowed(&["a".into()]),
+                fingerprint: Cow::Borrowed(&[]),
                 ..Default::default()
             },
-            serde_json::from_str("{\"fingerprint\":[\"a\",1.7976931348623157e+308]}").unwrap()
+            serde_json::from_str("{\"fingerprint\":[1.7976931348623157e+308]}").unwrap()
         )
     }
 }
