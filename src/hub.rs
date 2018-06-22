@@ -79,7 +79,7 @@ impl<F: FnOnce() -> I, I: IntoBreadcrumbs> IntoBreadcrumbs for F {
 }
 
 #[cfg(feature = "with_client_implementation")]
-pub enum PendingProcessor {
+enum PendingProcessor {
     Send(Box<FnOnce() -> Box<Fn(&mut Event) + Send + Sync> + Send + Sync>),
     NonSend(Sticky<Box<FnOnce() -> Box<Fn(&mut Event) + Send + Sync>>>),
 }
