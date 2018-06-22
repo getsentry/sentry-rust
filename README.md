@@ -10,9 +10,14 @@
 [![Build Status](https://travis-ci.org/getsentry/sentry-rust.svg?branch=master)](https://travis-ci.org/getsentry/sentry-rust)
 [![Crates.io](https://img.shields.io/crates/v/sentry.svg?style=flat)](https://crates.io/crates/sentry)
 
-This is a new work in progress Sentry library. It will eventually be published to
-crates.io as `sentry`. At the moment the crate on creates.io is an older and
-incompatible version of this crate.
+This crate provides support for logging events and errors / panics to the
+[Sentry](https://sentry.io/) error logging service. It integrates with the
+standard panic system in Rust as well as a few popular error handling setups.
+
+**Note**: Until the _1.0_ release, the `sentry` crate is considered work in
+progress and does not follow semver semantics. Between minor releases, we might
+occasionally introduce breaking changes while we are exploring the best API and
+adding new features.
 
 ## Requirements
 
@@ -24,8 +29,8 @@ Additionally, the lowest Rust version we target is _1.24.0_.
 
 ## Resources
 
-* [crates.io](https://crates.io/crates/sentry)
-* [Documentation](https://docs.rs/sentry)
-* [Bug Tracker](https://github.com/getsentry/sentry-rust/issues)
-* [IRC](irc://chat.freenode.net/sentry) (chat.freenode.net, #sentry)
-* Follow [@getsentry](https://twitter.com/getsentry) on Twitter for updates
+- [crates.io](https://crates.io/crates/sentry)
+- [Documentation](https://docs.rs/sentry)
+- [Bug Tracker](https://github.com/getsentry/sentry-rust/issues)
+- [IRC](irc://chat.freenode.net/sentry) (chat.freenode.net, #sentry)
+- Follow [@getsentry](https://twitter.com/getsentry) on Twitter for updates
