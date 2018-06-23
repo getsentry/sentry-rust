@@ -13,6 +13,6 @@ Sentry client extension for actix-web
 
 [dependencies]
 actix-web = "0.6.13"
-sentry = { version = "0.6.0", path = "../../" }
+sentry = { version = "0.7.0", path = "../../" }
 failure = "0.1.1"
 uuid = "0.6.5"
