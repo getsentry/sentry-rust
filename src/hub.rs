@@ -100,7 +100,7 @@ impl<F: 'static + FnOnce() -> Box<Fn(&mut Event) + Send + Sync>> EventProcessorF
 #[cfg(feature = "with_client_implementation")]
 impl PendingProcessor {
     fn is_safe_call(&self) -> bool {
-        match self {
+        match *self {
             PendingProcessor::Send(..) => true,
             PendingProcessor::NonSend(ref f) => f.is_valid(),
         }
