@@ -11,9 +11,12 @@ macro_rules! sentry_crate_release {
         static mut RELEASE: Option<&'static str> = None;
         unsafe {
             INIT.call_once(|| {
-                RELEASE = option_env!("CARGO_PKG_NAME").and_then(|name| {
-                    option_env!("CARGO_PKG_VERSION").map(|version| format!("{}@{}", name, version))
-                }).map(|x| Box::leak(x.into_boxed_str()) as &'static str)
+                RELEASE = option_env!("CARGO_PKG_NAME")
+                    .and_then(|name| {
+                        option_env!("CARGO_PKG_VERSION")
+                            .map(|version| format!("{}@{}", name, version))
+                    })
+                    .map(|x| Box::leak(x.into_boxed_str()) as &'static str)
             });
             RELEASE.map(::std::borrow::Cow::Borrowed)
         }
