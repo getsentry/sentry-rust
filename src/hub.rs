@@ -89,6 +89,7 @@ pub(crate) enum PendingProcessor {
     NonSend(SemiSticky<Box<EventProcessorFactoryFn>>),
 }
 
+#[cfg(feature = "with_client_implementation")]
 impl<F: 'static + FnOnce() -> Box<Fn(&mut Event) + Send + Sync>> EventProcessorFactoryFn for F {
     fn call(self: Box<Self>) -> Box<Fn(&mut Event) + Send + Sync> {
         let this: Self = *self;
