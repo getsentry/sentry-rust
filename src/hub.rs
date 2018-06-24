@@ -8,7 +8,7 @@ use std::thread;
 use std::time::Duration;
 
 #[cfg(feature = "with_client_implementation")]
-use fragile::Sticky;
+use fragile::SemiSticky;
 
 #[allow(unused)]
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -79,9 +79,38 @@ impl<F: FnOnce() -> I, I: IntoBreadcrumbs> IntoBreadcrumbs for F {
 }
 
 #[cfg(feature = "with_client_implementation")]
-enum PendingProcessor {
-    Send(Box<FnOnce() -> Box<Fn(&mut Event) + Send + Sync> + Send + Sync>),
-    NonSend(Sticky<Box<FnOnce() -> Box<Fn(&mut Event) + Send + Sync>>>),
+pub(crate) trait EventProcessorFactoryFn {
+    fn call(self: Box<Self>) -> Box<Fn(&mut Event) + Send + Sync>;
+}
+
+#[cfg(feature = "with_client_implementation")]
+pub(crate) enum PendingProcessor {
+    Send(Box<EventProcessorFactoryFn + Send + Sync>),
+    NonSend(SemiSticky<Box<EventProcessorFactoryFn>>),
+}
+
+impl<F: 'static + FnOnce() -> Box<Fn(&mut Event) + Send + Sync>> EventProcessorFactoryFn for F {
+    fn call(self: Box<Self>) -> Box<Fn(&mut Event) + Send + Sync> {
+        let this: Self = *self;
+        this()
+    }
+}
+
+#[cfg(feature = "with_client_implementation")]
+impl PendingProcessor {
+    fn is_safe_call(&self) -> bool {
+        match self {
+            PendingProcessor::Send(..) => true,
+            PendingProcessor::NonSend(ref f) => f.is_valid(),
+        }
+    }
+
+    fn call(self) -> Box<Fn(&mut Event) + Send + Sync> {
+        match self {
+            PendingProcessor::Send(f) => f.call(),
+            PendingProcessor::NonSend(f) => f.into_inner().call(),
+        }
+    }
 }
 
 #[cfg(feature = "with_client_implementation")]
@@ -414,10 +443,14 @@ impl Hub {
     /// are not run until thread 1 sends an event.  Processors are also triggered
     /// if a scope is pushed or a hub is created from this hub via `Hub::new_from_top`.
     #[allow(unused)]
-    pub fn add_event_processor(&self, f: Box<FnOnce() -> Box<Fn(&mut Event) + Send + Sync>>) {
+    pub fn add_event_processor<F: FnOnce() -> Box<Fn(&mut Event) + Send + Sync> + 'static>(
+        &self,
+        f: F,
+    ) {
         with_client_impl! {{
             self.inner.with_processors_mut(|pending| {
-                pending.push(PendingProcessor::NonSend(Sticky::new(f)));
+                pending.push(PendingProcessor::NonSend(SemiSticky::new(
+                    Box::new(f) as Box<EventProcessorFactoryFn>)));
             });
             self.inner.has_pending_processors.store(true, Ordering::Release);
         }}
@@ -430,14 +463,17 @@ impl Hub {
     /// multiple threads at once then only sendable event processors will be guaranteed
     /// to run.
     #[allow(unused)]
-    pub fn add_send_event_processor(
+    pub fn add_send_event_processor<
+        F: FnOnce() -> Box<Fn(&mut Event) + Send + Sync> + Send + Sync + 'static,
+    >(
         &self,
-        f: Box<FnOnce() -> Box<Fn(&mut Event) + Send + Sync> + Send + Sync>,
+        f: F,
     ) {
         with_client_impl! {{
             use std::mem;
             self.inner.with_processors_mut(|pending| {
-                pending.push(PendingProcessor::Send(f));
+                pending.push(PendingProcessor::Send(
+                    Box::new(f) as Box<EventProcessorFactoryFn + Send + Sync>));
             });
             self.inner.has_pending_processors.store(true, Ordering::Release);
         }}
@@ -452,24 +488,11 @@ impl Hub {
             let any_left = self.inner.with_processors_mut(|vec| {
                 let mut i = 0;
                 while i < vec.len() {
-                    let is_safe_call = match vec[i] {
-                        PendingProcessor::Send(..) => true,
-                        PendingProcessor::NonSend(ref sticky) => sticky.is_valid(),
-                    };
-                    if !is_safe_call {
+                    if !vec[i].is_safe_call() {
                         i += 1;
-                        continue;
+                    } else {
+                        new_processors.push(vec.remove(i).call());
                     }
-
-                    let mut item = vec.remove(i);
-                    let processor: &mut Box<FnMut() -> Box<Fn(&mut Event) + Send + Sync>> = unsafe {
-                        use std::mem;
-                        match item {
-                            PendingProcessor::Send(ref mut func) => mem::transmute(&mut *func),
-                            PendingProcessor::NonSend(ref mut func) => mem::transmute(func.get_mut()),
-                        }
-                    };
-                    new_processors.push(processor());
                 }
                 !vec.is_empty()
             });

@@ -163,7 +163,7 @@ impl<S: 'static> Middleware<S> for SentryMiddleware {
         let hub = self.new_hub();
         let outer_req = req;
         let req = outer_req.clone();
-        hub.add_event_processor(Box::new(move || {
+        hub.add_event_processor(move || {
             let resource = req.resource().pattern().to_string();
             let req = sentry::protocol::Request {
                 url: format!(
@@ -186,7 +186,7 @@ impl<S: 'static> Middleware<S> for SentryMiddleware {
                 }
                 event.request = Some(req.clone());
             })
-        }));
+        });
         outer_req.extensions_mut().insert(hub);
         Ok(Started::Done)
     }
