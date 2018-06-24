@@ -8,17 +8,14 @@ macro_rules! sentry_crate_release {
     () => {{
         use std::sync::{Once, ONCE_INIT};
         static mut INIT: Once = ONCE_INIT;
-        static mut RELEASE: Option<String> = None;
+        static mut RELEASE: Option<&'static str> = None;
         unsafe {
             INIT.call_once(|| {
                 RELEASE = option_env!("CARGO_PKG_NAME").and_then(|name| {
                     option_env!("CARGO_PKG_VERSION").map(|version| format!("{}@{}", name, version))
-                });
+                }).map(|x| Box::leak(x.into_boxed_str()) as &'static str)
             });
-            RELEASE.as_ref().map(|x| {
-                let release: &'static str = ::std::mem::transmute(x.as_str());
-                ::std::borrow::Cow::Borrowed(release)
-            })
+            RELEASE.map(::std::borrow::Cow::Borrowed)
         }
     }};
 }
