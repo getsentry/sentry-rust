@@ -33,8 +33,10 @@ pub mod value {
 /// It is currently backed by the `linked-hash-map` crate's hash map so that
 /// insertion order is preserved.
 pub mod map {
-    pub use linked_hash_map::{Entries, Entry, IntoIter, Iter, IterMut, Keys, LinkedHashMap,
-                              OccupiedEntry, VacantEntry, Values};
+    pub use linked_hash_map::{
+        Entries, Entry, IntoIter, Iter, IterMut, Keys, LinkedHashMap, OccupiedEntry, VacantEntry,
+        Values,
+    };
 }
 
 /// Represents a debug ID.
@@ -1774,8 +1776,10 @@ mod serde_context {
     use serde::ser::{Error as SerError, SerializeMap, Serializer};
     use serde_json::{from_value, to_value};
 
-    use super::{value, AppContext, BrowserContext, Context, ContextData, DeviceContext, Map,
-                OsContext, RuntimeContext, Value};
+    use super::{
+        value, AppContext, BrowserContext, Context, ContextData, DeviceContext, Map, OsContext,
+        RuntimeContext, Value,
+    };
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Map<String, Context>, D::Error>
     where
