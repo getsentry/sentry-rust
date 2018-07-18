@@ -105,6 +105,9 @@ pub fn demangle_symbol(s: &str) -> String {
 #[allow(unused)]
 pub fn error_typename<D: fmt::Debug>(error: D) -> String {
     format!("{:?}", error)
+        .split('\n')
+        .next()
+        .unwrap()
         .split(&['(', '{'][..])
         .next()
         .unwrap()
