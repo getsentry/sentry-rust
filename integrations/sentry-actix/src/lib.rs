@@ -20,7 +20,7 @@
 //! use actix_web::{server, App, Error, HttpRequest};
 //! use sentry_actix::SentryMiddleware;
 //!
-//! fn failing(_req: HttpRequest) -> Result<String, Error> {
+//! fn failing(_req: &HttpRequest) -> Result<String, Error> {
 //!     Err(io::Error::new(io::ErrorKind::Other, "An error happens here").into())
 //! }
 //!
@@ -159,12 +159,21 @@ impl SentryMiddleware {
 }
 
 impl<S: 'static> Middleware<S> for SentryMiddleware {
-    fn start(&self, req: &mut HttpRequest<S>) -> Result<Started, Error> {
+    fn start(&self, req: &HttpRequest<S>) -> Result<Started, Error> {
         let hub = self.new_hub();
         let outer_req = req;
         let req = outer_req.clone();
         hub.add_event_processor(move || {
-            let resource = req.resource().pattern().to_string();
+            let resource = req.resource();
+            let transaction = if let Some(rdef) = resource.rdef() {
+                Some(rdef.pattern().to_string())
+            } else {
+                if resource.name() != "" {
+                    Some(resource.name().to_string())
+                } else {
+                    None
+                }
+            };
             let req = sentry::protocol::Request {
                 url: format!(
                     "{}://{}{}",
@@ -182,7 +191,7 @@ impl<S: 'static> Middleware<S> for SentryMiddleware {
             };
             Box::new(move |event| {
                 if event.transaction.is_none() {
-                    event.transaction = Some(resource.clone());
+                    event.transaction = transaction.clone();
                 }
                 event.request = Some(req.clone());
             })
@@ -191,11 +200,7 @@ impl<S: 'static> Middleware<S> for SentryMiddleware {
         Ok(Started::Done)
     }
 
-    fn response(
-        &self,
-        req: &mut HttpRequest<S>,
-        mut resp: HttpResponse,
-    ) -> Result<Response, Error> {
+    fn response(&self, req: &HttpRequest<S>, mut resp: HttpResponse) -> Result<Response, Error> {
         if self.capture_server_errors && resp.status().is_server_error() {
             let event_id = if let Some(error) = resp.error() {
                 Some(Hub::from_request(req).capture_actix_error(error))
@@ -231,16 +236,17 @@ pub trait ActixWebHubExt {
     ///
     /// This requires that the `SentryMiddleware` middleware has been enabled or the
     /// call will panic.
-    fn from_request<S>(req: &HttpRequest<S>) -> &Arc<Hub>;
+    fn from_request<S>(req: &HttpRequest<S>) -> Arc<Hub>;
     /// Captures an actix error on the given hub.
     fn capture_actix_error(&self, err: &Error) -> Uuid;
 }
 
 impl ActixWebHubExt for Hub {
-    fn from_request<S>(req: &HttpRequest<S>) -> &Arc<Hub> {
+    fn from_request<S>(req: &HttpRequest<S>) -> Arc<Hub> {
         req.extensions()
-            .get()
+            .get::<Arc<Hub>>()
             .expect("SentryMiddleware middleware was not registered")
+            .clone()
     }
 
     fn capture_actix_error(&self, err: &Error) -> Uuid {

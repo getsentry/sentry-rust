@@ -8,7 +8,7 @@ use std::io;
 use actix_web::{server, App, Error, HttpRequest};
 use sentry_actix::SentryMiddleware;
 
-fn failing(_req: HttpRequest) -> Result<String, Error> {
+fn failing(_req: &HttpRequest) -> Result<String, Error> {
     Err(io::Error::new(io::ErrorKind::Other, "Something went really wrong here").into())
 }
 
