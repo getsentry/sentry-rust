@@ -37,6 +37,7 @@
 //! ```
 #![warn(missing_docs)]
 #![cfg_attr(feature = "cargo-clippy", allow(cast_lossless))]
+#![cfg_attr(feature = "cargo-clippy", allow(trivially_copy_pass_by_ref))]
 
 extern crate chrono;
 extern crate debugid;

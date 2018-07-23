@@ -106,7 +106,7 @@ pub mod ts_seconds_float_opt {
         S: ser::Serializer,
     {
         match *opt_dt {
-            Some(ref dt) => s.serialize_some(&WrappedTimestamp(dt.clone())),
+            Some(ref dt) => s.serialize_some(&WrappedTimestamp(*dt)),
             None => s.serialize_none(),
         }
     }

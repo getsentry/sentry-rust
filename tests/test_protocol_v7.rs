@@ -1322,38 +1322,38 @@ mod test_exception {
                         m.insert("x8".into(), v7::RegVal(0x0));
                         m.insert("x20".into(), v7::RegVal(0x1));
                         m.insert("x21".into(), v7::RegVal(0x1));
-                        m.insert("x28".into(), v7::RegVal(0x17025f650));
-                        m.insert("x4".into(), v7::RegVal(0x1702eb100));
-                        m.insert("x24".into(), v7::RegVal(0x1b1399c20));
-                        m.insert("sp".into(), v7::RegVal(0x16fd75060));
-                        m.insert("x1".into(), v7::RegVal(0x1b1399bb1));
-                        m.insert("x23".into(), v7::RegVal(0x1afe10040));
+                        m.insert("x28".into(), v7::RegVal(0x1_7025_f650));
+                        m.insert("x4".into(), v7::RegVal(0x1_702e_b100));
+                        m.insert("x24".into(), v7::RegVal(0x1_b139_9c20));
+                        m.insert("sp".into(), v7::RegVal(0x1_6fd7_5060));
+                        m.insert("x1".into(), v7::RegVal(0x1_b139_9bb1));
+                        m.insert("x23".into(), v7::RegVal(0x1_afe1_0040));
                         m.insert("x14".into(), v7::RegVal(0x1));
                         m.insert("x19".into(), v7::RegVal(0x0));
                         m.insert("x18".into(), v7::RegVal(0x0));
                         m.insert("x3".into(), v7::RegVal(0x1));
-                        m.insert("pc".into(), v7::RegVal(0x18a310ea4));
+                        m.insert("pc".into(), v7::RegVal(0x1_8a31_0ea4));
                         m.insert("x7".into(), v7::RegVal(0x0));
                         m.insert("x10".into(), v7::RegVal(0x57b));
                         m.insert("x6".into(), v7::RegVal(0x0));
                         m.insert("x13".into(), v7::RegVal(0x1));
                         m.insert("x2".into(), v7::RegVal(0x1));
                         m.insert("x27".into(), v7::RegVal(0x1));
-                        m.insert("x26".into(), v7::RegVal(0x191ec48d1));
-                        m.insert("x9".into(), v7::RegVal(0x1b1399c20));
-                        m.insert("x29".into(), v7::RegVal(0x16fd75060));
-                        m.insert("x5".into(), v7::RegVal(0x1702eb100));
-                        m.insert("fp".into(), v7::RegVal(0x16fd75060));
+                        m.insert("x26".into(), v7::RegVal(0x1_91ec_48d1));
+                        m.insert("x9".into(), v7::RegVal(0x1_b139_9c20));
+                        m.insert("x29".into(), v7::RegVal(0x1_6fd7_5060));
+                        m.insert("x5".into(), v7::RegVal(0x1_702e_b100));
+                        m.insert("fp".into(), v7::RegVal(0x1_6fd7_5060));
                         m.insert("x0".into(), v7::RegVal(0x1));
-                        m.insert("lr".into(), v7::RegVal(0x18a31aadc));
+                        m.insert("lr".into(), v7::RegVal(0x1_8a31_aadc));
                         m.insert("x25".into(), v7::RegVal(0x0));
-                        m.insert("x16".into(), v7::RegVal(0x18a31aa34));
-                        m.insert("x11".into(), v7::RegVal(0x1b3b37b1d));
-                        m.insert("cpsr".into(), v7::RegVal(0x20000000));
+                        m.insert("x16".into(), v7::RegVal(0x1_8a31_aa34));
+                        m.insert("x11".into(), v7::RegVal(0x1_b3b3_7b1d));
+                        m.insert("cpsr".into(), v7::RegVal(0x2000_0000));
                         m.insert("x17".into(), v7::RegVal(0x0));
                         m.insert("x15".into(), v7::RegVal(0x881));
-                        m.insert("x22".into(), v7::RegVal(0x1b1399bb0));
-                        m.insert("x12".into(), v7::RegVal(0x1b3b37b1d));
+                        m.insert("x22".into(), v7::RegVal(0x1_b139_9bb0));
+                        m.insert("x12".into(), v7::RegVal(0x1_b3b3_7b1d));
                         m
                     },
                     ..Default::default()
@@ -1517,16 +1517,16 @@ mod test_contexts {
                         model: Some("iphone7,3".into()),
                         model_id: Some("AH223".into()),
                         arch: Some("arm64".into()),
-                        battery_level: Some(58.5.into()),
+                        battery_level: Some(58.5),
                         orientation: Some(v7::Orientation::Landscape),
                         simulator: Some(true),
-                        memory_size: Some(3137978368),
-                        free_memory: Some(322781184),
-                        usable_memory: Some(2843525120),
-                        storage_size: Some(63989469184),
-                        free_storage: Some(31994734592),
-                        external_storage_size: Some(2097152),
-                        external_free_storage: Some(2097152),
+                        memory_size: Some(3_137_978_368),
+                        free_memory: Some(322_781_184),
+                        usable_memory: Some(2_843_525_120),
+                        storage_size: Some(63_989_469_184),
+                        free_storage: Some(31_994_734_592),
+                        external_storage_size: Some(2_097_152),
+                        external_free_storage: Some(2_097_152),
                         boot_time: Some("2018-02-08T12:52:12Z".parse().unwrap()),
                         timezone: Some("Europe/Vienna".into()),
                     }.into(),
