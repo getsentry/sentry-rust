@@ -66,6 +66,8 @@ pub struct ClientOptions {
     pub https_proxy: Option<Cow<'static, str>>,
     /// The timeout on client drop for draining events.
     pub shutdown_timeout: Option<Duration>,
+    /// Attaches stacktraces to messages.
+    pub attach_stacktrace: bool,
 }
 
 impl Default for ClientOptions {
@@ -91,6 +93,7 @@ impl Default for ClientOptions {
                 .or_else(|| env::var("HTTPS_PROXY").ok().map(Cow::Owned))
                 .or_else(|| env::var("http_proxy").ok().map(Cow::Owned)),
             shutdown_timeout: Some(Duration::from_secs(2)),
+            attach_stacktrace: false,
         }
     }
 }

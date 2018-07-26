@@ -1,6 +1,7 @@
 #[allow(unused)]
 use std::cell::{Cell, UnsafeCell};
 use std::iter;
+use std::mem;
 #[allow(unused)]
 use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard, TryLockError};
 #[allow(unused)]
@@ -15,11 +16,13 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 #[cfg(feature = "with_client_implementation")]
 use client::Client;
-use protocol::{Breadcrumb, Event, Level};
+use protocol::{Breadcrumb, Event, Level, Thread};
 use scope::{Scope, ScopeGuard};
 
 #[cfg(feature = "with_client_implementation")]
 use scope::{Stack, StackLayerToken};
+
+use backtrace_support::current_stacktrace;
 
 use uuid::Uuid;
 
@@ -35,6 +38,10 @@ thread_local! {
     static THREAD_HUB: UnsafeCell<Arc<Hub>> = UnsafeCell::new(
         Arc::new(Hub::new_from_top(&PROCESS_HUB.0)));
     static USE_PROCESS_HUB: Cell<bool> = Cell::new(PROCESS_HUB.1 == thread::current().id());
+}
+
+fn thread_id() -> u64 {
+    unsafe { mem::transmute(thread::current().id()) }
 }
 
 /// A helper trait that converts an object into a breadcrumb.
@@ -334,11 +341,30 @@ impl Hub {
 
     /// Captures an arbitrary message.
     pub fn capture_message(&self, msg: &str, level: Level) -> Uuid {
-        self.capture_event(Event {
-            message: Some(msg.to_string()),
-            level,
-            ..Default::default()
-        })
+        with_client_impl! {{
+            self.inner.with(|stack| {
+                let top = stack.top();
+                if let Some(ref client) = top.client {
+                    let mut event = Event {
+                        message: Some(msg.to_string()),
+                        level,
+                        ..Default::default()
+                    };
+                    if client.options().attach_stacktrace {
+                        event.threads.push(Thread {
+                            id: Some(thread_id().to_string().into()),
+                            name: thread::current().name().map(|x| x.to_string()),
+                            current: true,
+                            stacktrace: current_stacktrace(),
+                            ..Default::default()
+                        })
+                    }
+                    self.capture_event(event)
+                } else {
+                    Uuid::nil()
+                }
+            })
+        }}
     }
 
     /// Drains the currently pending events.
