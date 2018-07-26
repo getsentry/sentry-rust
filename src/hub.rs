@@ -16,7 +16,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 #[cfg(feature = "with_client_implementation")]
 use client::Client;
-use protocol::{Breadcrumb, Event, Level, Thread};
+use protocol::{Breadcrumb, Event, Level};
 use scope::{Scope, ScopeGuard};
 
 #[cfg(feature = "with_client_implementation")]
@@ -39,10 +39,6 @@ thread_local! {
     static THREAD_HUB: UnsafeCell<Arc<Hub>> = UnsafeCell::new(
         Arc::new(Hub::new_from_top(&PROCESS_HUB.0)));
     static USE_PROCESS_HUB: Cell<bool> = Cell::new(PROCESS_HUB.1 == thread::current().id());
-}
-
-fn thread_id() -> u64 {
-    unsafe { mem::transmute(thread::current().id()) }
 }
 
 /// A helper trait that converts an object into a breadcrumb.
@@ -352,9 +348,13 @@ impl Hub {
                         ..Default::default()
                     };
                     #[cfg(feature = "with_backtrace")] {
+                        use protocol::Thread;
                         if client.options().attach_stacktrace {
+                            let thread_id: u64 = unsafe {
+                                mem::transmute(thread::current().id())
+                            };
                             event.threads.push(Thread {
-                                id: Some(thread_id().to_string().into()),
+                                id: Some(thread_id.to_string().into()),
                                 name: thread::current().name().map(|x| x.to_string()),
                                 current: true,
                                 stacktrace: current_stacktrace(),
