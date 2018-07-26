@@ -22,6 +22,7 @@ use scope::{Scope, ScopeGuard};
 #[cfg(feature = "with_client_implementation")]
 use scope::{Stack, StackLayerToken};
 
+#[cfg(feature = "with_backtrace")]
 use backtrace_support::current_stacktrace;
 
 use uuid::Uuid;
@@ -350,14 +351,16 @@ impl Hub {
                         level,
                         ..Default::default()
                     };
-                    if client.options().attach_stacktrace {
-                        event.threads.push(Thread {
-                            id: Some(thread_id().to_string().into()),
-                            name: thread::current().name().map(|x| x.to_string()),
-                            current: true,
-                            stacktrace: current_stacktrace(),
-                            ..Default::default()
-                        })
+                    #[cfg(feature = "with_backtrace")] {
+                        if client.options().attach_stacktrace {
+                            event.threads.push(Thread {
+                                id: Some(thread_id().to_string().into()),
+                                name: thread::current().name().map(|x| x.to_string()),
+                                current: true,
+                                stacktrace: current_stacktrace(),
+                                ..Default::default()
+                            })
+                        }
                     }
                     self.capture_event(event)
                 } else {
