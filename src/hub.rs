@@ -1,7 +1,6 @@
 #[allow(unused)]
 use std::cell::{Cell, UnsafeCell};
 use std::iter;
-use std::mem;
 #[allow(unused)]
 use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard, TryLockError};
 #[allow(unused)]
@@ -348,6 +347,7 @@ impl Hub {
                         ..Default::default()
                     };
                     #[cfg(feature = "with_backtrace")] {
+                        use std::mem;
                         use protocol::Thread;
                         if client.options().attach_stacktrace {
                             let thread_id: u64 = unsafe {
