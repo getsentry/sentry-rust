@@ -336,6 +336,7 @@ impl Hub {
     }
 
     /// Captures an arbitrary message.
+    #[allow(unused_variables)]
     pub fn capture_message(&self, msg: &str, level: Level) -> Uuid {
         with_client_impl! {{
             self.inner.with(|stack| {
