@@ -5,6 +5,7 @@ use std::fmt;
 use std::sync::Arc;
 use std::time::Duration;
 
+use rand::random;
 use regex::Regex;
 use uuid::Uuid;
 
@@ -53,6 +54,8 @@ pub struct ClientOptions {
     pub environment: Option<Cow<'static, str>>,
     /// The server name to be reported.
     pub server_name: Option<Cow<'static, str>>,
+    /// The sample rate for event submission (0.0 - 1.0, defaults to 1.0)
+    pub sample_rate: f32,
     /// The user agent that should be reported.
     pub user_agent: Cow<'static, str>,
     /// An optional HTTP proxy to use.
@@ -87,6 +90,7 @@ impl Default for ClientOptions {
                 "release".into()
             }),
             server_name: server_name().map(Cow::Owned),
+            sample_rate: 1.0,
             user_agent: Cow::Borrowed(&USER_AGENT),
             http_proxy: env::var("http_proxy").ok().map(Cow::Owned),
             https_proxy: env::var("https_proxy")
@@ -436,12 +440,13 @@ impl Client {
     /// Captures an event and sends it to sentry.
     pub fn capture_event(&self, mut event: Event<'static>, scope: Option<&Scope>) -> Uuid {
         if let Some(ref transport) = self.transport {
-            let event_id = self.prepare_event(&mut event, scope);
-            transport.send_event(event);
-            event_id
-        } else {
-            Default::default()
+            if self.sample_should_send() {
+                let event_id = self.prepare_event(&mut event, scope);
+                transport.send_event(event);
+                return event_id;
+            }
         }
+        Default::default()
     }
 
     /// Drains all pending events up to the current time.
@@ -462,6 +467,15 @@ impl Client {
         self.transport
             .as_ref()
             .expect("Client has no associated transport")
+    }
+
+    fn sample_should_send(&self) -> bool {
+        let rate = self.options.sample_rate;
+        if rate >= 1.0 {
+            true
+        } else {
+            random::<f32>() <= rate
+        }
     }
 }
 

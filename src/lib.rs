@@ -156,6 +156,8 @@ extern crate env_logger;
 #[cfg(feature = "with_debug_meta")]
 extern crate findshlibs;
 
+extern crate rand;
+
 #[macro_use]
 mod macros;
 
