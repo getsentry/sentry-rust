@@ -10,12 +10,12 @@ use uuid::Uuid;
 
 use api::protocol::{DebugMeta, Event};
 use api::Dsn;
-use backtrace_support::{function_starts_with, is_sys_function};
+use backtrace_support::{function_starts_with, is_sys_function, trim_stacktrace};
 use constants::{SDK_INFO, USER_AGENT};
 use hub::Hub;
 use scope::Scope;
 use transport::Transport;
-use utils::{debug_images, server_name, trim_stacktrace};
+use utils::{debug_images, server_name};
 
 /// The Sentry client object.
 #[derive(Clone)]

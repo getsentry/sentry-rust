@@ -348,7 +348,7 @@ impl Hub {
                     #[cfg(feature = "with_backtrace")] {
                         use std::mem;
                         use protocol::Thread;
-                        use backtrace_support::current_stacktrace;
+                        use utils::current_stacktrace;
 
                         if client.options().attach_stacktrace {
                             let thread_id: u64 = unsafe {
