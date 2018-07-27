@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fmt;
@@ -9,7 +10,7 @@ use rand::random;
 use regex::Regex;
 use uuid::Uuid;
 
-use api::protocol::{DebugMeta, Event};
+use api::protocol::{DebugMeta, Event, RepoReference};
 use api::Dsn;
 use backtrace_support::{function_starts_with, is_sys_function, trim_stacktrace};
 use constants::{SDK_INFO, USER_AGENT};
@@ -50,6 +51,8 @@ pub struct ClientOptions {
     pub trim_backtraces: bool,
     /// The release to be sent with events.
     pub release: Option<Cow<'static, str>>,
+    /// The repos to send along with the events.
+    pub repos: HashMap<String, RepoReference>,
     /// The environment to be sent with events.
     pub environment: Option<Cow<'static, str>>,
     /// The server name to be reported.
@@ -84,6 +87,7 @@ impl Default for ClientOptions {
             max_breadcrumbs: 100,
             trim_backtraces: true,
             release: None,
+            repos: Default::default(),
             environment: Some(if cfg!(debug_assertions) {
                 "debug".into()
             } else {
@@ -328,6 +332,13 @@ impl Client {
 
         if event.release.is_none() {
             event.release = self.options.release.clone();
+        }
+        if event.repos.is_empty() && !self.options.repos.is_empty() {
+            event.repos = self.options
+                .repos
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.clone()))
+                .collect();
         }
         if event.environment.is_none() {
             event.environment = self.options.environment.clone();
