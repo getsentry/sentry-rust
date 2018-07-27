@@ -21,9 +21,6 @@ use scope::{Scope, ScopeGuard};
 #[cfg(feature = "with_client_implementation")]
 use scope::{Stack, StackLayerToken};
 
-#[cfg(feature = "with_backtrace")]
-use backtrace_support::current_stacktrace;
-
 use uuid::Uuid;
 
 #[cfg(feature = "with_client_implementation")]
@@ -350,6 +347,8 @@ impl Hub {
                     #[cfg(feature = "with_backtrace")] {
                         use std::mem;
                         use protocol::Thread;
+                        use backtrace_support::current_stacktrace;
+
                         if client.options().attach_stacktrace {
                             let thread_id: u64 = unsafe {
                                 mem::transmute(thread::current().id())
