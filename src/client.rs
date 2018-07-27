@@ -68,6 +68,8 @@ pub struct ClientOptions {
     pub shutdown_timeout: Option<Duration>,
     /// Attaches stacktraces to messages.
     pub attach_stacktrace: bool,
+    /// If turned on some default PII informat is attached.
+    pub send_default_pii: bool,
 }
 
 impl Default for ClientOptions {
@@ -94,6 +96,7 @@ impl Default for ClientOptions {
                 .or_else(|| env::var("http_proxy").ok().map(Cow::Owned)),
             shutdown_timeout: Some(Duration::from_secs(2)),
             attach_stacktrace: false,
+            send_default_pii: false,
         }
     }
 }
