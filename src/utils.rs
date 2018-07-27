@@ -1,5 +1,10 @@
 //! Useful utilities for working with events.
-use api::protocol::{Context, DebugImage, DeviceContext, OsContext, RuntimeContext};
+use std::mem;
+use std::thread;
+
+use api::protocol::{
+    Context, DebugImage, DeviceContext, OsContext, RuntimeContext, Stacktrace, Thread,
+};
 
 #[cfg(all(feature = "with_device_info", target_os = "macos"))]
 mod model_support {
@@ -236,5 +241,34 @@ pub fn debug_images() -> Vec<DebugImage> {
     findshlibs_support::find_shlibs().unwrap_or_else(Vec::new)
 }
 
-#[cfg(feature = "with_backtrace")]
-pub use backtrace_support::{current_stacktrace, trim_stacktrace};
+/// Captures information about the current thread.
+///
+/// If `with_stack` is set to `true` the current stacktrace is
+/// attached.
+pub fn current_thread(with_stack: bool) -> Thread {
+    let thread_id: u64 = unsafe { mem::transmute(thread::current().id()) };
+    Thread {
+        id: Some(thread_id.to_string().into()),
+        name: thread::current().name().map(|x| x.to_string()),
+        current: true,
+        stacktrace: if with_stack {
+            current_stacktrace()
+        } else {
+            None
+        },
+        ..Default::default()
+    }
+}
+
+/// Returns the current backtrace as sentry stacktrace.
+pub fn current_stacktrace() -> Option<Stacktrace> {
+    #[cfg(feature = "with_backtrace")]
+    {
+        use backtrace_support::current_stacktrace;
+        current_stacktrace()
+    }
+    #[cfg(not(feature = "with_backtrace"))]
+    {
+        None
+    }
+}
