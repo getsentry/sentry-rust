@@ -335,6 +335,7 @@ impl Hub {
     /// Captures an arbitrary message.
     #[allow(unused_variables)]
     pub fn capture_message(&self, msg: &str, level: Level) -> Uuid {
+        self.flush_pending_processors();
         with_client_impl! {{
             self.inner.with(|stack| {
                 let top = stack.top();
