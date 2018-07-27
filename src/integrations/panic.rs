@@ -17,7 +17,7 @@ use std::panic;
 
 use api::protocol::{Event, Exception, Level};
 use hub::Hub;
-use utils::current_stacktrace;
+use backtrace_support::current_stacktrace;
 
 /// Extract the message of a panic.
 pub fn message_from_panic_info<'a>(info: &'a panic::PanicInfo) -> &'a str {
