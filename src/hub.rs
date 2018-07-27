@@ -17,6 +17,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use client::Client;
 use protocol::{Breadcrumb, Event, Level};
 use scope::{Scope, ScopeGuard};
+use utils::current_thread;
 
 #[cfg(feature = "with_client_implementation")]
 use scope::{Stack, StackLayerToken};
@@ -345,22 +346,10 @@ impl Hub {
                         level,
                         ..Default::default()
                     };
-                    #[cfg(feature = "with_backtrace")] {
-                        use std::mem;
-                        use protocol::Thread;
-                        use utils::current_stacktrace;
-
-                        if client.options().attach_stacktrace {
-                            let thread_id: u64 = unsafe {
-                                mem::transmute(thread::current().id())
-                            };
-                            event.threads.push(Thread {
-                                id: Some(thread_id.to_string().into()),
-                                name: thread::current().name().map(|x| x.to_string()),
-                                current: true,
-                                stacktrace: current_stacktrace(),
-                                ..Default::default()
-                            })
+                    if client.options().attach_stacktrace {
+                        let thread = current_thread(true);
+                        if thread.stacktrace.is_some() {
+                            event.threads.push(thread);
                         }
                     }
                     self.capture_event(event)
