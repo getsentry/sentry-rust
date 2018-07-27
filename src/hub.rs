@@ -333,12 +333,42 @@ impl Hub {
     }
 
     /// Captures an arbitrary message.
+    #[allow(unused_variables)]
     pub fn capture_message(&self, msg: &str, level: Level) -> Uuid {
-        self.capture_event(Event {
-            message: Some(msg.to_string()),
-            level,
-            ..Default::default()
-        })
+        self.flush_pending_processors();
+        with_client_impl! {{
+            self.inner.with(|stack| {
+                let top = stack.top();
+                if let Some(ref client) = top.client {
+                    let mut event = Event {
+                        message: Some(msg.to_string()),
+                        level,
+                        ..Default::default()
+                    };
+                    #[cfg(feature = "with_backtrace")] {
+                        use std::mem;
+                        use protocol::Thread;
+                        use backtrace_support::current_stacktrace;
+
+                        if client.options().attach_stacktrace {
+                            let thread_id: u64 = unsafe {
+                                mem::transmute(thread::current().id())
+                            };
+                            event.threads.push(Thread {
+                                id: Some(thread_id.to_string().into()),
+                                name: thread::current().name().map(|x| x.to_string()),
+                                current: true,
+                                stacktrace: current_stacktrace(),
+                                ..Default::default()
+                            })
+                        }
+                    }
+                    self.capture_event(event)
+                } else {
+                    Uuid::nil()
+                }
+            })
+        }}
     }
 
     /// Drains the currently pending events.

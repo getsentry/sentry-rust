@@ -65,8 +65,9 @@ mod findshlibs_support {
     use super::*;
     use api::protocol::debugid::DebugId;
     use api::protocol::SymbolicDebugImage;
-    use findshlibs::{Segment, SharedLibrary, SharedLibraryId, TargetSharedLibrary,
-                     TARGET_SUPPORTED};
+    use findshlibs::{
+        Segment, SharedLibrary, SharedLibraryId, TargetSharedLibrary, TARGET_SUPPORTED,
+    };
     use uuid::Uuid;
 
     pub fn find_shlibs() -> Option<Vec<DebugImage>> {
