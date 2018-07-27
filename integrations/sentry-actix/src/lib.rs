@@ -199,7 +199,9 @@ impl<S: 'static> Middleware<S> for SentryMiddleware {
                 if event.transaction.is_none() {
                     event.transaction = transaction.clone();
                 }
-                event.request = Some(sentry_req.clone());
+                if event.request.is_none() {
+                    event.request = Some(sentry_req.clone());
+                }
             })
         });
         outer_req.extensions_mut().insert(hub);
