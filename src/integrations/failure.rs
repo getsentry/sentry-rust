@@ -115,7 +115,7 @@ pub fn exception_from_single_fail<F: Fail + ?Sized>(
 pub fn event_from_error(err: &failure::Error) -> Event<'static> {
     let mut exceptions = vec![];
 
-    for (idx, cause) in err.causes().enumerate() {
+    for (idx, cause) in err.iter_chain().enumerate() {
         let bt = match cause.backtrace() {
             Some(bt) => Some(bt),
             None if idx == 0 => Some(err.backtrace()),
