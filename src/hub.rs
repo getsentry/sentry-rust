@@ -17,6 +17,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use client::Client;
 use protocol::{Breadcrumb, Event, Level};
 use scope::{Scope, ScopeGuard};
+
 #[cfg(feature = "with_client_implementation")]
 use utils::current_thread;
 

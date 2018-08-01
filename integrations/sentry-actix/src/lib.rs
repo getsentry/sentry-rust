@@ -163,6 +163,7 @@ impl<S: 'static> Middleware<S> for SentryMiddleware {
         let hub = self.new_hub();
         let outer_req = req;
         let req = outer_req.clone();
+        let client = hub.client();
         hub.add_event_processor(move || {
             let resource = req.resource();
             let transaction = if let Some(rdef) = resource.rdef() {
@@ -174,7 +175,7 @@ impl<S: 'static> Middleware<S> for SentryMiddleware {
                     None
                 }
             };
-            let req = sentry::protocol::Request {
+            let mut sentry_req = sentry::protocol::Request {
                 url: format!(
                     "{}://{}{}",
                     req.connection_info().scheme(),
@@ -189,11 +190,18 @@ impl<S: 'static> Middleware<S> for SentryMiddleware {
                     .collect(),
                 ..Default::default()
             };
+            if client.map_or(false, |x| x.options().send_default_pii) {
+                if let Some(remote) = req.connection_info().remote() {
+                    sentry_req.env.insert("REMOTE_ADDR".into(), remote.into());
+                }
+            };
             Box::new(move |event| {
                 if event.transaction.is_none() {
                     event.transaction = transaction.clone();
                 }
-                event.request = Some(req.clone());
+                if event.request.is_none() {
+                    event.request = Some(sentry_req.clone());
+                }
             })
         });
         outer_req.extensions_mut().insert(hub);

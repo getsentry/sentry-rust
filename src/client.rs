@@ -1,14 +1,16 @@
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fmt;
 use std::sync::Arc;
 use std::time::Duration;
 
+use rand::random;
 use regex::Regex;
 use uuid::Uuid;
 
-use api::protocol::{DebugMeta, Event};
+use api::protocol::{DebugMeta, Event, RepoReference};
 use api::Dsn;
 use backtrace_support::{function_starts_with, is_sys_function, trim_stacktrace};
 use constants::{SDK_INFO, USER_AGENT};
@@ -49,10 +51,14 @@ pub struct ClientOptions {
     pub trim_backtraces: bool,
     /// The release to be sent with events.
     pub release: Option<Cow<'static, str>>,
+    /// The repos to send along with the events.
+    pub repos: HashMap<String, RepoReference>,
     /// The environment to be sent with events.
     pub environment: Option<Cow<'static, str>>,
     /// The server name to be reported.
     pub server_name: Option<Cow<'static, str>>,
+    /// The sample rate for event submission (0.0 - 1.0, defaults to 1.0)
+    pub sample_rate: f32,
     /// The user agent that should be reported.
     pub user_agent: Cow<'static, str>,
     /// An optional HTTP proxy to use.
@@ -68,6 +74,8 @@ pub struct ClientOptions {
     pub shutdown_timeout: Option<Duration>,
     /// Attaches stacktraces to messages.
     pub attach_stacktrace: bool,
+    /// If turned on some default PII informat is attached.
+    pub send_default_pii: bool,
 }
 
 impl Default for ClientOptions {
@@ -79,12 +87,14 @@ impl Default for ClientOptions {
             max_breadcrumbs: 100,
             trim_backtraces: true,
             release: None,
+            repos: Default::default(),
             environment: Some(if cfg!(debug_assertions) {
                 "debug".into()
             } else {
                 "release".into()
             }),
             server_name: server_name().map(Cow::Owned),
+            sample_rate: 1.0,
             user_agent: Cow::Borrowed(&USER_AGENT),
             http_proxy: env::var("http_proxy").ok().map(Cow::Owned),
             https_proxy: env::var("https_proxy")
@@ -94,6 +104,7 @@ impl Default for ClientOptions {
                 .or_else(|| env::var("http_proxy").ok().map(Cow::Owned)),
             shutdown_timeout: Some(Duration::from_secs(2)),
             attach_stacktrace: false,
+            send_default_pii: false,
         }
     }
 }
@@ -322,6 +333,13 @@ impl Client {
         if event.release.is_none() {
             event.release = self.options.release.clone();
         }
+        if event.repos.is_empty() && !self.options.repos.is_empty() {
+            event.repos = self.options
+                .repos
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.clone()))
+                .collect();
+        }
         if event.environment.is_none() {
             event.environment = self.options.environment.clone();
         }
@@ -433,12 +451,13 @@ impl Client {
     /// Captures an event and sends it to sentry.
     pub fn capture_event(&self, mut event: Event<'static>, scope: Option<&Scope>) -> Uuid {
         if let Some(ref transport) = self.transport {
-            let event_id = self.prepare_event(&mut event, scope);
-            transport.send_event(event);
-            event_id
-        } else {
-            Default::default()
+            if self.sample_should_send() {
+                let event_id = self.prepare_event(&mut event, scope);
+                transport.send_event(event);
+                return event_id;
+            }
         }
+        Default::default()
     }
 
     /// Drains all pending events up to the current time.
@@ -459,6 +478,15 @@ impl Client {
         self.transport
             .as_ref()
             .expect("Client has no associated transport")
+    }
+
+    fn sample_should_send(&self) -> bool {
+        let rate = self.options.sample_rate;
+        if rate >= 1.0 {
+            true
+        } else {
+            random::<f32>() <= rate
+        }
     }
 }
 
