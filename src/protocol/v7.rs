@@ -979,7 +979,8 @@ impl DebugImage {
             DebugImage::Apple(..) => "apple",
             DebugImage::Symbolic(..) => "symbolic",
             DebugImage::Proguard(..) => "proguard",
-            DebugImage::Unknown(ref map) => map.get("type")
+            DebugImage::Unknown(ref map) => map
+                .get("type")
                 .and_then(|x| x.as_str())
                 .unwrap_or("unknown"),
         }

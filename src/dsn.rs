@@ -147,7 +147,8 @@ impl FromStr for Dsn {
             return Err(DsnParseError::NoProjectId);
         }
 
-        let path_segments = url.path_segments()
+        let path_segments = url
+            .path_segments()
             .ok_or_else(|| DsnParseError::NoProjectId)?;
         if path_segments.count() > 1 {
             return Err(DsnParseError::InvalidUrl);
@@ -170,7 +171,8 @@ impl FromStr for Dsn {
             Some(host) => host.into(),
             None => return Err(DsnParseError::InvalidUrl),
         };
-        let project_id = url.path()
+        let project_id = url
+            .path()
             .trim_matches('/')
             .parse()
             .map_err(DsnParseError::InvalidProjectId)?;

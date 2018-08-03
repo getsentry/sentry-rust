@@ -15,7 +15,7 @@ format:
 	@cargo fmt
 
 format-check:
-	@cargo fmt -- --write-mode diff
+	@cargo fmt -- --check
 
 lint:
 	@cargo +nightly clippy --all-features --tests -- -D clippy
