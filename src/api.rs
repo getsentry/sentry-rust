@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use uuid::Uuid;
 
 use api::protocol::Event;
@@ -61,6 +63,18 @@ pub fn capture_message(msg: &str, level: Level) -> Uuid {
     with_client_impl! {{
         Hub::with_active(|hub| {
             hub.capture_message(msg, level)
+        })
+    }}
+}
+
+/// Captures a message with parameters.
+///
+/// This creates an event form the given message and sends it to the current hub.
+#[allow(unused_variables)]
+pub fn capture_message_params(msg: &str, params: &[&Debug], level: Level) -> Uuid {
+    with_client_impl! {{
+        Hub::with_active(|hub| {
+            hub.capture_message_params(msg, params, level)
         })
     }}
 }

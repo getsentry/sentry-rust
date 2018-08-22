@@ -1,10 +1,18 @@
 //! Useful utilities for working with events.
+use std::fmt::Debug;
 use std::mem;
 use std::thread;
 
+use regex::{Captures, Regex};
+
 use api::protocol::{
-    Context, DebugImage, DeviceContext, OsContext, RuntimeContext, Stacktrace, Thread,
+    Context, DebugImage, DeviceContext, Event, Level, LogEntry, OsContext, RuntimeContext,
+    Stacktrace, Thread,
 };
+
+lazy_static! {
+    static ref PARAM_RE: Regex = Regex::new(r#"\{\{|\}\}|\{\}"#).unwrap();
+}
 
 #[cfg(all(feature = "with_device_info", target_os = "macos"))]
 mod model_support {
@@ -271,4 +279,46 @@ pub fn current_stacktrace() -> Option<Stacktrace> {
     {
         None
     }
+}
+
+/// Creates an event from a message.
+///
+/// If no params are provided the message is stored in the `message` attribute, otherwise
+/// they are formatted out into a log entry.
+pub fn event_from_message(msg: &str, params: &[&Debug], level: Level) -> Event<'static> {
+    let mut event = Event {
+        level,
+        ..Default::default()
+    };
+
+    if params.is_empty() {
+        event.message = Some(msg.to_string());
+    } else {
+        event.logentry = Some(LogEntry {
+            message: PARAM_RE
+                .replace_all(&msg, |caps: &Captures| match &caps[0] {
+                    "{{" => "{".to_string(),
+                    "}}" => "}".to_string(),
+                    "{}" => "%s".to_string(),
+                    _ => unreachable!(),
+                })
+                .to_string(),
+            params: params.iter().map(|x| format!("{:?}", x).into()).collect(),
+        });
+    }
+
+    event
+}
+
+#[test]
+fn test_event_from_message() {
+    use serde_json::Value;
+
+    let evt = event_from_message("Hello World!", &[], Level::Info);
+    assert_eq!(evt.message.as_ref().unwrap(), "Hello World!");
+
+    let evt = event_from_message("Hello World!", &[&42, &"test"], Level::Info);
+    let entry = evt.logentry.unwrap();
+    assert_eq!(&entry.message, "Hello World!");
+    assert_eq!(&entry.params, &vec![Value::String("42".into()), Value::String("\"test\"".into())]);
 }

@@ -1,5 +1,6 @@
 #[allow(unused)]
 use std::cell::{Cell, UnsafeCell};
+use std::fmt::Debug;
 use std::iter;
 #[allow(unused)]
 use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard, TryLockError};
@@ -19,7 +20,7 @@ use protocol::{Breadcrumb, Event, Level};
 use scope::{Scope, ScopeGuard};
 
 #[cfg(feature = "with_client_implementation")]
-use utils::current_thread;
+use utils::{current_thread, event_from_message};
 
 #[cfg(feature = "with_client_implementation")]
 use scope::{Stack, StackLayerToken};
@@ -344,11 +345,33 @@ impl Hub {
             self.inner.with(|stack| {
                 let top = stack.top();
                 if let Some(ref client) = top.client {
-                    let mut event = Event {
-                        message: Some(msg.to_string()),
-                        level,
-                        ..Default::default()
-                    };
+                    let mut event = event_from_message(msg, &[], level);
+                    if client.options().attach_stacktrace {
+                        let thread = current_thread(true);
+                        if thread.stacktrace.is_some() {
+                            event.threads.push(thread);
+                        }
+                    }
+                    self.capture_event(event)
+                } else {
+                    Uuid::nil()
+                }
+            })
+        }}
+    }
+
+    /// Captures a message with parameters.
+    ///
+    /// All items in `params` are inserted into the message whenever a `{}` marker is
+    /// encountered.  To use bare `{` and `}` signs double them (`{{` and `}}`).
+    #[allow(unused_variables)]
+    pub fn capture_message_params(&self, msg: &str, params: &[&Debug], level: Level) -> Uuid {
+        self.flush_pending_processors();
+        with_client_impl! {{
+            self.inner.with(|stack| {
+                let top = stack.top();
+                if let Some(ref client) = top.client {
+                    let mut event = event_from_message(msg, params, level);
                     if client.options().attach_stacktrace {
                         let thread = current_thread(true);
                         if thread.stacktrace.is_some() {
