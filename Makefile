@@ -73,7 +73,7 @@ test: checkall cargotestall
 .PHONY: test
 
 format-check:
-	@cargo fmt -- --write-mode diff
+	@cargo fmt -- --check
 .PHONY: format-check
 
 lint:
