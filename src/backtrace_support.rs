@@ -114,7 +114,8 @@ pub fn error_typename<D: fmt::Debug>(error: D) -> String {
 
 #[allow(unused)]
 pub fn backtrace_to_stacktrace(bt: &Backtrace) -> Option<Stacktrace> {
-    let frames = bt.frames()
+    let frames = bt
+        .frames()
         .iter()
         .flat_map(|frame| {
             frame.symbols().iter().map(move |sym| {

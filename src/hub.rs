@@ -137,7 +137,8 @@ impl HubImpl {
     }
 
     fn with_processors_mut<F: FnOnce(&mut Vec<PendingProcessor>) -> R, R>(&self, f: F) -> R {
-        f(&mut *self.pending_processors
+        f(&mut *self
+            .pending_processors
             .lock()
             .unwrap_or_else(|x| x.into_inner()))
     }

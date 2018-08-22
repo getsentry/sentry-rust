@@ -81,7 +81,8 @@ fn spawn_http_sender(
                 .send()
             {
                 if resp.status() == StatusCode::TooManyRequests {
-                    disabled = resp.headers()
+                    disabled = resp
+                        .headers()
                         .get::<RetryAfter>()
                         .map(|x| (Instant::now(), *x));
                 }

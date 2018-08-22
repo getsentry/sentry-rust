@@ -334,7 +334,8 @@ impl Client {
             event.release = self.options.release.clone();
         }
         if event.repos.is_empty() && !self.options.repos.is_empty() {
-            event.repos = self.options
+            event.repos = self
+                .options
                 .repos
                 .iter()
                 .map(|(k, v)| (k.to_string(), v.clone()))

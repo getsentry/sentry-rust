@@ -184,7 +184,8 @@ impl<S: 'static> Middleware<S> for SentryMiddleware {
                 ).parse()
                     .ok(),
                 method: Some(req.method().to_string()),
-                headers: req.headers()
+                headers: req
+                    .headers()
                     .iter()
                     .map(|(k, v)| (k.as_str().into(), v.to_str().unwrap_or("").into()))
                     .collect(),

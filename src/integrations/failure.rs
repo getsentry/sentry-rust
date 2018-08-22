@@ -105,7 +105,8 @@ pub fn exception_from_single_fail<F: Fail + ?Sized>(
     Exception {
         ty: error_typename(f),
         value: Some(f.to_string()),
-        stacktrace: bt.map(|backtrace| backtrace.to_string())
+        stacktrace: bt
+            .map(|backtrace| backtrace.to_string())
             .and_then(|x| parse_stacktrace(&x)),
         ..Default::default()
     }

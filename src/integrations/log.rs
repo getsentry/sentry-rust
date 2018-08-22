@@ -34,8 +34,8 @@ use std::cmp;
 
 use api::add_breadcrumb;
 use api::protocol::{Breadcrumb, Event, Exception, Level};
-use hub::Hub;
 use backtrace_support::current_stacktrace;
+use hub::Hub;
 
 /// Logger specific options.
 pub struct LoggerOptions {
