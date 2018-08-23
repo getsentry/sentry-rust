@@ -11,6 +11,7 @@ branches:
 environment:
   fast_finish: true
   DIST_DIR: '.'
+  CARGO_HTTP_CHECK_REVOKE: false
 
   matrix:
     - channel: stable
