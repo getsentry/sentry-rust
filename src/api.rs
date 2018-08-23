@@ -26,6 +26,7 @@ pub mod internals {
     pub use hub::IntoBreadcrumbs;
     pub use scope::ScopeGuard;
     pub use sentry_types::{Auth, DsnParseError, ProjectId, ProjectIdParseError, Scheme};
+    #[cfg(feature = "with_client_implementation")]
     pub use transport::{DefaultTransportFactory, HttpTransport, Transport, TransportFactory};
 }
 
