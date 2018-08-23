@@ -38,6 +38,7 @@ lazy_static! {
 /// Example usage:
 ///
 /// ```rust
+/// use std::sync::Arc;
 /// use sentry::{Hub, ClientOptions};
 /// use sentry::test::TestTransport;
 ///
@@ -47,7 +48,7 @@ lazy_static! {
 ///     transport: Box::new(transport.clone()),
 ///     ..ClientOptions::default()
 /// };
-/// Hub::current().bind_client(Some(options.into()));
+/// Hub::current().bind_client(Some(Arc::new(options.into())));
 /// ```
 pub struct TestTransport {
     collected: Mutex<Vec<Event<'static>>>,

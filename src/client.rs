@@ -41,6 +41,10 @@ pub struct ClientOptions {
     /// The DSN to use.  If not set the client is effectively disabled.
     pub dsn: Option<Dsn>,
     /// The transport to use.
+    ///
+    /// This is typically either a boxed function taking the client options by
+    /// reference and returning a `Transport`, a boxed `Arc<Transport>` or
+    /// alternatively the `DefaultTransportFactory`.
     pub transport: Box<TransportFactory>,
     /// module prefixes that are always considered in_app
     pub in_app_include: Vec<&'static str>,

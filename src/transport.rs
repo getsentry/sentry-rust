@@ -50,6 +50,9 @@ impl<T: 'static + TransportFactory + Clone> InternalTransportFactoryClone for T 
 /// Because transports can be wrapped in `Arc`s and those are clonable
 /// any `Arc<Transport>` is also a valid transport factory.  This for
 /// instance lets you put a `Arc<TestTransport>` directly into the options.
+///
+/// This is automatically implemented for all closures optionally taking
+/// options and returning a boxed factory.
 pub trait TransportFactory: Send + Sync + InternalTransportFactoryClone {
     /// Given some options creates a transport.
     fn create_transport(&self, options: &ClientOptions) -> Box<Transport>;
