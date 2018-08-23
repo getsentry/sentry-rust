@@ -12,19 +12,19 @@ use uuid::Uuid;
 
 use api::protocol::{DebugMeta, Event, RepoReference};
 use api::Dsn;
-use internals::DsnParseError;
 use backtrace_support::{function_starts_with, is_sys_function, trim_stacktrace};
 use constants::{SDK_INFO, USER_AGENT};
 use hub::Hub;
+use internals::DsnParseError;
 use scope::Scope;
-use transport::Transport;
+use transport::{DefaultTransportFactory, Transport, TransportFactory};
 use utils::{debug_images, server_name};
 
 /// The Sentry client object.
 #[derive(Clone)]
 pub struct Client {
     options: ClientOptions,
-    transport: Option<Arc<Transport>>,
+    transport: Option<Arc<Box<Transport>>>,
 }
 
 impl fmt::Debug for Client {
@@ -37,10 +37,11 @@ impl fmt::Debug for Client {
 }
 
 /// Configuration settings for the client.
-#[derive(Debug, Clone)]
 pub struct ClientOptions {
     /// The DSN to use.  If not set the client is effectively disabled.
     pub dsn: Option<Dsn>,
+    /// The transport to use.
+    pub transport: Box<TransportFactory>,
     /// module prefixes that are always considered in_app
     pub in_app_include: Vec<&'static str>,
     /// module prefixes that are never in_app
@@ -81,6 +82,58 @@ pub struct ClientOptions {
     pub send_default_pii: bool,
 }
 
+impl fmt::Debug for ClientOptions {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        #[derive(Debug)]
+        struct TransportFactory;
+        f.debug_struct("ClientOptions")
+            .field("dsn", &self.dsn)
+            .field("transport", &TransportFactory)
+            .field("in_app_include", &self.in_app_include)
+            .field("in_app_exclude", &self.in_app_exclude)
+            .field("extra_border_frames", &self.extra_border_frames)
+            .field("max_breadcrumbs", &self.max_breadcrumbs)
+            .field("trim_backtraces", &self.trim_backtraces)
+            .field("release", &self.release)
+            .field("repos", &self.repos)
+            .field("environment", &self.environment)
+            .field("server_name", &self.server_name)
+            .field("sample_rate", &self.sample_rate)
+            .field("user_agent", &self.user_agent)
+            .field("http_proxy", &self.http_proxy)
+            .field("https_proxy", &self.https_proxy)
+            .field("shutdown_timeout", &self.shutdown_timeout)
+            .field("attach_stacktrace", &self.attach_stacktrace)
+            .field("send_default_pii", &self.send_default_pii)
+            .finish()
+    }
+}
+
+impl Clone for ClientOptions {
+    fn clone(&self) -> ClientOptions {
+        ClientOptions {
+            dsn: self.dsn.clone(),
+            transport: self.transport.clone_factory(),
+            in_app_include: self.in_app_include.clone(),
+            in_app_exclude: self.in_app_exclude.clone(),
+            extra_border_frames: self.extra_border_frames.clone(),
+            max_breadcrumbs: self.max_breadcrumbs,
+            trim_backtraces: self.trim_backtraces,
+            release: self.release.clone(),
+            repos: self.repos.clone(),
+            environment: self.environment.clone(),
+            server_name: self.server_name.clone(),
+            sample_rate: self.sample_rate,
+            user_agent: self.user_agent.clone(),
+            http_proxy: self.http_proxy.clone(),
+            https_proxy: self.https_proxy.clone(),
+            shutdown_timeout: self.shutdown_timeout,
+            attach_stacktrace: self.attach_stacktrace,
+            send_default_pii: self.send_default_pii,
+        }
+    }
+}
+
 impl Default for ClientOptions {
     fn default() -> ClientOptions {
         ClientOptions {
@@ -88,6 +141,7 @@ impl Default for ClientOptions {
             dsn: env::var("SENTRY_DSN")
                 .ok()
                 .and_then(|dsn| dsn.parse::<Dsn>().ok()),
+            transport: Box::new(DefaultTransportFactory),
             in_app_include: vec![],
             in_app_exclude: vec![],
             extra_border_frames: vec![],
@@ -129,51 +183,31 @@ fn parse_crate_name(func_name: &str) -> Option<String> {
 }
 
 /// Helper trait to convert a string into an `Option<Dsn>`.
+///
+/// This converts a value into a DSN by parsing.  The empty string or
+/// null values result in no DSN being parsed.
 pub trait IntoDsn {
     /// Converts the value into a `Result<Option<Dsn>, E>`.
     fn into_dsn(self) -> Result<Option<Dsn>, DsnParseError>;
 }
 
-/// Helper trait to convert an object into a client config and/or client
-/// for `init`.
-pub trait IntoClient: Sized {
-    /// Converts the object into client options.
-    fn into_client_options(self) -> ClientOptions;
-
-    /// Converts the object into a client right away.
-    fn into_client(self) -> Client {
-        Client::with_options(self.into_client_options())
+impl<T: Into<ClientOptions>> From<T> for Client {
+    fn from(o: T) -> Client {
+        Client::with_options(o.into())
     }
 }
 
-impl IntoClient for ClientOptions {
-    fn into_client_options(self) -> ClientOptions {
-        self
-    }
-}
-
-impl IntoClient for Client {
-    fn into_client_options(self) -> ClientOptions {
-        self.options().clone()
-    }
-
-    fn into_client(self) -> Client {
-        self
-    }
-}
-
-impl<T: IntoDsn> IntoClient for (T, ClientOptions) {
-    fn into_client_options(self) -> ClientOptions {
-        let (into_dsn, mut opts) = self;
+impl<T: IntoDsn> From<(T, ClientOptions)> for ClientOptions {
+    fn from((into_dsn, mut opts): (T, ClientOptions)) -> ClientOptions {
         opts.dsn = into_dsn.into_dsn().expect("invalid value for DSN");
         opts
     }
 }
 
-impl<T: IntoDsn> IntoClient for T {
-    fn into_client_options(self) -> ClientOptions {
+impl<T: IntoDsn> From<T> for ClientOptions {
+    fn from(into_dsn: T) -> ClientOptions {
         ClientOptions {
-            dsn: self.into_dsn().expect("invalid value for DSN"),
+            dsn: into_dsn.into_dsn().expect("invalid value for DSN"),
             ..ClientOptions::default()
         }
     }
@@ -182,8 +216,8 @@ impl<T: IntoDsn> IntoClient for T {
 impl<I: IntoDsn> IntoDsn for Option<I> {
     fn into_dsn(self) -> Result<Option<Dsn>, DsnParseError> {
         match self {
-            Some(value) => value.into_dsn(),
-            None => Ok(None)
+            Some(into_dsn) => into_dsn.into_dsn(),
+            None => Ok(None),
         }
     }
 }
@@ -242,34 +276,28 @@ impl IntoDsn for Dsn {
 }
 
 impl Client {
-    /// Creates a new Sentry client from a config helper.
-    ///
-    /// As the config helper can also disable the client this method might return
-    /// `None` instead.  This is what `sentry::init` uses internally before binding
-    /// the client.
-    ///
-    /// The client config can be of one of many formats as implemented by the
-    /// `IntoClient` trait.  The most common form is to just supply a
-    /// string with the DSN.
+    /// Creates a new Sentry client from a config.
     ///
     /// # Supported Configs
     ///
     /// The following common values are supported for the client config:
     ///
-    /// * `()`: pick up the default config from the environment only
-    /// * `&str` / `String` / `&OsStr` / `String`: configure the client with the given DSN
-    /// * `Dsn` / `&Dsn`: configure the client with a given DSN
-    /// * `(C, options)`: configure the client from the given DSN and optional options.
+    /// * `ClientOptions`: configure the client with the given client options.
+    /// * `()` or empty string: Disable the client.
+    /// * `&str` / `String` / `&OsStr` / `String`: configure the client with the given DSN.
+    /// * `Dsn` / `&Dsn`: configure the client with a given DSN.
+    /// * `(Dsn, ClientOptions)`: configure the client from the given DSN and optional options.
     ///
-    /// The tuple form lets you do things like `(Dsn, ClientOptions)` for instance.
+    /// The `Default` implementation of `ClientOptions` pulls in the DSN from the
+    /// `SENTRY_DSN` environment variable.
     ///
     /// # Panics
     ///
-    /// The `IntoClient` can panic for the forms where a DSN needs to be parsed.
-    /// If you want to handle invalid DSNs you need to parse them manually by calling
+    /// The `Into<ClientOptions>` implementations can panic for the forms where a DSN needs to be
+    /// parsed.  If you want to handle invalid DSNs you need to parse them manually by calling
     /// parse on it and handle the error.
-    pub fn from_config<C: IntoClient>(cfg: C) -> Client {
-        cfg.into_client()
+    pub fn from_config<O: Into<ClientOptions>>(opts: O) -> Client {
+        Client::with_options(opts.into())
     }
 
     #[doc(hidden)]
@@ -285,14 +313,11 @@ impl Client {
     /// If the DSN on the options is set to `None` the client will be entirely
     /// disabled.
     pub fn with_options(options: ClientOptions) -> Client {
-        let transport = options.dsn.as_ref().map(|dsn| {
-            Arc::new(Transport::new(
-                dsn.clone(),
-                options.user_agent.to_string(),
-                options.http_proxy.as_ref().map(|x| &x[..]),
-                options.https_proxy.as_ref().map(|x| &x[..]),
-            ))
-        });
+        let transport = if options.dsn.is_none() {
+            None
+        } else {
+            Some(Arc::new(options.transport.create_transport(&options)))
+        };
         Client { options, transport }
     }
 
@@ -307,17 +332,6 @@ impl Client {
     #[deprecated(since = "0.8.0", note = "Plase use Client::with_options instead")]
     pub fn disabled() -> Client {
         Client::with_options(Default::default())
-    }
-
-    /// Creates a testable client for unittests.
-    ///
-    /// This requires that the `with_test_support` feature was enabled.
-    #[cfg(any(test, feature = "with_test_support"))]
-    pub(crate) fn testable(dsn: Dsn, options: ClientOptions) -> Client {
-        Client {
-            options,
-            transport: Some(Arc::new(Transport::testable(dsn))),
-        }
     }
 
     #[doc(hidden)]
@@ -462,7 +476,7 @@ impl Client {
     ///
     /// If the client is in disabled mode this returns `None`.
     pub fn dsn(&self) -> Option<&Dsn> {
-        self.transport.as_ref().map(|x| x.dsn())
+        self.options.dsn.as_ref()
     }
 
     /// Captures an event and sends it to sentry.
@@ -488,13 +502,6 @@ impl Client {
         } else {
             true
         }
-    }
-
-    #[cfg(any(test, feature = "with_test_support"))]
-    pub(crate) fn transport(&self) -> &Transport {
-        self.transport
-            .as_ref()
-            .expect("Client has no associated transport")
     }
 
     fn sample_should_send(&self) -> bool {
@@ -534,10 +541,12 @@ impl Drop for ClientInitGuard {
 /// ```
 ///
 /// This behaves similar to creating a client by calling `Client::from_config`
-/// and to then bind it to the hub.
+/// and to then bind it to the hub except it's also possible to directly pass
+/// a client.  For more information about the formats accepted see
+/// `Client::from_config`.
 #[cfg(feature = "with_client_implementation")]
-pub fn init<C: IntoClient>(cfg: C) -> ClientInitGuard {
-    let client = Arc::new(Client::from_config(cfg));
+pub fn init<C: Into<Client>>(cfg: C) -> ClientInitGuard {
+    let client = Arc::new(cfg.into());
     Hub::with(|hub| hub.bind_client(Some(client.clone())));
     ClientInitGuard(client)
 }

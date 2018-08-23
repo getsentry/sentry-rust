@@ -7,34 +7,101 @@ use reqwest::header::{Headers, RetryAfter};
 use reqwest::{Client, Proxy, StatusCode};
 
 use api::protocol::Event;
+use client::ClientOptions;
 use Dsn;
 
+/// The trait for transports.
+///
+/// A transport is responsible for sending events to Sentry.  Custom implementations
+/// can be created to use a different abstraction to send events.  This is for instance
+/// used for the test system.
+pub trait Transport: Send + Sync + 'static {
+    /// Sends an event.
+    fn send_event(&self, event: Event<'static>);
+
+    /// Drains the queue if there is one.
+    ///
+    /// The default implementation does nothing.  If the queue was successfully
+    /// drained the return value should be `true` or `false` if events were
+    /// left in it.
+    fn drain(&self, timeout: Option<Duration>) -> bool {
+        let _timeout = timeout;
+        true
+    }
+}
+
+pub trait InternalTransportFactoryClone {
+    fn clone_factory(&self) -> Box<TransportFactory>;
+}
+
+impl<T: 'static + TransportFactory + Clone> InternalTransportFactoryClone for T {
+    fn clone_factory(&self) -> Box<TransportFactory> {
+        Box::new(self.clone())
+    }
+}
+
+/// A factory creating transport instances.
+///
+/// Because options are potentially reused between different clients the
+/// options do not actually contain a transport but a factory object that
+/// can create transports instead.
+///
+/// The factory has a single method that creates a new boxed transport.
+/// Because transports can be wrapped in `Arc`s and those are clonable
+/// any `Arc<Transport>` is also a valid transport factory.  This for
+/// instance lets you put a `Arc<TestTransport>` directly into the options.
+pub trait TransportFactory: Send + Sync + InternalTransportFactoryClone {
+    /// Given some options creates a transport.
+    fn create_transport(&self, options: &ClientOptions) -> Box<Transport>;
+}
+
+impl<F> TransportFactory for F
+where
+    F: Fn(&ClientOptions) -> Box<Transport> + Clone + Send + Sync + 'static,
+{
+    fn create_transport(&self, options: &ClientOptions) -> Box<Transport> {
+        (*self)(options)
+    }
+}
+
+impl<T: Transport> Transport for Arc<T> {
+    fn send_event(&self, event: Event<'static>) {
+        (**self).send_event(event)
+    }
+
+    fn drain(&self, timeout: Option<Duration>) -> bool {
+        (**self).drain(timeout)
+    }
+}
+
+impl<T: Transport> TransportFactory for Arc<T> {
+    fn create_transport(&self, options: &ClientOptions) -> Box<Transport> {
+        let _options = options;
+        Box::new(self.clone())
+    }
+}
+
+/// Creates the default HTTP transport.
+///
+/// This is the default value for `transport` on the client options.  It
+/// creates a `HttpTransport`.
+#[derive(Clone)]
+pub struct DefaultTransportFactory;
+
+impl TransportFactory for DefaultTransportFactory {
+    fn create_transport(&self, options: &ClientOptions) -> Box<Transport> {
+        Box::new(HttpTransport::new(options))
+    }
+}
+
+/// A transport can send events via HTTP to sentry.
 #[derive(Debug)]
-struct RealTransportImpl {
+pub struct HttpTransport {
+    dsn: Dsn,
     sender: Mutex<SyncSender<Option<Event<'static>>>>,
     drain_signal: Arc<Condvar>,
     queue_size: Arc<Mutex<usize>>,
     _handle: Option<JoinHandle<()>>,
-}
-
-#[cfg(any(test, feature = "with_test_support"))]
-#[derive(Debug)]
-struct TestTransportImpl {
-    collected: Mutex<Vec<Event<'static>>>,
-}
-
-#[derive(Debug)]
-enum TransportImpl {
-    Real(RealTransportImpl),
-    #[cfg(any(test, feature = "with_test_support"))]
-    Test(TestTransportImpl),
-}
-
-/// A transport can send rust events.
-#[derive(Debug)]
-pub struct Transport {
-    dsn: Dsn,
-    inner: TransportImpl,
 }
 
 fn spawn_http_sender(
@@ -97,24 +164,24 @@ fn spawn_http_sender(
     })
 }
 
-impl Transport {
+impl HttpTransport {
     /// Creates a new transport.
-    pub fn new(
-        dsn: Dsn,
-        user_agent: String,
-        http_proxy: Option<&str>,
-        https_proxy: Option<&str>,
-    ) -> Transport {
+    pub fn new(options: &ClientOptions) -> HttpTransport {
+        let dsn = options.dsn.clone().unwrap();
+        let user_agent = options.user_agent.to_string();
+        let http_proxy = options.http_proxy.as_ref().map(|x| x.to_string());
+        let https_proxy = options.https_proxy.as_ref().map(|x| x.to_string());
+
         let (sender, receiver) = sync_channel(30);
         let drain_signal = Arc::new(Condvar::new());
         #[cfg_attr(feature = "cargo-clippy", allow(mutex_atomic))]
         let queue_size = Arc::new(Mutex::new(0));
         let mut client = Client::builder();
         if let Some(url) = http_proxy {
-            client.proxy(Proxy::http(url).unwrap());
+            client.proxy(Proxy::http(&url).unwrap());
         };
         if let Some(url) = https_proxy {
-            client.proxy(Proxy::https(url).unwrap());
+            client.proxy(Proxy::https(&url).unwrap());
         };
         let _handle = Some(spawn_http_sender(
             client.build().unwrap(),
@@ -124,113 +191,44 @@ impl Transport {
             queue_size.clone(),
             user_agent,
         ));
-        Transport {
+        HttpTransport {
             dsn,
-            inner: TransportImpl::Real(RealTransportImpl {
-                sender: Mutex::new(sender),
-                drain_signal,
-                queue_size,
-                _handle,
-            }),
-        }
-    }
-
-    /// Creates a transport for testing.
-    #[cfg(any(test, feature = "with_test_support"))]
-    pub fn testable(dsn: Dsn) -> Transport {
-        Transport {
-            dsn,
-            inner: TransportImpl::Test(TestTransportImpl {
-                collected: Mutex::new(vec![]),
-            }),
-        }
-    }
-
-    /// Returns the dsn of the transport
-    pub fn dsn(&self) -> &Dsn {
-        &self.dsn
-    }
-
-    /// Sends a sentry event and return the event ID.
-    pub fn send_event(&self, event: Event<'static>) {
-        match self.inner {
-            TransportImpl::Real(ref ti) => {
-                // we count up before we put the item on the queue and in case the
-                // queue is filled with too many items or we shut down, we decrement
-                // the count again as there is nobody that can pick it up.
-                *ti.queue_size.lock().unwrap() += 1;
-                if ti.sender.lock().unwrap().try_send(Some(event)).is_err() {
-                    *ti.queue_size.lock().unwrap() -= 1;
-                }
-            }
-            #[cfg(any(test, feature = "with_test_support"))]
-            TransportImpl::Test(ref ti) => {
-                ti.collected.lock().unwrap().push(event);
-            }
-        }
-    }
-
-    /// Drains remaining messages in the transport.
-    ///
-    /// This returns `true` if the queue was successfully drained in the
-    /// given time or `false` if not.
-    pub fn drain(&self, timeout: Option<Duration>) -> bool {
-        match self.inner {
-            TransportImpl::Real(ref ti) => {
-                let guard = ti.queue_size.lock().unwrap();
-                if *guard == 0 {
-                    return true;
-                }
-                if let Some(timeout) = timeout {
-                    ti.drain_signal.wait_timeout(guard, timeout).is_ok()
-                } else {
-                    ti.drain_signal.wait(guard).is_ok()
-                }
-            }
-            #[cfg(any(test, feature = "with_test_support"))]
-            TransportImpl::Test(..) => true,
-        }
-    }
-
-    /// Returns all events currently in the transport.
-    ///
-    /// Only available for the testable client.
-    #[cfg(any(test, feature = "with_test_support"))]
-    pub fn fetch_and_clear_events(&self) -> Vec<Event<'static>> {
-        match self.inner {
-            TransportImpl::Real(..) => {
-                panic!("Can only fetch events from testable transports");
-            }
-            #[cfg(any(test, feature = "with_test_support"))]
-            TransportImpl::Test(ref ti) => {
-                use std::mem;
-                let mut guard = ti.collected.lock().unwrap();
-                mem::replace(&mut *guard, vec![])
-            }
-        }
-    }
-
-    /// Checks if this transport is testable.
-    #[cfg(any(test, feature = "with_test_support"))]
-    pub fn is_test(&self) -> bool {
-        match self.inner {
-            TransportImpl::Real(..) => false,
-            #[cfg(any(test, feature = "with_test_support"))]
-            TransportImpl::Test(..) => true,
+            sender: Mutex::new(sender),
+            drain_signal,
+            queue_size,
+            _handle,
         }
     }
 }
 
-impl Drop for Transport {
+impl Transport for HttpTransport {
+    fn send_event(&self, event: Event<'static>) {
+        // we count up before we put the item on the queue and in case the
+        // queue is filled with too many items or we shut down, we decrement
+        // the count again as there is nobody that can pick it up.
+        *self.queue_size.lock().unwrap() += 1;
+        if self.sender.lock().unwrap().try_send(Some(event)).is_err() {
+            *self.queue_size.lock().unwrap() -= 1;
+        }
+    }
+
+    fn drain(&self, timeout: Option<Duration>) -> bool {
+        let guard = self.queue_size.lock().unwrap();
+        if *guard == 0 {
+            return true;
+        }
+        if let Some(timeout) = timeout {
+            self.drain_signal.wait_timeout(guard, timeout).is_ok()
+        } else {
+            self.drain_signal.wait(guard).is_ok()
+        }
+    }
+}
+
+impl Drop for HttpTransport {
     fn drop(&mut self) {
-        match self.inner {
-            TransportImpl::Real(ref ti) => {
-                if let Ok(sender) = ti.sender.lock() {
-                    sender.send(None).ok();
-                }
-            }
-            #[cfg(any(test, feature = "with_test_support"))]
-            TransportImpl::Test(..) => {}
+        if let Ok(sender) = self.sender.lock() {
+            sender.send(None).ok();
         }
     }
 }

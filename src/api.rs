@@ -22,10 +22,11 @@ use hub::IntoBreadcrumbs;
 /// from methods on other types.
 pub mod internals {
     #[cfg(feature = "with_client_implementation")]
-    pub use client::{ClientInitGuard, IntoClient, IntoDsn};
+    pub use client::{ClientInitGuard, IntoDsn};
     pub use hub::IntoBreadcrumbs;
     pub use scope::ScopeGuard;
     pub use sentry_types::{Auth, DsnParseError, ProjectId, ProjectIdParseError, Scheme};
+    pub use transport::{DefaultTransportFactory, HttpTransport, Transport, TransportFactory};
 }
 
 /// Captures an event on the currently active client if any.
