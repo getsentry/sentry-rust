@@ -77,5 +77,5 @@ format-check:
 .PHONY: format-check
 
 lint:
-	@cargo +nightly clippy --all-features -- -D clippy
+	@cargo +nightly clippy --all-features --tests -- -D clippy
 .PHONY: lint

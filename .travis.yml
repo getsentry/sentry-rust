@@ -16,6 +16,11 @@ env: # Needed for allow_failures
 
 matrix:
   include:
+    - env: SUITE=format-check
+      install: rustup component add rustfmt-preview
+    - env: SUITE=lint
+      install: rustup component add clippy-preview
+      rust: nightly
     - env: SUITE=check
       rust: "1.26.0"
     - env: SUITE=cargotest
@@ -26,14 +31,6 @@ matrix:
       env: SUITE=checkall
     - os: osx
       env: SUITE=cargotestall
-    - env: SUITE=format-check
-      install: rustup component add rustfmt-preview
-    - env: SUITE=lint
-      rust: nightly
-      install: cargo install --force clippy
-  allow_failures:
-    - env: SUITE=lint
-      rust: nightly
 
 notifications:
   webhooks:

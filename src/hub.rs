@@ -1,28 +1,23 @@
-#[allow(unused)]
+#![allow(unused)]
+
 use std::cell::{Cell, UnsafeCell};
 use std::iter;
-#[allow(unused)]
-use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard, TryLockError};
-#[allow(unused)]
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, RwLock, TryLockError};
 use std::thread;
 use std::time::Duration;
 
 #[cfg(feature = "with_client_implementation")]
 use fragile::SemiSticky;
 
-#[allow(unused)]
-use std::sync::atomic::{AtomicBool, Ordering};
-
 #[cfg(feature = "with_client_implementation")]
 use client::Client;
 use protocol::{Breadcrumb, Event, Level};
 use scope::{Scope, ScopeGuard};
-
-#[cfg(feature = "with_client_implementation")]
-use utils::current_thread;
-
 #[cfg(feature = "with_client_implementation")]
 use scope::{Stack, StackLayerToken};
+#[cfg(feature = "with_client_implementation")]
+use utils::current_thread;
 
 use uuid::Uuid;
 
@@ -53,7 +48,7 @@ impl IntoBreadcrumbs for Breadcrumb {
     type Output = iter::Once<Breadcrumb>;
 
     fn into_breadcrumbs(self) -> Self::Output {
-        return iter::once(self);
+        iter::once(self)
     }
 }
 
@@ -94,6 +89,7 @@ pub(crate) enum PendingProcessor {
 
 #[cfg(feature = "with_client_implementation")]
 impl<F: 'static + FnOnce() -> Box<Fn(&mut Event) + Send + Sync>> EventProcessorFactoryFn for F {
+    #[cfg_attr(feature = "cargo-clippy", allow(boxed_local))]
     fn call(self: Box<Self>) -> Box<Fn(&mut Event) + Send + Sync> {
         let this: Self = *self;
         this()
@@ -254,7 +250,6 @@ impl Hub {
     /// This is useful for integrations that want to do efficiently nothing if there is no
     /// client bound.  Additionally this internally ensures that the client can be safely
     /// synchronized.  This prevents accidental recursive calls into the client.
-    #[allow(unused_variables)]
     pub fn with_active<F, R>(f: F) -> R
     where
         F: FnOnce(&Arc<Hub>) -> R,
@@ -273,6 +268,7 @@ impl Hub {
 
     /// Binds a hub to the current thread for the duration of the call.
     #[cfg(feature = "with_client_implementation")]
+    #[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
     pub fn run<F: FnOnce() -> R, R>(hub: Arc<Hub>, f: F) -> R {
         hub.flush_pending_processors();
         let mut restore_process_hub = false;
@@ -305,7 +301,7 @@ impl Hub {
                 // this is for the case where we just switched the hub.  This
                 // means we need to catch the panic, restore the
                 // old context and resume the panic if needed.
-                let rv = panic::catch_unwind(panic::AssertUnwindSafe(|| f()));
+                let rv = panic::catch_unwind(panic::AssertUnwindSafe(f));
                 THREAD_HUB.with(|ctx| unsafe { *ctx.get() = old_hub });
                 if restore_process_hub {
                     USE_PROCESS_HUB.with(|x| x.set(true));
@@ -321,7 +317,6 @@ impl Hub {
     /// Sends the event to the current client with the current scope.
     ///
     /// In case no client is bound this does nothing instead.
-    #[allow(unused_variables)]
     pub fn capture_event(&self, event: Event<'static>) -> Uuid {
         self.flush_pending_processors();
         with_client_impl! {{
@@ -337,7 +332,6 @@ impl Hub {
     }
 
     /// Captures an arbitrary message.
-    #[allow(unused_variables)]
     pub fn capture_message(&self, msg: &str, level: Level) -> Uuid {
         self.flush_pending_processors();
         with_client_impl! {{
@@ -364,7 +358,6 @@ impl Hub {
     }
 
     /// Drains the currently pending events.
-    #[allow(unused_variables)]
     pub fn drain_events(&self, timeout: Option<Duration>) {
         with_client_impl! {{
             if let Some(ref client) = self.client() {
@@ -407,7 +400,6 @@ impl Hub {
     }
 
     /// Invokes a function that can modify the current scope.
-    #[allow(unused_variables)]
     pub fn configure_scope<F, R>(&self, f: F) -> R
     where
         R: Default,
@@ -428,7 +420,6 @@ impl Hub {
     ///
     /// This is equivalent to the global [`sentry::add_breadcrumb`](fn.add_breadcrumb.html) but
     /// sends the breadcrumb into the hub instead.
-    #[allow(unused_variables)]
     pub fn add_breadcrumb<B: IntoBreadcrumbs>(&self, breadcrumb: B) {
         with_client_impl! {{
             self.inner.with_mut(|stack| {
@@ -522,7 +513,7 @@ impl Hub {
             self.inner.has_pending_processors.store(any_left, Ordering::Release);
             if !new_processors.is_empty() {
                 self.configure_scope(|scope| {
-                    for func in new_processors.into_iter() {
+                    for func in new_processors {
                         scope.event_processors = scope.event_processors.push_back(func);
                     }
                 });
