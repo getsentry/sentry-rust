@@ -1,5 +1,8 @@
 extern crate sentry;
 
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
+
 #[test]
 fn test_basic_capture_message() {
     let events = sentry::test::with_captured_events(|| {
@@ -70,4 +73,42 @@ fn test_breadcrumbs() {
             ("Fourth breadcrumb", "log"),
         ]
     );
+}
+
+#[test]
+fn test_factory() {
+    struct TestTransport(Arc<AtomicUsize>);
+
+    impl sentry::internals::Transport for TestTransport {
+        fn send_event(&self, event: sentry::protocol::Event<'static>) {
+            assert_eq!(event.message.unwrap(), "test");
+            self.0.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+
+    let events = Arc::new(AtomicUsize::new(0));
+
+    let events_for_options = events.clone();
+    let options = sentry::ClientOptions {
+        dsn: "http://foo@example.com/42".parse().ok(),
+        transport: Box::new(
+            move |opts: &sentry::ClientOptions| -> Box<sentry::internals::Transport> {
+                assert_eq!(opts.dsn.as_ref().unwrap().host(), "example.com");
+                Box::new(TestTransport(events_for_options.clone()))
+            },
+        ),
+        ..Default::default()
+    };
+
+    sentry::Hub::run(
+        Arc::new(sentry::Hub::new(
+            Some(Arc::new(options.into())),
+            Arc::new(Default::default()),
+        )),
+        || {
+            sentry::capture_message("test", sentry::Level::Error);
+        },
+    );
+
+    assert_eq!(events.load(Ordering::SeqCst), 1);
 }

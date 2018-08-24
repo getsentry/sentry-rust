@@ -3,9 +3,8 @@
 //! **Feature:** `with_test_support` (*disabled by default*)
 //!
 //! If the sentry crate has been compiled with the test support feature this
-//! module becomes available and provides functionality to create a hub that
-//! does not emit to Sentry but instead captures event objects to an internal
-//! buffer.
+//! module becomes available and provides functionality to capture events
+//! in a block.
 //!
 //! # Example usage
 //!
@@ -19,10 +18,13 @@
 //! assert_eq!(events.len(), 1);
 //! assert_eq!(events[0].message.as_ref().unwrap(), "Hello World!");
 //! ```
+use std::mem;
 use std::sync::Arc;
+use std::sync::Mutex;
 
-use client::{Client, ClientOptions};
+use client::ClientOptions;
 use hub::Hub;
+use transport::Transport;
 
 use protocol::Event;
 use Dsn;
@@ -31,76 +33,45 @@ lazy_static! {
     static ref TEST_DSN: Dsn = "https://public@sentry.invalid/1".parse().unwrap();
 }
 
-/// Creates a testable hub.
+/// Collects events instead of sending them.
 ///
-/// A test hub will never send to an upstream Sentry service but instead
-/// uses an internal transport that just locally captures events.  Utilities
-/// from this module can be used to interact with it.  Testable hubs
-/// internally use a different client that does not send events and they
-/// are always wrapped in an `Arc`.  This uses a hardcoded internal test
-/// only DSN.
+/// Example usage:
 ///
-/// To access test specific functionality on hubs you need to bring the
-/// `TestableHubExt` into the scope.
+/// ```rust
+/// use std::sync::Arc;
+/// use sentry::{Hub, ClientOptions};
+/// use sentry::test::TestTransport;
 ///
-/// # Example
-///
+/// let transport = TestTransport::new();
+/// let options = ClientOptions {
+///     dsn: Some("https://public@example.com/1".parse().unwrap()),
+///     transport: Box::new(transport.clone()),
+///     ..ClientOptions::default()
+/// };
+/// Hub::current().bind_client(Some(Arc::new(options.into())));
 /// ```
-/// use sentry::test::{create_testable_hub, TestableHubExt};
-/// let hub = create_testable_hub(Default::default());
-/// let events = hub.run_and_capture_events(|| {
-///     // in here `sentry::Hub::current()` returns our testable hub.
-///     // any event captured will go to the hub.
-/// });
-/// ```
-pub fn create_testable_hub(options: ClientOptions) -> Arc<Hub> {
-    Arc::new(Hub::new(
-        Some(Arc::new(Client::testable(TEST_DSN.clone(), options))),
-        Arc::new(Default::default()),
-    ))
+pub struct TestTransport {
+    collected: Mutex<Vec<Event<'static>>>,
 }
 
-/// Extensions for working with testable hubs.
-///
-/// Because a testable hub by itself cannot be told from a non testable hub
-/// this trait needs to be used to access extra functionality on a testable
-/// hub such as fetching the buffered events.
-///
-/// For convenience reasons testable hubs are always wrapped in `Arc` wrappers
-/// so that they can directly be bound to the current thread.  This means
-/// this trait is only implemented for `Arc<Hub>` and not for `Hub` directly.
-pub trait TestableHubExt {
-    /// Checks if the hub is a testable hub.
-    fn is_testable(&self) -> bool;
+impl TestTransport {
+    /// Creates a new test transport.
+    pub fn new() -> Arc<TestTransport> {
+        Arc::new(TestTransport {
+            collected: Mutex::new(vec![]),
+        })
+    }
 
-    /// Fetches events from a testable hub.
-    ///
-    /// This removes all the events from the internal buffer and empties it.
-    fn fetch_events(&self) -> Vec<Event<'static>>;
-
-    /// Runs code with the bound hub and fetches the events.
-    fn run_and_capture_events<F: FnOnce()>(&self, f: F) -> Vec<Event<'static>>;
+    /// Fetches and clears the contained events.
+    pub fn fetch_and_clear_events(&self) -> Vec<Event<'static>> {
+        let mut guard = self.collected.lock().unwrap();
+        mem::replace(&mut *guard, vec![])
+    }
 }
 
-impl TestableHubExt for Arc<Hub> {
-    fn is_testable(&self) -> bool {
-        if let Some(client) = self.client() {
-            client.dsn().is_some() && client.transport().is_test()
-        } else {
-            false
-        }
-    }
-
-    fn fetch_events(&self) -> Vec<Event<'static>> {
-        self.client()
-            .expect("need a hub with client")
-            .transport()
-            .fetch_and_clear_events()
-    }
-
-    fn run_and_capture_events<F: FnOnce()>(&self, f: F) -> Vec<Event<'static>> {
-        Hub::run(self.clone(), f);
-        self.fetch_events()
+impl Transport for TestTransport {
+    fn send_event(&self, event: Event<'static>) {
+        self.collected.lock().unwrap().push(event);
     }
 }
 
@@ -109,17 +80,31 @@ impl TestableHubExt for Arc<Hub> {
 /// This is a shortcut for creating a testable hub with default options and
 /// to call `run_and_capture_events` on it.
 pub fn with_captured_events<F: FnOnce()>(f: F) -> Vec<Event<'static>> {
-    with_captured_events_options(f, Default::default())
+    with_captured_events_options(f, ClientOptions::default())
 }
 
-/// Runs some code with the default test hub with the given optoins and
+/// Runs some code with the default test hub with the given options and
 /// returns the captured events.
+///
+/// If not DSN is set on the options a default test DSN is inserted.  The
+/// transport on the options is also overridden with a `TestTransport`.
 ///
 /// This is a shortcut for creating a testable hub with the supplied options
 /// and to call `run_and_capture_events` on it.
-pub fn with_captured_events_options<F: FnOnce()>(
+pub fn with_captured_events_options<F: FnOnce(), O: Into<ClientOptions>>(
     f: F,
-    options: ClientOptions,
+    options: O,
 ) -> Vec<Event<'static>> {
-    create_testable_hub(options).run_and_capture_events(f)
+    let transport = TestTransport::new();
+    let mut options = options.into();
+    options.dsn = Some(options.dsn.unwrap_or_else(|| TEST_DSN.clone()));
+    options.transport = Box::new(transport.clone());
+    Hub::run(
+        Arc::new(Hub::new(
+            Some(Arc::new(options.into())),
+            Arc::new(Default::default()),
+        )),
+        f,
+    );
+    transport.fetch_and_clear_events()
 }
