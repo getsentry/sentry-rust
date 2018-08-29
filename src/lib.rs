@@ -123,8 +123,6 @@ extern crate fragile;
 #[cfg(feature = "with_client_implementation")]
 extern crate reqwest;
 extern crate sentry_types;
-extern crate serde;
-extern crate serde_json;
 #[cfg(feature = "with_client_implementation")]
 extern crate url;
 extern crate uuid;

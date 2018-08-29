@@ -34,8 +34,6 @@ backtrace = { version = "0.3.8", optional = true }
 url = { version = "1.7.0", optional = true }
 failure = { version = "0.1.2", optional = true }
 log = { version = "0.4.3", optional = true, features = ["std"] }
-serde = "1.0.66"
-serde_json = "1.0.19"
 sentry-types = "0.5.3"
 fragile = { version = "0.3.0", optional = true }
 env_logger = { version = "0.5.10", optional = true }
