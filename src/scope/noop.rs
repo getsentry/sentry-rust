@@ -88,6 +88,15 @@ impl Scope {
         minimal_unreachable!();
     }
 
+    /// Add an event processor to the scope.
+    pub fn add_event_processor(
+        &mut self,
+        f: Box<Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync>,
+    ) {
+        let _f = f;
+        minimal_unreachable!();
+    }
+
     /// Applies the contained scoped data to fill an event.
     pub fn apply_to_event(&self, event: Event<'static>) -> Option<Event<'static>> {
         let _event = event;
