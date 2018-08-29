@@ -89,7 +89,7 @@ impl Scope {
     }
 
     /// Applies the contained scoped data to fill an event.
-    pub fn apply_to_event(&self, event: &mut Event) {
+    pub fn apply_to_event(&self, event: Event<'static>) -> Option<Event<'static>> {
         let _event = event;
         minimal_unreachable!();
     }

@@ -349,7 +349,11 @@ impl Client {
     }
 
     #[cfg_attr(feature = "cargo-clippy", allow(cyclomatic_complexity))]
-    fn prepare_event(&self, event: &mut Event, scope: Option<&Scope>) -> Uuid {
+    fn prepare_event(
+        &self,
+        mut event: Event<'static>,
+        scope: Option<&Scope>,
+    ) -> Option<Event<'static>> {
         lazy_static! {
             static ref DEBUG_META: DebugMeta = DebugMeta {
                 images: debug_images(),
@@ -362,7 +366,10 @@ impl Client {
         }
 
         if let Some(scope) = scope {
-            scope.apply_to_event(event);
+            event = match scope.apply_to_event(event) {
+                Some(event) => event,
+                None => return None,
+            };
         }
 
         if event.release.is_none() {
@@ -469,7 +476,7 @@ impl Client {
             }
         }
 
-        event.id.unwrap()
+        Some(event)
     }
 
     /// Returns the options of this client.
@@ -485,12 +492,14 @@ impl Client {
     }
 
     /// Captures an event and sends it to sentry.
-    pub fn capture_event(&self, mut event: Event<'static>, scope: Option<&Scope>) -> Uuid {
+    pub fn capture_event(&self, event: Event<'static>, scope: Option<&Scope>) -> Uuid {
         if let Some(ref transport) = self.transport {
             if self.sample_should_send() {
-                let event_id = self.prepare_event(&mut event, scope);
-                transport.send_event(event);
-                return event_id;
+                if let Some(event) = self.prepare_event(event, scope) {
+                    let event_id = event.id.unwrap();
+                    transport.send_event(event);
+                    return event_id;
+                }
             }
         }
         Default::default()

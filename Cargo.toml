@@ -17,7 +17,7 @@ all-features = true
 
 [features]
 default = ["with_client_implementation", "with_panic", "with_failure", "with_log", "with_env_logger", "with_device_info", "with_rust_info"]
-with_client_implementation = ["reqwest", "im", "url", "with_backtrace", "fragile"]
+with_client_implementation = ["reqwest", "im", "url", "with_backtrace"]
 with_backtrace = ["backtrace", "regex"]
 with_panic = ["with_backtrace"]
 with_failure = ["failure", "with_backtrace"]
@@ -37,7 +37,6 @@ log = { version = "0.4.3", optional = true, features = ["std"] }
 serde = "1.0.66"
 serde_json = "1.0.19"
 sentry-types = "0.5.3"
-fragile = { version = "0.3.0", optional = true }
 env_logger = { version = "0.5.10", optional = true }
 reqwest = { version = "0.8.6", optional = true }
 uuid = { version = "0.6.5", features = ["v4"] }

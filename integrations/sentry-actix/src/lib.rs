@@ -76,6 +76,7 @@
 //! ```
 extern crate actix_web;
 extern crate failure;
+extern crate fragile;
 extern crate sentry;
 extern crate uuid;
 
@@ -85,7 +86,7 @@ use failure::Fail;
 use sentry::integrations::failure::exception_from_single_fail;
 use sentry::protocol::{Event, Level};
 use sentry::Hub;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
 /// A helper construct that can be used to reconfigure and build the middleware.
@@ -158,53 +159,79 @@ impl SentryMiddleware {
     }
 }
 
+fn extract_request<S: 'static>(
+    req: &HttpRequest<S>,
+    with_pii: bool,
+) -> (Option<String>, sentry::protocol::Request) {
+    let resource = req.resource();
+    let transaction = if let Some(rdef) = resource.rdef() {
+        Some(rdef.pattern().to_string())
+    } else {
+        if resource.name() != "" {
+            Some(resource.name().to_string())
+        } else {
+            None
+        }
+    };
+    let mut sentry_req = sentry::protocol::Request {
+        url: format!(
+            "{}://{}{}",
+            req.connection_info().scheme(),
+            req.connection_info().host(),
+            req.uri()
+        ).parse()
+            .ok(),
+        method: Some(req.method().to_string()),
+        headers: req
+            .headers()
+            .iter()
+            .map(|(k, v)| (k.as_str().into(), v.to_str().unwrap_or("").into()))
+            .collect(),
+        ..Default::default()
+    };
+
+    if with_pii {
+        if let Some(remote) = req.connection_info().remote() {
+            sentry_req.env.insert("REMOTE_ADDR".into(), remote.into());
+        }
+    };
+
+    (transaction, sentry_req)
+}
+
 impl<S: 'static> Middleware<S> for SentryMiddleware {
     fn start(&self, req: &HttpRequest<S>) -> Result<Started, Error> {
         let hub = self.new_hub();
         let outer_req = req;
         let req = outer_req.clone();
         let client = hub.client();
-        hub.add_event_processor(move || {
-            let resource = req.resource();
-            let transaction = if let Some(rdef) = resource.rdef() {
-                Some(rdef.pattern().to_string())
-            } else {
-                if resource.name() != "" {
-                    Some(resource.name().to_string())
-                } else {
-                    None
+
+        let req = fragile::SemiSticky::new(req);
+        let cached_data = Arc::new(Mutex::new(None));
+
+        hub.configure_scope(move |scope| {
+            scope.add_event_processor(Box::new(move |mut event| {
+                let mut cached_data = cached_data.lock().unwrap();
+                if cached_data.is_none() && req.is_valid() {
+                    let with_pii = client
+                        .as_ref()
+                        .map_or(false, |x| x.options().send_default_pii);
+                    *cached_data = Some(extract_request(&req.get(), with_pii));
                 }
-            };
-            let mut sentry_req = sentry::protocol::Request {
-                url: format!(
-                    "{}://{}{}",
-                    req.connection_info().scheme(),
-                    req.connection_info().host(),
-                    req.uri()
-                ).parse()
-                    .ok(),
-                method: Some(req.method().to_string()),
-                headers: req
-                    .headers()
-                    .iter()
-                    .map(|(k, v)| (k.as_str().into(), v.to_str().unwrap_or("").into()))
-                    .collect(),
-                ..Default::default()
-            };
-            if client.map_or(false, |x| x.options().send_default_pii) {
-                if let Some(remote) = req.connection_info().remote() {
-                    sentry_req.env.insert("REMOTE_ADDR".into(), remote.into());
+
+                if let Some((ref transaction, ref req)) = *cached_data {
+                    if event.transaction.is_none() {
+                        event.transaction = transaction.clone();
+                    }
+                    if event.request.is_none() {
+                        event.request = Some(req.clone());
+                    }
                 }
-            };
-            Box::new(move |event| {
-                if event.transaction.is_none() {
-                    event.transaction = transaction.clone();
-                }
-                if event.request.is_none() {
-                    event.request = Some(sentry_req.clone());
-                }
-            })
+
+                Some(event)
+            }));
         });
+
         outer_req.extensions_mut().insert(hub);
         Ok(Started::Done)
     }
