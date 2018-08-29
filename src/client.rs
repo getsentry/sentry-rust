@@ -84,12 +84,16 @@ pub struct ClientOptions {
     pub attach_stacktrace: bool,
     /// If turned on some default PII informat is attached.
     pub send_default_pii: bool,
+    /// Before send method.
+    pub before_send: Option<Arc<Box<Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync>>>,
 }
 
 impl fmt::Debug for ClientOptions {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         #[derive(Debug)]
         struct TransportFactory;
+        #[derive(Debug)]
+        struct BeforeSendSet(bool);
         f.debug_struct("ClientOptions")
             .field("dsn", &self.dsn)
             .field("transport", &TransportFactory)
@@ -109,6 +113,7 @@ impl fmt::Debug for ClientOptions {
             .field("shutdown_timeout", &self.shutdown_timeout)
             .field("attach_stacktrace", &self.attach_stacktrace)
             .field("send_default_pii", &self.send_default_pii)
+            .field("before_send", &BeforeSendSet(self.before_send.is_some()))
             .finish()
     }
 }
@@ -134,6 +139,7 @@ impl Clone for ClientOptions {
             shutdown_timeout: self.shutdown_timeout,
             attach_stacktrace: self.attach_stacktrace,
             send_default_pii: self.send_default_pii,
+            before_send: self.before_send.clone(),
         }
     }
 }
@@ -170,6 +176,7 @@ impl Default for ClientOptions {
             shutdown_timeout: Some(Duration::from_secs(2)),
             attach_stacktrace: false,
             send_default_pii: false,
+            before_send: None,
         }
     }
 }
@@ -476,7 +483,11 @@ impl Client {
             }
         }
 
-        Some(event)
+        if let Some(ref func) = self.options.before_send {
+            func(event)
+        } else {
+            Some(event)
+        }
     }
 
     /// Returns the options of this client.
