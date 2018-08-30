@@ -22,9 +22,9 @@ matrix:
       install: rustup component add clippy-preview
       rust: nightly
     - env: SUITE=check
-      rust: "1.26.0"
+      rust: "1.28.0"
     - env: SUITE=cargotest
-      rust: "1.26.0"
+      rust: "1.28.0"
     - env: SUITE=checkall
     - env: SUITE=cargotestall
     - os: osx

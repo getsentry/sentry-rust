@@ -33,6 +33,8 @@ pub struct Stack {
 #[derive(PartialEq, Clone, Copy)]
 pub struct StackLayerToken(*const Stack, usize);
 
+pub type EventProcessor = Box<Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync>;
+
 /// Holds contextual data for the current scope.
 ///
 /// The scope is an object that can cloned efficiently and stores data that
@@ -57,8 +59,7 @@ pub struct Scope {
     pub(crate) extra: im::HashMap<String, Value>,
     pub(crate) tags: im::HashMap<String, String>,
     pub(crate) contexts: im::HashMap<String, Option<Context>>,
-    pub(crate) event_processors:
-        im::Vector<Arc<Box<Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync>>>,
+    pub(crate) event_processors: im::Vector<Arc<EventProcessor>>,
 }
 
 impl fmt::Debug for Scope {
