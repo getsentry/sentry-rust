@@ -25,8 +25,6 @@ We currently only verify this crate against a recent version of Sentry hosted on
 [sentry.io](https://sentry.io/) but it should work with on-prem Sentry versions
 8.20 and later.
 
-Additionally, the lowest Rust version we target is _1.24.0_.
-
 ## Resources
 
 - [crates.io](https://crates.io/crates/sentry)
