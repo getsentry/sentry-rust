@@ -36,6 +36,9 @@ impl fmt::Debug for Client {
     }
 }
 
+/// Type alias for before send handlers
+pub type BeforeSend = Box<Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync>;
+
 /// Configuration settings for the client.
 pub struct ClientOptions {
     /// The DSN to use.  If not set the client is effectively disabled.
@@ -85,7 +88,7 @@ pub struct ClientOptions {
     /// If turned on some default PII informat is attached.
     pub send_default_pii: bool,
     /// Before send method.
-    pub before_send: Option<Arc<Box<Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync>>>,
+    pub before_send: Option<Arc<BeforeSend>>,
 }
 
 impl fmt::Debug for ClientOptions {
