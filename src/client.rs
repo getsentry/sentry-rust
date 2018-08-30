@@ -84,12 +84,16 @@ pub struct ClientOptions {
     pub attach_stacktrace: bool,
     /// If turned on some default PII informat is attached.
     pub send_default_pii: bool,
+    /// Before send method.
+    pub before_send: Option<Arc<Box<Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync>>>,
 }
 
 impl fmt::Debug for ClientOptions {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         #[derive(Debug)]
         struct TransportFactory;
+        #[derive(Debug)]
+        struct BeforeSendSet(bool);
         f.debug_struct("ClientOptions")
             .field("dsn", &self.dsn)
             .field("transport", &TransportFactory)
@@ -109,6 +113,7 @@ impl fmt::Debug for ClientOptions {
             .field("shutdown_timeout", &self.shutdown_timeout)
             .field("attach_stacktrace", &self.attach_stacktrace)
             .field("send_default_pii", &self.send_default_pii)
+            .field("before_send", &BeforeSendSet(self.before_send.is_some()))
             .finish()
     }
 }
@@ -134,6 +139,7 @@ impl Clone for ClientOptions {
             shutdown_timeout: self.shutdown_timeout,
             attach_stacktrace: self.attach_stacktrace,
             send_default_pii: self.send_default_pii,
+            before_send: self.before_send.clone(),
         }
     }
 }
@@ -170,6 +176,7 @@ impl Default for ClientOptions {
             shutdown_timeout: Some(Duration::from_secs(2)),
             attach_stacktrace: false,
             send_default_pii: false,
+            before_send: None,
         }
     }
 }
@@ -349,7 +356,11 @@ impl Client {
     }
 
     #[cfg_attr(feature = "cargo-clippy", allow(cyclomatic_complexity))]
-    fn prepare_event(&self, event: &mut Event, scope: Option<&Scope>) -> Uuid {
+    fn prepare_event(
+        &self,
+        mut event: Event<'static>,
+        scope: Option<&Scope>,
+    ) -> Option<Event<'static>> {
         lazy_static! {
             static ref DEBUG_META: DebugMeta = DebugMeta {
                 images: debug_images(),
@@ -362,7 +373,10 @@ impl Client {
         }
 
         if let Some(scope) = scope {
-            scope.apply_to_event(event);
+            event = match scope.apply_to_event(event) {
+                Some(event) => event,
+                None => return None,
+            };
         }
 
         if event.release.is_none() {
@@ -469,7 +483,11 @@ impl Client {
             }
         }
 
-        event.id.unwrap()
+        if let Some(ref func) = self.options.before_send {
+            func(event)
+        } else {
+            Some(event)
+        }
     }
 
     /// Returns the options of this client.
@@ -485,12 +503,14 @@ impl Client {
     }
 
     /// Captures an event and sends it to sentry.
-    pub fn capture_event(&self, mut event: Event<'static>, scope: Option<&Scope>) -> Uuid {
+    pub fn capture_event(&self, event: Event<'static>, scope: Option<&Scope>) -> Uuid {
         if let Some(ref transport) = self.transport {
             if self.sample_should_send() {
-                let event_id = self.prepare_event(&mut event, scope);
-                transport.send_event(event);
-                return event_id;
+                if let Some(event) = self.prepare_event(event, scope) {
+                    let event_id = event.id.unwrap();
+                    transport.send_event(event);
+                    return event_id;
+                }
             }
         }
         Default::default()

@@ -119,8 +119,6 @@ extern crate im;
 #[macro_use]
 extern crate lazy_static;
 #[cfg(feature = "with_client_implementation")]
-extern crate fragile;
-#[cfg(feature = "with_client_implementation")]
 extern crate reqwest;
 extern crate sentry_types;
 #[cfg(feature = "with_client_implementation")]

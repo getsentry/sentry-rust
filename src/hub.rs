@@ -8,9 +8,6 @@ use std::thread;
 use std::time::Duration;
 
 #[cfg(feature = "with_client_implementation")]
-use fragile::SemiSticky;
-
-#[cfg(feature = "with_client_implementation")]
 use client::Client;
 use protocol::{Breadcrumb, Event, Level};
 use scope::{Scope, ScopeGuard};
@@ -77,47 +74,8 @@ impl<F: FnOnce() -> I, I: IntoBreadcrumbs> IntoBreadcrumbs for F {
 }
 
 #[cfg(feature = "with_client_implementation")]
-pub(crate) trait EventProcessorFactoryFn {
-    fn call(self: Box<Self>) -> Box<Fn(&mut Event) + Send + Sync>;
-}
-
-#[cfg(feature = "with_client_implementation")]
-pub(crate) enum PendingProcessor {
-    Send(Box<EventProcessorFactoryFn + Send + Sync>),
-    NonSend(SemiSticky<Box<EventProcessorFactoryFn>>),
-}
-
-#[cfg(feature = "with_client_implementation")]
-impl<F: 'static + FnOnce() -> Box<Fn(&mut Event) + Send + Sync>> EventProcessorFactoryFn for F {
-    #[cfg_attr(feature = "cargo-clippy", allow(boxed_local))]
-    fn call(self: Box<Self>) -> Box<Fn(&mut Event) + Send + Sync> {
-        let this: Self = *self;
-        this()
-    }
-}
-
-#[cfg(feature = "with_client_implementation")]
-impl PendingProcessor {
-    fn is_safe_call(&self) -> bool {
-        match *self {
-            PendingProcessor::Send(..) => true,
-            PendingProcessor::NonSend(ref f) => f.is_valid(),
-        }
-    }
-
-    fn call(self) -> Box<Fn(&mut Event) + Send + Sync> {
-        match self {
-            PendingProcessor::Send(f) => f.call(),
-            PendingProcessor::NonSend(f) => f.into_inner().call(),
-        }
-    }
-}
-
-#[cfg(feature = "with_client_implementation")]
 struct HubImpl {
     stack: RwLock<Stack>,
-    pending_processors: Mutex<Vec<PendingProcessor>>,
-    has_pending_processors: AtomicBool,
 }
 
 #[cfg(feature = "with_client_implementation")]
@@ -130,13 +88,6 @@ impl HubImpl {
     fn with_mut<F: FnOnce(&mut Stack) -> R, R>(&self, f: F) -> R {
         let mut guard = self.stack.write().unwrap_or_else(|x| x.into_inner());
         f(&mut *guard)
-    }
-
-    fn with_processors_mut<F: FnOnce(&mut Vec<PendingProcessor>) -> R, R>(&self, f: F) -> R {
-        f(&mut *self
-            .pending_processors
-            .lock()
-            .unwrap_or_else(|x| x.into_inner()))
     }
 
     fn is_active_and_usage_safe(&self) -> bool {
@@ -184,8 +135,6 @@ impl Hub {
         Hub {
             inner: HubImpl {
                 stack: RwLock::new(Stack::from_client_and_scope(client, scope)),
-                pending_processors: Mutex::new(vec![]),
-                has_pending_processors: AtomicBool::new(false),
             },
         }
     }
@@ -194,7 +143,6 @@ impl Hub {
     #[cfg(feature = "with_client_implementation")]
     pub fn new_from_top<H: AsRef<Hub>>(other: H) -> Hub {
         let hub = other.as_ref();
-        hub.flush_pending_processors();
         hub.inner.with(|stack| {
             let top = stack.top();
             Hub::new(top.client.clone(), top.scope.clone())
@@ -270,7 +218,6 @@ impl Hub {
     #[cfg(feature = "with_client_implementation")]
     #[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
     pub fn run<F: FnOnce() -> R, R>(hub: Arc<Hub>, f: F) -> R {
-        hub.flush_pending_processors();
         let mut restore_process_hub = false;
         let did_switch = THREAD_HUB.with(|ctx| unsafe {
             let ptr = ctx.get();
@@ -318,7 +265,6 @@ impl Hub {
     ///
     /// In case no client is bound this does nothing instead.
     pub fn capture_event(&self, event: Event<'static>) -> Uuid {
-        self.flush_pending_processors();
         with_client_impl! {{
             self.inner.with(|stack| {
                 let top = stack.top();
@@ -333,7 +279,6 @@ impl Hub {
 
     /// Captures an arbitrary message.
     pub fn capture_message(&self, msg: &str, level: Level) -> Uuid {
-        self.flush_pending_processors();
         with_client_impl! {{
             self.inner.with(|stack| {
                 let top = stack.top();
@@ -390,7 +335,6 @@ impl Hub {
     ///
     /// This returns a guard that when dropped will pop the scope again.
     pub fn push_scope(&self) -> ScopeGuard {
-        self.flush_pending_processors();
         with_client_impl! {{
             self.inner.with_mut(|stack| {
                 stack.push();
@@ -437,87 +381,6 @@ impl Hub {
                     }
                 }
             })
-        }}
-    }
-
-    /// Registers an event processor with the topmost scope.
-    ///
-    /// An event processor here is returned by an `FnOnce()` function that returns a
-    /// function taking an Event that needs to be `Send + Sync`.  By having the
-    /// function be a factory for the actual event processor the outer function does
-    /// not have to be `Sync` as sentry will execute it before a hub crosses a thread
-    /// boundary.
-    ///
-    /// # Threading
-    ///
-    /// If a hub is used from multiple threads event processors might not be executed
-    /// if another thread triggers an event processor first.  For such cases
-    /// `add_send_event_processor` must be used instead.  This means that if thread 1
-    /// will add the processor but thread 2 will send the next event, then processors
-    /// are not run until thread 1 sends an event.  Processors are also triggered
-    /// if a scope is pushed or a hub is created from this hub via `Hub::new_from_top`.
-    #[allow(unused)]
-    pub fn add_event_processor<F: FnOnce() -> Box<Fn(&mut Event) + Send + Sync> + 'static>(
-        &self,
-        f: F,
-    ) {
-        with_client_impl! {{
-            self.inner.with_processors_mut(|pending| {
-                pending.push(PendingProcessor::NonSend(SemiSticky::new(
-                    Box::new(f) as Box<EventProcessorFactoryFn>)));
-            });
-            self.inner.has_pending_processors.store(true, Ordering::Release);
-        }}
-    }
-
-    /// Registers a sendable event processor with the topmost scope.
-    ///
-    /// This works like `add_event_processor` but registers functions that are `Send`
-    /// which permits them to be used from multiple threads.  If a hub is used from
-    /// multiple threads at once then only sendable event processors will be guaranteed
-    /// to run.
-    #[allow(unused)]
-    pub fn add_send_event_processor<
-        F: FnOnce() -> Box<Fn(&mut Event) + Send + Sync> + Send + Sync + 'static,
-    >(
-        &self,
-        f: F,
-    ) {
-        with_client_impl! {{
-            use std::mem;
-            self.inner.with_processors_mut(|pending| {
-                pending.push(PendingProcessor::Send(
-                    Box::new(f) as Box<EventProcessorFactoryFn + Send + Sync>));
-            });
-            self.inner.has_pending_processors.store(true, Ordering::Release);
-        }}
-    }
-
-    fn flush_pending_processors(&self) {
-        with_client_impl! {{
-            if !self.inner.has_pending_processors.load(Ordering::Acquire) {
-                return;
-            }
-            let mut new_processors = vec![];
-            let any_left = self.inner.with_processors_mut(|vec| {
-                let mut i = 0;
-                while i < vec.len() {
-                    if !vec[i].is_safe_call() {
-                        i += 1;
-                    } else {
-                        new_processors.push(vec.remove(i).call());
-                    }
-                }
-                !vec.is_empty()
-            });
-            self.inner.has_pending_processors.store(any_left, Ordering::Release);
-            if !new_processors.is_empty() {
-                self.configure_scope(|scope| {
-                    for func in new_processors {
-                        scope.event_processors = scope.event_processors.push_back(func);
-                    }
-                });
-            }
         }}
     }
 

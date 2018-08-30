@@ -57,7 +57,8 @@ pub struct Scope {
     pub(crate) extra: im::HashMap<String, Value>,
     pub(crate) tags: im::HashMap<String, String>,
     pub(crate) contexts: im::HashMap<String, Option<Context>>,
-    pub(crate) event_processors: im::Vector<Box<Fn(&mut Event) + Send + Sync>>,
+    pub(crate) event_processors:
+        im::Vector<Box<Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync>>,
 }
 
 impl fmt::Debug for Scope {
@@ -206,8 +207,16 @@ impl Scope {
         self.extra = self.extra.remove(&key.to_string());
     }
 
+    /// Add an event processor to the scope.
+    pub fn add_event_processor(
+        &mut self,
+        f: Box<Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync>,
+    ) {
+        self.event_processors = self.event_processors.push_back(f);
+    }
+
     /// Applies the contained scoped data to fill an event.
-    pub fn apply_to_event(&self, event: &mut Event) {
+    pub fn apply_to_event(&self, mut event: Event<'static>) -> Option<Event<'static>> {
         let mut add_os = true;
         let mut add_rust = true;
         let mut add_device = true;
@@ -292,7 +301,12 @@ impl Scope {
         }
 
         for processor in &self.event_processors {
-            processor(event);
+            event = match processor(event) {
+                Some(event) => event,
+                None => return None,
+            }
         }
+
+        Some(event)
     }
 }
