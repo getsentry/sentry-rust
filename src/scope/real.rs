@@ -182,8 +182,7 @@ impl Scope {
 
     /// Removes a tag.
     pub fn remove_tag(&mut self, key: &str) {
-        // annoyingly this needs a String :(
-        self.tags.remove(&key.to_string());
+        self.tags.remove(key);
     }
 
     /// Sets a context for a key.
@@ -193,7 +192,6 @@ impl Scope {
 
     /// Removes a context for a key.
     pub fn remove_context(&mut self, key: &str) {
-        // annoyingly this needs a String :(
         self.contexts.insert(key.to_string(), None);
     }
 
@@ -204,8 +202,7 @@ impl Scope {
 
     /// Removes a extra.
     pub fn remove_extra(&mut self, key: &str) {
-        // annoyingly this needs a String :(
-        self.extra.remove(&key.to_string());
+        self.extra.remove(key);
     }
 
     /// Add an event processor to the scope.
