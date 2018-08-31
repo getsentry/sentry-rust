@@ -70,6 +70,7 @@ fn test_before_callbacks() {
 
 #[test]
 fn test_before_event_callback_drop() {
+    #[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
     fn before_send(
         _evt: sentry::protocol::Event<'static>,
     ) -> Option<sentry::protocol::Event<'static>> {
@@ -95,6 +96,7 @@ fn test_before_event_callback_drop() {
 
 #[test]
 fn test_before_breadcrumb_callback_drop() {
+    #[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
     fn before_breadcrumb(_crumb: sentry::Breadcrumb) -> Option<sentry::Breadcrumb> {
         None
     }
