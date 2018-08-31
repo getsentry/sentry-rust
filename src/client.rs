@@ -10,7 +10,7 @@ use rand::random;
 use regex::Regex;
 use uuid::Uuid;
 
-use api::protocol::{DebugMeta, Event, RepoReference};
+use api::protocol::{Breadcrumb, DebugMeta, Event, RepoReference};
 use api::Dsn;
 use backtrace_support::{function_starts_with, is_sys_function, trim_stacktrace};
 use constants::{SDK_INFO, USER_AGENT};
@@ -36,8 +36,8 @@ impl fmt::Debug for Client {
     }
 }
 
-/// Type alias for before send handlers
-pub type BeforeSend = Box<Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync>;
+/// Type alias for before event/breadcrumb handlers.
+pub type BeforeCallback<T> = Arc<Box<Fn(T) -> Option<T> + Send + Sync>>;
 
 /// Configuration settings for the client.
 pub struct ClientOptions {
@@ -87,8 +87,10 @@ pub struct ClientOptions {
     pub attach_stacktrace: bool,
     /// If turned on some default PII informat is attached.
     pub send_default_pii: bool,
-    /// Before send method.
-    pub before_send: Option<Arc<BeforeSend>>,
+    /// Before send callback.
+    pub before_send: Option<BeforeCallback<Event<'static>>>,
+    /// Before breadcrumb add callback.
+    pub before_breadcrumb: Option<BeforeCallback<Breadcrumb>>,
 }
 
 impl fmt::Debug for ClientOptions {
@@ -97,6 +99,8 @@ impl fmt::Debug for ClientOptions {
         struct TransportFactory;
         #[derive(Debug)]
         struct BeforeSendSet(bool);
+        #[derive(Debug)]
+        struct BeforeBreadcrumbSet(bool);
         f.debug_struct("ClientOptions")
             .field("dsn", &self.dsn)
             .field("transport", &TransportFactory)
@@ -117,6 +121,10 @@ impl fmt::Debug for ClientOptions {
             .field("attach_stacktrace", &self.attach_stacktrace)
             .field("send_default_pii", &self.send_default_pii)
             .field("before_send", &BeforeSendSet(self.before_send.is_some()))
+            .field(
+                "before_send",
+                &BeforeBreadcrumbSet(self.before_breadcrumb.is_some()),
+            )
             .finish()
     }
 }
@@ -143,6 +151,7 @@ impl Clone for ClientOptions {
             attach_stacktrace: self.attach_stacktrace,
             send_default_pii: self.send_default_pii,
             before_send: self.before_send.clone(),
+            before_breadcrumb: self.before_breadcrumb.clone(),
         }
     }
 }
@@ -180,6 +189,7 @@ impl Default for ClientOptions {
             attach_stacktrace: false,
             send_default_pii: false,
             before_send: None,
+            before_breadcrumb: None,
         }
     }
 }
