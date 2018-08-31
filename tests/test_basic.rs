@@ -1,15 +1,20 @@
 extern crate sentry;
+extern crate uuid;
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
+use uuid::Uuid;
+
 #[test]
 fn test_basic_capture_message() {
+    let mut last_event_id = None::<Uuid>;
     let events = sentry::test::with_captured_events(|| {
         sentry::configure_scope(|scope| {
             scope.set_tag("worker", "worker1");
         });
         sentry::capture_message("Hello World!", sentry::Level::Warning);
+        last_event_id = sentry::last_event_id();
     });
     assert_eq!(events.len(), 1);
     let event = events.into_iter().next().unwrap();
@@ -19,6 +24,8 @@ fn test_basic_capture_message() {
         event.tags.into_iter().collect::<Vec<(String, String)>>(),
         vec![("worker".to_string(), "worker1".to_string())]
     );
+
+    assert_eq!(event.id, last_event_id);
 }
 
 #[test]

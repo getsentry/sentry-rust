@@ -146,3 +146,12 @@ where
         })
     }}
 }
+
+/// Returns the last event ID captured.
+pub fn last_event_id() -> Option<Uuid> {
+    with_client_impl! {{
+        Hub::with_active(|hub| {
+            hub.last_event_id()
+        })
+    }}
+}
