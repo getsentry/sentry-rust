@@ -126,6 +126,7 @@ impl HubImpl {
 pub struct Hub {
     #[cfg(feature = "with_client_implementation")]
     inner: HubImpl,
+    last_event_id: RwLock<Option<Uuid>>,
 }
 
 impl Hub {
@@ -136,6 +137,7 @@ impl Hub {
             inner: HubImpl {
                 stack: RwLock::new(Stack::from_client_and_scope(client, scope)),
             },
+            last_event_id: RwLock::new(None),
         }
     }
 
@@ -261,6 +263,11 @@ impl Hub {
         }
     }
 
+    /// Returns the last event id.
+    pub fn last_event_id(&self) -> Option<Uuid> {
+        *self.last_event_id.read().unwrap()
+    }
+
     /// Sends the event to the current client with the current scope.
     ///
     /// In case no client is bound this does nothing instead.
@@ -269,7 +276,9 @@ impl Hub {
             self.inner.with(|stack| {
                 let top = stack.top();
                 if let Some(ref client) = top.client {
-                    client.capture_event(event, Some(&top.scope))
+                    let event_id = client.capture_event(event, Some(&top.scope));
+                    *self.last_event_id.write().unwrap() = Some(event_id);
+                    event_id
                 } else {
                     Default::default()
                 }
