@@ -4,6 +4,7 @@ use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fmt;
 use std::sync::Arc;
+use std::sync::RwLock;
 use std::time::Duration;
 
 use rand::random;
@@ -21,10 +22,9 @@ use transport::{DefaultTransportFactory, Transport, TransportFactory};
 use utils::{debug_images, server_name};
 
 /// The Sentry client object.
-#[derive(Clone)]
 pub struct Client {
     options: ClientOptions,
-    transport: Option<Arc<Box<Transport>>>,
+    transport: RwLock<Option<Arc<Box<Transport>>>>,
 }
 
 impl fmt::Debug for Client {
@@ -33,6 +33,15 @@ impl fmt::Debug for Client {
             .field("dsn", &self.dsn())
             .field("options", &self.options)
             .finish()
+    }
+}
+
+impl Clone for Client {
+    fn clone(&self) -> Client {
+        Client {
+            options: self.options.clone(),
+            transport: RwLock::new(self.transport.read().unwrap().clone()),
+        }
     }
 }
 
@@ -81,8 +90,8 @@ pub struct ClientOptions {
     /// This will default to the `HTTPS_PROXY` environment variable
     /// or `http_proxy` if that one exists.
     pub https_proxy: Option<Cow<'static, str>>,
-    /// The timeout on client drop for draining events.
-    pub shutdown_timeout: Option<Duration>,
+    /// The timeout on client drop for draining events on shutdown.
+    pub shutdown_timeout: Duration,
     /// Attaches stacktraces to messages.
     pub attach_stacktrace: bool,
     /// If turned on some default PII informat is attached.
@@ -185,7 +194,7 @@ impl Default for ClientOptions {
                 .map(Cow::Owned)
                 .or_else(|| env::var("HTTPS_PROXY").ok().map(Cow::Owned))
                 .or_else(|| env::var("http_proxy").ok().map(Cow::Owned)),
-            shutdown_timeout: Some(Duration::from_secs(2)),
+            shutdown_timeout: Duration::from_secs(2),
             attach_stacktrace: false,
             send_default_pii: false,
             before_send: None,
@@ -338,11 +347,11 @@ impl Client {
     /// disabled.
     pub fn with_options(options: ClientOptions) -> Client {
         #[cfg_attr(feature = "cargo-clippy", allow(question_mark))]
-        let transport = if options.dsn.is_none() {
+        let transport = RwLock::new(if options.dsn.is_none() {
             None
         } else {
             Some(Arc::new(options.transport.create_transport(&options)))
-        };
+        });
         Client { options, transport }
     }
 
@@ -364,7 +373,7 @@ impl Client {
     pub fn disabled_with_options(options: ClientOptions) -> Client {
         Client {
             options,
-            transport: None,
+            transport: RwLock::new(None),
         }
     }
 
@@ -517,7 +526,7 @@ impl Client {
 
     /// Captures an event and sends it to sentry.
     pub fn capture_event(&self, event: Event<'static>, scope: Option<&Scope>) -> Uuid {
-        if let Some(ref transport) = self.transport {
+        if let Some(ref transport) = *self.transport.read().unwrap() {
             if self.sample_should_send() {
                 if let Some(event) = self.prepare_event(event, scope) {
                     let event_id = event.id.unwrap();
@@ -529,14 +538,16 @@ impl Client {
         Default::default()
     }
 
-    /// Drains all pending events up to the current time.
+    /// Drains all pending events and shuts down the transport behind the
+    /// client.  After shutting down the transport is removed.
     ///
     /// This returns `true` if the queue was successfully drained in the
     /// given time or `false` if not (for instance because of a timeout).
-    /// If no timeout is provided the client will wait forever.
-    pub fn drain_events(&self, timeout: Option<Duration>) -> bool {
-        if let Some(ref transport) = self.transport {
-            transport.drain(timeout)
+    /// If no timeout is provided the client will wait for as long a
+    /// `shutdown_timeout` in the client options.
+    pub fn close(&self, timeout: Option<Duration>) -> bool {
+        if let Some(transport) = self.transport.write().unwrap().take() {
+            transport.shutdown(timeout.unwrap_or(self.options.shutdown_timeout))
         } else {
             true
         }
@@ -559,7 +570,7 @@ pub struct ClientInitGuard(Arc<Client>);
 
 impl Drop for ClientInitGuard {
     fn drop(&mut self) {
-        self.0.drain_events(self.0.options.shutdown_timeout);
+        self.0.close(None);
     }
 }
 
