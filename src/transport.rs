@@ -1,3 +1,4 @@
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread::{self, JoinHandle};
@@ -22,9 +23,9 @@ pub trait Transport: Send + Sync + 'static {
     /// Drains the queue if there is one.
     ///
     /// The default implementation does nothing.  If the queue was successfully
-    /// drained the return value should be `true` or `false` if events were
+    /// shutdowned the return value should be `true` or `false` if events were
     /// left in it.
-    fn drain(&self, timeout: Option<Duration>) -> bool {
+    fn shutdown(&self, timeout: Duration) -> bool {
         let _timeout = timeout;
         true
     }
@@ -72,8 +73,8 @@ impl<T: Transport> Transport for Arc<T> {
         (**self).send_event(event)
     }
 
-    fn drain(&self, timeout: Option<Duration>) -> bool {
-        (**self).drain(timeout)
+    fn shutdown(&self, timeout: Duration) -> bool {
+        (**self).shutdown(timeout)
     }
 }
 
@@ -102,7 +103,8 @@ impl TransportFactory for DefaultTransportFactory {
 pub struct HttpTransport {
     dsn: Dsn,
     sender: Mutex<SyncSender<Option<Event<'static>>>>,
-    drain_signal: Arc<Condvar>,
+    shutdown_signal: Arc<Condvar>,
+    shutdown_immediately: Arc<AtomicBool>,
     queue_size: Arc<Mutex<usize>>,
     _handle: Option<JoinHandle<()>>,
 }
@@ -112,6 +114,7 @@ fn spawn_http_sender(
     receiver: Receiver<Option<Event<'static>>>,
     dsn: Dsn,
     signal: Arc<Condvar>,
+    shutdown_immediately: Arc<AtomicBool>,
     queue_size: Arc<Mutex<usize>>,
     user_agent: String,
 ) -> JoinHandle<()> {
@@ -121,6 +124,14 @@ fn spawn_http_sender(
         let url = dsn.store_api_url().to_string();
 
         while let Some(event) = receiver.recv().unwrap_or(None) {
+            // on drop we want to not continue processing the queue.
+            if shutdown_immediately.load(Ordering::SeqCst) {
+                let mut size = queue_size.lock().unwrap();
+                *size = 0;
+                signal.notify_all();
+                break;
+            }
+
             // while we are disabled due to rate limits, skip
             match disabled {
                 Some((disabled_at, RetryAfter::Delay(disabled_for))) => {
@@ -176,7 +187,8 @@ impl HttpTransport {
         let https_proxy = options.https_proxy.as_ref().map(|x| x.to_string());
 
         let (sender, receiver) = sync_channel(30);
-        let drain_signal = Arc::new(Condvar::new());
+        let shutdown_signal = Arc::new(Condvar::new());
+        let shutdown_immediately = Arc::new(AtomicBool::new(false));
         #[cfg_attr(feature = "cargo-clippy", allow(mutex_atomic))]
         let queue_size = Arc::new(Mutex::new(0));
         let mut client = Client::builder();
@@ -190,14 +202,16 @@ impl HttpTransport {
             client.build().unwrap(),
             receiver,
             dsn.clone(),
-            drain_signal.clone(),
+            shutdown_signal.clone(),
+            shutdown_immediately.clone(),
             queue_size.clone(),
             user_agent,
         ));
         HttpTransport {
             dsn,
             sender: Mutex::new(sender),
-            drain_signal,
+            shutdown_signal,
+            shutdown_immediately: shutdown_immediately,
             queue_size,
             _handle,
         }
@@ -215,21 +229,22 @@ impl Transport for HttpTransport {
         }
     }
 
-    fn drain(&self, timeout: Option<Duration>) -> bool {
+    fn shutdown(&self, timeout: Duration) -> bool {
         let guard = self.queue_size.lock().unwrap();
         if *guard == 0 {
-            return true;
-        }
-        if let Some(timeout) = timeout {
-            self.drain_signal.wait_timeout(guard, timeout).is_ok()
+            true
         } else {
-            self.drain_signal.wait(guard).is_ok()
+            if let Ok(sender) = self.sender.lock() {
+                sender.send(None).ok();
+            }
+            self.shutdown_signal.wait_timeout(guard, timeout).is_ok()
         }
     }
 }
 
 impl Drop for HttpTransport {
     fn drop(&mut self) {
+        self.shutdown_immediately.store(true, Ordering::SeqCst);
         if let Ok(sender) = self.sender.lock() {
             sender.send(None).ok();
         }

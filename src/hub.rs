@@ -311,15 +311,6 @@ impl Hub {
         }}
     }
 
-    /// Drains the currently pending events.
-    pub fn drain_events(&self, timeout: Option<Duration>) {
-        with_client_impl! {{
-            if let Some(ref client) = self.client() {
-                client.drain_events(timeout);
-            }
-        }}
-    }
-
     /// Returns the currently bound client.
     #[cfg(feature = "with_client_implementation")]
     pub fn client(&self) -> Option<Arc<Client>> {
