@@ -204,7 +204,7 @@ pub fn rust_context() -> Option<Context> {
             version: RUSTC_VERSION.map(|x| x.into()),
         }.into();
         if let Some(channel) = RUSTC_CHANNEL {
-            ctx.extra.insert("channel".into(), channel.into());
+            ctx.other.insert("channel".into(), channel.into());
         }
         Some(ctx)
     }

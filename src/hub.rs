@@ -300,7 +300,7 @@ impl Hub {
                     if client.options().attach_stacktrace {
                         let thread = current_thread(true);
                         if thread.stacktrace.is_some() {
-                            event.threads.push(thread);
+                            event.threads.values.push(thread);
                         }
                     }
                     self.capture_event(event)
