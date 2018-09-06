@@ -1,8 +1,9 @@
+#[macro_use]
+extern crate serde_json;
+
 extern crate chrono;
 extern crate sentry_types;
 extern crate serde;
-#[macro_use]
-extern crate serde_json;
 extern crate uuid;
 
 use chrono::Utc;
