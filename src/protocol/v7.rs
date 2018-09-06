@@ -1096,6 +1096,18 @@ pub struct ClientSdkInfo {
     /// An optional list of integrations that are enabled in this SDK.
     #[serde(skip_serializing_if = "Vec::is_empty", default = "Vec::new")]
     pub integrations: Vec<String>,
+    /// An optional list of packages that are installed in the SDK's environment.
+    #[serde(skip_serializing_if = "Vec::is_empty", default = "Vec::new")]
+    pub packages: Vec<ClientSdkPackageInfo>,
+}
+
+/// Represents an installed package relevant to the SDK.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct ClientSdkPackageInfo {
+    /// The name of the package installed.
+    pub package_name: String,
+    /// The version of the package.
+    pub version: String,
 }
 
 /// Represents a full event for Sentry.

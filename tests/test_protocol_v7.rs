@@ -1468,6 +1468,10 @@ fn test_sdk_info() {
             name: "sentry-rust".into(),
             version: "1.0".into(),
             integrations: vec!["rocket".into()],
+            packages: vec![v7::ClientSdkPackageInfo {
+                package_name: "crates:sentry".into(),
+                version: "1.0".into(),
+            }],
         })),
         ..Default::default()
     };
@@ -1476,7 +1480,8 @@ fn test_sdk_info() {
     assert_eq!(
         serde_json::to_string(&event).unwrap(),
         "{\"sdk\":{\"name\":\"sentry-rust\",\"version\":\"1.0\",\
-         \"integrations\":[\"rocket\"]}}"
+         \"integrations\":[\"rocket\"],\
+         \"packages\":[{\"package_name\":\"crates:sentry\",\"version\":\"1.0\"}]}}"
     );
 }
 
