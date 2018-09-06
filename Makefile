@@ -18,6 +18,6 @@ format-check:
 	@cargo fmt -- --check
 
 lint:
-	@cargo +nightly clippy --all-features --tests -- -D clippy
+	@cargo +nightly clippy --all-features --tests -- -D clippy::all
 
 .PHONY: all doc test cargotest format format-check lint
