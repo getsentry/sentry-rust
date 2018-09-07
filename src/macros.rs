@@ -37,6 +37,20 @@ macro_rules! with_client_impl {
 }
 
 #[allow(unused_macros)]
+macro_rules! sentry_debug {
+    ($($arg:tt)*) => {
+        with_client_impl! {{
+            $crate::Hub::with(|hub| {
+                if hub.client().map_or(false, |c| c.options().debug) {
+                    eprint!("[sentry] ");
+                    eprintln!($($arg)*);
+                }
+            });
+        }}
+    }
+}
+
+#[allow(unused_macros)]
 macro_rules! minimal_unreachable {
     () => {
         panic!(

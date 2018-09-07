@@ -92,6 +92,8 @@ pub struct ClientOptions {
     pub https_proxy: Option<Cow<'static, str>>,
     /// The timeout on client drop for draining events on shutdown.
     pub shutdown_timeout: Duration,
+    /// Enables debug mode.
+    pub debug: bool,
     /// Attaches stacktraces to messages.
     pub attach_stacktrace: bool,
     /// If turned on some default PII informat is attached.
@@ -127,6 +129,7 @@ impl fmt::Debug for ClientOptions {
             .field("http_proxy", &self.http_proxy)
             .field("https_proxy", &self.https_proxy)
             .field("shutdown_timeout", &self.shutdown_timeout)
+            .field("debug", &self.debug)
             .field("attach_stacktrace", &self.attach_stacktrace)
             .field("send_default_pii", &self.send_default_pii)
             .field("before_send", &BeforeSendSet(self.before_send.is_some()))
@@ -157,6 +160,7 @@ impl Clone for ClientOptions {
             http_proxy: self.http_proxy.clone(),
             https_proxy: self.https_proxy.clone(),
             shutdown_timeout: self.shutdown_timeout,
+            debug: self.debug,
             attach_stacktrace: self.attach_stacktrace,
             send_default_pii: self.send_default_pii,
             before_send: self.before_send.clone(),
@@ -195,6 +199,7 @@ impl Default for ClientOptions {
                 .or_else(|| env::var("HTTPS_PROXY").ok().map(Cow::Owned))
                 .or_else(|| env::var("http_proxy").ok().map(Cow::Owned)),
             shutdown_timeout: Duration::from_secs(2),
+            debug: false,
             attach_stacktrace: false,
             send_default_pii: false,
             before_send: None,
@@ -506,7 +511,12 @@ impl Client {
         }
 
         if let Some(ref func) = self.options.before_send {
-            func(event)
+            sentry_debug!("invoking before_send callback");
+            let id = event.id;
+            func(event).or_else(move || {
+                sentry_debug!("before_send dropped event {:?}", id);
+                None
+            })
         } else {
             Some(event)
         }
@@ -518,10 +528,13 @@ impl Client {
     }
 
     /// Returns the DSN that constructed this client.
-    ///
-    /// If the client is in disabled mode this returns `None`.
     pub fn dsn(&self) -> Option<&Dsn> {
         self.options.dsn.as_ref()
+    }
+
+    /// Quick check to see if the client is enabled.
+    pub fn is_enabled(&self) -> bool {
+        self.options.dsn.is_some() && self.transport.read().unwrap().is_some()
     }
 
     /// Captures an event and sends it to sentry.
@@ -547,8 +560,10 @@ impl Client {
     /// `shutdown_timeout` in the client options.
     pub fn close(&self, timeout: Option<Duration>) -> bool {
         if let Some(transport) = self.transport.write().unwrap().take() {
+            sentry_debug!("client close; request transport to shut down");
             transport.shutdown(timeout.unwrap_or(self.options.shutdown_timeout))
         } else {
+            sentry_debug!("client close; no transport to shut down");
             true
         }
     }
@@ -566,26 +581,70 @@ impl Client {
 /// Helper struct that is returned from `init`.
 ///
 /// When this is dropped events are drained with a 1 second timeout.
+#[must_use = "when the init guard is dropped the transport will be shut down and no further \
+              events can be sent.  If you do want to ignore this use mem::forget on it."]
 pub struct ClientInitGuard(Arc<Client>);
+
+impl ClientInitGuard {
+    /// Quick check if the client is enabled.
+    pub fn is_enabled(&self) -> bool {
+        self.0.is_enabled()
+    }
+}
 
 impl Drop for ClientInitGuard {
     fn drop(&mut self) {
+        if self.is_enabled() {
+            sentry_debug!("dropping client guard -> disposing client");
+        } else {
+            sentry_debug!("dropping client guard (no client to dispose)");
+        }
         self.0.close(None);
     }
 }
 
 /// Creates the Sentry client for a given client config and binds it.
 ///
-/// This returns a client init guard that if kept in scope will help the
-/// client send events before the application closes by calling drain on
-/// the generated client.  If the scope guard is immediately dropped then
-/// no draining will take place so ensure it's bound to a variable.
+/// This returns a client init guard that must kept in scope will help the
+/// client send events before the application closes.  When the guard is
+/// dropped then the transport that was initialized shuts down and no
+/// further events can be set on it.
+///
+/// If you don't want (or can) keep the guard around it's permissible to
+/// call `mem::forget` on it.
 ///
 /// # Examples
 ///
 /// ```rust
 /// fn main() {
 ///     let _sentry = sentry::init("https://key@sentry.io/1234");
+/// }
+/// ```
+///
+/// Of if draining on shutdown should be ignored:
+///
+/// ```rust
+/// use std::mem;
+///
+/// fn main() {
+///     mem::forget(sentry::init("https://key@sentry.io/1234"));
+/// }
+/// ```
+///
+/// The guard returned can also be inspected to see if a client has been
+/// created to enable further configuration:
+///
+/// ```rust
+/// use sentry::integrations::panic::register_panic_handler;
+///
+/// fn main() {
+///     let sentry = sentry::init(sentry::ClientOptions {
+///         release: Some("foo-bar-baz@1.0.0".into()),
+///         ..Default::default()
+///     });
+///     if sentry.is_enabled() {
+///         register_panic_handler();
+///     }
 /// }
 /// ```
 ///
@@ -597,6 +656,11 @@ impl Drop for ClientInitGuard {
 pub fn init<C: Into<Client>>(cfg: C) -> ClientInitGuard {
     let client = Arc::new(cfg.into());
     Hub::with(|hub| hub.bind_client(Some(client.clone())));
+    if let Some(dsn) = client.dsn() {
+        sentry_debug!("enabled sentry client for DSN {}", dsn);
+    } else {
+        sentry_debug!("initialized disabled sentry client due to disabled or invalid DSN");
+    }
     ClientInitGuard(client)
 }
 

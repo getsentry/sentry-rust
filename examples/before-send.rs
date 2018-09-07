@@ -15,6 +15,7 @@ fn main() {
             });
             Some(event)
         }))),
+        debug: true,
         ..Default::default()
     });
 

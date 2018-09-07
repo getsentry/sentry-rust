@@ -230,6 +230,7 @@ impl Transport for HttpTransport {
     }
 
     fn shutdown(&self, timeout: Duration) -> bool {
+        sentry_debug!("shutting down http transport");
         let guard = self.queue_size.lock().unwrap();
         if *guard == 0 {
             true
@@ -244,6 +245,7 @@ impl Transport for HttpTransport {
 
 impl Drop for HttpTransport {
     fn drop(&mut self) {
+        sentry_debug!("dropping http transport");
         self.shutdown_immediately.store(true, Ordering::SeqCst);
         if let Ok(sender) = self.sender.lock() {
             sender.send(None).ok();

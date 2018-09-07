@@ -21,7 +21,7 @@
 //! The `sentry::init` function returns a guard that when dropped will flush
 //! Events that were not yet sent to the sentry service.  It has a two second
 //! deadline for this so shutdown of applications might slightly delay as a result
-//! of this.
+//! of this.  Keep the guard around or sending events will not work.
 //!
 //! ```
 //! extern crate sentry;
