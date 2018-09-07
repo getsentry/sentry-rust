@@ -203,9 +203,6 @@ pub fn rust_context() -> Option<Context> {
             name: Some("rustc".into()),
             version: RUSTC_VERSION.map(|x| x.into()),
         }.into();
-        if let Some(channel) = RUSTC_CHANNEL {
-            ctx.other.insert("channel".into(), channel.into());
-        }
         Some(ctx)
     }
     #[cfg(not(feature = "with_device_info"))]

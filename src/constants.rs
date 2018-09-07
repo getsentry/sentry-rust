@@ -23,11 +23,9 @@ lazy_static! {
             }
             rv
         },
-        packages: vec![
-            ClientSdkPackageInfo {
-                package_name: "crates:sentry".into(),
-                version: VERSION.into(),
-            }
-        ]
+        packages: vec![ClientSdkPackageInfo {
+            package_name: "crates:sentry".into(),
+            version: VERSION.into(),
+        }],
     };
 }
