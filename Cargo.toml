@@ -17,7 +17,15 @@ exclude = [
 [features]
 default = ["with_protocol", "with_serde"]
 with_protocol = ["with_serde"]
-with_serde = ["serde", "serde_derive", "serde_json", "url_serde", "chrono/serde", "uuid/serde", "linked-hash-map/serde_impl", "debugid/with_serde"]
+with_serde = [
+    "serde",
+    "serde_derive",
+    "serde_json",
+    "url_serde",
+    "chrono/serde",
+    "uuid/serde",
+    "debugid/with_serde"
+]
 
 [badges]
 travis-ci = { repository = "getsentry/rust-sentry-types" }
@@ -28,9 +36,8 @@ failure_derive = "0.1.2"
 url = "1.7.1"
 serde = { version = "1.0.76", optional = true }
 serde_derive = { version = "1.0.76", optional = true }
-serde_json = { version = "1.0.26", features = ["preserve_order"], optional = true }
+serde_json = { version = "1.0.26", optional = true }
 url_serde = { version = "0.2.0", optional = true }
 chrono = "0.4.6"
 uuid = { version = "0.6.5", features = ["v4"] }
-linked-hash-map = "0.5.1"
 debugid = "0.2.0"

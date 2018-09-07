@@ -14,29 +14,24 @@ use std::str;
 
 use chrono::{DateTime, Utc};
 use debugid::DebugId;
-use serde::de::{Deserialize, Deserializer, Error as DeError};
-use serde::ser::{Error as SerError, Serialize, Serializer};
-use serde_json::{from_value, to_value};
+use serde::Serializer;
 use url::Url;
 use url_serde;
 use uuid::Uuid;
 
 use utils::{ts_seconds_float, ts_seconds_float_opt};
 
-/// An arbitrary (JSON) value (`serde_json::value::Value`)
+/// An arbitrary (JSON) value.
 pub mod value {
     pub use serde_json::value::{from_value, to_value, Index, Map, Number, Value};
 }
 
-/// The internally use arbitrary data map type (`linked_hash_map::LinkedHashMap`)
+/// The internally used arbitrary data map type.
 ///
 /// It is currently backed by the `linked-hash-map` crate's hash map so that
 /// insertion order is preserved.
 pub mod map {
-    pub use linked_hash_map::{
-        Entries, Entry, IntoIter, Iter, IterMut, Keys, LinkedHashMap, OccupiedEntry, VacantEntry,
-        Values,
-    };
+    pub use std::collections::btree_map::{BTreeMap as Map, *};
 }
 
 /// Represents a debug ID.
@@ -44,11 +39,11 @@ pub mod debugid {
     pub use debugid::{BreakpadFormat, DebugId, ParseDebugIdError};
 }
 
-/// An arbitrary (JSON) value (`serde_json::value::Value`)
+/// An arbitrary (JSON) value.
 pub use self::value::Value;
 
-/// The internally use arbitrary data map type (`linked_hash_map::LinkedHashMap`)
-pub use self::map::LinkedHashMap as Map;
+/// The internally useed map type.
+pub use self::map::Map;
 
 /// A wrapper type for collections with attached meta data.
 ///
@@ -56,27 +51,21 @@ pub use self::map::LinkedHashMap as Map;
 /// arbitrary other fields. All other fields will be collected into `Values::data` when
 /// deserializing and re-serialized in the same place. The shorthand array notation is always
 /// reserialized as object.
-#[derive(Serialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Values<T> {
     /// The values of the collection.
     pub values: Vec<T>,
-    /// Additional arbitrary fields for forwards compatibility.
-    #[serde(flatten, default)]
-    pub other: Map<String, Value>,
 }
 
 impl<T> Values<T> {
     /// Creates an empty values struct.
     pub fn new() -> Values<T> {
-        Values {
-            values: Vec::new(),
-            other: Map::new(),
-        }
+        Values { values: Vec::new() }
     }
 
     /// Checks whether this struct is empty in both values and data.
     pub fn is_empty(&self) -> bool {
-        self.values.is_empty() && self.other.is_empty()
+        self.values.is_empty()
     }
 }
 
@@ -89,10 +78,7 @@ impl<T> Default for Values<T> {
 
 impl<T> From<Vec<T>> for Values<T> {
     fn from(values: Vec<T>) -> Values<T> {
-        Values {
-            values,
-            other: Map::new(),
-        }
+        Values { values }
     }
 }
 
@@ -152,32 +138,6 @@ impl<T> IntoIterator for Values<T> {
     }
 }
 
-#[cfg(feature = "with_serde")]
-impl<'de, T> Deserialize<'de> for Values<T>
-where
-    T: Deserialize<'de>,
-{
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        #[derive(Deserialize)]
-        #[serde(untagged)]
-        enum Repr<T> {
-            Qualified {
-                values: Vec<T>,
-                #[serde(flatten)]
-                other: Map<String, Value>,
-            },
-            Unqualified(Vec<T>),
-            Single(T),
-        }
-
-        Deserialize::deserialize(deserializer).map(|x| match x {
-            Repr::Qualified { values, other } => Values { values, other },
-            Repr::Unqualified(values) => values.into(),
-            Repr::Single(value) => vec![value].into(),
-        })
-    }
-}
-
 /// Represents a log entry message.
 ///
 /// A log message is similar to the `message` attribute on the event itself but
@@ -189,9 +149,6 @@ pub struct LogEntry {
     /// Positional parameters to be inserted into the log entry.
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub params: Vec<Value>,
-    /// Additional arbitrary fields for forwards compatibility.
-    #[serde(flatten, default)]
-    pub other: Map<String, Value>,
 }
 
 /// Represents a frame.
@@ -238,9 +195,6 @@ pub struct Frame {
     /// Optional instruction information for native languages.
     #[serde(flatten)]
     pub instruction_info: InstructionInfo,
-    /// Additional arbitrary fields for forwards compatibility.
-    #[serde(flatten)]
-    pub other: Map<String, Value>,
 }
 
 /// Represents location information.
@@ -283,9 +237,6 @@ pub struct TemplateInfo {
     /// Embedded sourcecode in the frame.
     #[serde(flatten)]
     pub source: EmbeddedSources,
-    /// Additional arbitrary fields for forwards compatibility.
-    #[serde(flatten, default)]
-    pub other: Map<String, Value>,
 }
 
 /// Represents contextual information in a frame.
@@ -315,9 +266,6 @@ pub struct Stacktrace {
     /// Optional register values of the thread.
     #[serde(skip_serializing_if = "Map::is_empty")]
     pub registers: Map<String, RegVal>,
-    /// Additional arbitrary fields for forwards compatibility.
-    #[serde(flatten)]
-    pub other: Map<String, Value>,
 }
 
 impl Stacktrace {
@@ -407,7 +355,7 @@ impl Addr {
     }
 }
 
-impl_serde_hex!(Addr, u64);
+impl_hex_serde!(Addr, u64);
 
 impl From<u64> for Addr {
     fn from(addr: u64) -> Addr {
@@ -459,7 +407,7 @@ fn is_false(value: &bool) -> bool {
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub struct RegVal(pub u64);
 
-impl_serde_hex!(RegVal, u64);
+impl_hex_serde!(RegVal, u64);
 
 impl From<u64> for RegVal {
     fn from(addr: u64) -> RegVal {
@@ -527,9 +475,6 @@ pub struct Thread {
     /// event was created.
     #[serde(skip_serializing_if = "is_false")]
     pub current: bool,
-    /// Additional arbitrary fields for forwards compatibility.
-    #[serde(flatten)]
-    pub other: Map<String, Value>,
 }
 
 /// POSIX signal with optional extended data.
@@ -626,9 +571,6 @@ pub struct MechanismMeta {
     /// Optional mach exception information.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mach_exception: Option<MachException>,
-    /// Additional arbitrary fields for forwards compatibility.
-    #[serde(flatten, default)]
-    pub other: Map<String, Value>,
 }
 
 impl MechanismMeta {
@@ -659,9 +601,6 @@ pub struct Mechanism {
     /// Operating system or runtime meta information.
     #[serde(skip_serializing_if = "MechanismMeta::is_empty")]
     pub meta: MechanismMeta,
-    /// Additional arbitrary fields for forwards compatibility.
-    #[serde(flatten)]
-    pub other: Map<String, Value>,
 }
 
 /// Represents a single exception.
@@ -688,9 +627,6 @@ pub struct Exception {
     /// The mechanism of the exception including OS specific exception values.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mechanism: Option<Mechanism>,
-    /// Additional arbitrary fields for forwards compatibility.
-    #[serde(flatten, default)]
-    pub other: Map<String, Value>,
 }
 
 /// An error used when parsing `Level`.
@@ -773,7 +709,7 @@ impl Level {
     }
 }
 
-impl_str_serialization!(Level);
+impl_str_serde!(Level);
 
 /// Represents a single breadcrumb.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -798,9 +734,6 @@ pub struct Breadcrumb {
     /// Arbitrary breadcrumb data that should be send along.
     #[serde(skip_serializing_if = "Map::is_empty")]
     pub data: Map<String, Value>,
-    /// Additional arbitrary fields for forwards compatibility.
-    #[serde(flatten)]
-    pub other: Map<String, Value>,
 }
 
 impl Default for Breadcrumb {
@@ -812,7 +745,6 @@ impl Default for Breadcrumb {
             level: Level::Info,
             message: None,
             data: Map::new(),
-            other: Map::new(),
         }
     }
 }
@@ -876,19 +808,7 @@ impl str::FromStr for IpAddress {
     }
 }
 
-impl<'de> Deserialize<'de> for IpAddress {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<IpAddress, D::Error> {
-        <&str>::deserialize(deserializer)?
-            .parse()
-            .map_err(DeError::custom)
-    }
-}
-
-impl Serialize for IpAddress {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_str(&self.to_string())
-    }
-}
+impl_str_serde!(IpAddress);
 
 /// Represents user info.
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
@@ -906,9 +826,6 @@ pub struct User {
     /// A human readable username of the user.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub username: Option<String>,
-    /// Additional arbitrary fields for forwards compatibility.
-    #[serde(flatten)]
-    pub other: Map<String, Value>,
 }
 
 /// Represents http request data.
@@ -937,9 +854,6 @@ pub struct Request {
     /// Optionally a CGI/WSGI etc. environment dictionary.
     #[serde(skip_serializing_if = "Map::is_empty")]
     pub env: Map<String, String>,
-    /// Additional arbitrary fields for forwards compatibility.
-    #[serde(flatten)]
-    pub other: Map<String, Value>,
 }
 
 /// Holds information about the system SDK.
@@ -959,7 +873,8 @@ pub struct SystemSdkInfo {
 }
 
 /// Represents a debug image.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "snake_case", tag = "type")]
 pub enum DebugImage {
     /// Apple debug images (machos).  This is currently also used for
     /// non apple platforms with similar debug setups.
@@ -968,8 +883,6 @@ pub enum DebugImage {
     Symbolic(SymbolicDebugImage),
     /// A reference to a proguard debug file.
     Proguard(ProguardDebugImage),
-    /// A debug image that is unknown to this protocol specification.
-    Unknown(Map<String, Value>),
 }
 
 impl DebugImage {
@@ -979,10 +892,6 @@ impl DebugImage {
             DebugImage::Apple(..) => "apple",
             DebugImage::Symbolic(..) => "symbolic",
             DebugImage::Proguard(..) => "proguard",
-            DebugImage::Unknown(ref map) => map
-                .get("type")
-                .and_then(|x| x.as_str())
-                .unwrap_or("unknown"),
         }
     }
 }
@@ -1058,9 +967,6 @@ pub struct DebugMeta {
     /// A list of debug information files.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub images: Vec<DebugImage>,
-    /// Additional arbitrary fields for forwards compatibility.
-    #[serde(flatten)]
-    pub other: Map<String, Value>,
 }
 
 impl DebugMeta {
@@ -1110,8 +1016,216 @@ pub struct ClientSdkPackageInfo {
     pub version: String,
 }
 
+/// Typed contextual data.
+///
+/// Types like `OsContext` can be directly converted with `.into()`
+/// to `Context`.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "snake_case", tag = "type")]
+pub enum Context {
+    /// Device data.
+    Device(Box<DeviceContext>),
+    /// Operating system data.
+    Os(Box<OsContext>),
+    /// Runtime data.
+    Runtime(Box<RuntimeContext>),
+    /// Application data.
+    App(Box<AppContext>),
+    /// Web browser data.
+    Browser(Box<BrowserContext>),
+}
+
+impl Context {
+    /// Returns the name of the type for sentry.
+    pub fn type_name(&self) -> &str {
+        match *self {
+            Context::Device(..) => "device",
+            Context::Os(..) => "os",
+            Context::Runtime(..) => "runtime",
+            Context::App(..) => "app",
+            Context::Browser(..) => "browser",
+        }
+    }
+}
+
+/// Optional device screen orientation
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[serde(rename_all = "lowercase")]
+pub enum Orientation {
+    /// Portrait device orientation.
+    Portrait,
+    /// Landscape device orientation.
+    Landscape,
+}
+
+/// Holds device information.
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
+#[serde(default)]
+pub struct DeviceContext {
+    /// The name of the device.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// The family of the device model.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub family: Option<String>,
+    /// The device model (human readable).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    /// The device model (internal identifier).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model_id: Option<String>,
+    /// The native cpu architecture of the device.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub arch: Option<String>,
+    /// The current battery level (0-100).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub battery_level: Option<f32>,
+    /// The current screen orientation.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub orientation: Option<Orientation>,
+    /// Simulator/prod indicator.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub simulator: Option<bool>,
+    /// Total memory available in byts.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub memory_size: Option<u64>,
+    /// How much memory is still available in bytes.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub free_memory: Option<u64>,
+    /// How much memory is usable for the app in bytes.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub usable_memory: Option<u64>,
+    /// Total storage size of the device in bytes.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub storage_size: Option<u64>,
+    /// How much storage is free in bytes.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub free_storage: Option<u64>,
+    /// Total size of the attached external storage in bytes (eg: android SDK card).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub external_storage_size: Option<u64>,
+    /// Free size of the attached external storage in bytes (eg: android SDK card).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub external_free_storage: Option<u64>,
+    /// Optionally an indicator when the device was booted.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub boot_time: Option<DateTime<Utc>>,
+    /// The timezone of the device.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub timezone: Option<String>,
+}
+
+/// Holds operating system information.
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
+#[serde(default)]
+pub struct OsContext {
+    /// The name of the operating system.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// The version of the operating system.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
+    /// The internal build number of the operating system.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub build: Option<String>,
+    /// The current kernel version.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub kernel_version: Option<String>,
+    /// An indicator if the os is rooted (mobile mostly).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rooted: Option<bool>,
+}
+
+/// Holds information about the runtime.
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
+#[serde(default)]
+pub struct RuntimeContext {
+    /// The name of the runtime (for instance JVM).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// The version of the runtime.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
+}
+
+/// Holds app information.
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
+#[serde(default)]
+pub struct AppContext {
+    /// Optional start time of the app.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub app_start_time: Option<DateTime<Utc>>,
+    /// Optional device app hash (app specific device ID)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub device_app_hash: Option<String>,
+    /// Optional build identicator.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub build_type: Option<String>,
+    /// Optional app identifier (dotted bundle id).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub app_identifier: Option<String>,
+    /// Application name as it appears on the platform.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub app_name: Option<String>,
+    /// Application version as it appears on the platform.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub app_version: Option<String>,
+    /// Internal build ID as it appears on the platform.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub app_build: Option<String>,
+}
+
+/// Holds information about the web browser.
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
+#[serde(default)]
+pub struct BrowserContext {
+    /// The name of the browser (for instance "Chrome").
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// The version of the browser.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
+}
+
+macro_rules! into_context {
+    ($kind:ident, $ty:ty) => {
+        impl From<$ty> for Context {
+            fn from(data: $ty) -> Self {
+                Context::$kind(Box::new(data))
+            }
+        }
+    };
+}
+
+into_context!(App, AppContext);
+into_context!(Device, DeviceContext);
+into_context!(Os, OsContext);
+into_context!(Runtime, RuntimeContext);
+into_context!(Browser, BrowserContext);
+
+fn is_other(value: &str) -> bool {
+    value == "other"
+}
+
+fn serialize_event_id<S>(value: &Option<Uuid>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match *value {
+        Some(ref uuid) => serializer.serialize_some(&uuid.simple().to_string()),
+        None => serializer.serialize_none(),
+    }
+}
+
+static DEFAULT_FINGERPRINT: &'static [Cow<'static, str>] = &[Cow::Borrowed("{{ default }}")];
+
+#[cfg_attr(feature = "cargo-clippy", allow(ptr_arg))]
+fn is_default_fingerprint<'a>(fp: &Cow<'a, [Cow<'a, str>]>) -> bool {
+    fp.len() == 1 && ((&fp)[0] == "{{ default }}" || (&fp)[0] == "{{default}}")
+}
+
 /// Represents a full event for Sentry.
-#[derive(Serialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(default)]
 pub struct Event<'a> {
     /// The ID of the event
@@ -1176,7 +1290,7 @@ pub struct Event<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub request: Option<Request>,
     /// Optional contexts.
-    #[serde(skip_serializing_if = "Map::is_empty", with = "serde_context")]
+    #[serde(skip_serializing_if = "Map::is_empty")]
     pub contexts: Map<String, Context>,
     /// List of breadcrumbs to send along.
     #[serde(skip_serializing_if = "Values::is_empty")]
@@ -1205,241 +1319,6 @@ pub struct Event<'a> {
     /// SDK metadata
     #[serde(rename = "sdk", skip_serializing_if = "Option::is_none")]
     pub sdk_info: Option<Cow<'a, ClientSdkInfo>>,
-    /// Additional arbitrary fields for forwards compatibility.
-    #[serde(flatten)]
-    pub other: Map<String, Value>,
-}
-
-#[cfg(feature = "with_serde")]
-impl<'a, 'de> Deserialize<'de> for Event<'a> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        /// A lenient representation of the `Event` struct used for aliasing field names.
-        #[derive(Deserialize)]
-        #[serde(default)]
-        pub struct LenientEvent<'a> {
-            #[serde(rename = "event_id")]
-            pub id: Option<Uuid>,
-            pub level: Level,
-            #[serde(deserialize_with = "deserialize_fingerprint")]
-            pub fingerprint: Cow<'a, [Cow<'a, str>]>,
-            pub culprit: Option<String>,
-            pub transaction: Option<String>,
-            pub message: Option<String>,
-            pub logentry: Option<LogEntry>,
-            #[serde(rename = "sentry.interfaces.Message")]
-            pub logentry_iface: Option<LogEntry>,
-            pub logger: Option<String>,
-            pub modules: Map<String, String>,
-            pub platform: Cow<'a, str>,
-            #[serde(with = "ts_seconds_float_opt")]
-            pub timestamp: Option<DateTime<Utc>>,
-            pub server_name: Option<Cow<'a, str>>,
-            pub release: Option<Cow<'a, str>>,
-            pub dist: Option<Cow<'a, str>>,
-            pub repos: Map<String, RepoReference>,
-            pub environment: Option<Cow<'a, str>>,
-            pub user: Option<User>,
-            #[serde(rename = "sentry.interfaces.User")]
-            pub user_iface: Option<User>,
-            pub request: Option<Request>,
-            #[serde(rename = "sentry.interfaces.Http")]
-            pub request_iface: Option<Request>,
-            #[serde(with = "serde_context")]
-            pub contexts: Map<String, Context>,
-            #[serde(with = "serde_context", rename = "sentry.interfaces.Contexts")]
-            pub contexts_iface: Map<String, Context>,
-            pub breadcrumbs: Option<Values<Breadcrumb>>,
-            #[serde(rename = "sentry.interfaces.Breadcrumbs")]
-            pub breadcrumbs_iface: Option<Values<Breadcrumb>>,
-            #[serde(rename = "exception")]
-            pub exceptions: Option<Values<Exception>>,
-            #[serde(rename = "sentry.interfaces.Exception")]
-            pub exceptions_iface: Option<Values<Exception>>,
-            pub stacktrace: Option<Stacktrace>,
-            #[serde(rename = "sentry.interfaces.Stacktrace")]
-            pub stacktrace_iface: Option<Stacktrace>,
-            #[serde(rename = "template")]
-            pub template_info: Option<TemplateInfo>,
-            #[serde(rename = "sentry.interfaces.Template")]
-            pub template_info_iface: Option<TemplateInfo>,
-            pub threads: Option<Values<Thread>>,
-            #[serde(rename = "sentry.interfaces.Threads")]
-            pub threads_iface: Option<Values<Thread>>,
-            pub tags: Map<String, String>,
-            pub extra: Map<String, Value>,
-            pub debug_meta: Cow<'a, DebugMeta>,
-            #[serde(rename = "sentry.interfaces.DebugMeta")]
-            pub debug_meta_iface: Cow<'a, DebugMeta>,
-            #[serde(rename = "sdk")]
-            pub sdk_info: Option<Cow<'a, ClientSdkInfo>>,
-            #[serde(flatten)]
-            pub other: Map<String, Value>,
-        }
-
-        impl<'a> Default for LenientEvent<'a> {
-            fn default() -> LenientEvent<'a> {
-                let default = Event::default();
-
-                LenientEvent {
-                    id: default.id,
-                    level: default.level,
-                    fingerprint: default.fingerprint,
-                    culprit: default.culprit,
-                    transaction: default.transaction,
-                    message: default.message,
-                    logentry: default.logentry,
-                    logentry_iface: None,
-                    logger: default.logger,
-                    modules: default.modules,
-                    platform: default.platform,
-                    timestamp: default.timestamp,
-                    server_name: default.server_name,
-                    release: default.release,
-                    dist: default.dist,
-                    repos: default.repos,
-                    environment: default.environment,
-                    user: None,
-                    user_iface: default.user,
-                    request: default.request,
-                    request_iface: None,
-                    contexts: default.contexts,
-                    contexts_iface: Default::default(),
-                    breadcrumbs: None,
-                    breadcrumbs_iface: None,
-                    exceptions: None,
-                    exceptions_iface: None,
-                    stacktrace: default.stacktrace,
-                    stacktrace_iface: None,
-                    template_info: default.template_info,
-                    template_info_iface: None,
-                    threads: None,
-                    threads_iface: None,
-                    tags: default.tags,
-                    extra: default.extra,
-                    debug_meta: default.debug_meta,
-                    debug_meta_iface: Default::default(),
-                    sdk_info: default.sdk_info,
-                    other: default.other,
-                }
-            }
-        }
-
-        impl<'a> From<LenientEvent<'a>> for Event<'a> {
-            fn from(lenient: LenientEvent) -> Event {
-                Event {
-                    id: lenient.id,
-                    level: lenient.level,
-                    fingerprint: lenient.fingerprint,
-                    culprit: lenient.culprit,
-                    transaction: lenient.transaction,
-                    message: lenient.message,
-                    logentry: lenient.logentry.or(lenient.logentry_iface),
-                    logger: lenient.logger,
-                    modules: lenient.modules,
-                    platform: lenient.platform,
-                    timestamp: lenient.timestamp,
-                    server_name: lenient.server_name,
-                    release: lenient.release,
-                    dist: lenient.dist,
-                    repos: lenient.repos,
-                    environment: lenient.environment,
-                    user: lenient.user.or(lenient.user_iface),
-                    request: lenient.request.or(lenient.request_iface),
-                    contexts: if lenient.contexts.is_empty() {
-                        lenient.contexts_iface
-                    } else {
-                        lenient.contexts
-                    },
-                    breadcrumbs: lenient
-                        .breadcrumbs
-                        .or(lenient.breadcrumbs_iface)
-                        .unwrap_or_default(),
-                    exceptions: lenient
-                        .exceptions
-                        .or(lenient.exceptions_iface)
-                        .unwrap_or_default(),
-                    stacktrace: lenient.stacktrace.or(lenient.stacktrace_iface),
-                    template_info: lenient.template_info.or(lenient.template_info_iface),
-                    threads: lenient
-                        .threads
-                        .or(lenient.threads_iface)
-                        .unwrap_or_default(),
-                    tags: lenient.tags,
-                    extra: lenient.extra,
-                    debug_meta: if lenient.debug_meta.is_empty() {
-                        lenient.debug_meta_iface
-                    } else {
-                        lenient.debug_meta
-                    },
-                    sdk_info: lenient.sdk_info,
-                    other: lenient.other,
-                }
-            }
-        }
-
-        Ok(LenientEvent::deserialize(deserializer)?.into())
-    }
-}
-
-fn is_other(value: &str) -> bool {
-    value == "other"
-}
-
-static DEFAULT_FINGERPRINT: &'static [Cow<'static, str>] = &[Cow::Borrowed("{{ default }}")];
-
-#[cfg_attr(feature = "cargo-clippy", allow(ptr_arg))]
-fn is_default_fingerprint<'a>(fp: &Cow<'a, [Cow<'a, str>]>) -> bool {
-    fp.len() == 1 && ((&fp)[0] == "{{ default }}" || (&fp)[0] == "{{default}}")
-}
-
-/// Deserializes fingerprints into a list of strings.
-fn deserialize_fingerprint<'a, 'de, D>(deserializer: D) -> Result<Cow<'a, [Cow<'a, str>]>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Debug, Deserialize)]
-    #[serde(untagged)]
-    enum Fingerprint {
-        Bool(bool),
-        Number(value::Number),
-        String(String),
-    }
-
-    impl Into<Option<Cow<'static, str>>> for Fingerprint {
-        fn into(self) -> Option<Cow<'static, str>> {
-            match self {
-                Fingerprint::Bool(b) => Some(if b { "True" } else { "False" }.into()),
-                Fingerprint::Number(n) => {
-                    if let Some(u) = n.as_u64() {
-                        Some(u.to_string().into())
-                    } else if let Some(i) = n.as_i64() {
-                        Some(i.to_string().into())
-                    } else if let Some(f) = n.as_f64() {
-                        if f.abs() < (1i64 << 53) as f64 {
-                            Some(f.trunc().to_string().into())
-                        } else {
-                            None
-                        }
-                    } else {
-                        None
-                    }
-                }
-                Fingerprint::String(s) => Some(s.into()),
-            }
-        }
-    }
-
-    let value = Value::deserialize(deserializer)?;
-    Ok(
-        if let Ok(fingerprint) = from_value::<Vec<Fingerprint>>(value) {
-            Cow::Owned(fingerprint.into_iter().filter_map(|f| f.into()).collect())
-        } else {
-            Cow::Borrowed(DEFAULT_FINGERPRINT)
-        },
-    )
 }
 
 impl<'a> Default for Event<'a> {
@@ -1473,7 +1352,6 @@ impl<'a> Default for Event<'a> {
             extra: Map::new(),
             debug_meta: Default::default(),
             sdk_info: None,
-            other: Map::new(),
         }
     }
 }
@@ -1523,7 +1401,6 @@ impl<'a> Event<'a> {
             extra: self.extra,
             debug_meta: Cow::Owned(self.debug_meta.into_owned()),
             sdk_info: self.sdk_info.map(|x| Cow::Owned(x.into_owned())),
-            other: self.other,
         }
     }
 }
@@ -1538,402 +1415,5 @@ impl<'a> fmt::Display for Event<'a> {
             write!(f, ", ts: {}", ts)?;
         }
         write!(f, ")")
-    }
-}
-
-/// Optional device screen orientation
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
-#[serde(rename_all = "lowercase")]
-pub enum Orientation {
-    /// Portrait device orientation.
-    Portrait,
-    /// Landscape device orientation.
-    Landscape,
-}
-
-/// General context data.
-///
-/// The data can be either typed (`ContextData`) or be filled in as
-/// unhandled attributes in `extra`.  If completely arbitrary data
-/// should be used the typed data can be set to `ContextData::Default`
-/// in which case no key is well known.
-///
-/// Types like `OsContext` can be directly converted with `.into()`
-/// to `Context` or `ContextData`.
-#[derive(Debug, Clone, Default, PartialEq)]
-pub struct Context {
-    /// Typed context data.
-    pub data: ContextData,
-    /// Additional arbitrary fields for forwards compatibility.
-    pub other: Map<String, Value>,
-}
-
-/// Typed contextual data
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[serde(rename_all = "snake_case", untagged)]
-pub enum ContextData {
-    /// Arbitrary contextual information
-    Default,
-    /// Device data.
-    Device(Box<DeviceContext>),
-    /// Operating system data.
-    Os(Box<OsContext>),
-    /// Runtime data.
-    Runtime(Box<RuntimeContext>),
-    /// Application data.
-    App(Box<AppContext>),
-    /// Web browser data.
-    Browser(Box<BrowserContext>),
-}
-
-/// Holds device information.
-#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
-pub struct DeviceContext {
-    /// The name of the device.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-    /// The family of the device model.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub family: Option<String>,
-    /// The device model (human readable).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub model: Option<String>,
-    /// The device model (internal identifier).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub model_id: Option<String>,
-    /// The native cpu architecture of the device.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub arch: Option<String>,
-    /// The current battery level (0-100).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub battery_level: Option<f32>,
-    /// The current screen orientation.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub orientation: Option<Orientation>,
-    /// Simulator/prod indicator.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub simulator: Option<bool>,
-    /// Total memory available in byts.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub memory_size: Option<u64>,
-    /// How much memory is still available in bytes.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub free_memory: Option<u64>,
-    /// How much memory is usable for the app in bytes.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub usable_memory: Option<u64>,
-    /// Total storage size of the device in bytes.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub storage_size: Option<u64>,
-    /// How much storage is free in bytes.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub free_storage: Option<u64>,
-    /// Total size of the attached external storage in bytes (eg: android SDK card).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub external_storage_size: Option<u64>,
-    /// Free size of the attached external storage in bytes (eg: android SDK card).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub external_free_storage: Option<u64>,
-    /// Optionally an indicator when the device was booted.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub boot_time: Option<DateTime<Utc>>,
-    /// The timezone of the device.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub timezone: Option<String>,
-}
-
-/// Holds operating system information.
-#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
-pub struct OsContext {
-    /// The name of the operating system.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-    /// The version of the operating system.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub version: Option<String>,
-    /// The internal build number of the operating system.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub build: Option<String>,
-    /// The current kernel version.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub kernel_version: Option<String>,
-    /// An indicator if the os is rooted (mobile mostly).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub rooted: Option<bool>,
-}
-
-/// Holds information about the runtime.
-#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
-pub struct RuntimeContext {
-    /// The name of the runtime (for instance JVM).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-    /// The version of the runtime.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub version: Option<String>,
-}
-
-/// Holds app information.
-#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
-pub struct AppContext {
-    /// Optional start time of the app.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub app_start_time: Option<DateTime<Utc>>,
-    /// Optional device app hash (app specific device ID)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub device_app_hash: Option<String>,
-    /// Optional build identicator.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub build_type: Option<String>,
-    /// Optional app identifier (dotted bundle id).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub app_identifier: Option<String>,
-    /// Application name as it appears on the platform.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub app_name: Option<String>,
-    /// Application version as it appears on the platform.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub app_version: Option<String>,
-    /// Internal build ID as it appears on the platform.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub app_build: Option<String>,
-}
-
-/// Holds information about the web browser.
-#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
-pub struct BrowserContext {
-    /// The name of the browser (for instance "Chrome").
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-    /// The version of the browser.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub version: Option<String>,
-}
-
-impl From<ContextData> for Context {
-    fn from(data: ContextData) -> Context {
-        Context {
-            data,
-            other: Map::new(),
-        }
-    }
-}
-
-macro_rules! into_context {
-    ($kind:ident, $ty:ty) => {
-        impl From<$ty> for ContextData {
-            fn from(data: $ty) -> ContextData {
-                ContextData::$kind(Box::new(data))
-            }
-        }
-
-        impl From<$ty> for Context {
-            fn from(data: $ty) -> Context {
-                ContextData::$kind(Box::new(data)).into()
-            }
-        }
-    };
-}
-
-into_context!(App, AppContext);
-into_context!(Device, DeviceContext);
-into_context!(Os, OsContext);
-into_context!(Runtime, RuntimeContext);
-into_context!(Browser, BrowserContext);
-
-impl From<Map<String, Value>> for Context {
-    fn from(data: Map<String, Value>) -> Context {
-        Context {
-            data: ContextData::Default,
-            other: data,
-        }
-    }
-}
-
-impl Default for ContextData {
-    fn default() -> ContextData {
-        ContextData::Default
-    }
-}
-
-impl ContextData {
-    /// Returns the name of the type for sentry.
-    pub fn type_name(&self) -> &str {
-        match *self {
-            ContextData::Default => "default",
-            ContextData::Device(..) => "device",
-            ContextData::Os(..) => "os",
-            ContextData::Runtime(..) => "runtime",
-            ContextData::App(..) => "app",
-            ContextData::Browser(..) => "browser",
-        }
-    }
-}
-
-fn serialize_event_id<S>(value: &Option<Uuid>, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    if let Some(ref uuid) = *value {
-        serializer.serialize_some(&uuid.simple().to_string())
-    } else {
-        serializer.serialize_none()
-    }
-}
-
-#[cfg(feature = "with_serde")]
-mod serde_context {
-    use std::str;
-
-    use serde::de::{Deserialize, Deserializer, Error as DeError};
-    use serde::ser::{Error as SerError, SerializeMap, Serializer};
-    use serde_json::{from_value, to_value};
-
-    use super::{
-        value, AppContext, BrowserContext, Context, ContextData, DeviceContext, Map, OsContext,
-        RuntimeContext, Value,
-    };
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Map<String, Context>, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let raw = <Map<String, Value>>::deserialize(deserializer)?;
-        let mut rv = Map::new();
-
-        #[derive(Deserialize)]
-        pub struct Helper<T> {
-            #[serde(flatten)]
-            data: T,
-            #[serde(flatten)]
-            other: Map<String, Value>,
-        }
-
-        for (key, raw_context) in raw {
-            let (ty, data) = match raw_context {
-                Value::Object(mut map) => {
-                    let has_type = if let Some(&Value::String(..)) = map.get("type") {
-                        true
-                    } else {
-                        false
-                    };
-                    let ty = if has_type {
-                        map.remove("type")
-                            .and_then(|x| x.as_str().map(|x| x.to_string()))
-                            .unwrap()
-                    } else {
-                        key.to_string()
-                    };
-                    (ty, Value::Object(map))
-                }
-                _ => continue,
-            };
-
-            macro_rules! convert_context {
-                ($enum:path, $ty:ident) => {{
-                    let helper = from_value::<Helper<$ty>>(data).map_err(D::Error::custom)?;
-                    ($enum(Box::new(helper.data)), helper.other)
-                }};
-            }
-
-            let (data, other) = match ty.as_str() {
-                "device" => convert_context!(ContextData::Device, DeviceContext),
-                "os" => convert_context!(ContextData::Os, OsContext),
-                "runtime" => convert_context!(ContextData::Runtime, RuntimeContext),
-                "app" => convert_context!(ContextData::App, AppContext),
-                "browser" => convert_context!(ContextData::Browser, BrowserContext),
-                _ => (
-                    ContextData::Default,
-                    from_value(data).map_err(D::Error::custom)?,
-                ),
-            };
-            rv.insert(key, Context { data, other });
-        }
-
-        Ok(rv)
-    }
-
-    pub fn serialize<S>(value: &Map<String, Context>, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut map = try!(serializer.serialize_map(None));
-
-        for (key, value) in value {
-            let mut c = if let ContextData::Default = value.data {
-                value::Map::new()
-            } else {
-                match to_value(&value.data).map_err(S::Error::custom)? {
-                    Value::Object(map) => map,
-                    _ => unreachable!(),
-                }
-            };
-            c.insert("type".into(), value.data.type_name().into());
-            c.extend(
-                value
-                    .other
-                    .iter()
-                    .map(|(key, value)| (key.to_string(), value.clone())),
-            );
-            try!(map.serialize_entry(key, &c));
-        }
-
-        map.end()
-    }
-}
-
-impl<'de> Deserialize<'de> for DebugImage {
-    fn deserialize<D>(deserializer: D) -> Result<DebugImage, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let mut map = match Value::deserialize(deserializer)? {
-            Value::Object(map) => map,
-            _ => return Err(D::Error::custom("expected debug image")),
-        };
-
-        Ok(match map.remove("type").as_ref().and_then(|x| x.as_str()) {
-            Some("apple") => {
-                let img: AppleDebugImage =
-                    from_value(Value::Object(map)).map_err(D::Error::custom)?;
-                DebugImage::Apple(img)
-            }
-            Some("symbolic") => {
-                let img: SymbolicDebugImage =
-                    from_value(Value::Object(map)).map_err(D::Error::custom)?;
-                DebugImage::Symbolic(img)
-            }
-            Some("proguard") => {
-                let img: ProguardDebugImage =
-                    from_value(Value::Object(map)).map_err(D::Error::custom)?;
-                DebugImage::Proguard(img)
-            }
-            Some(ty) => {
-                let mut img: Map<String, Value> = map.into_iter().collect();
-                img.insert("type".into(), ty.into());
-                DebugImage::Unknown(img)
-            }
-            None => DebugImage::Unknown(Default::default()),
-        })
-    }
-}
-
-impl Serialize for DebugImage {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let actual = match *self {
-            DebugImage::Apple(ref img) => to_value(img),
-            DebugImage::Symbolic(ref img) => to_value(img),
-            DebugImage::Proguard(ref img) => to_value(img),
-            DebugImage::Unknown(ref img) => to_value(img),
-        };
-        let mut c = match actual.map_err(S::Error::custom)? {
-            Value::Object(map) => map,
-            _ => unreachable!(),
-        };
-        c.insert("type".into(), self.type_name().into());
-        c.serialize(serializer)
     }
 }

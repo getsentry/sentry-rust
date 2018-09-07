@@ -47,7 +47,6 @@ extern crate serde_derive;
 extern crate chrono;
 extern crate debugid;
 extern crate failure;
-extern crate linked_hash_map;
 #[cfg(feature = "with_serde")]
 extern crate serde;
 #[cfg(feature = "with_serde")]

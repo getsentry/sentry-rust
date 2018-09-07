@@ -166,72 +166,6 @@ mod test_fingerprint {
     }
 
     #[test]
-    fn test_fingerprint_bool() {
-        assert_eq!(
-            v7::Event {
-                fingerprint: Cow::Borrowed(&["True".into(), "False".into()]),
-                ..Default::default()
-            },
-            serde_json::from_str("{\"fingerprint\":[true, false]}").unwrap()
-        )
-    }
-
-    #[test]
-    fn test_fingerprint_number() {
-        assert_eq!(
-            v7::Event {
-                fingerprint: Cow::Borrowed(&["-22".into()]),
-                ..Default::default()
-            },
-            serde_json::from_str("{\"fingerprint\":[-22]}").unwrap()
-        )
-    }
-
-    #[test]
-    fn test_fingerprint_float() {
-        assert_eq!(
-            v7::Event {
-                fingerprint: Cow::Borrowed(&["3".into()]),
-                ..Default::default()
-            },
-            serde_json::from_str("{\"fingerprint\":[3.0]}").unwrap()
-        )
-    }
-
-    #[test]
-    fn test_fingerprint_float_trunc() {
-        assert_eq!(
-            v7::Event {
-                fingerprint: Cow::Borrowed(&["3".into()]),
-                ..Default::default()
-            },
-            serde_json::from_str("{\"fingerprint\":[3.5]}").unwrap()
-        )
-    }
-
-    #[test]
-    fn test_fingerprint_float_strip() {
-        assert_eq!(
-            v7::Event {
-                fingerprint: Cow::Borrowed(&[]),
-                ..Default::default()
-            },
-            serde_json::from_str("{\"fingerprint\":[-1e100]}").unwrap()
-        )
-    }
-
-    #[test]
-    fn test_fingerprint_invalid_fallback() {
-        assert_eq!(
-            v7::Event {
-                fingerprint: Cow::Borrowed(&["{{ default }}".into()]),
-                ..Default::default()
-            },
-            serde_json::from_str("{\"fingerprint\":[\"a\",null,\"d\"]}").unwrap()
-        )
-    }
-
-    #[test]
     fn test_fingerprint_empty() {
         assert_eq!(
             v7::Event {
@@ -241,41 +175,15 @@ mod test_fingerprint {
             serde_json::from_str("{\"fingerprint\":[]}").unwrap()
         )
     }
-
-    #[test]
-    fn test_fingerprint_float_bounds() {
-        assert_eq!(
-            v7::Event {
-                fingerprint: Cow::Borrowed(&[]),
-                ..Default::default()
-            },
-            serde_json::from_str("{\"fingerprint\":[1.7976931348623157e+308]}").unwrap()
-        )
-    }
 }
 
 mod test_values {
     use super::*;
 
     #[test]
-    fn test_values_array() {
-        let values = v7::Values {
-            values: vec![1, 2, 3],
-            other: v7::Map::new(),
-        };
-
-        assert_eq!(values, serde_json::from_str("[1,2,3]").unwrap());
-        assert_eq!(
-            serde_json::to_string(&values).unwrap(),
-            "{\"values\":[1,2,3]}".to_string()
-        );
-    }
-
-    #[test]
     fn test_values_object() {
         let values = v7::Values {
             values: vec![1, 2, 3],
-            other: v7::Map::new(),
         };
 
         assert_eq!(
@@ -286,28 +194,6 @@ mod test_values {
         assert_eq!(
             serde_json::to_string(&values).unwrap(),
             "{\"values\":[1,2,3]}".to_string()
-        );
-    }
-
-    #[test]
-    fn test_values_additional_data() {
-        let values = v7::Values {
-            values: vec![1, 2, 3],
-            other: {
-                let mut m = v7::Map::new();
-                m.insert("foo".into(), "bar".into());
-                m
-            },
-        };
-
-        assert_eq!(
-            values,
-            serde_json::from_str("{\"values\":[1,2,3],\"foo\":\"bar\"}").unwrap()
-        );
-
-        assert_eq!(
-            serde_json::to_string(&values).unwrap(),
-            "{\"values\":[1,2,3],\"foo\":\"bar\"}".to_string()
         );
     }
 
@@ -335,7 +221,6 @@ mod test_logentry {
             logentry: Some(v7::LogEntry {
                 message: "Hello %s!".to_string(),
                 params: vec!["World".into()],
-                other: Default::default(),
             }),
             culprit: Some("foo in bar".to_string()),
             level: v7::Level::Debug,
@@ -355,7 +240,6 @@ mod test_logentry {
             logentry: Some(v7::LogEntry {
                 message: "Hello World!".to_string(),
                 params: vec![],
-                other: Default::default(),
             }),
             ..Default::default()
         };
@@ -363,22 +247,6 @@ mod test_logentry {
         assert_eq!(
             serde_json::to_string(&event).unwrap(),
             "{\"logentry\":{\"message\":\"Hello World!\"}}"
-        );
-    }
-
-    #[test]
-    fn test_logentry_interface() {
-        assert_eq!(
-            v7::Event {
-                logentry: Some(v7::LogEntry {
-                    message: "Hello World!".to_string(),
-                    params: vec![],
-                    other: Default::default(),
-                }),
-                ..Default::default()
-            },
-            serde_json::from_str("{\"sentry.interfaces.Message\":{\"message\":\"Hello World!\"}}")
-                .unwrap()
         );
     }
 }
@@ -500,9 +368,6 @@ mod test_user {
         let event = v7::Event {
             user: Some(v7::User {
                 id: Some("8fd5a33b-5b0e-45b2-aff2-9e4f067756ba".into()),
-                email: None,
-                ip_address: None,
-                username: None,
                 ..Default::default()
             }),
             ..Default::default()
@@ -523,11 +388,6 @@ mod test_user {
                 email: Some("foo@example.invalid".into()),
                 ip_address: Some("127.0.0.1".parse().unwrap()),
                 username: Some("john-doe".into()),
-                other: {
-                    let mut hm = v7::Map::new();
-                    hm.insert("foo".into(), "bar".into());
-                    hm
-                },
             }),
             ..Default::default()
         };
@@ -537,7 +397,7 @@ mod test_user {
             serde_json::to_string(&event).unwrap(),
             "{\"user\":{\"id\":\"8fd5a33b-5b0e-45b2-aff2-9e4f067756ba\",\
              \"email\":\"foo@example.invalid\",\"ip_address\":\"127.0.0.1\",\
-             \"username\":\"john-doe\",\"foo\":\"bar\"}}"
+             \"username\":\"john-doe\"}}"
         );
     }
 
@@ -555,25 +415,6 @@ mod test_user {
         assert_eq!(
             serde_json::to_string(&event).unwrap(),
             "{\"user\":{\"ip_address\":\"{{auto}}\"}}"
-        );
-    }
-
-    #[test]
-    fn test_user_interface() {
-        assert_eq!(
-            v7::Event {
-                user: Some(v7::User {
-                    id: Some("8fd5a33b-5b0e-45b2-aff2-9e4f067756ba".into()),
-                    email: None,
-                    ip_address: None,
-                    username: None,
-                    ..Default::default()
-                }),
-                ..Default::default()
-            },
-            serde_json::from_str(
-                "{\"sentry.interfaces.User\":{\"id\":\"8fd5a33b-5b0e-45b2-aff2-9e4f067756ba\"}}"
-            ).unwrap()
         );
     }
 }
@@ -610,20 +451,6 @@ mod test_breadcrumbs {
     }
 
     #[test]
-    fn test_breadcrumbs_list() {
-        let event = event();
-        assert_eq!(
-            event,
-            serde_json::from_str(
-                "{\"breadcrumbs\":[{\"timestamp\":1514103120.713,\"type\":\"default\",\
-                 \"category\":\"ui.click\",\"message\":\"span.platform-card > li.platform-tile\"\
-                 },{\"timestamp\":1514103120.913,\"type\":\"http\",\"category\":\"xhr\",\"data\"\
-                 :{\"url\":\"/api/0/organizations/foo\",\"status_code\":200,\"method\":\"GET\"}}]}"
-            ).unwrap()
-        );
-    }
-
-    #[test]
     fn test_breadcrumbs_values() {
         let event = event();
         assert_roundtrip(&event);
@@ -632,21 +459,7 @@ mod test_breadcrumbs {
             "{\"breadcrumbs\":{\"values\":[{\"timestamp\":1514103120.713,\"type\":\"default\",\
              \"category\":\"ui.click\",\"message\":\"span.platform-card > li.platform-tile\"\
              },{\"timestamp\":1514103120.913,\"type\":\"http\",\"category\":\"xhr\",\"data\"\
-             :{\"url\":\"/api/0/organizations/foo\",\"status_code\":200,\"method\":\"GET\"}}]}}"
-        );
-    }
-
-    #[test]
-    fn test_breadcrumbs_interface() {
-        let event = event();
-        assert_eq!(
-            event,
-            serde_json::from_str(
-                "{\"sentry.interfaces.Breadcrumbs\":[{\"timestamp\":1514103120.713,\"type\":\"default\",\
-                \"category\":\"ui.click\",\"message\":\"span.platform-card > li.platform-tile\"\
-                },{\"timestamp\":1514103120.913,\"type\":\"http\",\"category\":\"xhr\",\"data\"\
-                :{\"url\":\"/api/0/organizations/foo\",\"status_code\":200,\"method\":\"GET\"}}]}"
-            ).unwrap()
+             :{\"method\":\"GET\",\"status_code\":200,\"url\":\"/api/0/organizations/foo\"}}]}}"
         );
     }
 }
@@ -679,31 +492,6 @@ mod test_stacktrace {
              \"filename\":\"hello.py\",\"lineno\":1}]}}"
         );
     }
-
-    #[test]
-    fn test_stacktrace_interface() {
-        assert_eq!(
-            v7::Event {
-                stacktrace: Some(v7::Stacktrace {
-                    frames: vec![v7::Frame {
-                        function: Some("main".into()),
-                        location: v7::FileLocation {
-                            filename: Some("hello.py".into()),
-                            line: Some(1),
-                            ..Default::default()
-                        },
-                        ..Default::default()
-                    }],
-                    ..Default::default()
-                }),
-                ..Default::default()
-            },
-            serde_json::from_str(
-                "{\"sentry.interfaces.Stacktrace\":{\"frames\":[{\"function\":\"main\",\
-                 \"filename\":\"hello.py\",\"lineno\":1}]}}",
-            ).unwrap()
-        )
-    }
 }
 
 mod test_template_info {
@@ -723,7 +511,6 @@ mod test_template_info {
                     current_line: Some("hey hey hey3".into()),
                     post_lines: vec!["foo4".into(), "bar5".into()],
                 },
-                other: Default::default(),
             }),
             ..Default::default()
         };
@@ -735,33 +522,6 @@ mod test_template_info {
              \"pre_context\":[\"foo1\",\"bar2\"],\"context_line\":\
              \"hey hey hey3\",\"post_context\":[\"foo4\",\"bar5\"]}}"
         );
-    }
-
-    #[test]
-    fn test_template_info_interface() {
-        assert_eq!(
-            v7::Event {
-                template_info: Some(v7::TemplateInfo {
-                    location: v7::FileLocation {
-                        filename: Some("hello.html".into()),
-                        line: Some(1),
-                        ..Default::default()
-                    },
-                    source: v7::EmbeddedSources {
-                        pre_lines: vec!["foo1".into(), "bar2".into()],
-                        current_line: Some("hey hey hey3".into()),
-                        post_lines: vec!["foo4".into(), "bar5".into()],
-                    },
-                    other: Default::default(),
-                }),
-                ..Default::default()
-            },
-            serde_json::from_str(
-                "{\"sentry.interfaces.Template\":{\"filename\":\"hello.html\",\"lineno\":1,\
-                 \"pre_context\":[\"foo1\",\"bar2\"],\"context_line\":\
-                 \"hey hey hey3\",\"post_context\":[\"foo4\",\"bar5\"]}}",
-            ).unwrap()
-        )
     }
 }
 
@@ -783,43 +543,6 @@ mod test_threads {
         assert_eq!(
             serde_json::to_string(&event).unwrap(),
             "{\"threads\":{\"values\":[{\"id\":\"#1\",\"name\":\"Awesome Thread\"}]}}"
-        );
-    }
-
-    #[test]
-    fn test_threads_list() {
-        let event = v7::Event {
-            threads: vec![v7::Thread {
-                id: Some("#1".into()),
-                name: Some("Awesome Thread".into()),
-                ..Default::default()
-            }].into(),
-            ..Default::default()
-        };
-
-        assert_eq!(
-            event,
-            serde_json::from_str("{\"threads\":[{\"id\":\"#1\",\"name\":\"Awesome Thread\"}]}")
-                .unwrap()
-        );
-    }
-
-    #[test]
-    fn test_threads_interface() {
-        let event = v7::Event {
-            threads: vec![v7::Thread {
-                id: Some("#1".into()),
-                name: Some("Awesome Thread".into()),
-                ..Default::default()
-            }].into(),
-            ..Default::default()
-        };
-
-        assert_eq!(
-            event,
-            serde_json::from_str(
-                "{\"sentry.interfaces.Threads\":[{\"id\":\"#1\",\"name\":\"Awesome Thread\"}]}"
-            ).unwrap()
         );
     }
 
@@ -909,7 +632,6 @@ mod test_request {
                     env.insert("PATH_INFO".into(), "/bar".into());
                     env
                 },
-                ..Default::default()
             }),
             ..Default::default()
         };
@@ -934,11 +656,6 @@ mod test_request {
                 data: Some("{}".into()),
                 query_string: Some("foo=bar&blub=blah".into()),
                 cookies: Some("dummy=42".into()),
-                other: {
-                    let mut m = v7::Map::new();
-                    m.insert("other_key".into(), "other_value".into());
-                    m
-                },
                 ..Default::default()
             }),
             ..Default::default()
@@ -949,8 +666,7 @@ mod test_request {
             serde_json::to_string(&event).unwrap(),
             "{\"request\":{\"url\":\"https://www.example.invalid/bar\",\
              \"method\":\"GET\",\"data\":\"{}\",\"query_string\":\
-             \"foo=bar&blub=blah\",\"cookies\":\"dummy=42\",\
-             \"other_key\":\"other_value\"}}"
+             \"foo=bar&blub=blah\",\"cookies\":\"dummy=42\"}}"
         );
     }
 
@@ -963,17 +679,6 @@ mod test_request {
 
         assert_roundtrip(&event);
         assert_eq!(serde_json::to_string(&event).unwrap(), "{\"request\":{}}");
-    }
-
-    #[test]
-    fn test_request_interface() {
-        assert_eq!(
-            v7::Event {
-                request: Some(Default::default()),
-                ..Default::default()
-            },
-            serde_json::from_str("{\"sentry.interfaces.Http\":{}}").unwrap()
-        )
     }
 }
 
@@ -1047,28 +752,6 @@ mod test_debug_meta {
     }
 
     #[test]
-    fn test_debug_meta_interface() {
-        assert_eq!(
-            v7::Event {
-                debug_meta: Cow::Owned(v7::DebugMeta {
-                    sdk_info: Some(v7::SystemSdkInfo {
-                        sdk_name: "iOS".into(),
-                        version_major: 10,
-                        version_minor: 3,
-                        version_patchlevel: 0,
-                    }),
-                    ..Default::default()
-                }),
-                ..Default::default()
-            },
-            serde_json::from_str(
-                "{\"sentry.interfaces.DebugMeta\":{\"sdk_info\":{\"sdk_name\":\"iOS\",\
-                 \"version_major\":10,\"version_minor\":3,\"version_patchlevel\":0}}}"
-            ).unwrap()
-        );
-    }
-
-    #[test]
     fn test_debug_meta_images() {
         let event = v7::Event {
             debug_meta: Cow::Owned(v7::DebugMeta {
@@ -1103,51 +786,20 @@ mod test_debug_meta {
         assert_roundtrip(&event);
         assert_eq!(
             serde_json::to_string(&event).unwrap(),
-            "{\"debug_meta\":{\"images\":[{\"name\":\"CoreFoundation\",\"arch\":\
+            "{\"debug_meta\":{\"images\":[{\"type\":\"apple\",\"name\":\"CoreFoundation\",\"arch\":\
              \"arm64\",\"cpu_type\":1233,\"cpu_subtype\":3,\"image_addr\":\"0x0\",\
              \"image_size\":4096,\"image_vmaddr\":\"0x8000\",\"uuid\":\
-             \"494f3aea-88fa-4296-9644-fa8ef5d139b6\",\"type\":\"apple\"},\
-             {\"name\":\"CoreFoundation\",\"arch\":\"arm64\",\"image_addr\":\
+             \"494f3aea-88fa-4296-9644-fa8ef5d139b6\"},\
+             {\"type\":\"symbolic\",\"name\":\"CoreFoundation\",\"arch\":\"arm64\",\"image_addr\":\
              \"0x0\",\"image_size\":4096,\"image_vmaddr\":\"0x8000\",\"id\":\
-             \"494f3aea-88fa-4296-9644-fa8ef5d139b6-1234\",\"type\":\"symbolic\"}\
-             ,{\"uuid\":\"8c954262-f905-4992-8a61-f60825f4553b\",\"type\":\"proguard\"}]}}"
+             \"494f3aea-88fa-4296-9644-fa8ef5d139b6-1234\"},\
+             {\"type\":\"proguard\",\"uuid\":\"8c954262-f905-4992-8a61-f60825f4553b\"}]}}"
         );
     }
 }
 
 mod test_exception {
     use super::*;
-
-    #[test]
-    fn test_exception_null() {
-        let event: v7::Event = serde_json::from_slice(b"{\"exception\":null}").unwrap();
-        assert_eq!(event.exceptions, Default::default());
-    }
-
-    #[test]
-    fn test_exception_single() {
-        let json = "{\"exception\":{\"type\":\"ZeroDivisionError\"}}";
-        let event: v7::Event = serde_json::from_str(&json).unwrap();
-        let mut ref_event: v7::Event = Default::default();
-        ref_event.exceptions.values.push(v7::Exception {
-            ty: "ZeroDivisionError".into(),
-            ..Default::default()
-        });
-        assert_eq!(event, ref_event);
-    }
-
-    #[test]
-    fn test_exception_list() {
-        let json = "{\"exception\":[{\"type\":\"ZeroDivisionError\"}]}";
-        let event: v7::Event = serde_json::from_str(&json).unwrap();
-        let mut ref_event: v7::Event = Default::default();
-        ref_event.exceptions.values.push(v7::Exception {
-            ty: "ZeroDivisionError".into(),
-            ..Default::default()
-        });
-        assert_roundtrip(&event);
-        assert_eq!(event, ref_event);
-    }
 
     #[test]
     fn test_exception_values() {
@@ -1165,31 +817,6 @@ mod test_exception {
 
         let event2: v7::Event = serde_json::from_str(&json).unwrap();
         assert_eq!(event, event2);
-    }
-
-    #[test]
-    fn test_exception_interface() {
-        let json = "{\"sentry.interfaces.Exception\":{\"type\":\"ZeroDivisionError\"}}";
-        let event: v7::Event = serde_json::from_str(&json).unwrap();
-        let mut ref_event: v7::Event = Default::default();
-        ref_event.exceptions.values.push(v7::Exception {
-            ty: "ZeroDivisionError".into(),
-            ..Default::default()
-        });
-        assert_eq!(event, ref_event);
-    }
-
-    #[test]
-    fn test_exception_precedence() {
-        let json = "{\"exception\":{\"type\":\"ZeroDivisionError\"},\
-                    \"sentry.interfaces.Exception\":{\"type\":\"WRONG\"}}";
-        let event: v7::Event = serde_json::from_str(&json).unwrap();
-        let mut ref_event: v7::Event = Default::default();
-        ref_event.exceptions.values.push(v7::Exception {
-            ty: "ZeroDivisionError".into(),
-            ..Default::default()
-        });
-        assert_eq!(event, ref_event);
     }
 
     #[test]
@@ -1311,11 +938,6 @@ mod test_exception {
                             instruction_addr: Some(v7::Addr(0)),
                             symbol_addr: Some(v7::Addr(0)),
                         },
-                        other: {
-                            let mut m = v7::Map::new();
-                            m.insert("zzz".into(), "foo".into());
-                            m
-                        },
                     }],
                     frames_omitted: Some((1, 2)),
                     registers: {
@@ -1357,7 +979,6 @@ mod test_exception {
                         m.insert("x12".into(), v7::RegVal(0x1_b3b3_7b1d));
                         m
                     },
-                    ..Default::default()
                 }),
                 raw_stacktrace: Some(v7::Stacktrace {
                     frames: vec![v7::Frame {
@@ -1387,20 +1008,19 @@ mod test_exception {
              :\"/app/hello.py\",\"lineno\":7,\"colno\":42,\"pre_context\":[\"foo\",\"\
              bar\"],\"context_line\":\"hey hey hey\",\"post_context\":[\"foo\",\"bar\"]\
              ,\"in_app\":true,\"vars\":{\"var\":\"value\"},\"image_addr\":\"0x0\",\
-             \"instruction_addr\":\"0x0\",\"symbol_addr\":\"0x0\",\"zzz\":\"foo\"}],\"frames_omitted\":\
-             [1,2],\"registers\":{\"x8\":\"0x0\",\"x20\":\"0x1\",\"x21\":\"0x1\",\"x28\
-             \":\"0x17025f650\",\"x4\":\"0x1702eb100\",\"x24\":\"0x1b1399c20\",\"sp\":\
-             \"0x16fd75060\",\"x1\":\"0x1b1399bb1\",\"x23\":\"0x1afe10040\",\"x14\":\
-             \"0x1\",\"x19\":\"0x0\",\"x18\":\"0x0\",\"x3\":\"0x1\",\"pc\":\"0x18a310ea4\
-             \",\"x7\":\"0x0\",\"x10\":\"0x57b\",\"x6\":\"0x0\",\"x13\":\"0x1\",\"x2\":\
-             \"0x1\",\"x27\":\"0x1\",\"x26\":\"0x191ec48d1\",\"x9\":\"0x1b1399c20\",\
-             \"x29\":\"0x16fd75060\",\"x5\":\"0x1702eb100\",\"fp\":\"0x16fd75060\",\
-             \"x0\":\"0x1\",\"lr\":\"0x18a31aadc\",\"x25\":\"0x0\",\"x16\":\
-             \"0x18a31aa34\",\"x11\":\"0x1b3b37b1d\",\"cpsr\":\"0x20000000\",\"x17\":\
-             \"0x0\",\"x15\":\"0x881\",\"x22\":\"0x1b1399bb0\",\"x12\":\"0x1b3b37b1d\"}\
-             },\"raw_stacktrace\":{\"frames\":[{\"function\":\"main\",\"image_addr\":\
-             \"0x0\",\"instruction_addr\":\"0x0\",\"symbol_addr\":\"0x0\"}],\
-             \"frames_omitted\":[1,2]}}]}}"
+             \"instruction_addr\":\"0x0\",\"symbol_addr\":\"0x0\"}],\"frames_omitted\":\
+             [1,2],\"registers\":{\"cpsr\":\"0x20000000\",\"fp\":\"0x16fd75060\",\"lr\":\
+             \"0x18a31aadc\",\"pc\":\"0x18a310ea4\",\"sp\":\"0x16fd75060\",\"x0\":\"0x1\",\
+             \"x1\":\"0x1b1399bb1\",\"x10\":\"0x57b\",\"x11\":\"0x1b3b37b1d\",\"x12\":\
+             \"0x1b3b37b1d\",\"x13\":\"0x1\",\"x14\":\"0x1\",\"x15\":\"0x881\",\"x16\":\
+             \"0x18a31aa34\",\"x17\":\"0x0\",\"x18\":\"0x0\",\"x19\":\"0x0\",\"x2\":\"0x1\"\
+             ,\"x20\":\"0x1\",\"x21\":\"0x1\",\"x22\":\"0x1b1399bb0\",\"x23\":\"0x1afe10040\"\
+             ,\"x24\":\"0x1b1399c20\",\"x25\":\"0x0\",\"x26\":\"0x191ec48d1\",\"x27\":\"0x1\",\
+             \"x28\":\"0x17025f650\",\"x29\":\"0x16fd75060\",\"x3\":\"0x1\",\"x4\":\
+             \"0x1702eb100\",\"x5\":\"0x1702eb100\",\"x6\":\"0x0\",\"x7\":\"0x0\",\"x8\":\
+             \"0x0\",\"x9\":\"0x1b1399c20\"}},\"raw_stacktrace\":{\"frames\":[{\"function\":\
+             \"main\",\"image_addr\":\"0x0\",\"instruction_addr\":\"0x0\",\"symbol_addr\":\
+             \"0x0\"}],\"frames_omitted\":[1,2]}}]}}"
         );
     }
 
@@ -1441,9 +1061,7 @@ mod test_exception {
                             subcode: 8,
                             name: None,
                         }),
-                        other: Default::default(),
                     },
-                    other: Default::default(),
                 }),
                 ..Default::default()
             }].into(),
@@ -1490,20 +1108,13 @@ fn test_sdk_info() {
 fn test_other_data() {
     let event = v7::Event {
         id: Some("864ee979-77bf-43ac-96d7-4f7486d138ab".parse().unwrap()),
-        other: {
-            let mut m = v7::Map::new();
-            m.insert("extra_shit".into(), 42.into());
-            m.insert("extra_garbage".into(), "aha".into());
-            m
-        },
         ..Default::default()
     };
 
     assert_roundtrip(&event);
     assert_eq!(
         serde_json::to_string(&event).unwrap(),
-        "{\"event_id\":\"864ee97977bf43ac96d74f7486d138ab\",\
-         \"extra_shit\":42,\"extra_garbage\":\"aha\"}"
+        "{\"event_id\":\"864ee97977bf43ac96d74f7486d138ab\"}"
     );
 }
 
@@ -1545,13 +1156,13 @@ mod test_contexts {
         assert_roundtrip(&event);
         assert_eq!(
             serde_json::to_string(&event).unwrap(),
-            "{\"contexts\":{\"device\":{\"name\":\"iphone\",\"family\":\"iphone\",\"model\":\
+            "{\"contexts\":{\"device\":{\"type\":\"device\",\"name\":\"iphone\",\"family\":\"iphone\",\"model\":\
              \"iphone7,3\",\"model_id\":\"AH223\",\"arch\":\"arm64\",\"battery_level\":58.5,\
              \"orientation\":\"landscape\",\"simulator\":true,\"memory_size\":3137978368,\
              \"free_memory\":322781184,\"usable_memory\":2843525120,\"storage_size\":63989469184,\
              \"free_storage\":31994734592,\"external_storage_size\":2097152,\
              \"external_free_storage\":2097152,\"boot_time\":\"2018-02-08T12:52:12Z\",\"timezone\":\
-             \"Europe/Vienna\",\"type\":\"device\"}}}"
+             \"Europe/Vienna\"}}}"
         );
     }
 
@@ -1578,8 +1189,8 @@ mod test_contexts {
         assert_roundtrip(&event);
         assert_eq!(
             serde_json::to_string(&event).unwrap(),
-            "{\"contexts\":{\"os\":{\"name\":\"iOS\",\"version\":\"11.4.2\",\"build\":\"ADSA23\",\
-             \"kernel_version\":\"17.4.0\",\"rooted\":true,\"type\":\"os\"}}}"
+            "{\"contexts\":{\"os\":{\"type\":\"os\",\"name\":\"iOS\",\"version\":\"11.4.2\",\
+             \"build\":\"ADSA23\",\"kernel_version\":\"17.4.0\",\"rooted\":true}}}"
         );
     }
 
@@ -1608,10 +1219,10 @@ mod test_contexts {
         assert_roundtrip(&event);
         assert_eq!(
             serde_json::to_string(&event).unwrap(),
-            "{\"contexts\":{\"app\":{\"app_start_time\":\"2018-02-08T22:21:57Z\",\
+            "{\"contexts\":{\"app\":{\"type\":\"app\",\"app_start_time\":\"2018-02-08T22:21:57Z\",\
              \"device_app_hash\":\"4c793e3776474877ae30618378e9662a\",\"build_type\":\
              \"testflight\",\"app_identifier\":\"foo.bar.baz\",\"app_name\":\"Baz App\",\
-             \"app_version\":\"1.0\",\"app_build\":\"100001\",\"type\":\"app\"}}}"
+             \"app_version\":\"1.0\",\"app_build\":\"100001\"}}}"
         );
     }
 
@@ -1635,8 +1246,8 @@ mod test_contexts {
         assert_roundtrip(&event);
         assert_eq!(
             serde_json::to_string(&event).unwrap(),
-            "{\"contexts\":{\"browser\":{\"name\":\"Chrome\",\"version\":\"59.0.3071\",\"type\":\
-             \"browser\"}}}"
+            "{\"contexts\":{\"browser\":{\"type\":\"browser\",\"name\":\"Chrome\",\"version\":\
+             \"59.0.3071\"}}}"
         );
     }
 
@@ -1660,33 +1271,8 @@ mod test_contexts {
         assert_roundtrip(&event);
         assert_eq!(
             serde_json::to_string(&event).unwrap(),
-            "{\"contexts\":{\"runtime\":{\"name\":\"magicvm\",\"version\":\"5.3\",\"type\":\
-             \"runtime\"}}}"
-        );
-    }
-
-    #[test]
-    fn test_unknown_context() {
-        let event = v7::Event {
-            contexts: {
-                let mut m = v7::Map::new();
-                m.insert(
-                    "other".into(),
-                    {
-                        let mut m = v7::Map::new();
-                        m.insert("aha".into(), "oho".into());
-                        m
-                    }.into(),
-                );
-                m
-            },
-            ..Default::default()
-        };
-
-        assert_roundtrip(&event);
-        assert_eq!(
-            serde_json::to_string(&event).unwrap(),
-            "{\"contexts\":{\"other\":{\"type\":\"default\",\"aha\":\"oho\"}}}"
+            "{\"contexts\":{\"runtime\":{\"type\":\"runtime\",\"name\":\"magicvm\",\"version\":\
+             \"5.3\"}}}"
         );
     }
 
@@ -1704,17 +1290,10 @@ mod test_contexts {
                 );
                 m.insert(
                     "othervm".into(),
-                    v7::Context {
-                        data: v7::RuntimeContext {
-                            name: Some("magicvm".into()),
-                            version: Some("5.3".into()),
-                        }.into(),
-                        other: {
-                            let mut m = v7::Map::new();
-                            m.insert("extra_stuff".into(), "extra_value".into());
-                            m
-                        },
-                    },
+                    v7::RuntimeContext {
+                        name: Some("magicvm".into()),
+                        version: Some("5.3".into()),
+                    }.into(),
                 );
                 m
             },
@@ -1724,25 +1303,8 @@ mod test_contexts {
         assert_roundtrip(&event);
         assert_eq!(
             serde_json::to_string(&event).unwrap(),
-            "{\"contexts\":{\"magicvm\":{\"name\":\"magicvm\",\"version\":\"5.3\",\"type\":\
-             \"runtime\"},\"othervm\":{\"name\":\"magicvm\",\"version\":\"5.3\",\"type\":\
-             \"runtime\",\"extra_stuff\":\"extra_value\"}}}"
-        );
-    }
-
-    #[test]
-    fn test_contexts_interface() {
-        assert_eq!(
-            v7::Event {
-                contexts: {
-                    let mut m = v7::Map::new();
-                    m.insert("os".into(), v7::OsContext::default().into());
-                    m
-                },
-                ..Default::default()
-            },
-            serde_json::from_str("{\"sentry.interfaces.Contexts\":{\"os\":{\"type\":\"os\"}}}")
-                .unwrap()
+            "{\"contexts\":{\"magicvm\":{\"type\":\"runtime\",\"name\":\"magicvm\",\"version\":\
+             \"5.3\"},\"othervm\":{\"type\":\"runtime\",\"name\":\"magicvm\",\"version\":\"5.3\"}}}"
         );
     }
 }

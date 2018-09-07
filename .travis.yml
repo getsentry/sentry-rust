@@ -16,7 +16,7 @@ matrix:
   include:
     - env: SUITE=test
     - env: SUITE=test
-      rust: "1.21.0"
+      rust: "1.28.0"
     - env: SUITE=format-check
       install: rustup component add rustfmt-preview
     - env: SUITE=lint

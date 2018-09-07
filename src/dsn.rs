@@ -188,7 +188,7 @@ impl FromStr for Dsn {
     }
 }
 
-impl_str_serialization!(Dsn);
+impl_str_serde!(Dsn);
 
 #[cfg(test)]
 mod test {
