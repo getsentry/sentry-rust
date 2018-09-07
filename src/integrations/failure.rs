@@ -127,7 +127,7 @@ pub fn event_from_error(err: &failure::Error) -> Event<'static> {
 
     exceptions.reverse();
     Event {
-        exceptions,
+        exceptions: exceptions.into(),
         level: Level::Error,
         ..Default::default()
     }
@@ -145,7 +145,7 @@ pub fn event_from_fail<F: Fail + ?Sized>(fail: &F) -> Event<'static> {
 
     exceptions.reverse();
     Event {
-        exceptions,
+        exceptions: exceptions.into(),
         level: Level::Error,
         ..Default::default()
     }

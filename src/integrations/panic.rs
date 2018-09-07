@@ -41,7 +41,7 @@ pub fn event_from_panic_info(info: &panic::PanicInfo) -> Event<'static> {
             value: Some(msg.to_string()),
             stacktrace: current_stacktrace(),
             ..Default::default()
-        }],
+        }].into(),
         level: Level::Fatal,
         ..Default::default()
     }

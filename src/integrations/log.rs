@@ -162,7 +162,7 @@ pub fn event_from_record(record: &log::Record, with_stacktrace: bool) -> Event<'
                 None
             },
             ..Default::default()
-        }],
+        }].into(),
         ..Default::default()
     }
 }

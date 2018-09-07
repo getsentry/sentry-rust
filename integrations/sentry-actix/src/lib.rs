@@ -84,10 +84,13 @@ use actix_web::middleware::{Middleware, Response, Started};
 use actix_web::{Error, HttpMessage, HttpRequest, HttpResponse};
 use failure::Fail;
 use sentry::integrations::failure::exception_from_single_fail;
-use sentry::protocol::{Event, Level};
+use sentry::protocol::{ClientSdkPackageInfo, Event, Level};
 use sentry::Hub;
 use std::sync::{Arc, Mutex};
 use uuid::Uuid;
+
+/// The version of the library
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// A helper construct that can be used to reconfigure and build the middleware.
 pub struct SentryMiddlewareBuilder {
@@ -228,6 +231,14 @@ impl<S: 'static> Middleware<S> for SentryMiddleware {
                     }
                 }
 
+                if let Some(ref mut sdk_info) = event.sdk_info {
+                    sdk_info.to_mut().integrations.push("actix".to_string());
+                    sdk_info.to_mut().packages.push(ClientSdkPackageInfo {
+                        package_name: "crates:sentry-actix".into(),
+                        version: VERSION.into(),
+                    });
+                }
+
                 Some(event)
             }));
         });
@@ -303,7 +314,7 @@ impl ActixWebHubExt for Hub {
         }
         exceptions.reverse();
         self.capture_event(Event {
-            exceptions: exceptions,
+            exceptions: exceptions.into(),
             level: Level::Error,
             ..Default::default()
         })
