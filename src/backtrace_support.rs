@@ -3,7 +3,7 @@ use std::fmt;
 use backtrace::Backtrace;
 use regex::{Captures, Regex};
 
-use api::protocol::{FileLocation, Frame, InstructionInfo, Stacktrace};
+use api::protocol::{Frame, Stacktrace};
 
 lazy_static!{
     static ref HASH_FUNC_RE: Regex = Regex::new(r#"(?x)
@@ -131,16 +131,11 @@ pub fn backtrace_to_stacktrace(bt: &Backtrace) -> Option<Stacktrace> {
                         None
                     },
                     function: Some(function),
-                    instruction_info: InstructionInfo {
-                        instruction_addr: Some(frame.ip().into()),
-                        ..Default::default()
-                    },
-                    location: FileLocation {
-                        abs_path,
-                        filename,
-                        line: sym.lineno().map(|l| l.into()),
-                        column: None,
-                    },
+                    instruction_addr: Some(frame.ip().into()),
+                    abs_path,
+                    filename,
+                    lineno: sym.lineno().map(|l| l.into()),
+                    colno: None,
                     ..Default::default()
                 }
             })

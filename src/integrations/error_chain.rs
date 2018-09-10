@@ -65,7 +65,7 @@ where
     T::ErrorKind: Debug + Display,
 {
     Event {
-        exceptions: exceptions_from_error_chain(e),
+        exception: exceptions_from_error_chain(e).into(),
         level: Level::Error,
         ..Default::default()
     }

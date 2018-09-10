@@ -25,7 +25,7 @@ fn test_basic_capture_message() {
         vec![("worker".to_string(), "worker1".to_string())]
     );
 
-    assert_eq!(event.id, last_event_id);
+    assert_eq!(Some(event.event_id), last_event_id);
 }
 
 #[test]
