@@ -82,32 +82,3 @@ pub mod ts_seconds_float {
         }
     }
 }
-
-#[cfg(feature = "with_serde")]
-pub mod ts_seconds_float_opt {
-    use chrono::{DateTime, Utc};
-    use serde::Deserialize;
-    use serde::{de, ser};
-
-    use super::ts_seconds_float;
-
-    #[derive(Debug, Serialize, Deserialize)]
-    struct WrappedTimestamp(#[serde(with = "ts_seconds_float")] DateTime<Utc>);
-
-    pub fn deserialize<'de, D>(d: D) -> Result<Option<DateTime<Utc>>, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        Option::<WrappedTimestamp>::deserialize(d).map(|opt| opt.map(|wrapped| wrapped.0))
-    }
-
-    pub fn serialize<S>(opt_dt: &Option<DateTime<Utc>>, s: S) -> Result<S::Ok, S::Error>
-    where
-        S: ser::Serializer,
-    {
-        match *opt_dt {
-            Some(ref dt) => s.serialize_some(&WrappedTimestamp(*dt)),
-            None => s.serialize_none(),
-        }
-    }
-}
