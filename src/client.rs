@@ -395,8 +395,16 @@ impl Client {
             };
         }
 
+        // id, debug meta and sdk are set before the processors run so that the
+        // processors can poke around in that data.
         if event.event_id.is_nil() {
             event.event_id = Uuid::new_v4();
+        }
+        if event.debug_meta.is_empty() {
+            event.debug_meta = Cow::Borrowed(&DEBUG_META);
+        }
+        if event.sdk.is_none() {
+            event.sdk = Some(Cow::Borrowed(&SDK_INFO));
         }
 
         if let Some(scope) = scope {
@@ -423,16 +431,9 @@ impl Client {
         if event.server_name.is_none() {
             event.server_name = self.options.server_name.clone();
         }
-        if event.sdk.is_none() {
-            event.sdk = Some(Cow::Borrowed(&SDK_INFO));
-        }
 
         if &event.platform == "other" {
             event.platform = "native".into();
-        }
-
-        if event.debug_meta.is_empty() {
-            event.debug_meta = Cow::Borrowed(&DEBUG_META);
         }
 
         for exc in &mut event.exception {
