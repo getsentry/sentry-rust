@@ -416,6 +416,11 @@ mod test_user {
                 email: Some("foo@example.invalid".into()),
                 ip_address: Some("127.0.0.1".parse().unwrap()),
                 username: Some("john-doe".into()),
+                other: {
+                    let mut hm = v7::Map::new();
+                    hm.insert("foo".into(), "bar".into());
+                    hm
+                },
             }),
             ..Default::default()
         };
@@ -425,7 +430,7 @@ mod test_user {
             serde_json::to_string(&event).unwrap(),
             "{\"event_id\":\"d43e86c96e424a93a4fbda156dd17341\",\"timestamp\":1514103120,\"user\":\
              {\"id\":\"8fd5a33b-5b0e-45b2-aff2-9e4f067756ba\",\"email\":\"foo@example.invalid\",\
-             \"ip_address\":\"127.0.0.1\",\"username\":\"john-doe\"}}"
+             \"ip_address\":\"127.0.0.1\",\"username\":\"john-doe\",\"foo\":\"bar\"}}"
         );
     }
 
@@ -1185,6 +1190,7 @@ mod test_contexts {
                         external_free_storage: Some(2_097_152),
                         boot_time: Some("2018-02-08T12:52:12Z".parse().unwrap()),
                         timezone: Some("Europe/Vienna".into()),
+                        other: Default::default(),
                     }.into(),
                 );
                 m
@@ -1221,6 +1227,7 @@ mod test_contexts {
                         build: Some("ADSA23".into()),
                         kernel_version: Some("17.4.0".into()),
                         rooted: Some(true),
+                        other: Default::default(),
                     }.into(),
                 );
                 m
@@ -1254,6 +1261,7 @@ mod test_contexts {
                         app_name: Some("Baz App".into()),
                         app_version: Some("1.0".into()),
                         app_build: Some("100001".into()),
+                        other: Default::default(),
                     }.into(),
                 );
                 m
@@ -1284,6 +1292,7 @@ mod test_contexts {
                     v7::BrowserContext {
                         name: Some("Chrome".into()),
                         version: Some("59.0.3071".into()),
+                        other: Default::default(),
                     }.into(),
                 );
                 m
@@ -1312,6 +1321,7 @@ mod test_contexts {
                     v7::RuntimeContext {
                         name: Some("magicvm".into()),
                         version: Some("5.3".into()),
+                        other: Default::default(),
                     }.into(),
                 );
                 m
@@ -1340,6 +1350,7 @@ mod test_contexts {
                     v7::RuntimeContext {
                         name: Some("magicvm".into()),
                         version: Some("5.3".into()),
+                        other: Default::default(),
                     }.into(),
                 );
                 m.insert(
@@ -1347,6 +1358,7 @@ mod test_contexts {
                     v7::RuntimeContext {
                         name: Some("magicvm".into()),
                         version: Some("5.3".into()),
+                        other: Default::default(),
                     }.into(),
                 );
                 m
@@ -1360,6 +1372,34 @@ mod test_contexts {
             "{\"event_id\":\"d43e86c96e424a93a4fbda156dd17341\",\"timestamp\":1514103120,\
              \"contexts\":{\"magicvm\":{\"type\":\"runtime\",\"name\":\"magicvm\",\"version\":\"5.\
              3\"},\"othervm\":{\"type\":\"runtime\",\"name\":\"magicvm\",\"version\":\"5.3\"}}}"
+        );
+    }
+
+    #[test]
+    fn test_other_context() {
+        let event = v7::Event {
+            event_id: event_id(),
+            timestamp: event_time(),
+            contexts: {
+                let mut m = v7::Map::new();
+                m.insert(
+                    "other".into(),
+                    v7::Context::Other({
+                        let mut m = v7::Map::new();
+                        m.insert("aha".into(), "oho".into());
+                        m
+                    }),
+                );
+                m
+            },
+            ..Default::default()
+        };
+
+        assert_roundtrip(&event);
+        assert_eq!(
+            serde_json::to_string(&event).unwrap(),
+            "{\"event_id\":\"d43e86c96e424a93a4fbda156dd17341\",\"timestamp\":1514103120,\
+             \"contexts\":{\"other\":{\"type\":\"unknown\",\"aha\":\"oho\"}}}"
         );
     }
 }
