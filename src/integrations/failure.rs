@@ -32,7 +32,7 @@ use failure::{Error, Fail};
 use regex::Regex;
 use uuid::Uuid;
 
-use api::protocol::{Event, Exception, FileLocation, Frame, InstructionInfo, Level, Stacktrace};
+use api::protocol::{Event, Exception, Frame, Level, Stacktrace};
 use backtrace_support::{demangle_symbol, error_typename, filename, strip_symbol};
 use hub::Hub;
 
@@ -71,18 +71,12 @@ fn parse_stacktrace(bt: &str) -> Option<Stacktrace> {
                     None
                 },
                 function: Some(function),
-                instruction_info: InstructionInfo {
-                    instruction_addr: Some(captures["addr"].parse().unwrap()),
-                    ..Default::default()
-                },
-                location: FileLocation {
-                    abs_path,
-                    filename,
-                    line: captures
-                        .name("lineno")
-                        .map(|x| x.as_str().parse::<u64>().unwrap()),
-                    column: None,
-                },
+                instruction_addr: Some(captures["addr"].parse().unwrap()),
+                abs_path,
+                filename,
+                lineno: captures
+                    .name("lineno")
+                    .map(|x| x.as_str().parse::<u64>().unwrap()),
                 ..Default::default()
             }
         })
@@ -127,7 +121,7 @@ pub fn event_from_error(err: &failure::Error) -> Event<'static> {
 
     exceptions.reverse();
     Event {
-        exceptions,
+        exception: exceptions.into(),
         level: Level::Error,
         ..Default::default()
     }
@@ -145,7 +139,7 @@ pub fn event_from_fail<F: Fail + ?Sized>(fail: &F) -> Event<'static> {
 
     exceptions.reverse();
     Event {
-        exceptions,
+        exception: exceptions.into(),
         level: Level::Error,
         ..Default::default()
     }

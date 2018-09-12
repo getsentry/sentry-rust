@@ -299,11 +299,11 @@ impl Scope {
         }
 
         for processor in &self.event_processors {
-            let id = event.id;
+            let id = event.event_id;
             event = match processor(event) {
                 Some(event) => event,
                 None => {
-                    sentry_debug!("event processor dropped event {:?}", id);
+                    sentry_debug!("event processor dropped event {}", id);
                     return None;
                 }
             }

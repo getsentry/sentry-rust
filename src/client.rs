@@ -395,8 +395,16 @@ impl Client {
             };
         }
 
-        if event.id.is_none() {
-            event.id = Some(Uuid::new_v4());
+        // id, debug meta and sdk are set before the processors run so that the
+        // processors can poke around in that data.
+        if event.event_id.is_nil() {
+            event.event_id = Uuid::new_v4();
+        }
+        if event.debug_meta.is_empty() {
+            event.debug_meta = Cow::Borrowed(&DEBUG_META);
+        }
+        if event.sdk.is_none() {
+            event.sdk = Some(Cow::Borrowed(&SDK_INFO));
         }
 
         if let Some(scope) = scope {
@@ -423,19 +431,12 @@ impl Client {
         if event.server_name.is_none() {
             event.server_name = self.options.server_name.clone();
         }
-        if event.sdk_info.is_none() {
-            event.sdk_info = Some(Cow::Borrowed(&SDK_INFO));
-        }
 
         if &event.platform == "other" {
             event.platform = "native".into();
         }
 
-        if event.debug_meta.is_empty() {
-            event.debug_meta = Cow::Borrowed(&DEBUG_META);
-        }
-
-        for exc in &mut event.exceptions {
+        for exc in &mut event.exception {
             if let Some(ref mut stacktrace) = exc.stacktrace {
                 // automatically trim backtraces
                 if self.options.trim_backtraces {
@@ -512,7 +513,7 @@ impl Client {
 
         if let Some(ref func) = self.options.before_send {
             sentry_debug!("invoking before_send callback");
-            let id = event.id;
+            let id = event.event_id;
             func(event).or_else(move || {
                 sentry_debug!("before_send dropped event {:?}", id);
                 None
@@ -542,7 +543,7 @@ impl Client {
         if let Some(ref transport) = *self.transport.read().unwrap() {
             if self.sample_should_send() {
                 if let Some(event) = self.prepare_event(event, scope) {
-                    let event_id = event.id.unwrap();
+                    let event_id = event.event_id;
                     transport.send_event(event);
                     return event_id;
                 }

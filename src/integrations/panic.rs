@@ -36,12 +36,12 @@ pub fn message_from_panic_info<'a>(info: &'a panic::PanicInfo) -> &'a str {
 pub fn event_from_panic_info(info: &panic::PanicInfo) -> Event<'static> {
     let msg = message_from_panic_info(info);
     Event {
-        exceptions: vec![Exception {
+        exception: vec![Exception {
             ty: "panic".into(),
             value: Some(msg.to_string()),
             stacktrace: current_stacktrace(),
             ..Default::default()
-        }],
+        }].into(),
         level: Level::Fatal,
         ..Default::default()
     }
