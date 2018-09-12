@@ -1,18 +1,26 @@
 # Changelog
 
+# 0.10.0
+
+- Streamline types with other SDKs. Most notabe changes:
+  - `Event::id` has been renamed to `Event::event_id`
+  - `Event::exceptions` has been renamed to `Event::exception`
+  - Some collections are now wrapped in `Values`
+- Added more debug logs.
+
 # 0.9.0
 
-* Removed `drain_events`.  Events are now drained by calling `Client::close` or on the
+- Removed `drain_events`. Events are now drained by calling `Client::close` or on the
   transport on `Transport::shutdown`.
-* Removed `Hub::add_event_processor`.  This was replaced by `Scope::add_event_processor`
+- Removed `Hub::add_event_processor`. This was replaced by `Scope::add_event_processor`
   which is easier to use (only returns factory function)/
-* Added various new client configuration values.
-* Unified option handling
+- Added various new client configuration values.
+- Unified option handling
 
 This is likely to be the final API before 1.0
 
 # 0.3.1
 
-* Remove null byte terminator from device model context (#33)
-* Fix `uname` breaking builds on Windows (#32)
-* Fix the crate documentation link (#31)
+- Remove null byte terminator from device model context (#33)
+- Fix `uname` breaking builds on Windows (#32)
+- Fix the crate documentation link (#31)
