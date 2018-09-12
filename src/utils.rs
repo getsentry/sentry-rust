@@ -3,7 +3,7 @@ use std::mem;
 use std::thread;
 
 use api::protocol::{
-    Context, DebugImage, DeviceContext, OsContext, RuntimeContext, Stacktrace, Thread,
+    Context, DebugImage, DeviceContext, Map, OsContext, RuntimeContext, Stacktrace, Thread,
 };
 
 #[cfg(all(feature = "with_device_info", target_os = "macos"))]
@@ -198,15 +198,18 @@ pub fn os_context() -> Option<Context> {
 pub fn rust_context() -> Option<Context> {
     #[cfg(feature = "with_device_info")]
     {
-        use constants::RUSTC_VERSION;
-        let ctx: Context = RuntimeContext {
+        use constants::{RUSTC_CHANNEL, RUSTC_VERSION};
+        let ctx = RuntimeContext {
             name: Some("rustc".into()),
             version: RUSTC_VERSION.map(|x| x.into()),
+            other: {
+                let mut map = Map::default();
+                if let Some(channel) = RUSTC_CHANNEL {
+                    map.insert("channel".to_string(), channel.into());
+                }
+                map
+            },
         }.into();
-        // TODO: reintroduce tihs when sentry-types adds support for extra
-        // if let Some(channel) = RUSTC_CHANNEL {
-        //     ctx.extra.insert("channel".into(), channel.into());
-        // }
         Some(ctx)
     }
     #[cfg(not(feature = "with_device_info"))]
