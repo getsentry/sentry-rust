@@ -63,8 +63,11 @@ impl Auth {
             }
             match key {
                 "timestamp" => {
-                    rv.timestamp =
-                        Some(value.parse().map_err(|_| AuthParseError::InvalidTimestamp)?);
+                    rv.timestamp = Some(
+                        value
+                            .parse()
+                            .map_err(|_| AuthParseError::InvalidTimestamp)?,
+                    );
                 }
                 "client" => {
                     rv.client = Some(value.into());
@@ -176,7 +179,9 @@ impl FromStr for Auth {
                     rv.client = Some(client.into());
                 }
                 (Some("sentry_version"), Some(version)) => {
-                    rv.version = version.parse().map_err(|_| AuthParseError::InvalidVersion)?;
+                    rv.version = version
+                        .parse()
+                        .map_err(|_| AuthParseError::InvalidVersion)?;
                 }
                 (Some("sentry_key"), Some(key)) => {
                     rv.key = key.into();
