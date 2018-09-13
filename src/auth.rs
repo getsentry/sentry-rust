@@ -172,7 +172,7 @@ impl FromStr for Auth {
             let mut kviter = item.trim().split('=');
             match (kviter.next(), kviter.next()) {
                 (Some("sentry_timestamp"), Some(ts)) => {
-                    let f: f64 = ts.parse().map_err(|_| AuthParseError::InvalidTimestamp)?;
+                    let f = ts.parse().map_err(|_| AuthParseError::InvalidTimestamp)?;
                     rv.timestamp = Some(timestamp_to_datetime(f));
                 }
                 (Some("sentry_client"), Some(client)) => {
