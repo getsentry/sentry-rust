@@ -18,10 +18,7 @@ matrix:
     - env: SUITE=test
       rust: "1.28.0"
     - env: SUITE=format-check
-      install: rustup component add rustfmt-preview
     - env: SUITE=lint
-      install: rustup component add clippy-preview
-      rust: nightly
 
 notifications:
   webhooks:
