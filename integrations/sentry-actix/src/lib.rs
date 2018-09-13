@@ -181,7 +181,7 @@ fn extract_request<S: 'static>(
             req.connection_info().host(),
             req.uri()
         ).parse()
-            .ok(),
+        .ok(),
         method: Some(req.method().to_string()),
         headers: req
             .headers()

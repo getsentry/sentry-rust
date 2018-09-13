@@ -98,8 +98,7 @@ pub fn demangle_symbol(s: &str) -> String {
                 "u22" => "\"",
                 _ => unreachable!(),
             }.to_string()
-        })
-        .to_string()
+        }).to_string()
 }
 
 #[allow(unused)]
@@ -139,8 +138,7 @@ pub fn backtrace_to_stacktrace(bt: &Backtrace) -> Option<Stacktrace> {
                     ..Default::default()
                 }
             })
-        })
-        .collect();
+        }).collect();
     Stacktrace::from_frames_reversed(frames)
 }
 
@@ -176,8 +174,7 @@ where
                     } else {
                         None
                     }
-                })
-                .next()
+                }).next()
         };
         let trunc = stacktrace.frames.len() - cutoff - 1;
         stacktrace.frames.truncate(trunc);

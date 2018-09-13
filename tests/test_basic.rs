@@ -69,8 +69,7 @@ fn test_breadcrumbs() {
                 x.message.as_ref().map(|x| x.as_str()).unwrap(),
                 x.ty.as_str(),
             )
-        })
-        .collect();
+        }).collect();
     assert_eq!(
         messages,
         vec![

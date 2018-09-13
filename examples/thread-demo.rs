@@ -50,7 +50,7 @@ fn main() {
                 error!("Failing!");
             });
         }).join()
-            .unwrap();
-    }).join()
         .unwrap();
+    }).join()
+    .unwrap();
 }
