@@ -211,7 +211,7 @@ impl HttpTransport {
             dsn,
             sender: Mutex::new(sender),
             shutdown_signal,
-            shutdown_immediately: shutdown_immediately,
+            shutdown_immediately,
             queue_size,
             _handle,
         }

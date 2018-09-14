@@ -73,9 +73,11 @@ test: checkall cargotestall
 .PHONY: test
 
 format-check:
+	@rustup component add rustfmt-preview 2> /dev/null
 	@cargo fmt -- --check
 .PHONY: format-check
 
 lint:
-	@cargo +nightly clippy --all-features --tests -- -D clippy
+	@rustup component add clippy-preview 2> /dev/null
+	@cargo clippy --all-features --tests -- -D clippy
 .PHONY: lint

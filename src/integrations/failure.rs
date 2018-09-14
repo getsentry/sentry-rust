@@ -79,8 +79,7 @@ fn parse_stacktrace(bt: &str) -> Option<Stacktrace> {
                     .map(|x| x.as_str().parse::<u64>().unwrap()),
                 ..Default::default()
             }
-        })
-        .collect();
+        }).collect();
 
     Stacktrace::from_frames_reversed(frames)
 }
