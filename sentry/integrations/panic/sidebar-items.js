@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["event_from_panic_info","Creates an event from the given panic info."],["message_from_panic_info","Extract the message of a panic."],["panic_handler","A panic handler that sends to Sentry."],["register_panic_handler","Registes the panic handler."]]});

@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["BreakpadFormat","Wrapper around `DebugId` for Breakpad formatting."],["DebugId","Unique identifier for debug information files and their debug information."],["ParseDebugIdError","Indicates a parsing error"]]});
