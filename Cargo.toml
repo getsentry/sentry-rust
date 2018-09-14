@@ -39,5 +39,5 @@ serde_derive = { version = "1.0.78", optional = true }
 serde_json = { version = "1.0.27", optional = true }
 url_serde = { version = "0.2.0", optional = true }
 chrono = "0.4.6"
-uuid = { version = "0.6.5", features = ["v4"] }
-debugid = "0.2.0"
+uuid = { version = "0.7.0", features = ["v4"] }
+debugid = "0.3.0"

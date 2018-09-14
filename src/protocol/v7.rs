@@ -1260,7 +1260,7 @@ mod event {
     }
 
     pub fn serialize_id<S: Serializer>(uuid: &Uuid, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_some(&uuid.simple().to_string())
+        serializer.serialize_some(&uuid.to_simple_ref().to_string())
     }
 
     pub fn default_level() -> Level {
