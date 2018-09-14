@@ -81,3 +81,12 @@ lint:
 	@rustup component add clippy-preview 2> /dev/null
 	@cargo clippy --all-features --tests -- -D clippy
 .PHONY: lint
+
+travis-push-docs:
+	@# Intentionally allow command output
+	cargo doc --no-deps
+	cp misc/docs/index.html target/doc/
+	cd target/ && zip -r gh-pages ./doc
+	npm install -g @zeus-ci/cli
+	zeus upload -t "application/zip+docs" target/gh-pages.zip
+.PHONY: travis-push-docs
