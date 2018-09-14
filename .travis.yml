@@ -29,9 +29,7 @@ matrix:
       env: SUITE=checkall
     - os: osx
       env: SUITE=cargotestall
-
-    - name: Build documentation
-      env: SUITE=travis-push-docs
+    - env: SUITE=travis-push-docs
 
 notifications:
   webhooks:
