@@ -1143,8 +1143,8 @@ fn test_sdk_info() {
             name: "sentry-rust".into(),
             version: "1.0".into(),
             integrations: vec!["rocket".into()],
-            packages: vec![v7::ClientSdkPackageInfo {
-                package_name: "crates:sentry".into(),
+            packages: vec![v7::ClientSdkPackage {
+                name: "cargo:sentry".into(),
                 version: "1.0".into(),
             }],
         })),
@@ -1156,7 +1156,7 @@ fn test_sdk_info() {
         serde_json::to_string(&event).unwrap(),
         "{\"event_id\":\"d43e86c96e424a93a4fbda156dd17341\",\"timestamp\":1514103120,\"sdk\":\
          {\"name\":\"sentry-rust\",\"version\":\"1.0\",\"integrations\":[\"rocket\"],\"packages\":\
-         [{\"package_name\":\"crates:sentry\",\"version\":\"1.0\"}]}}"
+         [{\"name\":\"cargo:sentry\",\"version\":\"1.0\"}]}}"
     );
 }
 
