@@ -1,6 +1,11 @@
 # Changelog
 
-# 0.10.0
+## 0.11.0
+
+- Added `sentry::with_scope`
+- Updated the sentry types to 0.8.x
+
+## 0.10.0
 
 - Streamline types with other SDKs. Most notabe changes:
   - `Event::id` has been renamed to `Event::event_id`
@@ -8,7 +13,7 @@
   - Some collections are now wrapped in `Values`
 - Added more debug logs.
 
-# 0.9.0
+## 0.9.0
 
 - Removed `drain_events`. Events are now drained by calling `Client::close` or on the
   transport on `Transport::shutdown`.
@@ -19,7 +24,7 @@
 
 This is likely to be the final API before 1.0
 
-# 0.3.1
+## 0.3.1
 
 - Remove null byte terminator from device model context (#33)
 - Fix `uname` breaking builds on Windows (#32)
