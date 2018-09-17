@@ -344,6 +344,8 @@ impl Hub {
     }
 
     /// Temporarily pushes a scope for a single call optionally reconfiguring it.
+    ///
+    /// This works the same as the global `with_scope` function.
     pub fn with_scope<C, F, R>(&self, scope_config: C, callback: F) -> R
     where
         C: FnOnce(&mut Scope),
@@ -363,6 +365,8 @@ impl Hub {
     }
 
     /// Invokes a function that can modify the current scope.
+    ///
+    /// This works the same as the global `configure_scope` function.
     pub fn configure_scope<F, R>(&self, f: F) -> R
     where
         R: Default,

@@ -148,6 +148,23 @@ where
 }
 
 /// Temporarily pushes a scope for a single call optionally reconfiguring it.
+///
+/// This function takes two arguments: the first is a callback that is passed
+/// a scope and can reconfigure it.  The second is callback that then executes
+/// in the context of that scope.
+///
+/// This is useful when extra data should be send with a single capture call
+/// for instance a different level or tags:
+///
+/// ```rust,ignore
+/// use sentry::{with_scope, Level};
+/// use sentry::integrations::failure::capture_error;
+///
+/// with_scope(
+///     |scope| scope.set_level(Level::Warning),
+///     || capture_error(err)
+/// );
+/// ```
 pub fn with_scope<C, F, R>(scope_config: C, callback: F) -> R
 where
     C: FnOnce(&mut Scope),
