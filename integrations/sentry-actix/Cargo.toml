@@ -15,5 +15,4 @@ Sentry client extension for actix-web
 actix-web = { version = "0.7", default-features = false }
 sentry = { version = "0.10.0", path = "../../" }
 failure = "0.1.2"
-uuid = "0.6.5"
 fragile = "0.3.0"

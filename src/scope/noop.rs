@@ -1,6 +1,6 @@
 use std::fmt;
 
-use api::protocol::{Context, Event, User, Value};
+use api::protocol::{Context, Event, Level, User, Value};
 
 /// The minimal scope.
 ///
@@ -28,6 +28,12 @@ impl Scope {
     /// In some situations this might not be what a user wants.  Calling
     /// this method will wipe all data contained within.
     pub fn clear(&mut self) {
+        minimal_unreachable!();
+    }
+
+    /// Sets a level override.
+    pub fn set_level(&mut self, level: Option<Level>) {
+        let _level = level;
         minimal_unreachable!();
     }
 

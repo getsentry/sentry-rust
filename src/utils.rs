@@ -68,12 +68,14 @@ mod model_support {
 #[cfg(feature = "with_debug_meta")]
 mod findshlibs_support {
     use super::*;
-    use api::protocol::debugid::DebugId;
-    use api::protocol::SymbolicDebugImage;
+
     use findshlibs::{
         Segment, SharedLibrary, SharedLibraryId, TargetSharedLibrary, TARGET_SUPPORTED,
     };
-    use uuid::Uuid;
+
+    use api::protocol::debugid::DebugId;
+    use api::protocol::SymbolicDebugImage;
+    use api::Uuid;
 
     pub fn find_shlibs() -> Option<Vec<DebugImage>> {
         if !TARGET_SUPPORTED {
@@ -83,9 +85,7 @@ mod findshlibs_support {
         let mut rv = vec![];
         TargetSharedLibrary::each(|shlib| {
             let debug_id = match shlib.id() {
-                Some(SharedLibraryId::Uuid(bytes)) => {
-                    DebugId::from_uuid(Uuid::from_uuid_bytes(bytes))
-                }
+                Some(SharedLibraryId::Uuid(bytes)) => DebugId::from_uuid(Uuid::from_bytes(bytes)),
                 None => return,
             };
 

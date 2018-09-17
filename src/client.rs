@@ -9,10 +9,9 @@ use std::time::Duration;
 
 use rand::random;
 use regex::Regex;
-use uuid::Uuid;
 
 use api::protocol::{Breadcrumb, DebugMeta, Event, RepoReference};
-use api::Dsn;
+use api::{Dsn, Uuid};
 use backtrace_support::{function_starts_with, is_sys_function, trim_stacktrace};
 use constants::{SDK_INFO, USER_AGENT};
 use hub::Hub;

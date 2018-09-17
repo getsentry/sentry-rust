@@ -1,11 +1,12 @@
-use uuid::Uuid;
-
 use api::protocol::Event;
 
 // public api from other crates
 pub use sentry_types::protocol::v7 as protocol;
 pub use sentry_types::protocol::v7::{Breadcrumb, Level, User};
-pub use sentry_types::Dsn;
+pub use sentry_types::{
+    ChronoParseError, DateTime, DebugId, Dsn, ParseDebugIdError, TimeZone, Utc, Uuid, UuidVariant,
+    UuidVersion,
+};
 
 // public exports from this crate
 #[cfg(feature = "with_client_implementation")]
@@ -145,6 +146,46 @@ where
             hub.configure_scope(f)
         })
     }}
+}
+
+/// Temporarily pushes a scope for a single call optionally reconfiguring it.
+///
+/// This function takes two arguments: the first is a callback that is passed
+/// a scope and can reconfigure it.  The second is callback that then executes
+/// in the context of that scope.
+///
+/// This is useful when extra data should be send with a single capture call
+/// for instance a different level or tags:
+///
+/// ```rust,ignore
+/// use sentry::{with_scope, Level};
+/// use sentry::integrations::failure::capture_error;
+///
+/// with_scope(
+///     |scope| scope.set_level(Level::Warning),
+///     || capture_error(err)
+/// );
+/// ```
+pub fn with_scope<C, F, R>(scope_config: C, callback: F) -> R
+where
+    C: FnOnce(&mut Scope),
+    F: FnOnce() -> R,
+{
+    #[cfg(with_client_impl)]
+    {
+        Hub::with(|hub| {
+            if hub.is_active_and_usage_safe() {
+                hub.with_scope(scope_config, callback)
+            } else {
+                callback()
+            }
+        })
+    }
+    #[cfg(not(with_client_impl))]
+    {
+        let _scope_config = scope_config;
+        callback()
+    }
 }
 
 /// Returns the last event ID captured.
