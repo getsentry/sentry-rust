@@ -11,4 +11,5 @@ echo "Current version: ${OLD_VERSION}"
 echo "Bumping version: ${NEW_VERSION}"
 
 perl -pi -e "s/^version = \".*\"/version = \"$NEW_VERSION\"/" Cargo.toml
+perl -pi -e "s/^version = \".*\"/version = \"$NEW_VERSION\"/" integrations/sentry-actix/Cargo.toml
 cargo update -p sentry
