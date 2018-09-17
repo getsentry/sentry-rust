@@ -1,10 +1,9 @@
 extern crate sentry;
-extern crate uuid;
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
-use uuid::Uuid;
+use sentry::Uuid;
 
 #[test]
 fn test_basic_capture_message() {

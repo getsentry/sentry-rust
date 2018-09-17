@@ -7,6 +7,7 @@ use std::sync::{Arc, Mutex, RwLock, TryLockError};
 use std::thread;
 use std::time::Duration;
 
+use api::Uuid;
 #[cfg(feature = "with_client_implementation")]
 use client::Client;
 use protocol::{Breadcrumb, Event, Level};
@@ -15,8 +16,6 @@ use scope::{Scope, ScopeGuard};
 use scope::{Stack, StackLayerToken};
 #[cfg(feature = "with_client_implementation")]
 use utils::current_thread;
-
-use uuid::Uuid;
 
 #[cfg(feature = "with_client_implementation")]
 lazy_static! {

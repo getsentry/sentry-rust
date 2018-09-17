@@ -123,7 +123,6 @@ extern crate reqwest;
 extern crate sentry_types;
 #[cfg(feature = "with_client_implementation")]
 extern crate url;
-extern crate uuid;
 
 #[cfg(feature = "with_device_info")]
 extern crate libc;

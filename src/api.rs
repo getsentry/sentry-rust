@@ -1,11 +1,12 @@
-use uuid::Uuid;
-
 use api::protocol::Event;
 
 // public api from other crates
 pub use sentry_types::protocol::v7 as protocol;
 pub use sentry_types::protocol::v7::{Breadcrumb, Level, User};
-pub use sentry_types::Dsn;
+pub use sentry_types::{
+    ChronoParseError, DateTime, DebugId, Dsn, ParseDebugIdError, TimeZone, Utc, Uuid, UuidVariant,
+    UuidVersion,
+};
 
 // public exports from this crate
 #[cfg(feature = "with_client_implementation")]
