@@ -10,6 +10,5 @@ NEW_VERSION="${2}"
 echo "Current version: ${OLD_VERSION}"
 echo "Bumping version: ${NEW_VERSION}"
 
-VERSION_RE=${VERSION//\./\\.}
-find . -name Cargo.toml -type f -exec sed -i '' -e "1,/^version/ s/^version.*/version = \"${NEW_VERSION}\"/" {} \;
+perl -pi -e "s/^version = \".*\"/version = \"$NEW_VERSION\"/" Cargo.toml
 cargo update -p sentry
