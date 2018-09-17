@@ -69,3 +69,8 @@ mod utils;
 pub use auth::*;
 pub use dsn::*;
 pub use project_id::*;
+
+// Re-export external types and traits for convenience
+pub use chrono::{DateTime, ParseError as ChronoParseError, TimeZone, Utc};
+pub use debugid::*;
+pub use uuid::{Uuid, Variant as UuidVariant, Version as UuidVersion};
