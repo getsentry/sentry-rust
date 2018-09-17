@@ -79,6 +79,8 @@ name = "init-with-client"
 name = "event-processors"
 [[example]]
 name = "before-send"
+[[example]]
+name = "send-with-extra"
 
 [workspace]
 members = [".", "integrations/sentry-actix"]

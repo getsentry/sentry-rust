@@ -3,7 +3,7 @@ use std::fmt;
 use std::sync::Arc;
 
 use api::protocol::map::Entry;
-use api::protocol::{Breadcrumb, Context, Event, User, Value};
+use api::protocol::{Breadcrumb, Context, Event, Level, User, Value};
 use client::Client;
 use hub::Hub;
 use utils;
@@ -52,6 +52,7 @@ pub type EventProcessor = Box<Fn(Event<'static>) -> Option<Event<'static>> + Sen
 /// client can use the scope to extract information currently.
 #[derive(Clone)]
 pub struct Scope {
+    pub(crate) level: Option<Level>,
     pub(crate) fingerprint: Option<Arc<Vec<Cow<'static, str>>>>,
     pub(crate) transaction: Option<Arc<String>>,
     pub(crate) breadcrumbs: im::Vector<Breadcrumb>,
@@ -65,6 +66,7 @@ pub struct Scope {
 impl fmt::Debug for Scope {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Scope")
+            .field("level", &self.level)
             .field("fingerprint", &self.fingerprint)
             .field("transaction", &self.transaction)
             .field("breadcrumbs", &self.breadcrumbs)
@@ -79,6 +81,7 @@ impl fmt::Debug for Scope {
 impl Default for Scope {
     fn default() -> Scope {
         Scope {
+            level: None,
             fingerprint: None,
             transaction: None,
             breadcrumbs: Default::default(),
@@ -158,6 +161,11 @@ impl Scope {
         *self = Default::default();
     }
 
+    /// Sets a level override.
+    pub fn set_level(&mut self, level: Option<Level>) {
+        self.level = level;
+    }
+
     /// Sets the fingerprint.
     pub fn set_fingerprint(&mut self, fingerprint: Option<&[&str]>) {
         self.fingerprint =
@@ -218,6 +226,11 @@ impl Scope {
         let mut add_os = true;
         let mut add_rust = true;
         let mut add_device = true;
+
+        // TODO: event really should have an optional level
+        if self.level.is_some() {
+            event.level = self.level.unwrap();
+        }
 
         if !self.breadcrumbs.is_empty() {
             event

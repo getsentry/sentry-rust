@@ -31,6 +31,12 @@ impl Scope {
         minimal_unreachable!();
     }
 
+    /// Sets a level override.
+    pub fn set_level(&mut self, level: Option<Level>) {
+        let _level = level;
+        minimal_unreachable!();
+    }
+
     /// Sets the fingerprint.
     pub fn set_fingerprint(&mut self, fingerprint: Option<&[&str]>) {
         let _fingerprint = fingerprint;

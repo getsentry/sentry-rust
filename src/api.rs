@@ -147,6 +147,29 @@ where
     }}
 }
 
+/// Temporarily pushes a scope for a single call optionally reconfiguring it.
+pub fn with_scope<C, F, R>(scope_config: C, callback: F) -> R
+where
+    C: FnOnce(&mut Scope),
+    F: FnOnce() -> R,
+{
+    #[cfg(with_client_impl)]
+    {
+        Hub::with(|hub| {
+            if hub.is_active_and_usage_safe() {
+                hub.with_scope(scope_config, callback)
+            } else {
+                callback()
+            }
+        })
+    }
+    #[cfg(not(with_client_impl))]
+    {
+        let _scope_config = scope_config;
+        callback()
+    }
+}
+
 /// Returns the last event ID captured.
 pub fn last_event_id() -> Option<Uuid> {
     with_client_impl! {{

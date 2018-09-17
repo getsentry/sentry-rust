@@ -343,6 +343,25 @@ impl Hub {
         }}
     }
 
+    /// Temporarily pushes a scope for a single call optionally reconfiguring it.
+    pub fn with_scope<C, F, R>(&self, scope_config: C, callback: F) -> R
+    where
+        C: FnOnce(&mut Scope),
+        F: FnOnce() -> R,
+    {
+        #[cfg(with_client_impl)]
+        {
+            let _guard = self.push_scope();
+            self.configure_scope(scope_config);
+            callback()
+        }
+        #[cfg(not(with_client_impl))]
+        {
+            let _scope_config = scope_config;
+            callback()
+        }
+    }
+
     /// Invokes a function that can modify the current scope.
     pub fn configure_scope<F, R>(&self, f: F) -> R
     where
@@ -350,12 +369,12 @@ impl Hub {
         F: FnOnce(&mut Scope) -> R,
     {
         with_client_impl! {{
-            let (new_scope, rv) = self.with_scope(|scope| {
+            let (new_scope, rv) = self.with_current_scope(|scope| {
                 let mut new_scope = (**scope).clone();
                 let rv = f(&mut new_scope);
                 (new_scope, rv)
             });
-            self.with_scope_mut(|ptr| *ptr = new_scope);
+            self.with_current_scope_mut(|ptr| *ptr = new_scope);
             rv
         }}
     }
@@ -394,12 +413,12 @@ impl Hub {
     }
 
     #[cfg(feature = "with_client_implementation")]
-    pub(crate) fn with_scope<F: FnOnce(&Arc<Scope>) -> R, R>(&self, f: F) -> R {
+    pub(crate) fn with_current_scope<F: FnOnce(&Arc<Scope>) -> R, R>(&self, f: F) -> R {
         self.inner.with(|stack| f(&stack.top().scope))
     }
 
     #[cfg(feature = "with_client_implementation")]
-    pub(crate) fn with_scope_mut<F: FnOnce(&mut Scope) -> R, R>(&self, f: F) -> R {
+    pub(crate) fn with_current_scope_mut<F: FnOnce(&mut Scope) -> R, R>(&self, f: F) -> R {
         self.inner
             .with_mut(|stack| f(Arc::make_mut(&mut stack.top_mut().scope)))
     }
