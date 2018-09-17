@@ -1,6 +1,6 @@
 use std::fmt;
 
-use api::protocol::{Context, Event, User, Value};
+use api::protocol::{Context, Event, User, Value, Level};
 
 /// The minimal scope.
 ///
