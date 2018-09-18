@@ -20,9 +20,7 @@ lazy_static!{
             "sentry::",
             "sentry_types::",
             // these are not modules but things like __rust_maybe_catch_panic
-            // or _<T as core..convert..Into<U>>::into
             "__rust_",
-            "_<",
         ];
         #[cfg(feature = "with_failure")] {
             rv.push("failure::");
@@ -40,6 +38,7 @@ lazy_static!{
         }
         #[cfg(feature = "with_log")] {
             rv.push("_<sentry..integrations..log..Logger as log..Log>::log");
+            rv.push("<sentry::integrations::log::Logger as log::Log>::log");
         }
         #[cfg(feature = "with_error_chain")] {
             rv.push("error_chain::make_backtrace");
@@ -51,6 +50,7 @@ lazy_static!{
         let mut rv = Vec::new();
         #[cfg(feature = "with_error_chain")] {
             rv.push(("error_chain::make_backtrace", "_<T as core..convert..Into<U>>::into"));
+            rv.push(("error_chain::make_backtrace", "<T as core::convert::Into<U>>::into"));
         }
         rv
     };
@@ -207,9 +207,8 @@ pub fn is_sys_function(func: &str) -> bool {
 /// In trait implementations, the original type name is wrapped in "_< ... >" and colons are
 /// replaced with dots. This function accounts for differences while checking.
 pub fn function_starts_with(mut func_name: &str, pattern: &str) -> bool {
-    if func_name.starts_with("_<") {
-        func_name = &func_name[2..];
-    }
+    func_name = func_name.trim_left_matches('<');
+    func_name = func_name.trim_left_matches("_<");
 
     if !func_name.is_char_boundary(pattern.len()) {
         return false;
@@ -247,6 +246,19 @@ mod tests {
 
         assert!(!function_starts_with(
             "_<futures..task_impl..Spawn<T>>::enter::_{{closure}}",
+            "tokio::"
+        ));
+    }
+
+    #[test]
+    fn test_function_starts_with_newimpl() {
+        assert!(function_starts_with(
+            "<futures::task_impl::Spawn<T>>::enter::{{closure}}",
+            "futures::"
+        ));
+
+        assert!(!function_starts_with(
+            "<futures::task_impl::Spawn<T>>::enter::{{closure}}",
             "tokio::"
         ));
     }
