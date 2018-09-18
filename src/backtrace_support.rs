@@ -20,9 +20,7 @@ lazy_static!{
             "sentry::",
             "sentry_types::",
             // these are not modules but things like __rust_maybe_catch_panic
-            // or _<T as core..convert..Into<U>>::into
             "__rust_",
-            "_<",
         ];
         #[cfg(feature = "with_failure")] {
             rv.push("failure::");
@@ -39,7 +37,7 @@ lazy_static!{
             rv.push("failure::backtrace::Backtrace::new");
         }
         #[cfg(feature = "with_log")] {
-            rv.push("_<sentry..integrations..log..Logger as log..Log>::log");
+            rv.push("<sentry::integrations::log::Logger as log::Log>::log");
         }
         #[cfg(feature = "with_error_chain")] {
             rv.push("error_chain::make_backtrace");
@@ -50,7 +48,7 @@ lazy_static!{
         #![allow(unused_mut)]
         let mut rv = Vec::new();
         #[cfg(feature = "with_error_chain")] {
-            rv.push(("error_chain::make_backtrace", "_<T as core..convert..Into<U>>::into"));
+            rv.push(("error_chain::make_backtrace", "<T as core::convert::Into<U>>::into"));
         }
         rv
     };
@@ -154,22 +152,26 @@ pub fn trim_stacktrace<F>(stacktrace: &mut Stacktrace, f: F)
 where
     F: Fn(&Frame, &Stacktrace) -> bool,
 {
-    if let Some(cutoff) = stacktrace.frames.iter().rev().position(|frame| {
-        if let Some(ref func) = frame.function {
-            WELL_KNOWN_BORDER_FRAMES.contains(&func.as_str()) || f(frame, stacktrace)
-        } else {
-            false
-        }
-    }) {
+    let known_cutoff = stacktrace
+        .frames
+        .iter()
+        .rev()
+        .position(|frame| match frame.function {
+            Some(ref func) => is_well_known(&func) || f(frame, stacktrace),
+            None => false,
+        });
+
+    if let Some(cutoff) = known_cutoff {
         let secondary = {
             let func = stacktrace.frames[stacktrace.frames.len() - cutoff - 1]
                 .function
                 .as_ref()
                 .unwrap();
+
             SECONDARY_BORDER_FRAMES
                 .iter()
                 .filter_map(|&(primary, secondary)| {
-                    if primary == func {
+                    if function_starts_with(func, primary) {
                         Some(secondary)
                     } else {
                         None
@@ -180,13 +182,14 @@ where
         stacktrace.frames.truncate(trunc);
 
         if let Some(secondary) = secondary {
-            if let Some(cutoff) = stacktrace.frames.iter().rev().position(|frame| {
-                if let Some(ref func) = frame.function {
-                    func.as_str() == secondary
-                } else {
-                    false
-                }
-            }) {
+            let secondary_cutoff = stacktrace.frames.iter().rev().position(|frame| match frame
+                .function
+            {
+                Some(ref func) => function_starts_with(&func, secondary),
+                None => false,
+            });
+
+            if let Some(cutoff) = secondary_cutoff {
                 let trunc = stacktrace.frames.len() - cutoff - 1;
                 stacktrace.frames.truncate(trunc);
             }
@@ -202,13 +205,32 @@ pub fn is_sys_function(func: &str) -> bool {
         .any(|m| function_starts_with(func, m))
 }
 
+/// Checks if a function is a well-known system function
+fn is_well_known(func: &str) -> bool {
+    WELL_KNOWN_BORDER_FRAMES
+        .iter()
+        .any(|m| function_starts_with(&func, m))
+}
+
 /// Checks whether the function name starts with the given pattern.
 ///
 /// In trait implementations, the original type name is wrapped in "_< ... >" and colons are
 /// replaced with dots. This function accounts for differences while checking.
-pub fn function_starts_with(mut func_name: &str, pattern: &str) -> bool {
-    if func_name.starts_with("_<") {
-        func_name = &func_name[2..];
+pub fn function_starts_with(mut func_name: &str, mut pattern: &str) -> bool {
+    if pattern.starts_with('<') {
+        while pattern.starts_with('<') {
+            pattern = &pattern[1..];
+
+            if func_name.starts_with('<') {
+                func_name = &func_name[1..];
+            } else if func_name.starts_with("_<") {
+                func_name = &func_name[2..];
+            } else {
+                return false;
+            }
+        }
+    } else {
+        func_name = func_name.trim_left_matches('<').trim_left_matches("_<");
     }
 
     if !func_name.is_char_boundary(pattern.len()) {
@@ -248,6 +270,37 @@ mod tests {
         assert!(!function_starts_with(
             "_<futures..task_impl..Spawn<T>>::enter::_{{closure}}",
             "tokio::"
+        ));
+    }
+
+    #[test]
+    fn test_function_starts_with_newimpl() {
+        assert!(function_starts_with(
+            "<futures::task_impl::Spawn<T>>::enter::{{closure}}",
+            "futures::"
+        ));
+
+        assert!(!function_starts_with(
+            "<futures::task_impl::Spawn<T>>::enter::{{closure}}",
+            "tokio::"
+        ));
+    }
+
+    #[test]
+    fn test_function_starts_with_impl_pattern() {
+        assert!(function_starts_with(
+            "_<futures..task_impl..Spawn<T>>::enter::_{{closure}}",
+            "<futures::"
+        ));
+
+        assert!(function_starts_with(
+            "<futures::task_impl::Spawn<T>>::enter::{{closure}}",
+            "<futures::"
+        ));
+
+        assert!(!function_starts_with(
+            "futures::task_impl::std::set",
+            "<futures::"
         ));
     }
 }
