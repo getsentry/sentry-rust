@@ -13,8 +13,6 @@ branches:
 
 script: make $SUITE
 
-env: # Needed for allow_failures
-
 matrix:
   include:
     - env: SUITE=format-check
