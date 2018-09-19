@@ -703,7 +703,6 @@
 <span id="703">703</span>
 <span id="704">704</span>
 <span id="705">705</span>
-<span id="706">706</span>
 </pre><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">borrow</span>::<span class="ident">Cow</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">collections</span>::<span class="ident">HashMap</span>;
@@ -716,10 +715,9 @@
 
 <span class="kw">use</span> <span class="ident">rand</span>::<span class="ident">random</span>;
 <span class="kw">use</span> <span class="ident">regex</span>::<span class="ident">Regex</span>;
-<span class="kw">use</span> <span class="ident">uuid</span>::<span class="ident">Uuid</span>;
 
 <span class="kw">use</span> <span class="ident">api</span>::<span class="ident">protocol</span>::{<span class="ident">Breadcrumb</span>, <span class="ident">DebugMeta</span>, <span class="ident">Event</span>, <span class="ident">RepoReference</span>};
-<span class="kw">use</span> <span class="ident">api</span>::<span class="ident">Dsn</span>;
+<span class="kw">use</span> <span class="ident">api</span>::{<span class="ident">Dsn</span>, <span class="ident">Uuid</span>};
 <span class="kw">use</span> <span class="ident">backtrace_support</span>::{<span class="ident">function_starts_with</span>, <span class="ident">is_sys_function</span>, <span class="ident">trim_stacktrace</span>};
 <span class="kw">use</span> <span class="ident">constants</span>::{<span class="ident">SDK_INFO</span>, <span class="ident">USER_AGENT</span>};
 <span class="kw">use</span> <span class="ident">hub</span>::<span class="ident">Hub</span>;

@@ -251,6 +251,59 @@
 <span id="251">251</span>
 <span id="252">252</span>
 <span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
 </pre><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fmt</span>;
 
@@ -274,9 +327,7 @@
             <span class="string">&quot;sentry::&quot;</span>,
             <span class="string">&quot;sentry_types::&quot;</span>,
             <span class="comment">// these are not modules but things like __rust_maybe_catch_panic</span>
-            <span class="comment">// or _&lt;T as core..convert..Into&lt;U&gt;&gt;::into</span>
             <span class="string">&quot;__rust_&quot;</span>,
-            <span class="string">&quot;_&lt;&quot;</span>,
         ];
         <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_failure&quot;</span>)]</span> {
             <span class="ident">rv</span>.<span class="ident">push</span>(<span class="string">&quot;failure::&quot;</span>);
@@ -293,7 +344,7 @@
             <span class="ident">rv</span>.<span class="ident">push</span>(<span class="string">&quot;failure::backtrace::Backtrace::new&quot;</span>);
         }
         <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_log&quot;</span>)]</span> {
-            <span class="ident">rv</span>.<span class="ident">push</span>(<span class="string">&quot;_&lt;sentry..integrations..log..Logger as log..Log&gt;::log&quot;</span>);
+            <span class="ident">rv</span>.<span class="ident">push</span>(<span class="string">&quot;&lt;sentry::integrations::log::Logger as log::Log&gt;::log&quot;</span>);
         }
         <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_error_chain&quot;</span>)]</span> {
             <span class="ident">rv</span>.<span class="ident">push</span>(<span class="string">&quot;error_chain::make_backtrace&quot;</span>);
@@ -304,9 +355,9 @@
         <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rv</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
         <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_error_chain&quot;</span>)]</span> {
-            <span class="ident">rv</span>.<span class="ident">push</span>((<span class="string">&quot;error_chain::make_backtrace&quot;</span>, <span class="string">&quot;_&lt;T as core..convert..Into&lt;U&gt;&gt;::into&quot;</span>));
+            <span class="ident">rv</span>.<span class="ident">push</span>((<span class="string">&quot;error_chain::make_backtrace&quot;</span>, <span class="string">&quot;&lt;T as core::convert::Into&lt;U&gt;&gt;::into&quot;</span>));
         }
-        <span class="ident">rv</span>
+        {<span class="ident">rv</span>}
     };
 
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">COMMON_RUST_SYMBOL_ESCAPES_RE</span>: <span class="ident">Regex</span> <span class="op">=</span> <span class="ident">Regex</span>::<span class="ident">new</span>(<span class="string">r#&quot;(?x)
@@ -408,22 +459,26 @@
 <span class="kw">where</span>
     <span class="ident">F</span>: <span class="ident">Fn</span>(<span class="kw-2">&amp;</span><span class="ident">Frame</span>, <span class="kw-2">&amp;</span><span class="ident">Stacktrace</span>) <span class="op">-&gt;</span> <span class="ident">bool</span>,
 {
-    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">cutoff</span>) <span class="op">=</span> <span class="ident">stacktrace</span>.<span class="ident">frames</span>.<span class="ident">iter</span>().<span class="ident">rev</span>().<span class="ident">position</span>(<span class="op">|</span><span class="ident">frame</span><span class="op">|</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">func</span>) <span class="op">=</span> <span class="ident">frame</span>.<span class="ident">function</span> {
-            <span class="ident">WELL_KNOWN_BORDER_FRAMES</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">func</span>.<span class="ident">as_str</span>()) <span class="op">||</span> <span class="ident">f</span>(<span class="ident">frame</span>, <span class="ident">stacktrace</span>)
-        } <span class="kw">else</span> {
-            <span class="bool-val">false</span>
-        }
-    }) {
+    <span class="kw">let</span> <span class="ident">known_cutoff</span> <span class="op">=</span> <span class="ident">stacktrace</span>
+        .<span class="ident">frames</span>
+        .<span class="ident">iter</span>()
+        .<span class="ident">rev</span>()
+        .<span class="ident">position</span>(<span class="op">|</span><span class="ident">frame</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">frame</span>.<span class="ident">function</span> {
+            <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">func</span>) <span class="op">=&gt;</span> <span class="ident">is_well_known</span>(<span class="kw-2">&amp;</span><span class="ident">func</span>) <span class="op">||</span> <span class="ident">f</span>(<span class="ident">frame</span>, <span class="ident">stacktrace</span>),
+            <span class="prelude-val">None</span> <span class="op">=&gt;</span> <span class="bool-val">false</span>,
+        });
+
+    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">cutoff</span>) <span class="op">=</span> <span class="ident">known_cutoff</span> {
         <span class="kw">let</span> <span class="ident">secondary</span> <span class="op">=</span> {
             <span class="kw">let</span> <span class="ident">func</span> <span class="op">=</span> <span class="ident">stacktrace</span>.<span class="ident">frames</span>[<span class="ident">stacktrace</span>.<span class="ident">frames</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="ident">cutoff</span> <span class="op">-</span> <span class="number">1</span>]
                 .<span class="ident">function</span>
                 .<span class="ident">as_ref</span>()
                 .<span class="ident">unwrap</span>();
+
             <span class="ident">SECONDARY_BORDER_FRAMES</span>
                 .<span class="ident">iter</span>()
                 .<span class="ident">filter_map</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="ident">primary</span>, <span class="ident">secondary</span>)<span class="op">|</span> {
-                    <span class="kw">if</span> <span class="ident">primary</span> <span class="op">==</span> <span class="ident">func</span> {
+                    <span class="kw">if</span> <span class="ident">function_starts_with</span>(<span class="ident">func</span>, <span class="ident">primary</span>) {
                         <span class="prelude-val">Some</span>(<span class="ident">secondary</span>)
                     } <span class="kw">else</span> {
                         <span class="prelude-val">None</span>
@@ -434,13 +489,14 @@
         <span class="ident">stacktrace</span>.<span class="ident">frames</span>.<span class="ident">truncate</span>(<span class="ident">trunc</span>);
 
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">secondary</span>) <span class="op">=</span> <span class="ident">secondary</span> {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">cutoff</span>) <span class="op">=</span> <span class="ident">stacktrace</span>.<span class="ident">frames</span>.<span class="ident">iter</span>().<span class="ident">rev</span>().<span class="ident">position</span>(<span class="op">|</span><span class="ident">frame</span><span class="op">|</span> {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">func</span>) <span class="op">=</span> <span class="ident">frame</span>.<span class="ident">function</span> {
-                    <span class="ident">func</span>.<span class="ident">as_str</span>() <span class="op">==</span> <span class="ident">secondary</span>
-                } <span class="kw">else</span> {
-                    <span class="bool-val">false</span>
-                }
-            }) {
+            <span class="kw">let</span> <span class="ident">secondary_cutoff</span> <span class="op">=</span> <span class="ident">stacktrace</span>.<span class="ident">frames</span>.<span class="ident">iter</span>().<span class="ident">rev</span>().<span class="ident">position</span>(<span class="op">|</span><span class="ident">frame</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">frame</span>
+                .<span class="ident">function</span>
+            {
+                <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">func</span>) <span class="op">=&gt;</span> <span class="ident">function_starts_with</span>(<span class="kw-2">&amp;</span><span class="ident">func</span>, <span class="ident">secondary</span>),
+                <span class="prelude-val">None</span> <span class="op">=&gt;</span> <span class="bool-val">false</span>,
+            });
+
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">cutoff</span>) <span class="op">=</span> <span class="ident">secondary_cutoff</span> {
                 <span class="kw">let</span> <span class="ident">trunc</span> <span class="op">=</span> <span class="ident">stacktrace</span>.<span class="ident">frames</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="ident">cutoff</span> <span class="op">-</span> <span class="number">1</span>;
                 <span class="ident">stacktrace</span>.<span class="ident">frames</span>.<span class="ident">truncate</span>(<span class="ident">trunc</span>);
             }
@@ -456,13 +512,32 @@
         .<span class="ident">any</span>(<span class="op">|</span><span class="ident">m</span><span class="op">|</span> <span class="ident">function_starts_with</span>(<span class="ident">func</span>, <span class="ident">m</span>))
 }
 
+<span class="doccomment">/// Checks if a function is a well-known system function</span>
+<span class="kw">fn</span> <span class="ident">is_well_known</span>(<span class="ident">func</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
+    <span class="ident">WELL_KNOWN_BORDER_FRAMES</span>
+        .<span class="ident">iter</span>()
+        .<span class="ident">any</span>(<span class="op">|</span><span class="ident">m</span><span class="op">|</span> <span class="ident">function_starts_with</span>(<span class="kw-2">&amp;</span><span class="ident">func</span>, <span class="ident">m</span>))
+}
+
 <span class="doccomment">/// Checks whether the function name starts with the given pattern.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// In trait implementations, the original type name is wrapped in &quot;_&lt; ... &gt;&quot; and colons are</span>
 <span class="doccomment">/// replaced with dots. This function accounts for differences while checking.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">function_starts_with</span>(<span class="kw-2">mut</span> <span class="ident">func_name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">pattern</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
-    <span class="kw">if</span> <span class="ident">func_name</span>.<span class="ident">starts_with</span>(<span class="string">&quot;_&lt;&quot;</span>) {
-        <span class="ident">func_name</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">func_name</span>[<span class="number">2</span>..];
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">function_starts_with</span>(<span class="kw-2">mut</span> <span class="ident">func_name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="kw-2">mut</span> <span class="ident">pattern</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">if</span> <span class="ident">pattern</span>.<span class="ident">starts_with</span>(<span class="string">&#39;&lt;&#39;</span>) {
+        <span class="kw">while</span> <span class="ident">pattern</span>.<span class="ident">starts_with</span>(<span class="string">&#39;&lt;&#39;</span>) {
+            <span class="ident">pattern</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">pattern</span>[<span class="number">1</span>..];
+
+            <span class="kw">if</span> <span class="ident">func_name</span>.<span class="ident">starts_with</span>(<span class="string">&#39;&lt;&#39;</span>) {
+                <span class="ident">func_name</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">func_name</span>[<span class="number">1</span>..];
+            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">func_name</span>.<span class="ident">starts_with</span>(<span class="string">&quot;_&lt;&quot;</span>) {
+                <span class="ident">func_name</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">func_name</span>[<span class="number">2</span>..];
+            } <span class="kw">else</span> {
+                <span class="kw">return</span> <span class="bool-val">false</span>;
+            }
+        }
+    } <span class="kw">else</span> {
+        <span class="ident">func_name</span> <span class="op">=</span> <span class="ident">func_name</span>.<span class="ident">trim_left_matches</span>(<span class="string">&#39;&lt;&#39;</span>).<span class="ident">trim_left_matches</span>(<span class="string">&quot;_&lt;&quot;</span>);
     }
 
     <span class="kw">if</span> <span class="op">!</span><span class="ident">func_name</span>.<span class="ident">is_char_boundary</span>(<span class="ident">pattern</span>.<span class="ident">len</span>()) {
@@ -502,6 +577,37 @@
         <span class="macro">assert</span><span class="macro">!</span>(<span class="op">!</span><span class="ident">function_starts_with</span>(
             <span class="string">&quot;_&lt;futures..task_impl..Spawn&lt;T&gt;&gt;::enter::_{{closure}}&quot;</span>,
             <span class="string">&quot;tokio::&quot;</span>
+        ));
+    }
+
+    <span class="attribute">#[<span class="ident">test</span>]</span>
+    <span class="kw">fn</span> <span class="ident">test_function_starts_with_newimpl</span>() {
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">function_starts_with</span>(
+            <span class="string">&quot;&lt;futures::task_impl::Spawn&lt;T&gt;&gt;::enter::{{closure}}&quot;</span>,
+            <span class="string">&quot;futures::&quot;</span>
+        ));
+
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="op">!</span><span class="ident">function_starts_with</span>(
+            <span class="string">&quot;&lt;futures::task_impl::Spawn&lt;T&gt;&gt;::enter::{{closure}}&quot;</span>,
+            <span class="string">&quot;tokio::&quot;</span>
+        ));
+    }
+
+    <span class="attribute">#[<span class="ident">test</span>]</span>
+    <span class="kw">fn</span> <span class="ident">test_function_starts_with_impl_pattern</span>() {
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">function_starts_with</span>(
+            <span class="string">&quot;_&lt;futures..task_impl..Spawn&lt;T&gt;&gt;::enter::_{{closure}}&quot;</span>,
+            <span class="string">&quot;&lt;futures::&quot;</span>
+        ));
+
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">function_starts_with</span>(
+            <span class="string">&quot;&lt;futures::task_impl::Spawn&lt;T&gt;&gt;::enter::{{closure}}&quot;</span>,
+            <span class="string">&quot;&lt;futures::&quot;</span>
+        ));
+
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="op">!</span><span class="ident">function_starts_with</span>(
+            <span class="string">&quot;futures::task_impl::std::set&quot;</span>,
+            <span class="string">&quot;&lt;futures::&quot;</span>
         ));
     }
 }

@@ -312,13 +312,26 @@
 <span id="312">312</span>
 <span id="313">313</span>
 <span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
 </pre><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">borrow</span>::<span class="ident">Cow</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fmt</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Arc</span>;
 
 <span class="kw">use</span> <span class="ident">api</span>::<span class="ident">protocol</span>::<span class="ident">map</span>::<span class="ident">Entry</span>;
-<span class="kw">use</span> <span class="ident">api</span>::<span class="ident">protocol</span>::{<span class="ident">Breadcrumb</span>, <span class="ident">Context</span>, <span class="ident">Event</span>, <span class="ident">User</span>, <span class="ident">Value</span>};
+<span class="kw">use</span> <span class="ident">api</span>::<span class="ident">protocol</span>::{<span class="ident">Breadcrumb</span>, <span class="ident">Context</span>, <span class="ident">Event</span>, <span class="ident">Level</span>, <span class="ident">User</span>, <span class="ident">Value</span>};
 <span class="kw">use</span> <span class="ident">client</span>::<span class="ident">Client</span>;
 <span class="kw">use</span> <span class="ident">hub</span>::<span class="ident">Hub</span>;
 <span class="kw">use</span> <span class="ident">utils</span>;
@@ -367,6 +380,7 @@
 <span class="doccomment">/// client can use the scope to extract information currently.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Scope</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">level</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Level</span><span class="op">&gt;</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">fingerprint</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Cow</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, <span class="ident">str</span><span class="op">&gt;&gt;</span><span class="op">&gt;&gt;</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">transaction</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;&gt;</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">breadcrumbs</span>: <span class="ident">im</span>::<span class="ident">Vector</span><span class="op">&lt;</span><span class="ident">Breadcrumb</span><span class="op">&gt;</span>,
@@ -380,6 +394,7 @@
 <span class="kw">impl</span> <span class="ident">fmt</span>::<span class="ident">Debug</span> <span class="kw">for</span> <span class="ident">Scope</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt</span>::<span class="ident">Formatter</span>) <span class="op">-&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
         <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;Scope&quot;</span>)
+            .<span class="ident">field</span>(<span class="string">&quot;level&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">level</span>)
             .<span class="ident">field</span>(<span class="string">&quot;fingerprint&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">fingerprint</span>)
             .<span class="ident">field</span>(<span class="string">&quot;transaction&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">transaction</span>)
             .<span class="ident">field</span>(<span class="string">&quot;breadcrumbs&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">breadcrumbs</span>)
@@ -394,6 +409,7 @@
 <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">Scope</span> {
     <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-&gt;</span> <span class="ident">Scope</span> {
         <span class="ident">Scope</span> {
+            <span class="ident">level</span>: <span class="prelude-val">None</span>,
             <span class="ident">fingerprint</span>: <span class="prelude-val">None</span>,
             <span class="ident">transaction</span>: <span class="prelude-val">None</span>,
             <span class="ident">breadcrumbs</span>: <span class="ident">Default</span>::<span class="ident">default</span>(),
@@ -473,6 +489,11 @@
         <span class="kw-2">*</span><span class="self">self</span> <span class="op">=</span> <span class="ident">Default</span>::<span class="ident">default</span>();
     }
 
+    <span class="doccomment">/// Sets a level override.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_level</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">level</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Level</span><span class="op">&gt;</span>) {
+        <span class="self">self</span>.<span class="ident">level</span> <span class="op">=</span> <span class="ident">level</span>;
+    }
+
     <span class="doccomment">/// Sets the fingerprint.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_fingerprint</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">fingerprint</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>]<span class="op">&gt;</span>) {
         <span class="self">self</span>.<span class="ident">fingerprint</span> <span class="op">=</span>
@@ -533,6 +554,11 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">add_os</span> <span class="op">=</span> <span class="bool-val">true</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">add_rust</span> <span class="op">=</span> <span class="bool-val">true</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">add_device</span> <span class="op">=</span> <span class="bool-val">true</span>;
+
+        <span class="comment">// TODO: event really should have an optional level</span>
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">level</span>.<span class="ident">is_some</span>() {
+            <span class="ident">event</span>.<span class="ident">level</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">level</span>.<span class="ident">unwrap</span>();
+        }
 
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">breadcrumbs</span>.<span class="ident">is_empty</span>() {
             <span class="ident">event</span>
