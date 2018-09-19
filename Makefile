@@ -15,7 +15,7 @@ doc:
 
 check-all-features:
 	@echo 'ALL FEATURES'
-	@RUSTFLAGS=-Dwarnings cargo check --all-features
+	@RUSTFLAGS=-Dwarnings cargo check --all-features --all --examples
 .PHONY: check-all-features
 
 check-no-default-features:
@@ -53,10 +53,15 @@ check-all-impls:
 	@RUSTFLAGS=-Dwarnings cargo check --no-default-features --features 'with_failure,with_log,with_panic,with_error_chain'
 .PHONY: check-all-impls
 
+check-actix:
+	@echo 'ACTIX INTEGRATION'
+	@RUSTFLAGS=-Dwarnings cargo check --manifest-path integrations/sentry-actix/Cargo.toml
+.PHONY: check-actix
+
 check: check-no-default-features check-default-features
 .PHONY: check-all-features
 
-checkall: check-all-features check-no-default-features check-default-features check-failure check-log check-panic check-error-chain check-all-impls
+checkall: check-all-features check-no-default-features check-default-features check-failure check-log check-panic check-error-chain check-all-impls check-actix
 .PHONY: checkall
 
 cargotest:
@@ -66,7 +71,7 @@ cargotest:
 
 cargotestall:
 	@echo 'TESTSUITE'
-	@cargo test --all-features
+	@cargo test --all-features --all --examples
 .PHONY: cargotest
 
 test: checkall cargotestall
@@ -79,7 +84,7 @@ format-check:
 
 lint:
 	@rustup component add clippy-preview 2> /dev/null
-	@cargo clippy --all-features --tests -- -D clippy
+	@cargo clippy --all-features --tests --all --examples -- -D clippy
 .PHONY: lint
 
 travis-push-docs:
