@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.11.1
+
+- Fix compilation error in `sentry-actix` (#87)
+
 ## 0.11.0
 
 - Added `sentry::with_scope`
