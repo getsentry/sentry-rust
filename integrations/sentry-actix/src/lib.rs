@@ -83,7 +83,7 @@ use actix_web::middleware::{Middleware, Response, Started};
 use actix_web::{Error, HttpMessage, HttpRequest, HttpResponse};
 use failure::Fail;
 use sentry::integrations::failure::exception_from_single_fail;
-use sentry::protocol::{ClientSdkPackageInfo, Event, Level};
+use sentry::protocol::{ClientSdkPackage, Event, Level};
 use sentry::{Hub, Uuid};
 use std::borrow::Cow;
 use std::sync::{Arc, Mutex};
@@ -91,13 +91,6 @@ use std::sync::{Arc, Mutex};
 /// A helper construct that can be used to reconfigure and build the middleware.
 pub struct SentryMiddlewareBuilder {
     middleware: SentryMiddleware,
-}
-
-/// Reports certain failures to sentry.
-pub struct SentryMiddleware {
-    hub: Option<Arc<Hub>>,
-    emit_header: bool,
-    capture_server_errors: bool,
 }
 
 impl SentryMiddlewareBuilder {
@@ -133,6 +126,13 @@ impl SentryMiddlewareBuilder {
     }
 }
 
+/// Reports certain failures to sentry.
+pub struct SentryMiddleware {
+    hub: Option<Arc<Hub>>,
+    emit_header: bool,
+    capture_server_errors: bool,
+}
+
 impl SentryMiddleware {
     /// Creates a new sentry middleware.
     pub fn new() -> SentryMiddleware {
@@ -158,6 +158,12 @@ impl SentryMiddleware {
     }
 }
 
+impl Default for SentryMiddleware {
+    fn default() -> Self {
+        SentryMiddleware::new()
+    }
+}
+
 fn extract_request<S: 'static>(
     req: &HttpRequest<S>,
     with_pii: bool,
@@ -165,12 +171,10 @@ fn extract_request<S: 'static>(
     let resource = req.resource();
     let transaction = if let Some(rdef) = resource.rdef() {
         Some(rdef.pattern().to_string())
+    } else if resource.name() != "" {
+        Some(resource.name().to_string())
     } else {
-        if resource.name() != "" {
-            Some(resource.name().to_string())
-        } else {
-            None
-        }
+        None
     };
     let mut sentry_req = sentry::protocol::Request {
         url: format!(
@@ -229,8 +233,8 @@ impl<S: 'static> Middleware<S> for SentryMiddleware {
 
                 if let Some(sdk) = event.sdk.take() {
                     let mut sdk = sdk.into_owned();
-                    sdk.packages.push(ClientSdkPackageInfo {
-                        package_name: "sentry-actix".into(),
+                    sdk.packages.push(ClientSdkPackage {
+                        name: "sentry-actix".into(),
                         version: env!("CARGO_PKG_VERSION").into(),
                     });
                     event.sdk = Some(Cow::Owned(sdk));
@@ -255,7 +259,7 @@ impl<S: 'static> Middleware<S> for SentryMiddleware {
                 Some(event_id) if self.emit_header => {
                     resp.headers_mut().insert(
                         "x-sentry-event",
-                        event_id.simple().to_string().parse().unwrap(),
+                        event_id.to_simple_ref().to_string().parse().unwrap(),
                     );
                 }
                 _ => {}

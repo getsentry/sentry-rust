@@ -50,7 +50,7 @@ lazy_static!{
         #[cfg(feature = "with_error_chain")] {
             rv.push(("error_chain::make_backtrace", "<T as core::convert::Into<U>>::into"));
         }
-        rv
+        {rv}
     };
 
     pub static ref COMMON_RUST_SYMBOL_ESCAPES_RE: Regex = Regex::new(r#"(?x)
