@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread::{self, JoinHandle};
-use std::time::{Duration, Instant, SystemTime};
+use std::time::{Duration, SystemTime};
 
 use httpdate::parse_http_date;
 use reqwest::header::{HeaderMap, RETRY_AFTER};
@@ -111,19 +111,17 @@ pub struct HttpTransport {
     _handle: Option<JoinHandle<()>>,
 }
 
-enum RetryAfter {
-    Delay(Duration),
-    DateTime(SystemTime),
-}
+#[derive(Debug, PartialEq, Copy, Clone)]
+struct RetryAfter(pub SystemTime);
 
 impl FromStr for RetryAfter {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Ok(value) = s.parse::<u64>() {
-            Ok(RetryAfter::Delay(Duration::from_secs(value)))
+            Ok(RetryAfter(SystemTime::now() + Duration::from_secs(value)))
         } else if let Ok(value) = parse_http_date(s) {
-            Ok(RetryAfter::DateTime(value))
+            Ok(RetryAfter(value))
         } else {
             Err(())
         }
@@ -139,7 +137,7 @@ fn spawn_http_sender(
     queue_size: Arc<Mutex<usize>>,
     user_agent: String,
 ) -> JoinHandle<()> {
-    let mut disabled: Option<(Instant, RetryAfter)> = None;
+    let mut disabled: Option<RetryAfter> = None;
 
     thread::spawn(move || {
         let url = dsn.store_api_url().to_string();
@@ -154,22 +152,12 @@ fn spawn_http_sender(
             }
 
             // while we are disabled due to rate limits, skip
-            match disabled {
-                Some((disabled_at, RetryAfter::Delay(disabled_for))) => {
-                    if disabled_at.elapsed() > disabled_for {
-                        disabled = None;
-                    } else {
-                        continue;
-                    }
+            if let Some(RetryAfter(disabled_until)) = disabled {
+                if disabled_until < SystemTime::now() {
+                    disabled = None;
+                } else {
+                    continue;
                 }
-                Some((_, RetryAfter::DateTime(wait_until))) => {
-                    if SystemTime::from(wait_until) > SystemTime::now() {
-                        disabled = None;
-                    } else {
-                        continue;
-                    }
-                }
-                None => {}
             }
 
             let auth = dsn.to_auth(Some(&user_agent));
@@ -187,8 +175,7 @@ fn spawn_http_sender(
                         .headers()
                         .get(RETRY_AFTER)
                         .and_then(|x| x.to_str().ok())
-                        .and_then(|x| x.parse().ok())
-                        .map(|x| (Instant::now(), x));
+                        .and_then(|x| x.parse().ok());
                 }
             }
 
