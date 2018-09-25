@@ -1,11 +1,13 @@
+use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant, SystemTime};
 
-use reqwest::header::{Headers, RetryAfter};
-use reqwest::{Client, Proxy, StatusCode};
+use httpdate::parse_http_date;
+use reqwest::header::{HeaderMap, RETRY_AFTER};
+use reqwest::{Client, Proxy};
 
 use api::protocol::Event;
 use client::ClientOptions;
@@ -109,6 +111,25 @@ pub struct HttpTransport {
     _handle: Option<JoinHandle<()>>,
 }
 
+enum RetryAfter {
+    Delay(Duration),
+    DateTime(SystemTime),
+}
+
+impl FromStr for RetryAfter {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if let Ok(value) = s.parse::<u64>() {
+            Ok(RetryAfter::Delay(Duration::from_secs(value)))
+        } else if let Ok(value) = parse_http_date(s) {
+            Ok(RetryAfter::DateTime(value))
+        } else {
+            Err(())
+        }
+    }
+}
+
 fn spawn_http_sender(
     client: Client,
     receiver: Receiver<Option<Event<'static>>>,
@@ -152,8 +173,8 @@ fn spawn_http_sender(
             }
 
             let auth = dsn.to_auth(Some(&user_agent));
-            let mut headers = Headers::new();
-            headers.set_raw("X-Sentry-Auth", auth.to_string());
+            let mut headers = HeaderMap::new();
+            headers.insert("X-Sentry-Auth", auth.to_string().parse().unwrap());
 
             if let Ok(resp) = client
                 .post(url.as_str())
@@ -161,11 +182,13 @@ fn spawn_http_sender(
                 .headers(headers)
                 .send()
             {
-                if resp.status() == StatusCode::TooManyRequests {
+                if resp.status() == 429 {
                     disabled = resp
                         .headers()
-                        .get::<RetryAfter>()
-                        .map(|x| (Instant::now(), *x));
+                        .get(RETRY_AFTER)
+                        .and_then(|x| x.to_str().ok())
+                        .and_then(|x| x.parse().ok())
+                        .map(|x| (Instant::now(), x));
                 }
             }
 
@@ -193,10 +216,10 @@ impl HttpTransport {
         let queue_size = Arc::new(Mutex::new(0));
         let mut client = Client::builder();
         if let Some(url) = http_proxy {
-            client.proxy(Proxy::http(&url).unwrap());
+            client = client.proxy(Proxy::http(&url).unwrap());
         };
         if let Some(url) = https_proxy {
-            client.proxy(Proxy::https(&url).unwrap());
+            client = client.proxy(Proxy::https(&url).unwrap());
         };
         let _handle = Some(spawn_http_sender(
             client.build().unwrap(),
