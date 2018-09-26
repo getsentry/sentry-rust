@@ -15,7 +15,7 @@ doc:
 
 check-all-features:
 	@echo 'ALL FEATURES'
-	@RUSTFLAGS=-Dwarnings cargo check --all-features --all --examples
+	@RUSTFLAGS=-Dwarnings cargo check --all-features --all
 .PHONY: check-all-features
 
 check-no-default-features:
@@ -71,7 +71,7 @@ cargotest:
 
 cargotestall:
 	@echo 'TESTSUITE'
-	@cargo test --all-features --all --examples
+	@cargo test --all-features --all
 .PHONY: cargotest
 
 test: checkall cargotestall
