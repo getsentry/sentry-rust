@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.12.0
+
+- Upgrade reqwest to 0.9
+- Add support for debug logging through the log crate (`with_debug_to_log` feature)
+- Added debug log for when events are dropped in the transport.
+
 ## 0.11.1
 
 - Fix compilation error in `sentry-actix` (#87)
