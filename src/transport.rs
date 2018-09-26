@@ -144,25 +144,35 @@ fn spawn_http_sender(
             }
 
             // while we are disabled due to rate limits, skip
-            if disabled > SystemTime::now() {
+            let now = SystemTime::now();
+            if let Ok(time_left) = disabled.duration_since(now) {
+                sentry_debug!(
+                    "Skipping event send because we're disabled due to rate limits for {}s",
+                    time_left.as_secs()
+                );
                 continue;
             }
 
-            if let Ok(resp) = client
+            match client
                 .post(url.as_str())
                 .json(&event)
                 .header("X-Sentry-Auth", dsn.to_auth(Some(&user_agent)).to_string())
                 .send()
             {
-                if resp.status() == 429 {
-                    if let Some(retry_after) = resp
-                        .headers()
-                        .get(RETRY_AFTER)
-                        .and_then(|x| x.to_str().ok())
-                        .and_then(parse_retry_after)
-                    {
-                        disabled = retry_after;
+                Ok(resp) => {
+                    if resp.status() == 429 {
+                        if let Some(retry_after) = resp
+                            .headers()
+                            .get(RETRY_AFTER)
+                            .and_then(|x| x.to_str().ok())
+                            .and_then(parse_retry_after)
+                        {
+                            disabled = retry_after;
+                        }
                     }
+                }
+                Err(err) => {
+                    sentry_debug!("Failed to send event: {}", err);
                 }
             }
 
