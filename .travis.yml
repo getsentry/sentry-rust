@@ -29,6 +29,10 @@ matrix:
       env: SUITE=cargotestall
     - env: SUITE=travis-push-docs
 
+  allow_failures:
+    - env: SUITE=format-check
+    - env: SUITE=lint
+
 notifications:
   webhooks:
     urls:
