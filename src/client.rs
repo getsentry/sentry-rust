@@ -92,6 +92,10 @@ pub struct ClientOptions {
     /// The timeout on client drop for draining events on shutdown.
     pub shutdown_timeout: Duration,
     /// Enables debug mode.
+    ///
+    /// In debug mode debug information is printed to stderr to help you understand what
+    /// sentry is doing.  When the `with_debug_to_log` flag is enabled Sentry will instead
+    /// log to the `sentry` logger independently of this flag with the `Debug` level.
     pub debug: bool,
     /// Attaches stacktraces to messages.
     pub attach_stacktrace: bool,
