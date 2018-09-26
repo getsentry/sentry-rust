@@ -97,6 +97,8 @@
 //! * `with_device_info`: enables the device info context
 //! * `with_rust_info`: enables the rust compiler info context
 //! * `with_debug_meta`: enables debug meta support (permits server side symbolication)
+//! * `with_debug_to_log`: when enabled sentry will debug log to a debug log at all times
+//!   instead of printing to stderr when debug is enabled on the hub.
 //!
 //! additional features:
 //!
@@ -144,7 +146,8 @@ extern crate failure;
 #[cfg(feature = "with_error_chain")]
 extern crate error_chain;
 
-#[cfg(feature = "with_log")]
+#[cfg(any(feature = "with_log", feature = "with_debug_to_log"))]
+#[cfg_attr(feature = "with_debug_to_log", macro_use)]
 extern crate log;
 
 #[cfg(feature = "with_env_logger")]
