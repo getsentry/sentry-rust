@@ -1,4 +1,3 @@
-use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 use std::sync::{Arc, Condvar, Mutex};
@@ -6,7 +5,7 @@ use std::thread::{self, JoinHandle};
 use std::time::{Duration, SystemTime};
 
 use httpdate::parse_http_date;
-use reqwest::header::{HeaderMap, RETRY_AFTER};
+use reqwest::header::RETRY_AFTER;
 use reqwest::{Client, Proxy};
 
 use api::protocol::Event;
@@ -111,20 +110,13 @@ pub struct HttpTransport {
     _handle: Option<JoinHandle<()>>,
 }
 
-#[derive(Debug, PartialEq, Copy, Clone)]
-struct RetryAfter(pub SystemTime);
-
-impl FromStr for RetryAfter {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if let Ok(value) = s.parse::<u64>() {
-            Ok(RetryAfter(SystemTime::now() + Duration::from_secs(value)))
-        } else if let Ok(value) = parse_http_date(s) {
-            Ok(RetryAfter(value))
-        } else {
-            Err(())
-        }
+fn parse_retry_after(s: &str) -> Option<SystemTime> {
+    if let Ok(value) = s.parse::<f64>() {
+        Some(SystemTime::now() + Duration::from_secs(value.ceil() as u64))
+    } else if let Ok(value) = parse_http_date(s) {
+        Some(value)
+    } else {
+        None
     }
 }
 
@@ -137,7 +129,7 @@ fn spawn_http_sender(
     queue_size: Arc<Mutex<usize>>,
     user_agent: String,
 ) -> JoinHandle<()> {
-    let mut disabled: Option<RetryAfter> = None;
+    let mut disabled = SystemTime::now();
 
     thread::spawn(move || {
         let url = dsn.store_api_url().to_string();
@@ -152,30 +144,25 @@ fn spawn_http_sender(
             }
 
             // while we are disabled due to rate limits, skip
-            if let Some(RetryAfter(disabled_until)) = disabled {
-                if disabled_until < SystemTime::now() {
-                    disabled = None;
-                } else {
-                    continue;
-                }
+            if disabled > SystemTime::now() {
+                continue;
             }
-
-            let auth = dsn.to_auth(Some(&user_agent));
-            let mut headers = HeaderMap::new();
-            headers.insert("X-Sentry-Auth", auth.to_string().parse().unwrap());
 
             if let Ok(resp) = client
                 .post(url.as_str())
                 .json(&event)
-                .headers(headers)
+                .header("X-Sentry-Auth", dsn.to_auth(Some(&user_agent)).to_string())
                 .send()
             {
                 if resp.status() == 429 {
-                    disabled = resp
+                    if let Some(retry_after) = resp
                         .headers()
                         .get(RETRY_AFTER)
                         .and_then(|x| x.to_str().ok())
-                        .and_then(|x| x.parse().ok());
+                        .and_then(parse_retry_after)
+                    {
+                        disabled = retry_after;
+                    }
                 }
             }
 
