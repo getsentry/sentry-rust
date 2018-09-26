@@ -2,10 +2,11 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread::{self, JoinHandle};
-use std::time::{Duration, Instant, SystemTime};
+use std::time::{Duration, SystemTime};
 
-use reqwest::header::{Headers, RetryAfter};
-use reqwest::{Client, Proxy, StatusCode};
+use httpdate::parse_http_date;
+use reqwest::header::RETRY_AFTER;
+use reqwest::{Client, Proxy};
 
 use api::protocol::Event;
 use client::ClientOptions;
@@ -109,6 +110,16 @@ pub struct HttpTransport {
     _handle: Option<JoinHandle<()>>,
 }
 
+fn parse_retry_after(s: &str) -> Option<SystemTime> {
+    if let Ok(value) = s.parse::<f64>() {
+        Some(SystemTime::now() + Duration::from_secs(value.ceil() as u64))
+    } else if let Ok(value) = parse_http_date(s) {
+        Some(value)
+    } else {
+        None
+    }
+}
+
 fn spawn_http_sender(
     client: Client,
     receiver: Receiver<Option<Event<'static>>>,
@@ -118,7 +129,7 @@ fn spawn_http_sender(
     queue_size: Arc<Mutex<usize>>,
     user_agent: String,
 ) -> JoinHandle<()> {
-    let mut disabled: Option<(Instant, RetryAfter)> = None;
+    let mut disabled = SystemTime::now();
 
     thread::spawn(move || {
         let url = dsn.store_api_url().to_string();
@@ -133,39 +144,25 @@ fn spawn_http_sender(
             }
 
             // while we are disabled due to rate limits, skip
-            match disabled {
-                Some((disabled_at, RetryAfter::Delay(disabled_for))) => {
-                    if disabled_at.elapsed() > disabled_for {
-                        disabled = None;
-                    } else {
-                        continue;
-                    }
-                }
-                Some((_, RetryAfter::DateTime(wait_until))) => {
-                    if SystemTime::from(wait_until) > SystemTime::now() {
-                        disabled = None;
-                    } else {
-                        continue;
-                    }
-                }
-                None => {}
+            if disabled > SystemTime::now() {
+                continue;
             }
-
-            let auth = dsn.to_auth(Some(&user_agent));
-            let mut headers = Headers::new();
-            headers.set_raw("X-Sentry-Auth", auth.to_string());
 
             if let Ok(resp) = client
                 .post(url.as_str())
                 .json(&event)
-                .headers(headers)
+                .header("X-Sentry-Auth", dsn.to_auth(Some(&user_agent)).to_string())
                 .send()
             {
-                if resp.status() == StatusCode::TooManyRequests {
-                    disabled = resp
+                if resp.status() == 429 {
+                    if let Some(retry_after) = resp
                         .headers()
-                        .get::<RetryAfter>()
-                        .map(|x| (Instant::now(), *x));
+                        .get(RETRY_AFTER)
+                        .and_then(|x| x.to_str().ok())
+                        .and_then(parse_retry_after)
+                    {
+                        disabled = retry_after;
+                    }
                 }
             }
 
@@ -193,10 +190,10 @@ impl HttpTransport {
         let queue_size = Arc::new(Mutex::new(0));
         let mut client = Client::builder();
         if let Some(url) = http_proxy {
-            client.proxy(Proxy::http(&url).unwrap());
+            client = client.proxy(Proxy::http(&url).unwrap());
         };
         if let Some(url) = https_proxy {
-            client.proxy(Proxy::https(&url).unwrap());
+            client = client.proxy(Proxy::https(&url).unwrap());
         };
         let _handle = Some(spawn_http_sender(
             client.build().unwrap(),
