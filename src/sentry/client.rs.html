@@ -703,6 +703,10 @@
 <span id="703">703</span>
 <span id="704">704</span>
 <span id="705">705</span>
+<span id="706">706</span>
+<span id="707">707</span>
+<span id="708">708</span>
+<span id="709">709</span>
 </pre><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">borrow</span>::<span class="ident">Cow</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">collections</span>::<span class="ident">HashMap</span>;
@@ -798,6 +802,10 @@
     <span class="doccomment">/// The timeout on client drop for draining events on shutdown.</span>
     <span class="kw">pub</span> <span class="ident">shutdown_timeout</span>: <span class="ident">Duration</span>,
     <span class="doccomment">/// Enables debug mode.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// In debug mode debug information is printed to stderr to help you understand what</span>
+    <span class="doccomment">/// sentry is doing.  When the `with_debug_to_log` flag is enabled Sentry will instead</span>
+    <span class="doccomment">/// log to the `sentry` logger independently of this flag with the `Debug` level.</span>
     <span class="kw">pub</span> <span class="ident">debug</span>: <span class="ident">bool</span>,
     <span class="doccomment">/// Attaches stacktraces to messages.</span>
     <span class="kw">pub</span> <span class="ident">attach_stacktrace</span>: <span class="ident">bool</span>,

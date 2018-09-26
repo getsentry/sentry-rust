@@ -59,6 +59,11 @@
 <span id="59">59</span>
 <span id="60">60</span>
 <span id="61">61</span>
+<span id="62">62</span>
+<span id="63">63</span>
+<span id="64">64</span>
+<span id="65">65</span>
+<span id="66">66</span>
 </pre><pre class="rust ">
 <span class="doccomment">/// Returns the intended release for Sentry as an `Option&lt;Cow&lt;&#39;static, str&gt;&gt;`.</span>
 <span class="doccomment">///</span>
@@ -102,12 +107,17 @@
 <span class="macro">macro_rules</span><span class="macro">!</span> <span class="ident">sentry_debug</span> {
     ($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>:<span class="ident">tt</span>)<span class="kw-2">*</span>) <span class="op">=&gt;</span> {
         <span class="macro">with_client_impl</span><span class="macro">!</span> {{
-            <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">Hub</span>::<span class="ident">with</span>(<span class="op">|</span><span class="ident">hub</span><span class="op">|</span> {
-                <span class="kw">if</span> <span class="ident">hub</span>.<span class="ident">client</span>().<span class="ident">map_or</span>(<span class="bool-val">false</span>, <span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">c</span>.<span class="ident">options</span>().<span class="ident">debug</span>) {
-                    <span class="macro">eprint</span><span class="macro">!</span>(<span class="string">&quot;[sentry] &quot;</span>);
-                    <span class="macro">eprintln</span><span class="macro">!</span>($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>)<span class="kw-2">*</span>);
-                }
-            });
+            <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_debug_to_log&quot;</span>)]</span> {
+                <span class="macro">debug</span><span class="macro">!</span>(<span class="ident">target</span>: <span class="string">&quot;sentry&quot;</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>)<span class="kw-2">*</span>);
+            }
+            <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_debug_to_log&quot;</span>))]</span> {
+                <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">Hub</span>::<span class="ident">with</span>(<span class="op">|</span><span class="ident">hub</span><span class="op">|</span> {
+                    <span class="kw">if</span> <span class="ident">hub</span>.<span class="ident">client</span>().<span class="ident">map_or</span>(<span class="bool-val">false</span>, <span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">c</span>.<span class="ident">options</span>().<span class="ident">debug</span>) {
+                        <span class="macro">eprint</span><span class="macro">!</span>(<span class="string">&quot;[sentry] &quot;</span>);
+                        <span class="macro">eprintln</span><span class="macro">!</span>($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>)<span class="kw-2">*</span>);
+                    }
+                });
+            }
         }}
     }
 }
