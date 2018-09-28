@@ -1013,21 +1013,7 @@ impl DebugMeta {
     }
 }
 
-/// Represents a repository reference.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct RepoReference {
-    /// The name of the repository as it is registered in Sentry.
-    pub name: String,
-    /// The optional prefix path to apply to source code when pairing it
-    /// up with files in the repository.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub prefix: Option<String>,
-    /// The optional current revision of the local repository.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub revision: Option<String>,
-}
-
-/// Represents a repository reference.
+/// Information on the SDK client.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct ClientSdkInfo {
     /// The name of the SDK.
@@ -1354,9 +1340,6 @@ pub struct Event<'a> {
     /// An optional distribution identifer.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dist: Option<Cow<'a, str>>,
-    /// Repository references
-    #[serde(default, skip_serializing_if = "Map::is_empty")]
-    pub repos: Map<String, RepoReference>,
     /// An optional environment identifier.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub environment: Option<Cow<'a, str>>,
@@ -1415,7 +1398,6 @@ impl<'a> Default for Event<'a> {
             server_name: Default::default(),
             release: Default::default(),
             dist: Default::default(),
-            repos: Default::default(),
             environment: Default::default(),
             user: Default::default(),
             request: Default::default(),
@@ -1461,7 +1443,6 @@ impl<'a> Event<'a> {
             server_name: self.server_name.map(|x| Cow::Owned(x.into_owned())),
             release: self.release.map(|x| Cow::Owned(x.into_owned())),
             dist: self.dist.map(|x| Cow::Owned(x.into_owned())),
-            repos: self.repos,
             environment: self.environment.map(|x| Cow::Owned(x.into_owned())),
             user: self.user,
             request: self.request,

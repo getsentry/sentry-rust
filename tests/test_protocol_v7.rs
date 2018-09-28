@@ -283,67 +283,6 @@ fn test_modules() {
     );
 }
 
-mod test_repos {
-    use super::*;
-
-    #[test]
-    fn test_repos() {
-        let event = v7::Event {
-            event_id: event_id(),
-            timestamp: event_time(),
-            repos: {
-                let mut m = v7::Map::new();
-                m.insert(
-                    "/raven".into(),
-                    v7::RepoReference {
-                        name: "github/raven".into(),
-                        prefix: None,
-                        revision: None,
-                    },
-                );
-                m
-            },
-            ..Default::default()
-        };
-
-        assert_roundtrip(&event);
-        assert_eq!(
-            serde_json::to_string(&event).unwrap(),
-            "{\"event_id\":\"d43e86c96e424a93a4fbda156dd17341\",\"timestamp\":1514103120,\
-             \"repos\":{\"/raven\":{\"name\":\"github/raven\"}}}"
-        );
-    }
-
-    #[test]
-    fn test_repos_with_revision() {
-        let event = v7::Event {
-            event_id: event_id(),
-            timestamp: event_time(),
-            repos: {
-                let mut m = v7::Map::new();
-                m.insert(
-                    "/raven".into(),
-                    v7::RepoReference {
-                        name: "github/raven".into(),
-                        prefix: Some("/".into()),
-                        revision: Some("49f45700b5fe606c1bcd9bf0205ecbb83db17f52".into()),
-                    },
-                );
-                m
-            },
-            ..Default::default()
-        };
-
-        assert_roundtrip(&event);
-        assert_eq!(
-            serde_json::to_string(&event).unwrap(),
-            "{\"event_id\":\"d43e86c96e424a93a4fbda156dd17341\",\"timestamp\":1514103120,\
-             \"repos\":{\"/raven\":{\"name\":\"github/raven\",\"prefix\":\"/\",\"revision\":\
-             \"49f45700b5fe606c1bcd9bf0205ecbb83db17f52\"}}}"
-        );
-    }
-}
-
 mod test_timestamp {
     use super::*;
     use chrono::TimeZone;
