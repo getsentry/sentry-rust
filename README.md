@@ -28,7 +28,7 @@ We currently only verify this crate against a recent version of Sentry hosted on
 ## Resources
 
 - [crates.io](https://crates.io/crates/sentry)
-- [Documentation](https://docs.rs/sentry)
+- [Documentation](https://getsentry.github.io/sentry-rust)
 - [Bug Tracker](https://github.com/getsentry/sentry-rust/issues)
 - [IRC](irc://chat.freenode.net/sentry) (chat.freenode.net, #sentry)
 - Follow [@getsentry](https://twitter.com/getsentry) on Twitter for updates
