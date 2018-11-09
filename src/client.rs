@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fmt;
+use std::panic::RefUnwindSafe;
 use std::sync::Arc;
 use std::sync::RwLock;
 use std::time::Duration;
@@ -103,6 +104,9 @@ pub struct ClientOptions {
     /// Before breadcrumb add callback.
     pub before_breadcrumb: Option<BeforeCallback<Breadcrumb>>,
 }
+
+// make this unwind safe.  It's not out of the box because of the contained `BeforeCallback`s.
+impl RefUnwindSafe for ClientOptions {}
 
 impl fmt::Debug for ClientOptions {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
