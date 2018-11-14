@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fmt;
+use std::mem;
 use std::panic::RefUnwindSafe;
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -20,17 +21,22 @@ use scope::Scope;
 use transport::{DefaultTransportFactory, Transport, TransportFactory};
 use utils::{debug_images, server_name};
 
+#[derive(Clone)]
+struct ClientInner {
+    options: Arc<ClientOptions>,
+    transport: Option<Arc<Transport>>,
+}
+
 /// The Sentry client object.
 pub struct Client {
-    options: ClientOptions,
-    transport: RwLock<Option<Arc<Box<Transport>>>>,
+    inner: RwLock<ClientInner>,
 }
 
 impl fmt::Debug for Client {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Client")
             .field("dsn", &self.dsn())
-            .field("options", &self.options)
+            .field("options", &self.options())
             .finish()
     }
 }
@@ -38,8 +44,7 @@ impl fmt::Debug for Client {
 impl Clone for Client {
     fn clone(&self) -> Client {
         Client {
-            options: self.options.clone(),
-            transport: RwLock::new(self.transport.read().unwrap().clone()),
+            inner: RwLock::new(self.inner.read().unwrap().clone()),
         }
     }
 }
@@ -355,12 +360,33 @@ impl Client {
     /// disabled.
     pub fn with_options(options: ClientOptions) -> Client {
         #[cfg_attr(feature = "cargo-clippy", allow(question_mark))]
-        let transport = RwLock::new(if options.dsn.is_none() {
+        let transport = if options.dsn.is_none() {
             None
         } else {
-            Some(Arc::new(options.transport.create_transport(&options)))
-        });
-        Client { options, transport }
+            Some(Arc::from(options.transport.create_transport(&options)))
+        };
+
+        Client {
+            inner: RwLock::new(ClientInner {
+                options: Arc::new(options),
+                transport,
+            })
+        }
+    }
+
+    /// Changes the configuration of the client at runtime.
+    ///
+    /// This replaces the configuration and creates a new transport. The previous events are
+    /// flushed into the old transport (and success of the flush is returned, see
+    /// [`close`](#method.close).
+    pub fn change_options<O: Into<ClientOptions>>(&mut self, opts: O) -> bool {
+        let replacement = Self::from_config(opts);
+        {
+            let mut replacement = replacement.inner.write().unwrap();
+            let mut me = self.inner.write().unwrap();
+            mem::swap(&mut *replacement, &mut *me);
+        }
+        replacement.close(None)
     }
 
     #[doc(hidden)]
@@ -389,8 +415,10 @@ impl Client {
     )]
     pub fn disabled_with_options(options: ClientOptions) -> Client {
         Client {
-            options,
-            transport: RwLock::new(None),
+            inner: RwLock::new(ClientInner {
+                options: Arc::new(options),
+                transport: None,
+            })
         }
     }
 
@@ -406,6 +434,8 @@ impl Client {
                 ..Default::default()
             };
         }
+
+        let inner = self.inner.read().unwrap();
 
         // id, debug meta and sdk are set before the processors run so that the
         // processors can poke around in that data.
@@ -427,13 +457,13 @@ impl Client {
         }
 
         if event.release.is_none() {
-            event.release = self.options.release.clone();
+            event.release = inner.options.release.clone();
         }
         if event.environment.is_none() {
-            event.environment = self.options.environment.clone();
+            event.environment = inner.options.environment.clone();
         }
         if event.server_name.is_none() {
-            event.server_name = self.options.server_name.clone();
+            event.server_name = inner.options.server_name.clone();
         }
 
         if &event.platform == "other" {
@@ -443,10 +473,10 @@ impl Client {
         for exc in &mut event.exception {
             if let Some(ref mut stacktrace) = exc.stacktrace {
                 // automatically trim backtraces
-                if self.options.trim_backtraces {
+                if inner.options.trim_backtraces {
                     trim_stacktrace(stacktrace, |frame, _| {
                         if let Some(ref func) = frame.function {
-                            self.options.extra_border_frames.contains(&func.as_str())
+                            inner.options.extra_border_frames.contains(&func.as_str())
                         } else {
                             false
                         }
@@ -477,7 +507,7 @@ impl Client {
                         None => {}
                     }
 
-                    for m in &self.options.in_app_exclude {
+                    for m in &inner.options.in_app_exclude {
                         if function_starts_with(func_name, m) {
                             frame.in_app = Some(false);
                             break;
@@ -488,7 +518,7 @@ impl Client {
                         continue;
                     }
 
-                    for m in &self.options.in_app_include {
+                    for m in &inner.options.in_app_include {
                         if function_starts_with(func_name, m) {
                             frame.in_app = Some(true);
                             any_in_app = true;
@@ -515,7 +545,7 @@ impl Client {
             }
         }
 
-        if let Some(ref func) = self.options.before_send {
+        if let Some(ref func) = inner.options.before_send {
             sentry_debug!("invoking before_send callback");
             let id = event.event_id;
             func(event).or_else(move || {
@@ -528,23 +558,24 @@ impl Client {
     }
 
     /// Returns the options of this client.
-    pub fn options(&self) -> &ClientOptions {
-        &self.options
+    pub fn options(&self) -> Arc<ClientOptions> {
+        Arc::clone(&self.inner.read().unwrap().options)
     }
 
     /// Returns the DSN that constructed this client.
-    pub fn dsn(&self) -> Option<&Dsn> {
-        self.options.dsn.as_ref()
+    pub fn dsn(&self) -> Option<Dsn> {
+        self.options().dsn.clone()
     }
 
     /// Quick check to see if the client is enabled.
     pub fn is_enabled(&self) -> bool {
-        self.options.dsn.is_some() && self.transport.read().unwrap().is_some()
+        let inner = self.inner.read().unwrap();
+        inner.options.dsn.is_some() && inner.transport.is_some()
     }
 
     /// Captures an event and sends it to sentry.
     pub fn capture_event(&self, event: Event<'static>, scope: Option<&Scope>) -> Uuid {
-        if let Some(ref transport) = *self.transport.read().unwrap() {
+        if let Some(ref transport) = self.inner.read().unwrap().transport {
             if self.sample_should_send() {
                 if let Some(event) = self.prepare_event(event, scope) {
                     let event_id = event.event_id;
@@ -564,9 +595,13 @@ impl Client {
     /// If no timeout is provided the client will wait for as long a
     /// `shutdown_timeout` in the client options.
     pub fn close(&self, timeout: Option<Duration>) -> bool {
-        if let Some(transport) = self.transport.write().unwrap().take() {
+        let (transport, shutdown_timeout) = {
+            let mut inner = self.inner.write().unwrap();
+            (inner.transport.take(), inner.options.shutdown_timeout)
+        };
+        if let Some(transport) = transport {
             sentry_debug!("client close; request transport to shut down");
-            transport.shutdown(timeout.unwrap_or(self.options.shutdown_timeout))
+            transport.shutdown(timeout.unwrap_or(shutdown_timeout))
         } else {
             sentry_debug!("client close; no transport to shut down");
             true
@@ -574,7 +609,7 @@ impl Client {
     }
 
     fn sample_should_send(&self) -> bool {
-        let rate = self.options.sample_rate;
+        let rate = self.inner.read().unwrap().options.sample_rate;
         if rate >= 1.0 {
             true
         } else {
