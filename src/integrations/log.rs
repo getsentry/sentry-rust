@@ -34,13 +34,15 @@ use log;
 use std::cmp;
 use std::fmt;
 
+#[cfg(feature = "with_env_logger")]
 use env_logger;
 
 use api::add_breadcrumb;
 use api::protocol::{Breadcrumb, Event, Exception, Level};
 use backtrace_support::current_stacktrace;
-use client::ClientOptions;
 use hub::Hub;
+
+use client::ClientOptions;
 use integrations::Integration;
 
 /// Logger specific options.
@@ -142,6 +144,7 @@ impl LogIntegration {
     }
 }
 
+#[cfg(feature = "with_client_implementation")]
 impl Integration for LogIntegration {
     fn setup(&self, _: &ClientOptions) {
         let filter = self.effective_global_filter();
@@ -202,7 +205,7 @@ pub fn event_from_record(record: &log::Record, with_stacktrace: bool) -> Event<'
 
 impl log::Log for Logger {
     fn enabled(&self, md: &log::Metadata) -> bool {
-        let integration = match Hub::current().get_integration::<LogIntegration>() {
+        let integration = match Hub::with_active(|hub| hub.get_integration::<LogIntegration>()) {
             Some(value) => value,
             None => return false,
         };
@@ -219,29 +222,28 @@ impl log::Log for Logger {
     }
 
     fn log(&self, record: &log::Record) {
-        let hub = Hub::current();
-        let integration = match hub.get_integration::<LogIntegration>() {
-            Some(value) => value,
-            None => return,
-        };
+        Hub::with_active(|hub| {
+            let integration = match hub.get_integration::<LogIntegration>() {
+                Some(value) => value,
+                None => return,
+            };
 
-        if integration.create_issue_for_record(record) {
-            Hub::with_active(|hub| {
+            if integration.create_issue_for_record(record) {
                 hub.capture_event(event_from_record(
                     record,
                     hub.client()
                         .map_or(false, |x| x.options().attach_stacktrace),
-                ))
-            });
-        }
-        if record.level() <= integration.filter {
-            add_breadcrumb(|| breadcrumb_from_record(record))
-        }
-        if let Some(ref log) = integration.dest_log {
-            if log.enabled(record.metadata()) {
-                log.log(record);
+                ));
             }
-        }
+            if record.level() <= integration.filter {
+                add_breadcrumb(|| breadcrumb_from_record(record))
+            }
+            if let Some(ref log) = integration.dest_log {
+                if log.enabled(record.metadata()) {
+                    log.log(record);
+                }
+            }
+        })
     }
 
     fn flush(&self) {

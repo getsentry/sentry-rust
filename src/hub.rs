@@ -11,7 +11,6 @@ use std::time::Duration;
 use api::internals::Uuid;
 #[cfg(feature = "with_client_implementation")]
 use client::Client;
-#[cfg(feature = "with_client_implementation")]
 use integrations::{Integration, IntegrationRef};
 use protocol::{Breadcrumb, Event, Level};
 use scope::{Scope, ScopeGuard};
@@ -266,17 +265,18 @@ impl Hub {
     }
 
     /// Looks up an integration on the hub.
-    #[cfg(feature = "with_client_implementation")]
     pub fn get_integration<I: Integration>(&self) -> Option<IntegrationRef<I>> {
-        self.client().and_then(|client| {
-            let integrations = client.integrations.read().unwrap();
-            integrations
-                .get(&TypeId::of::<I>())
-                .map(|integration| IntegrationRef {
-                    integration: integration.clone(),
-                    _marker: Default::default(),
-                })
-        })
+        with_client_impl! {{
+            self.client().and_then(|client| {
+                let integrations = client.integrations.read().unwrap();
+                integrations
+                    .get(&TypeId::of::<I>())
+                    .map(|integration| IntegrationRef {
+                        integration: integration.clone(),
+                        _marker: Default::default(),
+                    })
+            })
+        }}
     }
 
     /// Returns the last event id.
