@@ -182,12 +182,15 @@ where
         stacktrace.frames.truncate(trunc);
 
         if let Some(secondary) = secondary {
-            let secondary_cutoff = stacktrace.frames.iter().rev().position(|frame| match frame
-                .function
-            {
-                Some(ref func) => function_starts_with(&func, secondary),
-                None => false,
-            });
+            let secondary_cutoff =
+                stacktrace
+                    .frames
+                    .iter()
+                    .rev()
+                    .position(|frame| match frame.function {
+                        Some(ref func) => function_starts_with(&func, secondary),
+                        None => false,
+                    });
 
             if let Some(cutoff) = secondary_cutoff {
                 let trunc = stacktrace.frames.len() - cutoff - 1;

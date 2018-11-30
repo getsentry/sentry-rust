@@ -18,6 +18,7 @@ use std::panic;
 use api::protocol::{Event, Exception, Level};
 use backtrace_support::current_stacktrace;
 use hub::Hub;
+use integrations::Integration;
 
 /// Extract the message of a panic.
 pub fn message_from_panic_info<'a>(info: &'a panic::PanicInfo) -> &'a str {
@@ -73,4 +74,14 @@ pub fn register_panic_handler() {
         panic_handler(info);
         next(info);
     }));
+}
+
+/// Panic hook integration.
+#[derive(Debug, Clone)]
+pub struct PanicIntegration;
+
+impl Integration for PanicIntegration {
+    fn setup_once(&self) {
+        register_panic_handler();
+    }
 }

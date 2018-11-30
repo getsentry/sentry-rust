@@ -1,17 +1,21 @@
 #[macro_use]
 extern crate sentry;
 
+use sentry::integrations::panic::PanicIntegration;
+
 fn main() {
     let _sentry = sentry::init((
         "https://a94ae32be2584e0bbd7a4cbb95971fee@sentry.io/1041156",
         sentry::ClientOptions {
             release: sentry_crate_release!(),
             ..Default::default()
-        },
+        }.add_integration(PanicIntegration),
     ));
-    sentry::integrations::panic::register_panic_handler();
 
     {
+        if let Some(integration) = sentry::Hub::current().get_integration::<PanicIntegration>() {
+            println!("{:#?}", *integration);
+        }
         let _guard = sentry::Hub::current().push_scope();
         sentry::configure_scope(|scope| {
             scope.set_tag("foo", "bar");

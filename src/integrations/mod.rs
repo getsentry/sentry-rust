@@ -1,6 +1,13 @@
 //! This module provides support for various integrations.
 //!
 //! Which integerations are available depends on the features that were compiled in.
+use std::any::TypeId;
+use std::collections::HashMap;
+use std::fmt::Debug;
+use std::marker::PhantomData;
+use std::ops::Deref;
+use std::sync::{Arc, Mutex};
+
 #[cfg(feature = "with_failure")]
 pub mod failure;
 
@@ -15,3 +22,79 @@ pub mod env_logger;
 
 #[cfg(feature = "with_panic")]
 pub mod panic;
+
+lazy_static! {
+    static ref ACTIVE_INTEGRATIONS: Mutex<Vec<TypeId>> = Mutex::new(Vec::new());
+}
+
+/// A reference to an integration of a specific type.
+///
+/// This is returned by `get_integration` on a hub to look up a configured
+/// integration.  It derefs into the actual integration.
+pub struct IntegrationRef<I> {
+    pub(crate) integration: Arc<Box<Integration>>,
+    pub(crate) _marker: PhantomData<I>,
+}
+
+impl<I: Integration> Deref for IntegrationRef<I> {
+    type Target = I;
+
+    fn deref(&self) -> &I {
+        if self.integration.__get_internal_id__() == TypeId::of::<I>() {
+            unsafe { &*(&**self.integration as *const Integration as *const I) }
+        } else {
+            panic!("typeid mismatch in integration ref");
+        }
+    }
+}
+
+/// Integration abstraction.
+pub trait Integration: Debug + Sync + Send + 'static {
+    /// Called to initialize the integration.
+    ///
+    /// If the integration has been enabled before this method is not called.
+    /// Because of this accessing data on `self` is not a good idea.
+    fn setup_once(&self);
+
+    /// Returns the internal ID of the integration.
+    #[doc(hidden)]
+    fn __get_internal_id__(&self) -> TypeId {
+        TypeId::of::<Self>()
+    }
+}
+
+fn setup_integration(
+    integration: Arc<Box<Integration>>,
+    rv: &mut HashMap<TypeId, Arc<Box<Integration>>>,
+) {
+    let mut active = ACTIVE_INTEGRATIONS.lock().unwrap();
+    let id = integration.__get_internal_id__();
+    if !active.contains(&id) {
+        active.push(id);
+        integration.setup_once();
+    }
+    rv.insert(id, integration.clone());
+}
+
+pub(crate) fn setup_integrations(
+    integrations: &[Arc<Box<Integration>>],
+    default_integrations: bool,
+) -> HashMap<TypeId, Arc<Box<Integration>>> {
+    let mut rv = HashMap::new();
+
+    for integration in integrations {
+        setup_integration(integration.clone(), &mut rv);
+    }
+
+    if default_integrations {
+        use self::panic::PanicIntegration;
+        if !rv.contains_key(&PanicIntegration.__get_internal_id__()) {
+            setup_integration(
+                Arc::new(Box::new(PanicIntegration) as Box<Integration>),
+                &mut rv,
+            );
+        }
+    }
+
+    rv
+}

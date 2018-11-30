@@ -28,8 +28,8 @@ use std::fmt::{Debug, Display};
 
 use error_chain::ChainedError;
 
+use api::internals::Uuid;
 use api::protocol::{Event, Exception, Level};
-use api::Uuid;
 use backtrace_support::{backtrace_to_stacktrace, error_typename};
 use hub::Hub;
 

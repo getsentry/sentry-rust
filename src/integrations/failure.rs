@@ -31,8 +31,8 @@ use failure;
 use failure::{Error, Fail};
 use regex::Regex;
 
+use api::internals::Uuid;
 use api::protocol::{Event, Exception, Frame, Level, Stacktrace};
-use api::Uuid;
 use backtrace_support::{demangle_symbol, error_typename, filename, strip_symbol};
 use hub::Hub;
 

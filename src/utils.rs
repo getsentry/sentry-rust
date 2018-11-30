@@ -73,9 +73,9 @@ mod findshlibs_support {
         Segment, SharedLibrary, SharedLibraryId, TargetSharedLibrary, TARGET_SUPPORTED,
     };
 
+    use api::internals::Uuid;
     use api::protocol::debugid::DebugId;
     use api::protocol::SymbolicDebugImage;
-    use api::Uuid;
 
     pub fn find_shlibs() -> Option<Vec<DebugImage>> {
         if !TARGET_SUPPORTED {

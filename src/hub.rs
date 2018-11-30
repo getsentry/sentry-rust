@@ -1,5 +1,6 @@
 #![allow(unused)]
 
+use std::any::TypeId;
 use std::cell::{Cell, UnsafeCell};
 use std::iter;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -7,9 +8,11 @@ use std::sync::{Arc, Mutex, RwLock, TryLockError};
 use std::thread;
 use std::time::Duration;
 
-use api::Uuid;
+use api::internals::Uuid;
 #[cfg(feature = "with_client_implementation")]
 use client::Client;
+#[cfg(feature = "with_client_implementation")]
+use integrations::{Integration, IntegrationRef};
 use protocol::{Breadcrumb, Event, Level};
 use scope::{Scope, ScopeGuard};
 #[cfg(feature = "with_client_implementation")]
@@ -260,6 +263,20 @@ impl Hub {
                 }
             }
         }
+    }
+
+    /// Looks up an integration on the hub.
+    #[cfg(feature = "with_client_implementation")]
+    pub fn get_integration<I: Integration>(&self) -> Option<IntegrationRef<I>> {
+        self.client().and_then(|client| {
+            let integrations = client.integrations.read().unwrap();
+            integrations
+                .get(&TypeId::of::<I>())
+                .map(|integration| IntegrationRef {
+                    integration: integration.clone(),
+                    _marker: Default::default(),
+                })
+        })
     }
 
     /// Returns the last event id.

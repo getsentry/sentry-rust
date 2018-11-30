@@ -1,4 +1,6 @@
+use std::any::TypeId;
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fmt;
@@ -10,11 +12,13 @@ use std::time::Duration;
 use rand::random;
 use regex::Regex;
 
+use api::internals::Uuid;
 use api::protocol::{Breadcrumb, DebugMeta, Event};
-use api::{Dsn, Uuid};
+use api::Dsn;
 use backtrace_support::{function_starts_with, is_sys_function, trim_stacktrace};
 use constants::{SDK_INFO, USER_AGENT};
 use hub::Hub;
+use integrations::{setup_integrations, Integration};
 use internals::DsnParseError;
 use scope::Scope;
 use transport::{DefaultTransportFactory, Transport, TransportFactory};
@@ -24,6 +28,7 @@ use utils::{debug_images, server_name};
 pub struct Client {
     options: ClientOptions,
     transport: RwLock<Option<Arc<Box<Transport>>>>,
+    pub(crate) integrations: RwLock<HashMap<TypeId, Arc<Box<Integration>>>>,
 }
 
 impl fmt::Debug for Client {
@@ -40,6 +45,7 @@ impl Clone for Client {
         Client {
             options: self.options.clone(),
             transport: RwLock::new(self.transport.read().unwrap().clone()),
+            integrations: RwLock::new(self.integrations.read().unwrap().clone()),
         }
     }
 }
@@ -103,6 +109,18 @@ pub struct ClientOptions {
     pub before_send: Option<BeforeCallback<Event<'static>>>,
     /// Before breadcrumb add callback.
     pub before_breadcrumb: Option<BeforeCallback<Breadcrumb>>,
+    /// A list of integrations to enable.
+    pub integrations: Vec<Arc<Box<Integration>>>,
+    /// Enable default integrations?
+    pub default_integrations: bool,
+}
+
+impl ClientOptions {
+    /// Adds a configured integration to the options.
+    pub fn add_integration<I: Integration>(mut self, integration: I) -> ClientOptions {
+        self.integrations.push(Arc::new(Box::new(integration)));
+        self
+    }
 }
 
 // make this unwind safe.  It's not out of the box because of the contained `BeforeCallback`s.
@@ -139,7 +157,9 @@ impl fmt::Debug for ClientOptions {
             .field(
                 "before_send",
                 &BeforeBreadcrumbSet(self.before_breadcrumb.is_some()),
-            ).finish()
+            ).field("integrations", &self.integrations)
+            .field("default_integrations", &self.default_integrations)
+            .finish()
     }
 }
 
@@ -166,6 +186,8 @@ impl Clone for ClientOptions {
             send_default_pii: self.send_default_pii,
             before_send: self.before_send.clone(),
             before_breadcrumb: self.before_breadcrumb.clone(),
+            integrations: self.integrations.clone(),
+            default_integrations: self.default_integrations,
         }
     }
 }
@@ -204,6 +226,8 @@ impl Default for ClientOptions {
             send_default_pii: false,
             before_send: None,
             before_breadcrumb: None,
+            integrations: vec![],
+            default_integrations: true,
         }
     }
 }
@@ -360,37 +384,15 @@ impl Client {
         } else {
             Some(Arc::new(options.transport.create_transport(&options)))
         });
-        Client { options, transport }
-    }
 
-    #[doc(hidden)]
-    #[deprecated(
-        since = "0.8.0",
-        note = "Please use Client::with_options instead"
-    )]
-    pub fn with_dsn_and_options(dsn: Dsn, mut options: ClientOptions) -> Client {
-        options.dsn = Some(dsn);
-        Client::with_options(options)
-    }
-
-    #[doc(hidden)]
-    #[deprecated(
-        since = "0.8.0",
-        note = "Please use Client::with_options instead"
-    )]
-    pub fn disabled() -> Client {
-        Client::with_options(Default::default())
-    }
-
-    #[doc(hidden)]
-    #[deprecated(
-        since = "0.8.0",
-        note = "Please use Client::with_options instead"
-    )]
-    pub fn disabled_with_options(options: ClientOptions) -> Client {
+        let integrations = RwLock::new(setup_integrations(
+            &options.integrations,
+            options.default_integrations,
+        ));
         Client {
             options,
-            transport: RwLock::new(None),
+            transport,
+            integrations,
         }
     }
 
