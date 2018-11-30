@@ -222,7 +222,7 @@ impl Default for ClientOptions {
                 .or_else(|| env::var("http_proxy").ok().map(Cow::Owned)),
             shutdown_timeout: Duration::from_secs(2),
             debug: false,
-            attach_stacktrace: false,
+            attach_stacktrace: true,
             send_default_pii: false,
             before_send: None,
             before_breadcrumb: None,
@@ -385,10 +385,7 @@ impl Client {
             Some(Arc::new(options.transport.create_transport(&options)))
         });
 
-        let integrations = RwLock::new(setup_integrations(
-            &options.integrations,
-            options.default_integrations,
-        ));
+        let integrations = RwLock::new(setup_integrations(&options));
         Client {
             options,
             transport,

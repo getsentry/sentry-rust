@@ -4,16 +4,18 @@ extern crate sentry;
 
 #[test]
 fn test_log() {
-    sentry::integrations::log::init(None, Default::default());
+    let events = sentry::test::with_captured_events_options(
+        || {
+            sentry::configure_scope(|scope| {
+                scope.set_tag("worker", "worker1");
+            });
 
-    let events = sentry::test::with_captured_events(|| {
-        sentry::configure_scope(|scope| {
-            scope.set_tag("worker", "worker1");
-        });
-
-        info!("Hello World!");
-        error!("Shit's on fire yo");
-    });
+            info!("Hello World!");
+            error!("Shit's on fire yo");
+        },
+        sentry::ClientOptions::default()
+            .add_integration(sentry::integrations::log::LogIntegration::default()),
+    );
 
     assert_eq!(events.len(), 1);
     let event = events.into_iter().next().unwrap();

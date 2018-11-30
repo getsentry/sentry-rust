@@ -83,8 +83,9 @@ use actix_web::middleware::{Middleware, Response, Started};
 use actix_web::{Error, HttpMessage, HttpRequest, HttpResponse};
 use failure::Fail;
 use sentry::integrations::failure::exception_from_single_fail;
+use sentry::internals::Uuid;
 use sentry::protocol::{ClientSdkPackage, Event, Level};
-use sentry::{Hub, Uuid};
+use sentry::Hub;
 use std::borrow::Cow;
 use std::sync::{Arc, Mutex};
 

@@ -8,6 +8,8 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 use std::sync::{Arc, Mutex};
 
+use client::ClientOptions;
+
 #[cfg(feature = "with_failure")]
 pub mod failure;
 
@@ -16,9 +18,6 @@ pub mod error_chain;
 
 #[cfg(feature = "with_log")]
 pub mod log;
-
-#[cfg(feature = "with_env_logger")]
-pub mod env_logger;
 
 #[cfg(feature = "with_panic")]
 pub mod panic;
@@ -50,11 +49,16 @@ impl<I: Integration> Deref for IntegrationRef<I> {
 
 /// Integration abstraction.
 pub trait Integration: Debug + Sync + Send + 'static {
+    /// Called whenever the integration is bound on a hub.
+    fn setup(&self, options: &ClientOptions) {
+        let _options = options;
+    }
+
     /// Called to initialize the integration.
     ///
     /// If the integration has been enabled before this method is not called.
     /// Because of this accessing data on `self` is not a good idea.
-    fn setup_once(&self);
+    fn setup_once(&self) {}
 
     /// Returns the internal ID of the integration.
     #[doc(hidden)]
@@ -65,6 +69,7 @@ pub trait Integration: Debug + Sync + Send + 'static {
 
 fn setup_integration(
     integration: Arc<Box<Integration>>,
+    options: &ClientOptions,
     rv: &mut HashMap<TypeId, Arc<Box<Integration>>>,
 ) {
     let mut active = ACTIVE_INTEGRATIONS.lock().unwrap();
@@ -72,25 +77,26 @@ fn setup_integration(
     if !active.contains(&id) {
         active.push(id);
         integration.setup_once();
+        integration.setup(options);
     }
     rv.insert(id, integration.clone());
 }
 
 pub(crate) fn setup_integrations(
-    integrations: &[Arc<Box<Integration>>],
-    default_integrations: bool,
+    options: &ClientOptions,
 ) -> HashMap<TypeId, Arc<Box<Integration>>> {
     let mut rv = HashMap::new();
 
-    for integration in integrations {
-        setup_integration(integration.clone(), &mut rv);
+    for integration in &options.integrations {
+        setup_integration(integration.clone(), options, &mut rv);
     }
 
-    if default_integrations {
+    if options.default_integrations {
         use self::panic::PanicIntegration;
         if !rv.contains_key(&PanicIntegration.__get_internal_id__()) {
             setup_integration(
                 Arc::new(Box::new(PanicIntegration) as Box<Integration>),
+                options,
                 &mut rv,
             );
         }

@@ -93,7 +93,6 @@
 //! * `with_panic`: enables the panic integration
 //! * `with_failure`: enables the `failure` integration
 //! * `with_log`: enables the `log` integration
-//! * `with_env_logger`: enables the `env_logger` integration
 //! * `with_device_info`: enables the device info context
 //! * `with_rust_info`: enables the rust compiler info context
 //! * `with_debug_meta`: enables debug meta support (permits server side symbolication)

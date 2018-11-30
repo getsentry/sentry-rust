@@ -131,14 +131,19 @@ mod findshlibs_support {
     }
 }
 
+lazy_static! {
+    static ref MODEL: Option<String> = model_support::get_model();
+    static ref FAMILY: Option<String> = model_support::get_family();
+}
+
 /// Returns the model identifier.
 pub fn device_model() -> Option<String> {
-    model_support::get_model()
+    MODEL.clone()
 }
 
 /// Returns the model family identifier.
 pub fn device_family() -> Option<String> {
-    model_support::get_family()
+    FAMILY.clone()
 }
 
 /// Returns the CPU architecture.

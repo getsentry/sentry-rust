@@ -19,26 +19,32 @@
 //! let mut log_builder = pretty_env_logger::formatted_builder().unwrap();
 //! log_builder.parse("info");  // or env::var("RUST_LOG")
 //! let logger = log_builder.build();
-//! let options = sentry::integrations::log::LoggerOptions {
-//!     global_filter: Some(logger.filter()),
-//!     ..Default::default()
-//! };
-//! sentry::integrations::log::init(Some(Box::new(logger)), options);
+//! sentry::init(sentry::ClientOptions::default()
+//!     .add_integration(sentry::integrations::log::LogIntegration {
+//!         global_filter: Some(logger.filter()),
+//!         dest_log: Some(Box::new(logger)),
+//!         ..Default::default()
+//!     }));
 //! ```
 //!
-//! For loggers based on `env_logger` (like `pretty_env_logger`) you can also
-//! use the [`env_logger`](../env_logger/index.html) integration which is
-//! much easier to use.
+//! Additionally if the `with_env_logger` feature is enabled an `with_env_logger_dest`
+//! method is available on the integration to directly forward to an env logger in
+//! a more convenient way.
 use log;
 use std::cmp;
+use std::fmt;
+
+use env_logger;
 
 use api::add_breadcrumb;
 use api::protocol::{Breadcrumb, Event, Exception, Level};
 use backtrace_support::current_stacktrace;
+use client::ClientOptions;
 use hub::Hub;
+use integrations::Integration;
 
 /// Logger specific options.
-pub struct LoggerOptions {
+pub struct LogIntegration {
     /// The global filter that should be used (also used before dispatching
     /// to the nested logger).
     pub global_filter: Option<log::LevelFilter>,
@@ -50,21 +56,49 @@ pub struct LoggerOptions {
     pub emit_error_events: bool,
     /// If set to `true` warning events are sent for warnings in the log. (defaults to `false`)
     pub emit_warning_events: bool,
+    /// The destination log.
+    pub dest_log: Option<Box<log::Log>>,
 }
 
-impl Default for LoggerOptions {
-    fn default() -> LoggerOptions {
-        LoggerOptions {
+impl fmt::Debug for LogIntegration {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("LogIntegration")
+            .field("global_filter", &self.global_filter)
+            .field("filter", &self.filter)
+            .field("emit_breadcrumbs", &self.emit_breadcrumbs)
+            .field("emit_error_events", &self.emit_error_events)
+            .field("emit_warning_events", &self.emit_warning_events)
+            .finish()
+    }
+}
+
+impl Default for LogIntegration {
+    fn default() -> LogIntegration {
+        LogIntegration {
             global_filter: None,
             filter: log::LevelFilter::Info,
             emit_breadcrumbs: true,
             emit_error_events: true,
             emit_warning_events: false,
+            dest_log: None,
         }
     }
 }
 
-impl LoggerOptions {
+impl LogIntegration {
+    /// Initializes an env logger as destination target.
+    #[cfg(feature = "with_env_logger")]
+    pub fn with_env_logger_dest(mut self, logger: Option<env_logger::Logger>) -> LogIntegration {
+        let logger = logger
+            .unwrap_or_else(|| env_logger::Builder::from_env(env_logger::Env::default()).build());
+        let filter = logger.filter();
+        if self.global_filter.is_none() {
+            self.global_filter = Some(filter);
+        }
+        self.dest_log = Some(Box::new(logger));
+        self
+    }
+
     /// Returns the effective global filter.
     ///
     /// This is what is set for these logger options when the log level
@@ -108,29 +142,28 @@ impl LoggerOptions {
     }
 }
 
-/// Provides a dispatching logger.
-pub struct Logger {
-    dest: Option<Box<log::Log>>,
-    options: LoggerOptions,
+impl Integration for LogIntegration {
+    fn setup(&self, _: &ClientOptions) {
+        let filter = self.effective_global_filter();
+        if filter > log::max_level() {
+            log::set_max_level(filter);
+        }
+    }
+
+    fn setup_once(&self) {
+        let logger = Logger::new();
+        log::set_boxed_logger(Box::new(logger)).unwrap();
+    }
 }
+
+/// Provides a dispatching logger.
+#[derive(Debug, Default)]
+pub struct Logger;
 
 impl Logger {
     /// Initializes a new logger.
-    ///
-    /// It can just send to Sentry or additionally also send messages to another
-    /// logger.
-    pub fn new(dest: Option<Box<log::Log>>, options: LoggerOptions) -> Logger {
-        Logger { dest, options }
-    }
-
-    /// Returns the options of the logger.
-    pub fn options(&self) -> &LoggerOptions {
-        &self.options
-    }
-
-    /// Returns the destination logger.
-    pub fn dest_log(&self) -> Option<&log::Log> {
-        self.dest.as_ref().map(|x| &**x)
+    pub fn new() -> Logger {
+        Logger::default()
     }
 }
 
@@ -169,22 +202,42 @@ pub fn event_from_record(record: &log::Record, with_stacktrace: bool) -> Event<'
 
 impl log::Log for Logger {
     fn enabled(&self, md: &log::Metadata) -> bool {
-        if let Some(global_filter) = self.options.global_filter {
+        let integration = match Hub::current().get_integration::<LogIntegration>() {
+            Some(value) => value,
+            None => return false,
+        };
+
+        if let Some(global_filter) = integration.global_filter {
             if md.level() < global_filter {
                 return false;
             }
         }
-        md.level() <= self.options.filter || self.dest.as_ref().map_or(false, |x| x.enabled(md))
+        md.level() <= integration.filter || integration
+            .dest_log
+            .as_ref()
+            .map_or(false, |x| x.enabled(md))
     }
 
     fn log(&self, record: &log::Record) {
-        if self.options.create_issue_for_record(record) {
-            Hub::with_active(|hub| hub.capture_event(event_from_record(record, true)));
+        let hub = Hub::current();
+        let integration = match hub.get_integration::<LogIntegration>() {
+            Some(value) => value,
+            None => return,
+        };
+
+        if integration.create_issue_for_record(record) {
+            Hub::with_active(|hub| {
+                hub.capture_event(event_from_record(
+                    record,
+                    hub.client()
+                        .map_or(false, |x| x.options().attach_stacktrace),
+                ))
+            });
         }
-        if record.level() <= self.options.filter {
+        if record.level() <= integration.filter {
             add_breadcrumb(|| breadcrumb_from_record(record))
         }
-        if let Some(ref log) = self.dest {
+        if let Some(ref log) = integration.dest_log {
             if log.enabled(record.metadata()) {
                 log.log(record);
             }
@@ -192,7 +245,12 @@ impl log::Log for Logger {
     }
 
     fn flush(&self) {
-        if let Some(ref log) = self.dest {
+        let integration = match Hub::current().get_integration::<LogIntegration>() {
+            Some(value) => value,
+            None => return,
+        };
+
+        if let Some(ref log) = integration.dest_log {
             log.flush();
         }
     }
@@ -207,58 +265,23 @@ fn convert_log_level(level: log::Level) -> Level {
     }
 }
 
-/// Initializes the logging system.
-///
-/// This takes a destination logger to which Sentry should forward all
-/// intercepted log messages and the options for the log handler.
-///
-/// Typically a log system in Rust will call `log::set_logger` itself
-/// but since we need to intercept this, a user of this function will
-/// need to pass a logger to it instead of calling the init function of
-/// the other crate.
-///
-/// For instance to use `env_logger` with this one needs to do this:
-///
-/// ```ignore
-/// use sentry::integrations::log;
-/// use env_logger;
-///
-/// let builder = env_logger::Builder::from_default_env();
-/// let logger = builder.build();
-/// log::init(Some(Box::new(builder.build())), LoggerOptions {
-///     global_filter: Some(logger.filter()),
-///     ..Default::default()
-/// });
-/// ```
-///
-/// (For using `env_logger` you can also use the `env_logger` integration
-/// which simplifies this).
-pub fn init(dest: Option<Box<log::Log>>, options: LoggerOptions) {
-    let logger = Logger::new(dest, options);
-    let filter = logger.options().effective_global_filter();
-    if filter > log::max_level() {
-        log::set_max_level(filter);
-    }
-    log::set_boxed_logger(Box::new(logger)).unwrap();
-}
-
 #[test]
 fn test_filters() {
-    let opt_warn = LoggerOptions {
+    let opt_warn = LogIntegration {
         filter: log::LevelFilter::Warn,
         ..Default::default()
     };
     assert_eq!(opt_warn.effective_global_filter(), log::LevelFilter::Warn);
     assert_eq!(opt_warn.issue_filter(), log::LevelFilter::Error);
 
-    let opt_debug = LoggerOptions {
+    let opt_debug = LogIntegration {
         global_filter: Some(log::LevelFilter::Debug),
         filter: log::LevelFilter::Warn,
         ..Default::default()
     };
     assert_eq!(opt_debug.effective_global_filter(), log::LevelFilter::Debug);
 
-    let opt_debug_inverse = LoggerOptions {
+    let opt_debug_inverse = LogIntegration {
         global_filter: Some(log::LevelFilter::Warn),
         filter: log::LevelFilter::Debug,
         ..Default::default()
@@ -268,7 +291,7 @@ fn test_filters() {
         log::LevelFilter::Debug
     );
 
-    let opt_weird = LoggerOptions {
+    let opt_weird = LogIntegration {
         filter: log::LevelFilter::Error,
         emit_warning_events: true,
         ..Default::default()

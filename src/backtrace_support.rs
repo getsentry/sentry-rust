@@ -38,6 +38,7 @@ lazy_static!{
         }
         #[cfg(feature = "with_log")] {
             rv.push("<sentry::integrations::log::Logger as log::Log>::log");
+            rv.push("log::__private_api_log");
         }
         #[cfg(feature = "with_error_chain")] {
             rv.push("error_chain::make_backtrace");
