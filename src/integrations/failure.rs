@@ -41,9 +41,14 @@ lazy_static! {
         r#"(?xm)
         ^
             [\ ]*(?:\d+:)[\ ]*                  # leading frame number
-            (?P<addr>0x[a-f0-9]+)               # addr
-            [\ ]-[\ ]
-            (?P<symbol>[^\r\n]+)
+            (?:
+                (?P<addr_oldsyntax>0x[a-f0-9]+)               # addr
+                [\ ]-[\ ]
+                (?P<symbol_oldsyntax>[^\r\n]+)
+              |
+                (?P<symbol>[^\r\n]+)
+                \((?P<addr>0x[a-f0-9]+)\)               # addr
+            )
             (?:
                 \r?\n
                 [\ \t]+at[\ ]
@@ -61,7 +66,10 @@ fn parse_stacktrace(bt: &str) -> Option<Stacktrace> {
         .map(|captures| {
             let abs_path = captures.name("path").map(|m| m.as_str().to_string());
             let filename = abs_path.as_ref().map(|p| filename(p));
-            let real_symbol = captures["symbol"].to_string();
+            let real_symbol = captures
+                .name("symbol")
+                .map_or_else(|| &captures["symbol_oldsyntax"], |m| m.as_str())
+                .to_string();
             let symbol = strip_symbol(&real_symbol);
             let function = demangle_symbol(symbol);
             Frame {
@@ -71,7 +79,13 @@ fn parse_stacktrace(bt: &str) -> Option<Stacktrace> {
                     None
                 },
                 function: Some(function),
-                instruction_addr: Some(captures["addr"].parse().unwrap()),
+                instruction_addr: Some(
+                    captures
+                        .name("addr")
+                        .map_or_else(|| &captures["addr_oldsyntax"], |m| m.as_str())
+                        .parse()
+                        .unwrap()
+                ),
                 abs_path,
                 filename,
                 lineno: captures
