@@ -302,10 +302,18 @@ impl ActixWebHubExt for Hub {
         let mut ptr: Option<&Fail> = Some(err.as_fail());
         let mut idx = 0;
         while let Some(fail) = ptr {
+            // Check whether the failure::Fail held by err is a failure::Error wrapped in Compat
+            // If that's the case, we should be logging that error and its fail instead of the wrapper's construction in actix_web
+            // This wouldn't be necessary if failure::Compat<failure::Error>'s Fail::backtrace() impl was not "|| None",
+            // that is however impossible to do as of now because it conflicts with the generic implementation of Fail also provided in failure.
+            // Waiting for update that allows overlap, (https://github.com/rust-lang/rfcs/issues/1053), but chances are by then failure/std::error will be refactored anyway
+            let compat: Option<&failure::Compat<failure::Error>> = fail.downcast_ref();
+            let failure_err = compat.map(|compat| compat.get_ref());
+            let fail = failure_err.map_or(fail, |x| x.as_fail());
             exceptions.push(exception_from_single_fail(
                 fail,
                 if idx == 0 {
-                    Some(err.backtrace())
+                    Some(failure_err.map_or_else(|| err.backtrace(), |err| err.backtrace()))
                 } else {
                     fail.backtrace()
                 },
