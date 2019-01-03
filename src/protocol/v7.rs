@@ -588,11 +588,7 @@ pub struct Mechanism {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     /// An optional link to online resources describing this error.
-    #[serde(
-        default,
-        with = "url_serde",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(default, with = "url_serde", skip_serializing_if = "Option::is_none")]
     pub help_link: Option<Url>,
     /// An optional flag indicating whether this exception was handled.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -737,10 +733,7 @@ mod breadcrumb {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Breadcrumb {
     /// The timestamp of the breadcrumb.  This is required.
-    #[serde(
-        default = "breadcrumb::default_timestamp",
-        with = "ts_seconds_float"
-    )]
+    #[serde(default = "breadcrumb::default_timestamp", with = "ts_seconds_float")]
     pub timestamp: DateTime<Utc>,
     /// The type of the breadcrumb.
     #[serde(
@@ -865,11 +858,7 @@ pub struct User {
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub struct Request {
     /// The current URL of the request.
-    #[serde(
-        default,
-        with = "url_serde",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(default, with = "url_serde", skip_serializing_if = "Option::is_none")]
     pub url: Option<Url>,
     /// The HTTP request method.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1281,10 +1270,7 @@ mod event {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Event<'a> {
     /// The ID of the event
-    #[serde(
-        default = "event::default_id",
-        serialize_with = "event::serialize_id"
-    )]
+    #[serde(default = "event::default_id", serialize_with = "event::serialize_id")]
     pub event_id: Uuid,
     /// The level of the event (defaults to error)
     #[serde(
@@ -1326,10 +1312,7 @@ pub struct Event<'a> {
     /// The timestamp of when the event was created.
     ///
     /// This can be set to `None` in which case the server will set a timestamp.
-    #[serde(
-        default = "event::default_timestamp",
-        with = "ts_seconds_float"
-    )]
+    #[serde(default = "event::default_timestamp", with = "ts_seconds_float")]
     pub timestamp: DateTime<Utc>,
     /// Optionally the server (or device) name of this event.
     #[serde(default, skip_serializing_if = "Option::is_none")]

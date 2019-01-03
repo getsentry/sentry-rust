@@ -162,7 +162,8 @@ mod test_fingerprint {
             serde_json::from_str(
                 "{\"event_id\":\"d43e86c96e424a93a4fbda156dd17341\",\"fingerprint\":\
                  [\"fingerprint\"],\"timestamp\":1514103120}"
-            ).unwrap()
+            )
+            .unwrap()
         )
     }
 
@@ -178,7 +179,8 @@ mod test_fingerprint {
             serde_json::from_str(
                 "{\"event_id\":\"d43e86c96e424a93a4fbda156dd17341\",\"fingerprint\":[],\
                  \"timestamp\":1514103120}"
-            ).unwrap()
+            )
+            .unwrap()
         )
     }
 }
@@ -422,7 +424,8 @@ mod test_breadcrumbs {
                     },
                     ..Default::default()
                 },
-            ].into(),
+            ]
+            .into(),
             ..Default::default()
         };
         assert_roundtrip(&event);
@@ -509,7 +512,8 @@ mod test_threads {
                 id: Some("#1".into()),
                 name: Some("Awesome Thread".into()),
                 ..Default::default()
-            }].into(),
+            }]
+            .into(),
             ..Default::default()
         };
 
@@ -532,7 +536,8 @@ mod test_threads {
                 crashed: true,
                 current: true,
                 ..Default::default()
-            }].into(),
+            }]
+            .into(),
             ..Default::default()
         };
 
@@ -570,7 +575,8 @@ mod test_threads {
                     ..Default::default()
                 }),
                 ..Default::default()
-            }].into(),
+            }]
+            .into(),
             ..Default::default()
         };
 
@@ -698,9 +704,9 @@ fn test_extra() {
             m.insert(
                 "component_state".into(),
                 json!({
-                "dirty": true,
-                "revision": 17
-            }),
+                    "dirty": true,
+                    "revision": 17
+                }),
             );
             m
         },
@@ -760,7 +766,8 @@ mod test_debug_meta {
                         image_size: 4096,
                         image_vmaddr: 32768.into(),
                         uuid: "494f3aea-88fa-4296-9644-fa8ef5d139b6".parse().unwrap(),
-                    }.into(),
+                    }
+                    .into(),
                     v7::SymbolicDebugImage {
                         name: "CoreFoundation".into(),
                         arch: Some("arm64".into()),
@@ -768,10 +775,12 @@ mod test_debug_meta {
                         image_size: 4096,
                         image_vmaddr: 32768.into(),
                         id: "494f3aea-88fa-4296-9644-fa8ef5d139b6-1234".parse().unwrap(),
-                    }.into(),
+                    }
+                    .into(),
                     v7::ProguardDebugImage {
                         uuid: "8c954262-f905-4992-8a61-f60825f4553b".parse().unwrap(),
-                    }.into(),
+                    }
+                    .into(),
                 ],
                 ..Default::default()
             }),
@@ -804,7 +813,8 @@ mod test_exception {
             exception: vec![v7::Exception {
                 ty: "ZeroDivisionError".into(),
                 ..Default::default()
-            }].into(),
+            }]
+            .into(),
             ..Default::default()
         };
         assert_roundtrip(&event);
@@ -835,7 +845,8 @@ mod test_exception {
                 }),
                 raw_stacktrace: None,
                 ..Default::default()
-            }].into(),
+            }]
+            .into(),
             ..Default::default()
         };
 
@@ -880,7 +891,8 @@ mod test_exception {
                 }),
                 raw_stacktrace: None,
                 ..Default::default()
-            }].into(),
+            }]
+            .into(),
             ..Default::default()
         };
 
@@ -982,7 +994,8 @@ mod test_exception {
                     ..Default::default()
                 }),
                 ..Default::default()
-            }].into(),
+            }]
+            .into(),
             ..Default::default()
         };
 
@@ -1055,7 +1068,8 @@ mod test_exception {
                     },
                 }),
                 ..Default::default()
-            }].into(),
+            }]
+            .into(),
             ..Default::default()
         };
 
@@ -1130,7 +1144,8 @@ mod test_contexts {
                         boot_time: Some("2018-02-08T12:52:12Z".parse().unwrap()),
                         timezone: Some("Europe/Vienna".into()),
                         other: Default::default(),
-                    }.into(),
+                    }
+                    .into(),
                 );
                 m
             },
@@ -1167,7 +1182,8 @@ mod test_contexts {
                         kernel_version: Some("17.4.0".into()),
                         rooted: Some(true),
                         other: Default::default(),
-                    }.into(),
+                    }
+                    .into(),
                 );
                 m
             },
@@ -1201,7 +1217,8 @@ mod test_contexts {
                         app_version: Some("1.0".into()),
                         app_build: Some("100001".into()),
                         other: Default::default(),
-                    }.into(),
+                    }
+                    .into(),
                 );
                 m
             },
@@ -1232,7 +1249,8 @@ mod test_contexts {
                         name: Some("Chrome".into()),
                         version: Some("59.0.3071".into()),
                         other: Default::default(),
-                    }.into(),
+                    }
+                    .into(),
                 );
                 m
             },
@@ -1261,7 +1279,8 @@ mod test_contexts {
                         name: Some("magicvm".into()),
                         version: Some("5.3".into()),
                         other: Default::default(),
-                    }.into(),
+                    }
+                    .into(),
                 );
                 m
             },
@@ -1290,7 +1309,8 @@ mod test_contexts {
                         name: Some("magicvm".into()),
                         version: Some("5.3".into()),
                         other: Default::default(),
-                    }.into(),
+                    }
+                    .into(),
                 );
                 m.insert(
                     "othervm".into(),
@@ -1298,7 +1318,8 @@ mod test_contexts {
                         name: Some("magicvm".into()),
                         version: Some("5.3".into()),
                         other: Default::default(),
-                    }.into(),
+                    }
+                    .into(),
                 );
                 m
             },
