@@ -18,9 +18,9 @@ matrix:
     - env: SUITE=format-check
     - env: SUITE=lint
     - env: SUITE=check
-      rust: "1.28.0"
+      rust: "1.30.0"
     - env: SUITE=cargotest
-      rust: "1.28.0"
+      rust: "1.30.0"
     - env: SUITE=checkall
     - env: SUITE=cargotestall
     - os: osx
