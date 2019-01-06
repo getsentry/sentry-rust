@@ -21,7 +21,8 @@ fn main() {
         App::new()
             .middleware(SentryMiddleware::builder().emit_header(true).finish())
             .resource("/", |r| r.f(failing))
-    }).bind("127.0.0.1:3001")
+    })
+    .bind("127.0.0.1:3001")
     .unwrap()
     .run();
 }

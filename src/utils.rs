@@ -40,7 +40,8 @@ mod model_support {
                     &buf[..size - 1]
                 } else {
                     &buf
-                }).to_string(),
+                })
+                .to_string(),
             )
         }
     }
@@ -115,7 +116,8 @@ mod findshlibs_support {
                     image_size: highest_addr - lowest_addr,
                     image_vmaddr: lowest_vmaddr.into(),
                     id: debug_id,
-                }.into(),
+                }
+                .into(),
             );
         });
 
@@ -172,7 +174,8 @@ pub fn os_context() -> Option<Context> {
                     kernel_version: Some(info.version),
                     version: Some(info.release),
                     ..Default::default()
-                }.into(),
+                }
+                .into(),
             )
         } else {
             None
@@ -185,7 +188,8 @@ pub fn os_context() -> Option<Context> {
             OsContext {
                 name: Some(PLATFORM.into()),
                 ..Default::default()
-            }.into(),
+            }
+            .into(),
         )
     }
     #[cfg(not(feature = "with_device_info"))]
@@ -209,7 +213,8 @@ pub fn rust_context() -> Option<Context> {
                 }
                 map
             },
-        }.into();
+        }
+        .into();
         Some(ctx)
     }
     #[cfg(not(feature = "with_device_info"))]
@@ -231,7 +236,8 @@ pub fn device_context() -> Option<Context> {
                 family,
                 arch,
                 ..Default::default()
-            }.into(),
+            }
+            .into(),
         )
     }
     #[cfg(not(feature = "with_device_info"))]

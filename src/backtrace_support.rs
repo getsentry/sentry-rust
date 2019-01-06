@@ -5,53 +5,53 @@ use regex::{Captures, Regex};
 
 use api::protocol::{Frame, Stacktrace};
 
-lazy_static!{
+lazy_static! {
     static ref HASH_FUNC_RE: Regex = Regex::new(r#"(?x)
         ^(.*)::h[a-f0-9]{16}$
     "#).unwrap();
 
-    pub static ref WELL_KNOWN_SYS_MODULES: Vec<&'static str> = {
-        #[allow(unused_mut)]
-        let mut rv = vec![
-            "std::",
-            "core::",
-            "alloc::",
-            "backtrace::",
-            "sentry::",
-            "sentry_types::",
-            // these are not modules but things like __rust_maybe_catch_panic
-            "__rust_",
-        ];
-        #[cfg(feature = "with_failure")] {
-            rv.push("failure::");
-        }
-        rv
-    };
-    pub static ref WELL_KNOWN_BORDER_FRAMES: Vec<&'static str> = {
-        #[allow(unused_mut)]
-        let mut rv = vec![
-            "std::panicking::begin_panic",
-        ];
-        #[cfg(feature = "with_failure")] {
-            rv.push("failure::error_message::err_msg");
-            rv.push("failure::backtrace::Backtrace::new");
-        }
-        #[cfg(feature = "with_log")] {
-            rv.push("<sentry::integrations::log::Logger as log::Log>::log");
-        }
-        #[cfg(feature = "with_error_chain")] {
-            rv.push("error_chain::make_backtrace");
-        }
-        rv
-    };
-    pub static ref SECONDARY_BORDER_FRAMES: Vec<(&'static str, &'static str)> = {
-        #![allow(unused_mut)]
-        let mut rv = Vec::new();
-        #[cfg(feature = "with_error_chain")] {
-            rv.push(("error_chain::make_backtrace", "<T as core::convert::Into<U>>::into"));
-        }
-        {rv}
-    };
+pub static ref WELL_KNOWN_SYS_MODULES: Vec<&'static str> = {
+    #[allow(unused_mut)]
+    let mut rv = vec![
+        "std::",
+        "core::",
+        "alloc::",
+        "backtrace::",
+        "sentry::",
+        "sentry_types::",
+        // these are not modules but things like __rust_maybe_catch_panic
+        "__rust_",
+    ];
+    #[cfg(feature = "with_failure")] {
+        rv.push("failure::");
+    }
+    rv
+};
+pub static ref WELL_KNOWN_BORDER_FRAMES: Vec<&'static str> = {
+    #[allow(unused_mut)]
+    let mut rv = vec![
+        "std::panicking::begin_panic",
+    ];
+    #[cfg(feature = "with_failure")] {
+        rv.push("failure::error_message::err_msg");
+        rv.push("failure::backtrace::Backtrace::new");
+    }
+    #[cfg(feature = "with_log")] {
+        rv.push("<sentry::integrations::log::Logger as log::Log>::log");
+    }
+    #[cfg(feature = "with_error_chain")] {
+        rv.push("error_chain::make_backtrace");
+    }
+    rv
+};
+pub static ref SECONDARY_BORDER_FRAMES: Vec<(&'static str, &'static str)> = {
+    #![allow(unused_mut)]
+    let mut rv = Vec::new();
+    #[cfg(feature = "with_error_chain")] {
+        rv.push(("error_chain::make_backtrace", "<T as core::convert::Into<U>>::into"));
+    }
+    {rv}
+};
 
     pub static ref COMMON_RUST_SYMBOL_ESCAPES_RE: Regex = Regex::new(r#"(?x)
         \$
@@ -95,8 +95,10 @@ pub fn demangle_symbol(s: &str) -> String {
                 "u2b" => "+",
                 "u22" => "\"",
                 _ => unreachable!(),
-            }.to_string()
-        }).to_string()
+            }
+            .to_string()
+        })
+        .to_string()
 }
 
 #[allow(unused)]
@@ -136,7 +138,8 @@ pub fn backtrace_to_stacktrace(bt: &Backtrace) -> Option<Stacktrace> {
                     ..Default::default()
                 }
             })
-        }).collect();
+        })
+        .collect();
     Stacktrace::from_frames_reversed(frames)
 }
 
@@ -176,18 +179,22 @@ where
                     } else {
                         None
                     }
-                }).next()
+                })
+                .next()
         };
         let trunc = stacktrace.frames.len() - cutoff - 1;
         stacktrace.frames.truncate(trunc);
 
         if let Some(secondary) = secondary {
-            let secondary_cutoff = stacktrace.frames.iter().rev().position(|frame| match frame
-                .function
-            {
-                Some(ref func) => function_starts_with(&func, secondary),
-                None => false,
-            });
+            let secondary_cutoff =
+                stacktrace
+                    .frames
+                    .iter()
+                    .rev()
+                    .position(|frame| match frame.function {
+                        Some(ref func) => function_starts_with(&func, secondary),
+                        None => false,
+                    });
 
             if let Some(cutoff) = secondary_cutoff {
                 let trunc = stacktrace.frames.len() - cutoff - 1;

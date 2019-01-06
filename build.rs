@@ -23,14 +23,16 @@ fn main() {
         write!(
             f,
             "/// The rustc version that was used to compile this crate\n"
-        ).ok();
+        )
+        .ok();
         if let Ok(version) = version() {
             write!(f, "#[allow(dead_code)] pub const RUSTC_VERSION: Option<&'static str> = Some(\"{}\");\n", version).ok();
         } else {
             write!(
                 f,
                 "#[allow(dead_code)] pub const RUSTC_VERSION: Option<&'static str> = None;\n"
-            ).ok();
+            )
+            .ok();
         }
         if let Ok(version_meta) = version_meta() {
             let chan = match version_meta.channel {
@@ -44,7 +46,8 @@ fn main() {
             write!(
                 f,
                 "#[allow(dead_code)] pub const RUSTC_CHANNEL: Option<&'static str> = None;\n"
-            ).ok();
+            )
+            .ok();
         }
     }
 
@@ -53,13 +56,15 @@ fn main() {
         f,
         "#[allow(dead_code)] pub const PLATFORM: &str = \"{}\";\n",
         platform
-    ).ok();
+    )
+    .ok();
     write!(f, "/// The CPU architecture identifier\n").ok();
     write!(
         f,
         "#[allow(dead_code)] pub const ARCH: &str = \"{}\";\n",
         arch
-    ).ok();
+    )
+    .ok();
     println!("cargo:rerun-if-changed=build.rs\n");
     println!("cargo:rerun-if-changed=Cargo.toml\n");
 }

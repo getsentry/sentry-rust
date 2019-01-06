@@ -47,7 +47,8 @@ fn test_unwind_safe() {
     panic::catch_unwind(|| {
         sentry::Hub::current().bind_client(Some(client));
         sentry::capture_message("Hello World!", sentry::Level::Warning);
-    }).unwrap();
+    })
+    .unwrap();
 
     sentry::Hub::current().bind_client(None);
 

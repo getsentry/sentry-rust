@@ -58,7 +58,8 @@ lazy_static! {
             )?
         $
     "#
-    ).unwrap();
+    )
+    .unwrap();
 }
 
 fn parse_stacktrace(bt: &str) -> Option<Stacktrace> {
@@ -85,7 +86,7 @@ fn parse_stacktrace(bt: &str) -> Option<Stacktrace> {
                         .name("addr")
                         .map_or_else(|| &captures["addr_oldsyntax"], |m| m.as_str())
                         .parse()
-                        .unwrap()
+                        .unwrap(),
                 ),
                 abs_path,
                 filename,
@@ -94,7 +95,8 @@ fn parse_stacktrace(bt: &str) -> Option<Stacktrace> {
                     .map(|x| x.as_str().parse::<u64>().unwrap()),
                 ..Default::default()
             }
-        }).collect();
+        })
+        .collect();
 
     Stacktrace::from_frames_reversed(frames)
 }

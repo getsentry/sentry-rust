@@ -7,11 +7,7 @@ extern crate sentry;
 use sentry::integrations::failure::capture_error;
 
 #[derive(Fail, Debug)]
-#[fail(
-    display = "An error occurred with error code {}. ({})",
-    code,
-    message
-)]
+#[fail(display = "An error occurred with error code {}. ({})", code, message)]
 struct MyError {
     code: i32,
     message: String,
@@ -21,7 +17,8 @@ fn execute() -> Result<(), failure::Error> {
     Err(MyError {
         code: 42,
         message: "Something went really wrong".into(),
-    }.into())
+    }
+    .into())
 }
 
 fn main() {

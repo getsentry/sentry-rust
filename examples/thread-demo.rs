@@ -49,8 +49,10 @@ fn main() {
                 // to the outer hub.
                 error!("Failing!");
             });
-        }).join()
+        })
+        .join()
         .unwrap();
-    }).join()
+    })
+    .join()
     .unwrap();
 }

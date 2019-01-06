@@ -139,7 +139,8 @@ impl fmt::Debug for ClientOptions {
             .field(
                 "before_send",
                 &BeforeBreadcrumbSet(self.before_breadcrumb.is_some()),
-            ).finish()
+            )
+            .finish()
     }
 }
 
@@ -339,10 +340,7 @@ impl Client {
     }
 
     #[doc(hidden)]
-    #[deprecated(
-        since = "0.8.0",
-        note = "Please use Client::with_options instead"
-    )]
+    #[deprecated(since = "0.8.0", note = "Please use Client::with_options instead")]
     pub fn with_dsn(dsn: Dsn) -> Client {
         let mut options = ClientOptions::default();
         options.dsn = Some(dsn);
@@ -364,29 +362,20 @@ impl Client {
     }
 
     #[doc(hidden)]
-    #[deprecated(
-        since = "0.8.0",
-        note = "Please use Client::with_options instead"
-    )]
+    #[deprecated(since = "0.8.0", note = "Please use Client::with_options instead")]
     pub fn with_dsn_and_options(dsn: Dsn, mut options: ClientOptions) -> Client {
         options.dsn = Some(dsn);
         Client::with_options(options)
     }
 
     #[doc(hidden)]
-    #[deprecated(
-        since = "0.8.0",
-        note = "Please use Client::with_options instead"
-    )]
+    #[deprecated(since = "0.8.0", note = "Please use Client::with_options instead")]
     pub fn disabled() -> Client {
         Client::with_options(Default::default())
     }
 
     #[doc(hidden)]
-    #[deprecated(
-        since = "0.8.0",
-        note = "Please use Client::with_options instead"
-    )]
+    #[deprecated(since = "0.8.0", note = "Please use Client::with_options instead")]
     pub fn disabled_with_options(options: ClientOptions) -> Client {
         Client {
             options,

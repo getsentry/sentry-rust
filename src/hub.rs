@@ -1,8 +1,8 @@
 #![allow(unused)]
 
-use std::mem::drop;
 use std::cell::{Cell, UnsafeCell};
 use std::iter;
+use std::mem::drop;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, RwLock, TryLockError};
 use std::thread;
@@ -12,9 +12,9 @@ use api::Uuid;
 #[cfg(feature = "with_client_implementation")]
 use client::Client;
 use protocol::{Breadcrumb, Event, Level};
-use scope::{Scope, ScopeGuard};
 #[cfg(feature = "with_client_implementation")]
 use scope::Stack;
+use scope::{Scope, ScopeGuard};
 #[cfg(feature = "with_client_implementation")]
 use utils::current_thread;
 
