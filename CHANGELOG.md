@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.12.1o
+
+- Resolve a memory leak in the actix integration.
+- Fix an issue where dropping a scope guard for a non active hub resulted in a
+  panic.
+- Added support for the new failure `Fail::name`
+- Improved support for actix failure based error
+- Added `RefUnwindSafe` for `ClientOptions`
+- Remove the never supported `repos` option.
+
 ## 0.12.0
 
 - Upgrade reqwest to 0.9
