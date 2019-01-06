@@ -171,7 +171,7 @@ where
     C: FnOnce(&mut Scope),
     F: FnOnce() -> R,
 {
-    #[cfg(with_client_impl)]
+    #[cfg(feature = "with_client_implementation")]
     {
         Hub::with(|hub| {
             if hub.is_active_and_usage_safe() {
@@ -181,7 +181,7 @@ where
             }
         })
     }
-    #[cfg(not(with_client_impl))]
+    #[cfg(not(feature = "with_client_implementation"))]
     {
         let _scope_config = scope_config;
         callback()

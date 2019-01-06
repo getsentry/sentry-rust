@@ -353,13 +353,13 @@ impl Hub {
         C: FnOnce(&mut Scope),
         F: FnOnce() -> R,
     {
-        #[cfg(with_client_impl)]
+        #[cfg(feature = "with_client_implementation")]
         {
             let _guard = self.push_scope();
             self.configure_scope(scope_config);
             callback()
         }
-        #[cfg(not(with_client_impl))]
+        #[cfg(not(feature = "with_client_implementation"))]
         {
             let _scope_config = scope_config;
             callback()
