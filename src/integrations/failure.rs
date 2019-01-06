@@ -37,6 +37,7 @@ use backtrace_support::{demangle_symbol, error_typename, filename, strip_symbol}
 use hub::Hub;
 
 lazy_static! {
+    static ref MODULE_SPLIT_RE: Regex = Regex::new(r"^(.*)::(.*?)$").unwrap();
     static ref FRAME_RE: Regex = Regex::new(
         r#"(?xm)
         ^
@@ -98,6 +99,18 @@ fn parse_stacktrace(bt: &str) -> Option<Stacktrace> {
     Stacktrace::from_frames_reversed(frames)
 }
 
+fn fail_typename<F: Fail + ?Sized>(f: &F) -> (Option<String>, String) {
+    if let Some(name) = f.name() {
+        if let Some(caps) = MODULE_SPLIT_RE.captures(name) {
+            (Some(caps[1].to_string()), caps[2].to_string())
+        } else {
+            (None, name.to_string())
+        }
+    } else {
+        (None, error_typename(f))
+    }
+}
+
 /// This converts a single fail instance into an exception.
 ///
 /// This is typically not very useful as the `event_from_error` and
@@ -109,8 +122,10 @@ pub fn exception_from_single_fail<F: Fail + ?Sized>(
     f: &F,
     bt: Option<&failure::Backtrace>,
 ) -> Exception {
+    let (module, ty) = fail_typename(f);
     Exception {
-        ty: error_typename(f),
+        ty,
+        module,
         value: Some(f.to_string()),
         stacktrace: bt
             .map(|backtrace| backtrace.to_string())
