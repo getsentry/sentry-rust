@@ -79,14 +79,16 @@ extern crate failure;
 extern crate fragile;
 extern crate sentry;
 
-use actix_web::middleware::{Middleware, Response, Started};
+use actix_web::middleware::{Middleware, Response, Started, Finished};
 use actix_web::{Error, HttpMessage, HttpRequest, HttpResponse};
 use failure::Fail;
 use sentry::integrations::failure::exception_from_single_fail;
 use sentry::protocol::{ClientSdkPackage, Event, Level};
 use sentry::{Hub, Uuid};
+use sentry::internals::ScopeGuard;
 use std::borrow::Cow;
 use std::sync::{Arc, Mutex};
+use std::cell::RefCell;
 
 /// A helper construct that can be used to reconfigure and build the middleware.
 pub struct SentryMiddlewareBuilder {
@@ -133,6 +135,11 @@ pub struct SentryMiddleware {
     capture_server_errors: bool,
 }
 
+struct HubWrapper {
+    hub: Arc<Hub>,
+    root_scope: RefCell<Option<ScopeGuard>>,
+}
+
 impl SentryMiddleware {
     /// Creates a new sentry middleware.
     pub fn new() -> SentryMiddleware {
@@ -154,7 +161,7 @@ impl SentryMiddleware {
     }
 
     fn new_hub(&self) -> Arc<Hub> {
-        Arc::new(Hub::new_from_top(Hub::current()))
+        Arc::new(Hub::new_from_top(Hub::main()))
     }
 }
 
@@ -212,6 +219,7 @@ impl<S: 'static> Middleware<S> for SentryMiddleware {
         let req = fragile::SemiSticky::new(req);
         let cached_data = Arc::new(Mutex::new(None));
 
+        let root_scope = hub.push_scope();
         hub.configure_scope(move |scope| {
             scope.add_event_processor(Box::new(move |mut event| {
                 let mut cached_data = cached_data.lock().unwrap();
@@ -244,7 +252,10 @@ impl<S: 'static> Middleware<S> for SentryMiddleware {
             }));
         });
 
-        outer_req.extensions_mut().insert(hub);
+        outer_req.extensions_mut().insert(HubWrapper {
+            hub,
+            root_scope: RefCell::new(Some(root_scope)),
+        });
         Ok(Started::Done)
     }
 
@@ -266,6 +277,19 @@ impl<S: 'static> Middleware<S> for SentryMiddleware {
             }
         }
         Ok(Response::Done(resp))
+    }
+
+    fn finish(&self, req: &HttpRequest<S>, _resp: &HttpResponse) -> Finished {
+        // if we make it to the end of the request we want to first drop the root
+        // scope before we drop the entire hub.  This will first drop the closures
+        // on the scope which in turn will release the circular dependency we have
+        // with the hub via the request.
+        if let Some(hub_wrapper) = req.extensions().get::<HubWrapper>() {
+            if let Ok(mut guard) = hub_wrapper.root_scope.try_borrow_mut() {
+                guard.take();
+            }
+        }
+        Finished::Done
     }
 }
 
@@ -292,8 +316,9 @@ pub trait ActixWebHubExt {
 impl ActixWebHubExt for Hub {
     fn from_request<S>(req: &HttpRequest<S>) -> Arc<Hub> {
         req.extensions()
-            .get::<Arc<Hub>>()
+            .get::<HubWrapper>()
             .expect("SentryMiddleware middleware was not registered")
+            .hub
             .clone()
     }
 
