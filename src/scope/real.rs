@@ -1,11 +1,10 @@
 use std::borrow::Cow;
 use std::fmt;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use api::protocol::map::Entry;
 use api::protocol::{Breadcrumb, Context, Event, Level, User, Value};
 use client::Client;
-use hub::Hub;
 use utils;
 
 use im;
@@ -29,9 +28,6 @@ struct ContextDefaults {
 pub struct Stack {
     layers: Vec<StackLayer>,
 }
-
-#[derive(PartialEq, Clone, Copy)]
-pub struct StackLayerToken(*const Stack, usize);
 
 pub type EventProcessor = Box<Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync>;
 
@@ -74,6 +70,7 @@ impl fmt::Debug for Scope {
             .field("extra", &self.extra)
             .field("tags", &self.tags)
             .field("contexts", &self.contexts)
+            .field("event_processors", &self.event_processors.len())
             .finish()
     }
 }
@@ -128,14 +125,14 @@ impl Stack {
         &mut self.layers[top]
     }
 
-    pub fn layer_token(&self) -> StackLayerToken {
-        StackLayerToken(self as *const Stack, self.layers.len())
+    pub fn depth(&self) -> usize {
+        self.layers.len()
     }
 }
 
 /// A scope guard.
 #[derive(Default)]
-pub struct ScopeGuard(pub(crate) Option<StackLayerToken>);
+pub struct ScopeGuard(pub(crate) Option<(Arc<RwLock<Stack>>, usize)>);
 
 impl fmt::Debug for ScopeGuard {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -145,8 +142,12 @@ impl fmt::Debug for ScopeGuard {
 
 impl Drop for ScopeGuard {
     fn drop(&mut self) {
-        if let Some(token) = self.0 {
-            Hub::with(|hub| hub.pop_scope(token))
+        if let Some((stack, depth)) = self.0.take() {
+            let mut stack = stack.write().unwrap_or_else(|x| x.into_inner());
+            if stack.depth() != depth {
+                panic!("Tried to pop guards out of order");
+            }
+            stack.pop();
         }
     }
 }

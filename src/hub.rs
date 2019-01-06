@@ -1,5 +1,6 @@
 #![allow(unused)]
 
+use std::mem::drop;
 use std::cell::{Cell, UnsafeCell};
 use std::iter;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -13,7 +14,7 @@ use client::Client;
 use protocol::{Breadcrumb, Event, Level};
 use scope::{Scope, ScopeGuard};
 #[cfg(feature = "with_client_implementation")]
-use scope::{Stack, StackLayerToken};
+use scope::Stack;
 #[cfg(feature = "with_client_implementation")]
 use utils::current_thread;
 
@@ -73,8 +74,9 @@ impl<F: FnOnce() -> I, I: IntoBreadcrumbs> IntoBreadcrumbs for F {
 }
 
 #[cfg(feature = "with_client_implementation")]
+#[derive(Debug)]
 struct HubImpl {
-    stack: RwLock<Stack>,
+    stack: Arc<RwLock<Stack>>,
 }
 
 #[cfg(feature = "with_client_implementation")]
@@ -122,6 +124,7 @@ impl HubImpl {
 /// * `Hub::with_active`: like `Hub::with` but does not invoke the callback if
 ///   the client is not in a supported state or not bound
 /// * `Hub::new_from_top`: creates a new hub with just the top scope of another hub.
+#[derive(Debug)]
 pub struct Hub {
     #[cfg(feature = "with_client_implementation")]
     inner: HubImpl,
@@ -134,7 +137,7 @@ impl Hub {
     pub fn new(client: Option<Arc<Client>>, scope: Arc<Scope>) -> Hub {
         Hub {
             inner: HubImpl {
-                stack: RwLock::new(Stack::from_client_and_scope(client, scope)),
+                stack: Arc::new(RwLock::new(Stack::from_client_and_scope(client, scope))),
             },
             last_event_id: RwLock::new(None),
         }
@@ -337,7 +340,7 @@ impl Hub {
         with_client_impl! {{
             self.inner.with_mut(|stack| {
                 stack.push();
-                ScopeGuard(Some(stack.layer_token()))
+                ScopeGuard(Some((self.inner.stack.clone(), stack.depth())))
             })
         }}
     }
@@ -424,17 +427,5 @@ impl Hub {
     pub(crate) fn with_current_scope_mut<F: FnOnce(&mut Scope) -> R, R>(&self, f: F) -> R {
         self.inner
             .with_mut(|stack| f(Arc::make_mut(&mut stack.top_mut().scope)))
-    }
-
-    #[cfg(feature = "with_client_implementation")]
-    pub(crate) fn pop_scope(&self, token: StackLayerToken) {
-        with_client_impl! {{
-            self.inner.with_mut(|stack| {
-                if stack.layer_token() != token {
-                    panic!("Current active stack does not match scope guard");
-                }
-                stack.pop();
-            })
-        }}
     }
 }
