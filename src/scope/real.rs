@@ -223,6 +223,7 @@ impl Scope {
     }
 
     /// Applies the contained scoped data to fill an event.
+    #[cfg_attr(feature = "cargo-clippy", allow(cyclomatic_complexity))]
     pub fn apply_to_event(&self, mut event: Event<'static>) -> Option<Event<'static>> {
         let mut add_os = true;
         let mut add_rust = true;
