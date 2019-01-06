@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source to the Rust file `src/hub.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>hub.rs.html -- source</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css"><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script src="../../storage.js"></script></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../theme.js"></script><nav class="sub"><form class="search-form js-only"><div class="search-container"><input class="search-input" name="search" autocomplete="off" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><a id="settings-menu" href="../../settings.html"><img src="../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source to the Rust file `src/hub.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>hub.rs.html -- source</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css"><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script src="../../storage.js"></script></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../theme.js"></script><nav class="sub"><form class="search-form js-only"><div class="search-container"><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><a id="settings-menu" href="../../settings.html"><img src="../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
 <span id="2">  2</span>
 <span id="3">  3</span>
 <span id="4">  4</span>
@@ -429,20 +429,12 @@
 <span id="429">429</span>
 <span id="430">430</span>
 <span id="431">431</span>
-<span id="432">432</span>
-<span id="433">433</span>
-<span id="434">434</span>
-<span id="435">435</span>
-<span id="436">436</span>
-<span id="437">437</span>
-<span id="438">438</span>
-<span id="439">439</span>
-<span id="440">440</span>
 </pre><pre class="rust ">
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">unused</span>)]</span>
 
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">cell</span>::{<span class="ident">Cell</span>, <span class="ident">UnsafeCell</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">iter</span>;
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">mem</span>::<span class="ident">drop</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">atomic</span>::{<span class="ident">AtomicBool</span>, <span class="ident">Ordering</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::{<span class="ident">Arc</span>, <span class="ident">Mutex</span>, <span class="ident">RwLock</span>, <span class="ident">TryLockError</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">thread</span>;
@@ -452,9 +444,9 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_client_implementation&quot;</span>)]</span>
 <span class="kw">use</span> <span class="ident">client</span>::<span class="ident">Client</span>;
 <span class="kw">use</span> <span class="ident">protocol</span>::{<span class="ident">Breadcrumb</span>, <span class="ident">Event</span>, <span class="ident">Level</span>};
-<span class="kw">use</span> <span class="ident">scope</span>::{<span class="ident">Scope</span>, <span class="ident">ScopeGuard</span>};
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_client_implementation&quot;</span>)]</span>
-<span class="kw">use</span> <span class="ident">scope</span>::{<span class="ident">Stack</span>, <span class="ident">StackLayerToken</span>};
+<span class="kw">use</span> <span class="ident">scope</span>::<span class="ident">Stack</span>;
+<span class="kw">use</span> <span class="ident">scope</span>::{<span class="ident">Scope</span>, <span class="ident">ScopeGuard</span>};
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_client_implementation&quot;</span>)]</span>
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="ident">current_thread</span>;
 
@@ -514,8 +506,9 @@
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_client_implementation&quot;</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">struct</span> <span class="ident">HubImpl</span> {
-    <span class="ident">stack</span>: <span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Stack</span><span class="op">&gt;</span>,
+    <span class="ident">stack</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Stack</span><span class="op">&gt;&gt;</span>,
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_client_implementation&quot;</span>)]</span>
@@ -563,6 +556,7 @@
 <span class="doccomment">/// * `Hub::with_active`: like `Hub::with` but does not invoke the callback if</span>
 <span class="doccomment">///   the client is not in a supported state or not bound</span>
 <span class="doccomment">/// * `Hub::new_from_top`: creates a new hub with just the top scope of another hub.</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Hub</span> {
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_client_implementation&quot;</span>)]</span>
     <span class="ident">inner</span>: <span class="ident">HubImpl</span>,
@@ -575,7 +569,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">client</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Client</span><span class="op">&gt;&gt;</span>, <span class="ident">scope</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Scope</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="ident">Hub</span> {
         <span class="ident">Hub</span> {
             <span class="ident">inner</span>: <span class="ident">HubImpl</span> {
-                <span class="ident">stack</span>: <span class="ident">RwLock</span>::<span class="ident">new</span>(<span class="ident">Stack</span>::<span class="ident">from_client_and_scope</span>(<span class="ident">client</span>, <span class="ident">scope</span>)),
+                <span class="ident">stack</span>: <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">RwLock</span>::<span class="ident">new</span>(<span class="ident">Stack</span>::<span class="ident">from_client_and_scope</span>(<span class="ident">client</span>, <span class="ident">scope</span>))),
             },
             <span class="ident">last_event_id</span>: <span class="ident">RwLock</span>::<span class="ident">new</span>(<span class="prelude-val">None</span>),
         }
@@ -778,7 +772,7 @@
         <span class="macro">with_client_impl</span><span class="macro">!</span> {{
             <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">with_mut</span>(<span class="op">|</span><span class="ident">stack</span><span class="op">|</span> {
                 <span class="ident">stack</span>.<span class="ident">push</span>();
-                <span class="ident">ScopeGuard</span>(<span class="prelude-val">Some</span>(<span class="ident">stack</span>.<span class="ident">layer_token</span>()))
+                <span class="ident">ScopeGuard</span>(<span class="prelude-val">Some</span>((<span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">stack</span>.<span class="ident">clone</span>(), <span class="ident">stack</span>.<span class="ident">depth</span>())))
             })
         }}
     }
@@ -791,13 +785,13 @@
         <span class="ident">C</span>: <span class="ident">FnOnce</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Scope</span>),
         <span class="ident">F</span>: <span class="ident">FnOnce</span>() <span class="op">-&gt;</span> <span class="ident">R</span>,
     {
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">with_client_impl</span>)]</span>
+        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_client_implementation&quot;</span>)]</span>
         {
             <span class="kw">let</span> <span class="ident">_guard</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">push_scope</span>();
             <span class="self">self</span>.<span class="ident">configure_scope</span>(<span class="ident">scope_config</span>);
             <span class="ident">callback</span>()
         }
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">with_client_impl</span>))]</span>
+        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_client_implementation&quot;</span>))]</span>
         {
             <span class="kw">let</span> <span class="ident">_scope_config</span> <span class="op">=</span> <span class="ident">scope_config</span>;
             <span class="ident">callback</span>()
@@ -865,18 +859,6 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">with_current_scope_mut</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FnOnce</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Scope</span>) <span class="op">-&gt;</span> <span class="ident">R</span>, <span class="ident">R</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="ident">F</span>) <span class="op">-&gt;</span> <span class="ident">R</span> {
         <span class="self">self</span>.<span class="ident">inner</span>
             .<span class="ident">with_mut</span>(<span class="op">|</span><span class="ident">stack</span><span class="op">|</span> <span class="ident">f</span>(<span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">stack</span>.<span class="ident">top_mut</span>().<span class="ident">scope</span>)))
-    }
-
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_client_implementation&quot;</span>)]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">pop_scope</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">token</span>: <span class="ident">StackLayerToken</span>) {
-        <span class="macro">with_client_impl</span><span class="macro">!</span> {{
-            <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">with_mut</span>(<span class="op">|</span><span class="ident">stack</span><span class="op">|</span> {
-                <span class="kw">if</span> <span class="ident">stack</span>.<span class="ident">layer_token</span>() <span class="op">!=</span> <span class="ident">token</span> {
-                    <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Current active stack does not match scope guard&quot;</span>);
-                }
-                <span class="ident">stack</span>.<span class="ident">pop</span>();
-            })
-        }}
     }
 }
 </pre>

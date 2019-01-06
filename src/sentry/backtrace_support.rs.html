@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source to the Rust file `src/backtrace_support.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>backtrace_support.rs.html -- source</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css"><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script src="../../storage.js"></script></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../theme.js"></script><nav class="sub"><form class="search-form js-only"><div class="search-container"><input class="search-input" name="search" autocomplete="off" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><a id="settings-menu" href="../../settings.html"><img src="../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source to the Rust file `src/backtrace_support.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>backtrace_support.rs.html -- source</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css"><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script src="../../storage.js"></script></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../theme.js"></script><nav class="sub"><form class="search-form js-only"><div class="search-container"><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><a id="settings-menu" href="../../settings.html"><img src="../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
 <span id="2">  2</span>
 <span id="3">  3</span>
 <span id="4">  4</span>
@@ -304,6 +304,13 @@
 <span id="304">304</span>
 <span id="305">305</span>
 <span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
 </pre><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fmt</span>;
 
@@ -312,53 +319,53 @@
 
 <span class="kw">use</span> <span class="ident">api</span>::<span class="ident">protocol</span>::{<span class="ident">Frame</span>, <span class="ident">Stacktrace</span>};
 
-<span class="macro">lazy_static</span><span class="macro">!</span>{
+<span class="macro">lazy_static</span><span class="macro">!</span> {
     <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">HASH_FUNC_RE</span>: <span class="ident">Regex</span> <span class="op">=</span> <span class="ident">Regex</span>::<span class="ident">new</span>(<span class="string">r#&quot;(?x)
         ^(.*)::h[a-f0-9]{16}$
     &quot;#</span>).<span class="ident">unwrap</span>();
 
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">WELL_KNOWN_SYS_MODULES</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span><span class="op">&gt;</span> <span class="op">=</span> {
-        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rv</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[
-            <span class="string">&quot;std::&quot;</span>,
-            <span class="string">&quot;core::&quot;</span>,
-            <span class="string">&quot;alloc::&quot;</span>,
-            <span class="string">&quot;backtrace::&quot;</span>,
-            <span class="string">&quot;sentry::&quot;</span>,
-            <span class="string">&quot;sentry_types::&quot;</span>,
-            <span class="comment">// these are not modules but things like __rust_maybe_catch_panic</span>
-            <span class="string">&quot;__rust_&quot;</span>,
-        ];
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_failure&quot;</span>)]</span> {
-            <span class="ident">rv</span>.<span class="ident">push</span>(<span class="string">&quot;failure::&quot;</span>);
-        }
-        <span class="ident">rv</span>
-    };
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">WELL_KNOWN_BORDER_FRAMES</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span><span class="op">&gt;</span> <span class="op">=</span> {
-        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rv</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[
-            <span class="string">&quot;std::panicking::begin_panic&quot;</span>,
-        ];
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_failure&quot;</span>)]</span> {
-            <span class="ident">rv</span>.<span class="ident">push</span>(<span class="string">&quot;failure::error_message::err_msg&quot;</span>);
-            <span class="ident">rv</span>.<span class="ident">push</span>(<span class="string">&quot;failure::backtrace::Backtrace::new&quot;</span>);
-        }
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_log&quot;</span>)]</span> {
-            <span class="ident">rv</span>.<span class="ident">push</span>(<span class="string">&quot;&lt;sentry::integrations::log::Logger as log::Log&gt;::log&quot;</span>);
-        }
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_error_chain&quot;</span>)]</span> {
-            <span class="ident">rv</span>.<span class="ident">push</span>(<span class="string">&quot;error_chain::make_backtrace&quot;</span>);
-        }
-        <span class="ident">rv</span>
-    };
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">SECONDARY_BORDER_FRAMES</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>)<span class="op">&gt;</span> <span class="op">=</span> {
-        <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rv</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_error_chain&quot;</span>)]</span> {
-            <span class="ident">rv</span>.<span class="ident">push</span>((<span class="string">&quot;error_chain::make_backtrace&quot;</span>, <span class="string">&quot;&lt;T as core::convert::Into&lt;U&gt;&gt;::into&quot;</span>));
-        }
-        {<span class="ident">rv</span>}
-    };
+<span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">WELL_KNOWN_SYS_MODULES</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span><span class="op">&gt;</span> <span class="op">=</span> {
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rv</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[
+        <span class="string">&quot;std::&quot;</span>,
+        <span class="string">&quot;core::&quot;</span>,
+        <span class="string">&quot;alloc::&quot;</span>,
+        <span class="string">&quot;backtrace::&quot;</span>,
+        <span class="string">&quot;sentry::&quot;</span>,
+        <span class="string">&quot;sentry_types::&quot;</span>,
+        <span class="comment">// these are not modules but things like __rust_maybe_catch_panic</span>
+        <span class="string">&quot;__rust_&quot;</span>,
+    ];
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_failure&quot;</span>)]</span> {
+        <span class="ident">rv</span>.<span class="ident">push</span>(<span class="string">&quot;failure::&quot;</span>);
+    }
+    <span class="ident">rv</span>
+};
+<span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">WELL_KNOWN_BORDER_FRAMES</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span><span class="op">&gt;</span> <span class="op">=</span> {
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rv</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[
+        <span class="string">&quot;std::panicking::begin_panic&quot;</span>,
+    ];
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_failure&quot;</span>)]</span> {
+        <span class="ident">rv</span>.<span class="ident">push</span>(<span class="string">&quot;failure::error_message::err_msg&quot;</span>);
+        <span class="ident">rv</span>.<span class="ident">push</span>(<span class="string">&quot;failure::backtrace::Backtrace::new&quot;</span>);
+    }
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_log&quot;</span>)]</span> {
+        <span class="ident">rv</span>.<span class="ident">push</span>(<span class="string">&quot;&lt;sentry::integrations::log::Logger as log::Log&gt;::log&quot;</span>);
+    }
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_error_chain&quot;</span>)]</span> {
+        <span class="ident">rv</span>.<span class="ident">push</span>(<span class="string">&quot;error_chain::make_backtrace&quot;</span>);
+    }
+    <span class="ident">rv</span>
+};
+<span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">SECONDARY_BORDER_FRAMES</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>)<span class="op">&gt;</span> <span class="op">=</span> {
+    <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rv</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_error_chain&quot;</span>)]</span> {
+        <span class="ident">rv</span>.<span class="ident">push</span>((<span class="string">&quot;error_chain::make_backtrace&quot;</span>, <span class="string">&quot;&lt;T as core::convert::Into&lt;U&gt;&gt;::into&quot;</span>));
+    }
+    {<span class="ident">rv</span>}
+};
 
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">COMMON_RUST_SYMBOL_ESCAPES_RE</span>: <span class="ident">Regex</span> <span class="op">=</span> <span class="ident">Regex</span>::<span class="ident">new</span>(<span class="string">r#&quot;(?x)
         \$
@@ -402,8 +409,10 @@
                 <span class="string">&quot;u2b&quot;</span> <span class="op">=&gt;</span> <span class="string">&quot;+&quot;</span>,
                 <span class="string">&quot;u22&quot;</span> <span class="op">=&gt;</span> <span class="string">&quot;\&quot;&quot;</span>,
                 <span class="kw">_</span> <span class="op">=&gt;</span> <span class="macro">unreachable</span><span class="macro">!</span>(),
-            }.<span class="ident">to_string</span>()
-        }).<span class="ident">to_string</span>()
+            }
+            .<span class="ident">to_string</span>()
+        })
+        .<span class="ident">to_string</span>()
 }
 
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused</span>)]</span>
@@ -443,7 +452,8 @@
                     ..<span class="ident">Default</span>::<span class="ident">default</span>()
                 }
             })
-        }).<span class="ident">collect</span>();
+        })
+        .<span class="ident">collect</span>();
     <span class="ident">Stacktrace</span>::<span class="ident">from_frames_reversed</span>(<span class="ident">frames</span>)
 }
 
@@ -483,18 +493,22 @@
                     } <span class="kw">else</span> {
                         <span class="prelude-val">None</span>
                     }
-                }).<span class="ident">next</span>()
+                })
+                .<span class="ident">next</span>()
         };
         <span class="kw">let</span> <span class="ident">trunc</span> <span class="op">=</span> <span class="ident">stacktrace</span>.<span class="ident">frames</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="ident">cutoff</span> <span class="op">-</span> <span class="number">1</span>;
         <span class="ident">stacktrace</span>.<span class="ident">frames</span>.<span class="ident">truncate</span>(<span class="ident">trunc</span>);
 
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">secondary</span>) <span class="op">=</span> <span class="ident">secondary</span> {
-            <span class="kw">let</span> <span class="ident">secondary_cutoff</span> <span class="op">=</span> <span class="ident">stacktrace</span>.<span class="ident">frames</span>.<span class="ident">iter</span>().<span class="ident">rev</span>().<span class="ident">position</span>(<span class="op">|</span><span class="ident">frame</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">frame</span>
-                .<span class="ident">function</span>
-            {
-                <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">func</span>) <span class="op">=&gt;</span> <span class="ident">function_starts_with</span>(<span class="kw-2">&amp;</span><span class="ident">func</span>, <span class="ident">secondary</span>),
-                <span class="prelude-val">None</span> <span class="op">=&gt;</span> <span class="bool-val">false</span>,
-            });
+            <span class="kw">let</span> <span class="ident">secondary_cutoff</span> <span class="op">=</span>
+                <span class="ident">stacktrace</span>
+                    .<span class="ident">frames</span>
+                    .<span class="ident">iter</span>()
+                    .<span class="ident">rev</span>()
+                    .<span class="ident">position</span>(<span class="op">|</span><span class="ident">frame</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">frame</span>.<span class="ident">function</span> {
+                        <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">func</span>) <span class="op">=&gt;</span> <span class="ident">function_starts_with</span>(<span class="kw-2">&amp;</span><span class="ident">func</span>, <span class="ident">secondary</span>),
+                        <span class="prelude-val">None</span> <span class="op">=&gt;</span> <span class="bool-val">false</span>,
+                    });
 
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">cutoff</span>) <span class="op">=</span> <span class="ident">secondary_cutoff</span> {
                 <span class="kw">let</span> <span class="ident">trunc</span> <span class="op">=</span> <span class="ident">stacktrace</span>.<span class="ident">frames</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="ident">cutoff</span> <span class="op">-</span> <span class="number">1</span>;
