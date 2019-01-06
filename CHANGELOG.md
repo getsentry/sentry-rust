@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.12.1o
+## 0.12.1
 
 - Resolve a memory leak in the actix integration.
 - Fix an issue where dropping a scope guard for a non active hub resulted in a
