@@ -27,7 +27,7 @@ with_env_logger = ["with_log", "env_logger"]
 with_error_chain = ["error-chain", "with_backtrace"]
 with_device_info = ["libc", "hostname", "uname", "with_client_implementation"]
 with_rust_info = ["rustc_version", "with_client_implementation"]
-with_debug_meta = ["findshlibs", "with_client_implementation"]
+with_debug_meta = ["findshlibs", "goblin", "memmap", "with_client_implementation"]
 with_test_support = []
 
 [dependencies]
@@ -50,6 +50,10 @@ httpdate = "0.3.2"
 
 [target."cfg(not(windows))".dependencies]
 uname = { version = "0.1.1", optional = true }
+
+[target."cfg(unix)".dependencies]
+goblin = { version = "0.0.19", default-features = false, features = ["elf32", "elf64"], optional = true }
+memmap = { version = "0.7.0", optional = true }
 
 [build-dependencies]
 rustc_version = { version = "0.2.3", optional = true }

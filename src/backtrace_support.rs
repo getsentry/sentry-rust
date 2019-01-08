@@ -117,7 +117,10 @@ pub fn backtrace_to_stacktrace(bt: &Backtrace) -> Option<Stacktrace> {
         .frames()
         .iter()
         .flat_map(|frame| {
-            frame.symbols().iter().map(move |sym| {
+            // For each frame, there may be multiple symbols if a function was inlined, so
+            // add an entry for each symbol.
+            let symbols = frame.symbols();
+            symbols.iter().map(move |sym| {
                 let abs_path = sym.filename().map(|m| m.to_string_lossy().to_string());
                 let filename = abs_path.as_ref().map(|p| filename(p));
                 let real_symbol = sym.name().map_or("<unknown>".into(), |n| n.to_string());
@@ -137,7 +140,16 @@ pub fn backtrace_to_stacktrace(bt: &Backtrace) -> Option<Stacktrace> {
                     colno: None,
                     ..Default::default()
                 }
-            })
+            
+            // If there were no symbols at all, make sure to add at least one frame, as we
+            // may be able to symbolicate it on the server.
+            }).chain(if symbols.is_empty() {
+                Some(Frame {
+                    instruction_addr: Some(frame.ip().into()),
+                    function: Some("<unknown>".into()),
+                    ..Default::default()
+                })
+            } else { None })
         })
         .collect();
     Stacktrace::from_frames_reversed(frames)
