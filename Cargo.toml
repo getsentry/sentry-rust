@@ -31,13 +31,13 @@ with_serde = [
 travis-ci = { repository = "getsentry/rust-sentry-types" }
 
 [dependencies]
-failure = "0.1.2"
-failure_derive = "0.1.2"
-url = "1.7.1"
-serde = { version = "1.0.79", optional = true }
-serde_derive = { version = "1.0.79", optional = true }
-serde_json = { version = "1.0.27", optional = true }
+failure = "0.1.5"
+failure_derive = "0.1.5"
+url = "1.7.2"
+serde = { version = "1.0.84", optional = true }
+serde_derive = { version = "1.0.84", optional = true }
+serde_json = { version = "1.0.34", optional = true }
 url_serde = { version = "0.2.0", optional = true }
 chrono = "0.4.6"
 uuid = { version = "0.7.1", features = ["v4"] }
-debugid = "0.3.0"
+debugid = "0.3.1"

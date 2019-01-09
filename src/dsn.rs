@@ -3,8 +3,8 @@ use std::str::FromStr;
 
 use url::Url;
 
-use auth::{auth_from_dsn_and_client, Auth};
-use project_id::{ProjectId, ProjectIdParseError};
+use crate::auth::{auth_from_dsn_and_client, Auth};
+use crate::project_id::{ProjectId, ProjectIdParseError};
 
 /// Represents a dsn url parsing error.
 #[derive(Debug, Fail)]

@@ -66,9 +66,9 @@ mod project_id;
 pub mod protocol;
 mod utils;
 
-pub use auth::*;
-pub use dsn::*;
-pub use project_id::*;
+pub use crate::auth::*;
+pub use crate::dsn::*;
+pub use crate::project_id::*;
 
 // Re-export external types and traits for convenience
 pub use chrono::{DateTime, ParseError as ChronoParseError, TimeZone, Utc};

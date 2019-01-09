@@ -7,9 +7,9 @@ use std::str::FromStr;
 use chrono::{DateTime, Utc};
 use url::form_urlencoded;
 
-use dsn::Dsn;
-use protocol;
-use utils::{datetime_to_timestamp, timestamp_to_datetime};
+use crate::dsn::Dsn;
+use crate::protocol;
+use crate::utils::{datetime_to_timestamp, timestamp_to_datetime};
 
 /// Represents an auth header parsing error.
 #[derive(Debug, Fail, Copy, Clone, Eq, PartialEq)]
