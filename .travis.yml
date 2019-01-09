@@ -20,6 +20,10 @@ matrix:
     - env: SUITE=format-check
     - env: SUITE=lint
 
+  allow_failures:
+    - env: SUITE=format-check
+    - env: SUITE=lint
+
 notifications:
   webhooks:
     urls:
