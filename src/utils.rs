@@ -78,6 +78,54 @@ mod findshlibs_support {
     use api::protocol::SymbolicDebugImage;
     use api::Uuid;
 
+    use std::env;
+    use std::ffi::CStr;
+
+    #[cfg(unix)]
+    pub fn find_build_id_from_binary(name: &CStr) -> Option<DebugId> {
+        use goblin::elf::note::NT_GNU_BUILD_ID;
+        use goblin::elf::Elf;
+        use memmap::Mmap;
+        use std::ffi::OsStr;
+        use std::fs::File;
+        use std::os::unix::ffi::OsStrExt;
+        use std::path::Path;
+
+        fn from_be(id: Uuid) -> Uuid {
+            let (a, b, c, d) = id.as_fields();
+            Uuid::from_fields(u32::from_be(a), u16::from_be(b), u16::from_be(c), d).unwrap()
+        }
+
+        let os_str = OsStr::from_bytes(name.to_bytes());
+        let path: &Path = if os_str.is_empty() {
+            "/proc/self/exe".as_ref()
+        } else {
+            os_str.as_ref()
+        };
+
+        let file = File::open(&path).ok()?;
+        let mmap = unsafe { Mmap::map(&file) }.ok()?;
+        if let Ok(elf_obj) = Elf::parse(&mmap) {
+            if let Some(note) = elf_obj
+                .iter_note_headers(&mmap)?
+                .filter_map(|note_result| note_result.ok())
+                .filter(|note| note.n_type == NT_GNU_BUILD_ID)
+                .filter(|note| note.desc.len() >= 16)
+                .next()
+            {
+                // Can only fail if length of input is not 16
+                let build_id = from_be(Uuid::from_slice(&note.desc[0..16]).unwrap());
+                return Some(DebugId::from_uuid(build_id));
+            }
+        }
+        None
+    }
+
+    #[cfg(not(unix))]
+    pub fn find_build_id_from_binary(name: &CStr) -> Option<DebugId> {
+        None
+    }
+
     pub fn find_shlibs() -> Option<Vec<DebugImage>> {
         if !TARGET_SUPPORTED {
             return None;
@@ -85,8 +133,13 @@ mod findshlibs_support {
 
         let mut rv = vec![];
         TargetSharedLibrary::each(|shlib| {
-            let debug_id = match shlib.id() {
-                Some(SharedLibraryId::Uuid(bytes)) => DebugId::from_uuid(Uuid::from_bytes(bytes)),
+            let maybe_debug_id = shlib
+                .id()
+                .map(|SharedLibraryId::Uuid(bytes)| DebugId::from_uuid(Uuid::from_bytes(bytes)))
+                .or_else(|| find_build_id_from_binary(shlib.name()));
+
+            let debug_id = match maybe_debug_id {
+                Some(debug_id) => debug_id,
                 None => return,
             };
 
@@ -108,9 +161,16 @@ mod findshlibs_support {
                 }
             }
 
+            let mut name = shlib.name().to_string_lossy().to_string();
+            if name == "" {
+                name = env::current_exe()
+                    .map(|x| x.display().to_string())
+                    .unwrap_or_else(|_| "<main>".to_string());
+            }
+
             rv.push(
                 SymbolicDebugImage {
-                    name: shlib.name().to_string_lossy().to_string(),
+                    name: name,
                     arch: None,
                     image_addr: lowest_addr.into(),
                     image_size: highest_addr - lowest_addr,
