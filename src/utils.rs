@@ -170,7 +170,7 @@ mod findshlibs_support {
 
             rv.push(
                 SymbolicDebugImage {
-                    name: name,
+                    name,
                     arch: None,
                     image_addr: lowest_addr.into(),
                     image_size: highest_addr - lowest_addr,
