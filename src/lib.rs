@@ -194,7 +194,7 @@ pub mod internals {
     #[cfg(feature = "with_client_implementation")]
     pub use crate::{
         client::{ClientInitGuard, IntoDsn},
-        tansport::{DefaultTransportFactory, HttpTransport, Transport, TransportFactory},
+        transport::{DefaultTransportFactory, HttpTransport, Transport, TransportFactory},
     };
     pub use sentry_types::{
         Auth, ChronoParseError, DateTime, DebugId, Dsn, DsnParseError, ParseDebugIdError,
