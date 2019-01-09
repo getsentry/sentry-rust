@@ -154,6 +154,12 @@ extern crate env_logger;
 #[cfg(feature = "with_debug_meta")]
 extern crate findshlibs;
 
+#[cfg(all(feature = "with_debug_meta", unix))]
+extern crate memmap;
+
+#[cfg(all(feature = "with_debug_meta", unix))]
+extern crate goblin;
+
 extern crate rand;
 
 #[macro_use]
