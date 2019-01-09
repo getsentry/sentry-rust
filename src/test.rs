@@ -26,8 +26,8 @@ use client::ClientOptions;
 use hub::Hub;
 use transport::Transport;
 
+use internals::Dsn;
 use protocol::Event;
-use Dsn;
 
 lazy_static! {
     static ref TEST_DSN: Dsn = "https://public@sentry.invalid/1".parse().unwrap();

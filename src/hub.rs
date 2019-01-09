@@ -8,9 +8,9 @@ use std::sync::{Arc, Mutex, RwLock, TryLockError};
 use std::thread;
 use std::time::Duration;
 
-use api::Uuid;
 #[cfg(feature = "with_client_implementation")]
 use client::Client;
+use internals::Uuid;
 use protocol::{Breadcrumb, Event, Level};
 #[cfg(feature = "with_client_implementation")]
 use scope::Stack;

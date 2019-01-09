@@ -2,7 +2,7 @@
 use std::mem;
 use std::thread;
 
-use api::protocol::{
+use protocol::{
     Context, DebugImage, DeviceContext, Map, OsContext, RuntimeContext, Stacktrace, Thread,
 };
 
@@ -74,9 +74,9 @@ mod findshlibs_support {
         Segment, SharedLibrary, SharedLibraryId, TargetSharedLibrary, TARGET_SUPPORTED,
     };
 
-    use api::protocol::debugid::DebugId;
-    use api::protocol::SymbolicDebugImage;
-    use api::Uuid;
+    use internals::Uuid;
+    use protocol::debugid::DebugId;
+    use protocol::SymbolicDebugImage;
 
     use std::env;
     use std::ffi::CStr;

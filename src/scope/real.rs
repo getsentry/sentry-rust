@@ -2,9 +2,9 @@ use std::borrow::Cow;
 use std::fmt;
 use std::sync::{Arc, RwLock};
 
-use api::protocol::map::Entry;
-use api::protocol::{Breadcrumb, Context, Event, Level, User, Value};
 use client::Client;
+use protocol::map::Entry;
+use protocol::{Breadcrumb, Context, Event, Level, User, Value};
 use utils;
 
 use im;

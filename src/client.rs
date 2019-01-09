@@ -10,12 +10,12 @@ use std::time::Duration;
 use rand::random;
 use regex::Regex;
 
-use api::protocol::{Breadcrumb, DebugMeta, Event};
-use api::{Dsn, Uuid};
 use backtrace_support::{function_starts_with, is_sys_function, trim_stacktrace};
 use constants::{SDK_INFO, USER_AGENT};
 use hub::Hub;
 use internals::DsnParseError;
+use internals::{Dsn, Uuid};
+use protocol::{Breadcrumb, DebugMeta, Event};
 use scope::Scope;
 use transport::{DefaultTransportFactory, Transport, TransportFactory};
 use utils::{debug_images, server_name};

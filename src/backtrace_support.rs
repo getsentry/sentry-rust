@@ -3,7 +3,7 @@ use std::fmt;
 use backtrace::Backtrace;
 use regex::{Captures, Regex};
 
-use api::protocol::{Frame, Stacktrace};
+use protocol::{Frame, Stacktrace};
 
 lazy_static! {
     static ref HASH_FUNC_RE: Regex = Regex::new(r#"(?x)

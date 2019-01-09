@@ -15,9 +15,9 @@
 //! Additionally panics are forwarded to the previously registered panic hook.
 use std::panic;
 
-use api::protocol::{Event, Exception, Level};
 use backtrace_support::current_stacktrace;
 use hub::Hub;
+use protocol::{Event, Exception, Level};
 
 /// Extract the message of a panic.
 pub fn message_from_panic_info<'a>(info: &'a panic::PanicInfo) -> &'a str {

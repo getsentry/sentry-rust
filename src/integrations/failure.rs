@@ -31,10 +31,10 @@ use failure;
 use failure::{Error, Fail};
 use regex::Regex;
 
-use api::protocol::{Event, Exception, Frame, Level, Stacktrace};
-use api::Uuid;
 use backtrace_support::{demangle_symbol, error_typename, filename, strip_symbol};
 use hub::Hub;
+use internals::Uuid;
+use protocol::{Event, Exception, Frame, Level, Stacktrace};
 
 lazy_static! {
     static ref MODULE_SPLIT_RE: Regex = Regex::new(r"^(.*)::(.*?)$").unwrap();

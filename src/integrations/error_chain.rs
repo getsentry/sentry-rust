@@ -28,10 +28,10 @@ use std::fmt::{Debug, Display};
 
 use error_chain::ChainedError;
 
-use api::protocol::{Event, Exception, Level};
-use api::Uuid;
 use backtrace_support::{backtrace_to_stacktrace, error_typename};
 use hub::Hub;
+use internals::Uuid;
+use protocol::{Event, Exception, Level};
 
 fn exceptions_from_error_chain<T>(error: &T) -> Vec<Exception>
 where
