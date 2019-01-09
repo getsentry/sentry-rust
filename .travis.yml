@@ -9,6 +9,7 @@ git:
 branches:
   only:
     - master
+    - /^release\/.+$/
 
 script: make $SUITE
 
