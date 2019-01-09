@@ -1,0 +1,8 @@
+---
+# Configuration for sentry-craft (https://github.com/getsentry/craft)
+github:
+  owner: getsentry
+  repo: rust-sentry-types
+targets:
+  - name: crates
+  - name: github
