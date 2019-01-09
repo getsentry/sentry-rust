@@ -189,18 +189,16 @@ pub mod utils;
 /// have to directly interface with directly.  These are often returned
 /// from methods on other types.
 pub mod internals {
-    #[cfg(feature = "with_client_implementation")]
-    pub use crate::client::{ClientInitGuard, IntoDsn};
     pub use crate::hub::IntoBreadcrumbs;
     pub use crate::scope::ScopeGuard;
     #[cfg(feature = "with_client_implementation")]
-    pub use crate::transport::{
-        DefaultTransportFactory, HttpTransport, Transport, TransportFactory,
+    pub use crate::{
+        client::{ClientInitGuard, IntoDsn},
+        tansport::{DefaultTransportFactory, HttpTransport, Transport, TransportFactory},
     };
-    pub use sentry_types::{Auth, DsnParseError, ProjectId, ProjectIdParseError, Scheme};
     pub use sentry_types::{
-        ChronoParseError, DateTime, DebugId, Dsn, ParseDebugIdError, TimeZone, Utc, Uuid,
-        UuidVariant, UuidVersion,
+        Auth, ChronoParseError, DateTime, DebugId, Dsn, DsnParseError, ParseDebugIdError,
+        ProjectId, ProjectIdParseError, Scheme, TimeZone, Utc, Uuid, UuidVariant, UuidVersion,
     };
 }
 
