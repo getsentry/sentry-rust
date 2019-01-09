@@ -22,12 +22,12 @@ use std::mem;
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use client::ClientOptions;
-use hub::Hub;
-use transport::Transport;
+use crate::client::ClientOptions;
+use crate::hub::Hub;
+use crate::transport::Transport;
 
-use internals::Dsn;
-use protocol::Event;
+use crate::internals::Dsn;
+use crate::protocol::Event;
 
 lazy_static! {
     static ref TEST_DSN: Dsn = "https://public@sentry.invalid/1".parse().unwrap();

@@ -9,14 +9,14 @@ use std::thread;
 use std::time::Duration;
 
 #[cfg(feature = "with_client_implementation")]
-use client::Client;
-use internals::Uuid;
-use protocol::{Breadcrumb, Event, Level};
+use crate::client::Client;
+use crate::internals::Uuid;
+use crate::protocol::{Breadcrumb, Event, Level};
 #[cfg(feature = "with_client_implementation")]
-use scope::Stack;
-use scope::{Scope, ScopeGuard};
+use crate::scope::Stack;
+use crate::scope::{Scope, ScopeGuard};
 #[cfg(feature = "with_client_implementation")]
-use utils::current_thread;
+use crate::utils::current_thread;
 
 #[cfg(feature = "with_client_implementation")]
 lazy_static! {

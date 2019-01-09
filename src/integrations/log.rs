@@ -32,10 +32,10 @@
 use log;
 use std::cmp;
 
-use api::add_breadcrumb;
-use backtrace_support::current_stacktrace;
-use hub::Hub;
-use protocol::{Breadcrumb, Event, Exception, Level};
+use crate::api::add_breadcrumb;
+use crate::backtrace_support::current_stacktrace;
+use crate::hub::Hub;
+use crate::protocol::{Breadcrumb, Event, Exception, Level};
 
 /// Logger specific options.
 pub struct LoggerOptions {

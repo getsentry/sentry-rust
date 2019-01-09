@@ -8,9 +8,9 @@ use httpdate::parse_http_date;
 use reqwest::header::RETRY_AFTER;
 use reqwest::{Client, Proxy};
 
-use client::ClientOptions;
-use internals::Dsn;
-use protocol::Event;
+use crate::client::ClientOptions;
+use crate::internals::Dsn;
+use crate::protocol::Event;
 
 /// The trait for transports.
 ///

@@ -2,7 +2,7 @@
 use std::mem;
 use std::thread;
 
-use protocol::{
+use crate::protocol::{
     Context, DebugImage, DeviceContext, Map, OsContext, RuntimeContext, Stacktrace, Thread,
 };
 
@@ -205,7 +205,7 @@ pub fn device_family() -> Option<String> {
 
 /// Returns the CPU architecture.
 pub fn cpu_arch() -> Option<String> {
-    use constants::ARCH;
+    use crate::constants::ARCH;
     Some(ARCH.into())
 }
 
@@ -262,7 +262,7 @@ pub fn os_context() -> Option<Context> {
 pub fn rust_context() -> Option<Context> {
     #[cfg(feature = "with_device_info")]
     {
-        use constants::{RUSTC_CHANNEL, RUSTC_VERSION};
+        use crate::constants::{RUSTC_CHANNEL, RUSTC_VERSION};
         let ctx = RuntimeContext {
             name: Some("rustc".into()),
             version: RUSTC_VERSION.map(|x| x.into()),
@@ -334,7 +334,7 @@ pub fn current_thread(with_stack: bool) -> Thread {
 pub fn current_stacktrace() -> Option<Stacktrace> {
     #[cfg(feature = "with_backtrace")]
     {
-        use backtrace_support::current_stacktrace;
+        use crate::backtrace_support::current_stacktrace;
         current_stacktrace()
     }
     #[cfg(not(feature = "with_backtrace"))]

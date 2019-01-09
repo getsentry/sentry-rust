@@ -190,20 +190,22 @@ pub mod utils;
 /// from methods on other types.
 pub mod internals {
     #[cfg(feature = "with_client_implementation")]
-    pub use client::{ClientInitGuard, IntoDsn};
-    pub use hub::IntoBreadcrumbs;
-    pub use scope::ScopeGuard;
+    pub use crate::client::{ClientInitGuard, IntoDsn};
+    pub use crate::hub::IntoBreadcrumbs;
+    pub use crate::scope::ScopeGuard;
+    #[cfg(feature = "with_client_implementation")]
+    pub use crate::transport::{
+        DefaultTransportFactory, HttpTransport, Transport, TransportFactory,
+    };
     pub use sentry_types::{Auth, DsnParseError, ProjectId, ProjectIdParseError, Scheme};
     pub use sentry_types::{
         ChronoParseError, DateTime, DebugId, Dsn, ParseDebugIdError, TimeZone, Utc, Uuid,
         UuidVariant, UuidVersion,
     };
-    #[cfg(feature = "with_client_implementation")]
-    pub use transport::{DefaultTransportFactory, HttpTransport, Transport, TransportFactory};
 }
 
 /// Directly exposed apis.
-pub use api::*;
+pub use crate::api::*;
 
 // public api from other crates
 pub use sentry_types::protocol::v7 as protocol;
@@ -211,6 +213,6 @@ pub use sentry_types::protocol::v7::{Breadcrumb, Level, User};
 
 // public exports from this crate
 #[cfg(feature = "with_client_implementation")]
-pub use client::{init, Client, ClientOptions};
-pub use hub::Hub;
-pub use scope::Scope;
+pub use crate::client::{init, Client, ClientOptions};
+pub use crate::hub::Hub;
+pub use crate::scope::Scope;

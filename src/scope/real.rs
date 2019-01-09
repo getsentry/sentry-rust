@@ -2,10 +2,10 @@ use std::borrow::Cow;
 use std::fmt;
 use std::sync::{Arc, RwLock};
 
-use client::Client;
-use protocol::map::Entry;
-use protocol::{Breadcrumb, Context, Event, Level, User, Value};
-use utils;
+use crate::client::Client;
+use crate::protocol::map::Entry;
+use crate::protocol::{Breadcrumb, Context, Event, Level, User, Value};
+use crate::utils;
 
 use im;
 

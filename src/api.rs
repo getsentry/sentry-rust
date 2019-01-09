@@ -1,9 +1,10 @@
-use hub::Hub;
-use scope::Scope;
+#[cfg(feature = "with_client_implementation")]
+use crate::hub::Hub;
+use crate::scope::Scope;
 
-use hub::IntoBreadcrumbs;
-use internals;
-use protocol::{Event, Level};
+use crate::hub::IntoBreadcrumbs;
+use crate::internals;
+use crate::protocol::{Event, Level};
 
 /// Captures an event on the currently active client if any.
 ///
