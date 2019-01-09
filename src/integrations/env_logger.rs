@@ -19,7 +19,7 @@
 //! ```no_run
 //! # extern crate sentry;
 //! # extern crate pretty_env_logger;
-//! let mut log_builder = pretty_env_logger::formatted_builder().unwrap();
+//! let mut log_builder = pretty_env_logger::formatted_builder();
 //! log_builder.parse("info,foo=debug");
 //! sentry::integrations::env_logger::init(Some(log_builder.build()), Default::default());
 //! ```
