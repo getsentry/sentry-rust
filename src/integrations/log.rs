@@ -16,7 +16,7 @@
 //! ```no_run
 //! # extern crate sentry;
 //! # extern crate pretty_env_logger;
-//! let mut log_builder = pretty_env_logger::formatted_builder().unwrap();
+//! let mut log_builder = pretty_env_logger::formatted_builder();
 //! log_builder.parse("info");  // or env::var("RUST_LOG")
 //! let logger = log_builder.build();
 //! let options = sentry::integrations::log::LoggerOptions {
