@@ -122,7 +122,7 @@ mod findshlibs_support {
     }
 
     #[cfg(not(unix))]
-    pub fn find_build_id_from_binary(name: &CStr) -> Option<DebugId> {
+    pub fn find_build_id_from_binary(_name: &CStr) -> Option<DebugId> {
         None
     }
 
