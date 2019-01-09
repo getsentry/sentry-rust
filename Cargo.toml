@@ -89,3 +89,6 @@ name = "send-with-extra"
 
 [workspace]
 members = [".", "integrations/sentry-actix"]
+
+[patch.crates-io]
+findshlibs = { git = "https://github.com/getsentry/findshlibs", branch = "feature/add-is-code" }
