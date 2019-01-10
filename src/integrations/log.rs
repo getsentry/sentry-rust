@@ -171,7 +171,7 @@ pub fn event_from_record(record: &log::Record, with_stacktrace: bool) -> Event<'
 impl log::Log for Logger {
     fn enabled(&self, md: &log::Metadata) -> bool {
         if let Some(global_filter) = self.options.global_filter {
-            if md.level() < global_filter {
+            if md.level() > global_filter {
                 return false;
             }
         }
