@@ -27,7 +27,6 @@
 //! ```
 //!
 //! To capture fails and not errors use `capture_fail`.
-use failure;
 use failure::{Error, Fail};
 use regex::Regex;
 

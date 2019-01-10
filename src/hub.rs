@@ -1,22 +1,18 @@
 #![allow(unused)]
 
 use std::cell::{Cell, UnsafeCell};
-use std::iter;
 use std::mem::drop;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, RwLock, TryLockError};
 use std::thread;
 use std::time::Duration;
 
-#[cfg(feature = "with_client_implementation")]
-use crate::client::Client;
 use crate::internals::Uuid;
 use crate::protocol::{Breadcrumb, Event, Level};
-#[cfg(feature = "with_client_implementation")]
-use crate::scope::Stack;
 use crate::scope::{Scope, ScopeGuard};
+
 #[cfg(feature = "with_client_implementation")]
-use crate::utils::current_thread;
+use crate::{client::Client, scope::Stack, utils};
 
 #[cfg(feature = "with_client_implementation")]
 lazy_static! {
@@ -25,6 +21,7 @@ lazy_static! {
         thread::current().id()
     );
 }
+
 #[cfg(feature = "with_client_implementation")]
 thread_local! {
     static THREAD_HUB: UnsafeCell<Arc<Hub>> = UnsafeCell::new(
@@ -42,10 +39,10 @@ pub trait IntoBreadcrumbs {
 }
 
 impl IntoBreadcrumbs for Breadcrumb {
-    type Output = iter::Once<Breadcrumb>;
+    type Output = std::iter::Once<Breadcrumb>;
 
     fn into_breadcrumbs(self) -> Self::Output {
-        iter::once(self)
+        std::iter::once(self)
     }
 }
 
@@ -300,7 +297,7 @@ impl Hub {
                         ..Default::default()
                     };
                     if client.options().attach_stacktrace {
-                        let thread = current_thread(true);
+                        let thread = utils::current_thread(true);
                         if thread.stacktrace.is_some() {
                             event.threads.values.push(thread);
                         }

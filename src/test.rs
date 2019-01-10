@@ -18,16 +18,13 @@
 //! assert_eq!(events.len(), 1);
 //! assert_eq!(events[0].message.as_ref().unwrap(), "Hello World!");
 //! ```
-use std::mem;
-use std::sync::Arc;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use crate::client::ClientOptions;
 use crate::hub::Hub;
-use crate::transport::Transport;
-
 use crate::internals::Dsn;
 use crate::protocol::Event;
+use crate::transport::Transport;
 
 lazy_static! {
     static ref TEST_DSN: Dsn = "https://public@sentry.invalid/1".parse().unwrap();
@@ -66,7 +63,7 @@ impl TestTransport {
     /// Fetches and clears the contained events.
     pub fn fetch_and_clear_events(&self) -> Vec<Event<'static>> {
         let mut guard = self.collected.lock().unwrap();
-        mem::replace(&mut *guard, vec![])
+        std::mem::replace(&mut *guard, vec![])
     }
 }
 

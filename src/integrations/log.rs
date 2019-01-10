@@ -29,9 +29,6 @@
 //! For loggers based on `env_logger` (like `pretty_env_logger`) you can also
 //! use the [`env_logger`](../env_logger/index.html) integration which is
 //! much easier to use.
-use log;
-use std::cmp;
-
 use crate::api::add_breadcrumb;
 use crate::backtrace_support::current_stacktrace;
 use crate::hub::Hub;
@@ -81,7 +78,7 @@ impl LoggerOptions {
         } else {
             self.filter
         };
-        cmp::max(filter, self.issue_filter())
+        std::cmp::max(filter, self.issue_filter())
     }
 
     /// Returns the level for which issues should be created.

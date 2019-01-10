@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fmt;
 use std::panic::RefUnwindSafe;
@@ -13,12 +12,11 @@ use regex::Regex;
 use crate::backtrace_support::{function_starts_with, is_sys_function, trim_stacktrace};
 use crate::constants::{SDK_INFO, USER_AGENT};
 use crate::hub::Hub;
-use crate::internals::DsnParseError;
-use crate::internals::{Dsn, Uuid};
+use crate::internals::{Dsn, DsnParseError, Uuid};
 use crate::protocol::{Breadcrumb, DebugMeta, Event};
 use crate::scope::Scope;
 use crate::transport::{DefaultTransportFactory, Transport, TransportFactory};
-use crate::utils::{debug_images, server_name};
+use crate::utils;
 
 /// The Sentry client object.
 pub struct Client {
@@ -175,7 +173,7 @@ impl Default for ClientOptions {
     fn default() -> ClientOptions {
         ClientOptions {
             // any invalid dsn including the empty string disables the dsn
-            dsn: env::var("SENTRY_DSN")
+            dsn: std::env::var("SENTRY_DSN")
                 .ok()
                 .and_then(|dsn| dsn.parse::<Dsn>().ok()),
             transport: Box::new(DefaultTransportFactory),
@@ -190,15 +188,15 @@ impl Default for ClientOptions {
             } else {
                 "release".into()
             }),
-            server_name: server_name().map(Cow::Owned),
+            server_name: utils::server_name().map(Cow::Owned),
             sample_rate: 1.0,
             user_agent: Cow::Borrowed(&USER_AGENT),
-            http_proxy: env::var("http_proxy").ok().map(Cow::Owned),
-            https_proxy: env::var("https_proxy")
+            http_proxy: std::env::var("http_proxy").ok().map(Cow::Owned),
+            https_proxy: std::env::var("https_proxy")
                 .ok()
                 .map(Cow::Owned)
-                .or_else(|| env::var("HTTPS_PROXY").ok().map(Cow::Owned))
-                .or_else(|| env::var("http_proxy").ok().map(Cow::Owned)),
+                .or_else(|| std::env::var("HTTPS_PROXY").ok().map(Cow::Owned))
+                .or_else(|| std::env::var("http_proxy").ok().map(Cow::Owned)),
             shutdown_timeout: Duration::from_secs(2),
             debug: false,
             attach_stacktrace: false,
@@ -391,7 +389,7 @@ impl Client {
     ) -> Option<Event<'static>> {
         lazy_static! {
             static ref DEBUG_META: DebugMeta = DebugMeta {
-                images: debug_images(),
+                images: utils::debug_images(),
                 ..Default::default()
             };
         }

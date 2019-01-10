@@ -13,14 +13,14 @@
 //! ```
 //!
 //! Additionally panics are forwarded to the previously registered panic hook.
-use std::panic;
+use std::panic::{self, PanicInfo};
 
 use crate::backtrace_support::current_stacktrace;
 use crate::hub::Hub;
 use crate::protocol::{Event, Exception, Level};
 
 /// Extract the message of a panic.
-pub fn message_from_panic_info<'a>(info: &'a panic::PanicInfo) -> &'a str {
+pub fn message_from_panic_info<'a>(info: &'a PanicInfo) -> &'a str {
     match info.payload().downcast_ref::<&'static str>() {
         Some(s) => *s,
         None => match info.payload().downcast_ref::<String>() {
@@ -33,7 +33,7 @@ pub fn message_from_panic_info<'a>(info: &'a panic::PanicInfo) -> &'a str {
 /// Creates an event from the given panic info.
 ///
 /// The stacktrace is calculated from the current frame.
-pub fn event_from_panic_info(info: &panic::PanicInfo) -> Event<'static> {
+pub fn event_from_panic_info(info: &PanicInfo) -> Event<'static> {
     let msg = message_from_panic_info(info);
     Event {
         exception: vec![Exception {
@@ -53,7 +53,7 @@ pub fn event_from_panic_info(info: &panic::PanicInfo) -> Event<'static> {
 /// This panic handler report panics to Sentry.  It also attempts to prevent
 /// double faults in some cases where it's known to be unsafe to invoke the
 /// Sentry panic handler.
-pub fn panic_handler(info: &panic::PanicInfo) {
+pub fn panic_handler(info: &PanicInfo) {
     Hub::with_active(|hub| {
         hub.capture_event(event_from_panic_info(info));
     });

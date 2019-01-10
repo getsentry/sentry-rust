@@ -7,8 +7,6 @@ use crate::protocol::map::Entry;
 use crate::protocol::{Breadcrumb, Context, Event, Level, User, Value};
 use crate::utils;
 
-use im;
-
 lazy_static! {
     static ref CONTEXT_DEFAULTS: ContextDefaults = ContextDefaults {
         os: utils::os_context(),

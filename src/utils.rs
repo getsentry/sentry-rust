@@ -1,5 +1,4 @@
 //! Useful utilities for working with events.
-use std::mem;
 use std::thread;
 
 use crate::protocol::{
@@ -316,7 +315,7 @@ pub fn debug_images() -> Vec<DebugImage> {
 /// If `with_stack` is set to `true` the current stacktrace is
 /// attached.
 pub fn current_thread(with_stack: bool) -> Thread {
-    let thread_id: u64 = unsafe { mem::transmute(thread::current().id()) };
+    let thread_id: u64 = unsafe { std::mem::transmute(thread::current().id()) };
     Thread {
         id: Some(thread_id.to_string().into()),
         name: thread::current().name().map(|x| x.to_string()),

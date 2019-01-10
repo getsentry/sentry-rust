@@ -23,8 +23,6 @@
 //! log_builder.parse("info,foo=debug");
 //! sentry::integrations::env_logger::init(Some(log_builder.build()), Default::default());
 //! ```
-use env_logger;
-
 use crate::integrations::log::{self as sentry_log, LoggerOptions};
 
 /// Initializes the environment logger.

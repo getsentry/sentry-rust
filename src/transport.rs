@@ -5,8 +5,7 @@ use std::thread::{self, JoinHandle};
 use std::time::{Duration, SystemTime};
 
 use httpdate::parse_http_date;
-use reqwest::header::RETRY_AFTER;
-use reqwest::{Client, Proxy};
+use reqwest::{header::RETRY_AFTER, Client, Proxy};
 
 use crate::client::ClientOptions;
 use crate::internals::Dsn;
