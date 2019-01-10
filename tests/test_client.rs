@@ -1,3 +1,5 @@
+#![cfg(feature = "with_test_support")]
+
 use std::panic;
 use std::sync::Arc;
 
