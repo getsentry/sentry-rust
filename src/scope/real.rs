@@ -182,7 +182,7 @@ impl Scope {
     }
 
     /// Sets a tag to a specific value.
-    #[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
+    #[allow(clippy::needless_pass_by_value)]
     pub fn set_tag<V: ToString>(&mut self, key: &str, value: V) {
         self.tags.insert(key.to_string(), value.to_string());
     }
@@ -221,7 +221,7 @@ impl Scope {
     }
 
     /// Applies the contained scoped data to fill an event.
-    #[cfg_attr(feature = "cargo-clippy", allow(cyclomatic_complexity))]
+    #[allow(clippy::cyclomatic_complexity)]
     pub fn apply_to_event(&self, mut event: Event<'static>) -> Option<Event<'static>> {
         let mut add_os = true;
         let mut add_rust = true;

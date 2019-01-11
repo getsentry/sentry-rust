@@ -217,7 +217,7 @@ impl Hub {
 
     /// Binds a hub to the current thread for the duration of the call.
     #[cfg(feature = "with_client_implementation")]
-    #[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
+    #[allow(clippy::needless_pass_by_value)]
     pub fn run<F: FnOnce() -> R, R>(hub: Arc<Hub>, f: F) -> R {
         let mut restore_process_hub = false;
         let did_switch = THREAD_HUB.with(|ctx| unsafe {

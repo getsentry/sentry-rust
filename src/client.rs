@@ -350,7 +350,7 @@ impl Client {
     /// If the DSN on the options is set to `None` the client will be entirely
     /// disabled.
     pub fn with_options(options: ClientOptions) -> Client {
-        #[cfg_attr(feature = "cargo-clippy", allow(question_mark))]
+        #[allow(clippy::question_mark)]
         let transport = RwLock::new(if options.dsn.is_none() {
             None
         } else {
@@ -381,7 +381,7 @@ impl Client {
         }
     }
 
-    #[cfg_attr(feature = "cargo-clippy", allow(cyclomatic_complexity))]
+    #[allow(clippy::cyclomatic_complexity)]
     fn prepare_event(
         &self,
         mut event: Event<'static>,

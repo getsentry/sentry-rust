@@ -195,7 +195,7 @@ impl HttpTransport {
         let (sender, receiver) = sync_channel(30);
         let shutdown_signal = Arc::new(Condvar::new());
         let shutdown_immediately = Arc::new(AtomicBool::new(false));
-        #[cfg_attr(feature = "cargo-clippy", allow(mutex_atomic))]
+        #[allow(clippy::mutex_atomic)]
         let queue_size = Arc::new(Mutex::new(0));
         let mut client = Client::builder();
         if let Some(url) = http_proxy {
