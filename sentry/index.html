@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `sentry` crate."><meta name="keywords" content="rust, rustlang, rust-lang, sentry"><title>sentry - Rust</title><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../dark.css"><link rel="stylesheet" type="text/css" href="../light.css" id="themeStyle"><script src="../storage.js"></script></head><body class="rustdoc mod"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><p class='location'>Crate sentry</p><div class="sidebar-elems"><a id='all-types' href='all.html'><p>See all sentry's items</p></a><div class="block items"><ul><li><a href="#modules">Modules</a></li><li><a href="#macros">Macros</a></li><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#traits">Traits</a></li><li><a href="#functions">Functions</a></li></ul></div><p class='location'></p><script>window.sidebarCurrent = {name: 'sentry', ty: 'mod', relpath: '../'};</script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../theme.js"></script><nav class="sub"><form class="search-form js-only"><div class="search-container"><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><a id="settings-menu" href="../settings.html"><img src="../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><h1 class='fqn'><span class='out-of-band'><span id='render-detail'><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class='inner'>&#x2212;</span>]</a></span><a class='srclink' href='../src/sentry/lib.rs.html#1-180' title='goto source code'>[src]</a></span><span class='in-band'>Crate <a class="mod" href=''>sentry</a></span></h1><div class='docblock'><p style="margin: -10px 0 0 15px; padding: 0; float: right;">
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `sentry` crate."><meta name="keywords" content="rust, rustlang, rust-lang, sentry"><title>sentry - Rust</title><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../dark.css"><link rel="stylesheet" type="text/css" href="../light.css" id="themeStyle"><script src="../storage.js"></script></head><body class="rustdoc mod"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><p class='location'>Crate sentry</p><div class="sidebar-elems"><a id='all-types' href='all.html'><p>See all sentry's items</p></a><div class="block items"><ul><li><a href="#modules">Modules</a></li><li><a href="#macros">Macros</a></li><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#functions">Functions</a></li></ul></div><p class='location'></p><script>window.sidebarCurrent = {name: 'sentry', ty: 'mod', relpath: '../'};</script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../theme.js"></script><nav class="sub"><form class="search-form js-only"><div class="search-container"><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><a id="settings-menu" href="../settings.html"><img src="../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><h1 class='fqn'><span class='out-of-band'><span id='render-detail'><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class='inner'>&#x2212;</span>]</a></span><a class='srclink' href='../src/sentry/lib.rs.html#1-164' title='goto source code'>[src]</a></span><span class='in-band'>Crate <a class="mod" href=''>sentry</a></span></h1><div class='docblock'><p style="margin: -10px 0 0 15px; padding: 0; float: right;">
   <a href="https://sentry.io/"><img
     src="https://sentry-brand.storage.googleapis.com/sentry-logo-black.png"
     style="width: 260px"></a>
@@ -122,11 +122,18 @@ instead of printing to stderr when debug is enabled on the hub.</li>
                        </tr></table><h2 id='macros' class='section-header'><a href="#macros">Macros</a></h2>
 <table>
                        <tr class=' module-item'>
-                           <td><a class="macro" href="macro.sentry_crate_release.html"
-                                  title='macro sentry::sentry_crate_release'>sentry_crate_release</a></td>
+                           <td><a class="macro" href="macro.release_name.html"
+                                  title='macro sentry::release_name'>release_name</a></td>
                            <td class='docblock-short'>
                                 <p>Returns the intended release for Sentry as an <code>Option&lt;Cow&lt;'static, str&gt;&gt;</code>.</p>
 
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="macro" href="macro.sentry_crate_release.html"
+                                  title='macro sentry::sentry_crate_release'>sentry_crate_release</a></td>
+                           <td class='docblock-short'>
+                               [<div class='stab deprecated'>Deprecated</div>] 
                            </td>
                        </tr></table><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
 <table>
@@ -135,14 +142,6 @@ instead of printing to stderr when debug is enabled on the hub.</li>
                                   title='struct sentry::Breadcrumb'>Breadcrumb</a></td>
                            <td class='docblock-short'>
                                 <p>Represents a single breadcrumb.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.ChronoParseError.html"
-                                  title='struct sentry::ChronoParseError'>ChronoParseError</a></td>
-                           <td class='docblock-short'>
-                                <p>An error from the <code>parse</code> function.</p>
 
                            </td>
                        </tr>
@@ -163,42 +162,10 @@ instead of printing to stderr when debug is enabled on the hub.</li>
                            </td>
                        </tr>
                        <tr class=' module-item'>
-                           <td><a class="struct" href="struct.DateTime.html"
-                                  title='struct sentry::DateTime'>DateTime</a></td>
-                           <td class='docblock-short'>
-                                <p>ISO 8601 combined date and time with time zone.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.DebugId.html"
-                                  title='struct sentry::DebugId'>DebugId</a></td>
-                           <td class='docblock-short'>
-                                <p>Unique identifier for debug information files and their debug information.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.Dsn.html"
-                                  title='struct sentry::Dsn'>Dsn</a></td>
-                           <td class='docblock-short'>
-                                <p>Represents a Sentry dsn.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
                            <td><a class="struct" href="struct.Hub.html"
                                   title='struct sentry::Hub'>Hub</a></td>
                            <td class='docblock-short'>
                                 <p>The central object that can manages scopes and clients.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.ParseDebugIdError.html"
-                                  title='struct sentry::ParseDebugIdError'>ParseDebugIdError</a></td>
-                           <td class='docblock-short'>
-                                <p>Indicates a parsing error</p>
 
                            </td>
                        </tr>
@@ -217,23 +184,6 @@ instead of printing to stderr when debug is enabled on the hub.</li>
                                 <p>Represents user info.</p>
 
                            </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.Utc.html"
-                                  title='struct sentry::Utc'>Utc</a></td>
-                           <td class='docblock-short'>
-                                <p>The UTC time zone. This is the most efficient time zone when you don't need the local time.
-It is also used as an offset (which is also a dummy type).</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.Uuid.html"
-                                  title='struct sentry::Uuid'>Uuid</a></td>
-                           <td class='docblock-short'>
-                                <p>A Universally Unique Identifier (UUID).</p>
-
-                           </td>
                        </tr></table><h2 id='enums' class='section-header'><a href="#enums">Enums</a></h2>
 <table>
                        <tr class=' module-item'>
@@ -241,31 +191,6 @@ It is also used as an offset (which is also a dummy type).</p>
                                   title='enum sentry::Level'>Level</a></td>
                            <td class='docblock-short'>
                                 <p>Represents the level of severity of an event or breadcrumb.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="enum" href="enum.UuidVariant.html"
-                                  title='enum sentry::UuidVariant'>UuidVariant</a></td>
-                           <td class='docblock-short'>
-                                <p>The reserved variants of UUIDs.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="enum" href="enum.UuidVersion.html"
-                                  title='enum sentry::UuidVersion'>UuidVersion</a></td>
-                           <td class='docblock-short'>
-                                <p>The version of the UUID, denoting the generating algorithm.</p>
-
-                           </td>
-                       </tr></table><h2 id='traits' class='section-header'><a href="#traits">Traits</a></h2>
-<table>
-                       <tr class=' module-item'>
-                           <td><a class="trait" href="trait.TimeZone.html"
-                                  title='trait sentry::TimeZone'>TimeZone</a></td>
-                           <td class='docblock-short'>
-                                <p>The time zone.</p>
 
                            </td>
                        </tr></table><h2 id='functions' class='section-header'><a href="#functions">Functions</a></h2>

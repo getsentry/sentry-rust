@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `internals` mod in crate `sentry`."><meta name="keywords" content="rust, rustlang, rust-lang, internals"><title>sentry::internals - Rust</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css"><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script src="../../storage.js"></script></head><body class="rustdoc mod"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><p class='location'>Module internals</p><div class="sidebar-elems"><div class="block items"><ul><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#traits">Traits</a></li></ul></div><p class='location'><a href='../index.html'>sentry</a></p><script>window.sidebarCurrent = {name: 'internals', ty: 'mod', relpath: '../'};</script><script defer src="../sidebar-items.js"></script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../theme.js"></script><nav class="sub"><form class="search-form js-only"><div class="search-container"><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><a id="settings-menu" href="../../settings.html"><img src="../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><h1 class='fqn'><span class='out-of-band'><span id='render-detail'><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class='inner'>&#x2212;</span>]</a></span><a class='srclink' href='../../src/sentry/api.rs.html#24-32' title='goto source code'>[src]</a></span><span class='in-band'>Module <a href='../index.html'>sentry</a>::<wbr><a class="mod" href=''>internals</a></span></h1><div class='docblock'><p>Useful internals.</p>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `internals` mod in crate `sentry`."><meta name="keywords" content="rust, rustlang, rust-lang, internals"><title>sentry::internals - Rust</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css"><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script src="../../storage.js"></script></head><body class="rustdoc mod"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><p class='location'>Module internals</p><div class="sidebar-elems"><div class="block items"><ul><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#traits">Traits</a></li></ul></div><p class='location'><a href='../index.html'>sentry</a></p><script>window.sidebarCurrent = {name: 'internals', ty: 'mod', relpath: '../'};</script><script defer src="../sidebar-items.js"></script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../theme.js"></script><nav class="sub"><form class="search-form js-only"><div class="search-container"><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><a id="settings-menu" href="../../settings.html"><img src="../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><h1 class='fqn'><span class='out-of-band'><span id='render-detail'><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class='inner'>&#x2212;</span>]</a></span><a class='srclink' href='../../src/sentry/lib.rs.html#138-152' title='goto source code'>[src]</a></span><span class='in-band'>Module <a href='../index.html'>sentry</a>::<wbr><a class="mod" href=''>internals</a></span></h1><div class='docblock'><p>Useful internals.</p>
 <p>This module contains types that users of the create typically do not
 have to directly interface with directly.  These are often returned
 from methods on other types.</p>
@@ -13,10 +13,34 @@ from methods on other types.</p>
                            </td>
                        </tr>
                        <tr class=' module-item'>
+                           <td><a class="struct" href="struct.ChronoParseError.html"
+                                  title='struct sentry::internals::ChronoParseError'>ChronoParseError</a></td>
+                           <td class='docblock-short'>
+                                <p>An error from the <code>parse</code> function.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
                            <td><a class="struct" href="struct.ClientInitGuard.html"
                                   title='struct sentry::internals::ClientInitGuard'>ClientInitGuard</a></td>
                            <td class='docblock-short'>
                                 <p>Helper struct that is returned from <code>init</code>.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.DateTime.html"
+                                  title='struct sentry::internals::DateTime'>DateTime</a></td>
+                           <td class='docblock-short'>
+                                <p>ISO 8601 combined date and time with time zone.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.DebugId.html"
+                                  title='struct sentry::internals::DebugId'>DebugId</a></td>
+                           <td class='docblock-short'>
+                                <p>Unique identifier for debug information files and their debug information.</p>
 
                            </td>
                        </tr>
@@ -29,10 +53,26 @@ from methods on other types.</p>
                            </td>
                        </tr>
                        <tr class=' module-item'>
+                           <td><a class="struct" href="struct.Dsn.html"
+                                  title='struct sentry::internals::Dsn'>Dsn</a></td>
+                           <td class='docblock-short'>
+                                <p>Represents a Sentry dsn.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
                            <td><a class="struct" href="struct.HttpTransport.html"
                                   title='struct sentry::internals::HttpTransport'>HttpTransport</a></td>
                            <td class='docblock-short'>
                                 <p>A transport can send events via HTTP to sentry.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.ParseDebugIdError.html"
+                                  title='struct sentry::internals::ParseDebugIdError'>ParseDebugIdError</a></td>
+                           <td class='docblock-short'>
+                                <p>Indicates a parsing error</p>
 
                            </td>
                        </tr>
@@ -49,6 +89,23 @@ from methods on other types.</p>
                                   title='struct sentry::internals::ScopeGuard'>ScopeGuard</a></td>
                            <td class='docblock-short'>
                                 <p>A scope guard.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.Utc.html"
+                                  title='struct sentry::internals::Utc'>Utc</a></td>
+                           <td class='docblock-short'>
+                                <p>The UTC time zone. This is the most efficient time zone when you don't need the local time.
+It is also used as an offset (which is also a dummy type).</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.Uuid.html"
+                                  title='struct sentry::internals::Uuid'>Uuid</a></td>
+                           <td class='docblock-short'>
+                                <p>A Universally Unique Identifier (UUID).</p>
 
                            </td>
                        </tr></table><h2 id='enums' class='section-header'><a href="#enums">Enums</a></h2>
@@ -76,6 +133,22 @@ from methods on other types.</p>
                                 <p>Represents the scheme of an url http/https.</p>
 
                            </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="enum" href="enum.UuidVariant.html"
+                                  title='enum sentry::internals::UuidVariant'>UuidVariant</a></td>
+                           <td class='docblock-short'>
+                                <p>The reserved variants of UUIDs.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="enum" href="enum.UuidVersion.html"
+                                  title='enum sentry::internals::UuidVersion'>UuidVersion</a></td>
+                           <td class='docblock-short'>
+                                <p>The version of the UUID, denoting the generating algorithm.</p>
+
+                           </td>
                        </tr></table><h2 id='traits' class='section-header'><a href="#traits">Traits</a></h2>
 <table>
                        <tr class=' module-item'>
@@ -91,6 +164,14 @@ from methods on other types.</p>
                                   title='trait sentry::internals::IntoDsn'>IntoDsn</a></td>
                            <td class='docblock-short'>
                                 <p>Helper trait to convert a string into an <code>Option&lt;Dsn&gt;</code>.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="trait" href="trait.TimeZone.html"
+                                  title='trait sentry::internals::TimeZone'>TimeZone</a></td>
+                           <td class='docblock-short'>
+                                <p>The time zone.</p>
 
                            </td>
                        </tr>

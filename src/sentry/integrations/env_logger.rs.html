@@ -39,8 +39,6 @@
 <span id="39">39</span>
 <span id="40">40</span>
 <span id="41">41</span>
-<span id="42">42</span>
-<span id="43">43</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Adds support for automatic breadcrumb capturing from logs with `env_logger`.</span>
 <span class="doccomment">//!</span>
@@ -63,13 +61,11 @@
 <span class="doccomment">//! ```no_run</span>
 <span class="doccomment">//! # extern crate sentry;</span>
 <span class="doccomment">//! # extern crate pretty_env_logger;</span>
-<span class="doccomment">//! let mut log_builder = pretty_env_logger::formatted_builder().unwrap();</span>
+<span class="doccomment">//! let mut log_builder = pretty_env_logger::formatted_builder();</span>
 <span class="doccomment">//! log_builder.parse(&quot;info,foo=debug&quot;);</span>
 <span class="doccomment">//! sentry::integrations::env_logger::init(Some(log_builder.build()), Default::default());</span>
 <span class="doccomment">//! ```</span>
-<span class="kw">use</span> <span class="ident">env_logger</span>;
-
-<span class="kw">use</span> <span class="ident">integrations</span>::<span class="ident">log</span>::{<span class="self">self</span> <span class="kw">as</span> <span class="ident">sentry_log</span>, <span class="ident">LoggerOptions</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">integrations</span>::<span class="ident">log</span>::{<span class="self">self</span> <span class="kw">as</span> <span class="ident">sentry_log</span>, <span class="ident">LoggerOptions</span>};
 
 <span class="doccomment">/// Initializes the environment logger.</span>
 <span class="doccomment">///</span>
