@@ -1,5 +1,4 @@
-#[cfg(feature = "with_rust_info")]
-extern crate rustc_version;
+
 
 use std::env;
 use std::fs::File;

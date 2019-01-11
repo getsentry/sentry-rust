@@ -15,7 +15,7 @@ use crate::scope::{Scope, ScopeGuard};
 use crate::{client::Client, scope::Stack, utils};
 
 #[cfg(feature = "with_client_implementation")]
-lazy_static! {
+lazy_static::lazy_static! {
     static ref PROCESS_HUB: (Arc<Hub>, thread::ThreadId) = (
         Arc::new(Hub::new(None, Arc::new(Default::default()))),
         thread::current().id()

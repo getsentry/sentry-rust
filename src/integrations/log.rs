@@ -96,7 +96,7 @@ impl LoggerOptions {
     }
 
     /// Checks if an issue should be created.
-    fn create_issue_for_record(&self, record: &log::Record) -> bool {
+    fn create_issue_for_record(&self, record: &log::Record<'_>) -> bool {
         match record.level() {
             log::Level::Warn => self.emit_warning_events,
             log::Level::Error => self.emit_error_events,
@@ -107,7 +107,7 @@ impl LoggerOptions {
 
 /// Provides a dispatching logger.
 pub struct Logger {
-    dest: Option<Box<log::Log>>,
+    dest: Option<Box<dyn log::Log>>,
     options: LoggerOptions,
 }
 
@@ -116,7 +116,7 @@ impl Logger {
     ///
     /// It can just send to Sentry or additionally also send messages to another
     /// logger.
-    pub fn new(dest: Option<Box<log::Log>>, options: LoggerOptions) -> Logger {
+    pub fn new(dest: Option<Box<dyn log::Log>>, options: LoggerOptions) -> Logger {
         Logger { dest, options }
     }
 
@@ -126,13 +126,13 @@ impl Logger {
     }
 
     /// Returns the destination logger.
-    pub fn dest_log(&self) -> Option<&log::Log> {
+    pub fn dest_log(&self) -> Option<&dyn log::Log> {
         self.dest.as_ref().map(|x| &**x)
     }
 }
 
 /// Creates a breadcrumb from a given log record.
-pub fn breadcrumb_from_record(record: &log::Record) -> Breadcrumb {
+pub fn breadcrumb_from_record(record: &log::Record<'_>) -> Breadcrumb {
     Breadcrumb {
         ty: "log".into(),
         level: convert_log_level(record.level()),
@@ -146,7 +146,7 @@ pub fn breadcrumb_from_record(record: &log::Record) -> Breadcrumb {
 ///
 /// If `with_stacktrace` is set to `true` then a stacktrace is attached
 /// from the current frame.
-pub fn event_from_record(record: &log::Record, with_stacktrace: bool) -> Event<'static> {
+pub fn event_from_record(record: &log::Record<'_>, with_stacktrace: bool) -> Event<'static> {
     Event {
         logger: Some(record.target().into()),
         level: convert_log_level(record.level()),
@@ -166,7 +166,7 @@ pub fn event_from_record(record: &log::Record, with_stacktrace: bool) -> Event<'
 }
 
 impl log::Log for Logger {
-    fn enabled(&self, md: &log::Metadata) -> bool {
+    fn enabled(&self, md: &log::Metadata<'_>) -> bool {
         if let Some(global_filter) = self.options.global_filter {
             if md.level() > global_filter {
                 return false;
@@ -175,7 +175,7 @@ impl log::Log for Logger {
         md.level() <= self.options.filter || self.dest.as_ref().map_or(false, |x| x.enabled(md))
     }
 
-    fn log(&self, record: &log::Record) {
+    fn log(&self, record: &log::Record<'_>) {
         if self.options.create_issue_for_record(record) {
             Hub::with_active(|hub| hub.capture_event(event_from_record(record, true)));
         }
@@ -231,7 +231,7 @@ fn convert_log_level(level: log::Level) -> Level {
 ///
 /// (For using `env_logger` you can also use the `env_logger` integration
 /// which simplifies this).
-pub fn init(dest: Option<Box<log::Log>>, options: LoggerOptions) {
+pub fn init(dest: Option<Box<dyn log::Log>>, options: LoggerOptions) {
     let logger = Logger::new(dest, options);
     let filter = logger.options().effective_global_filter();
     if filter > log::max_level() {

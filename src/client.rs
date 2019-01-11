@@ -21,11 +21,11 @@ use crate::utils;
 /// The Sentry client object.
 pub struct Client {
     options: ClientOptions,
-    transport: RwLock<Option<Arc<Box<Transport>>>>,
+    transport: RwLock<Option<Arc<Box<dyn Transport>>>>,
 }
 
 impl fmt::Debug for Client {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Client")
             .field("dsn", &self.dsn())
             .field("options", &self.options)
@@ -43,7 +43,7 @@ impl Clone for Client {
 }
 
 /// Type alias for before event/breadcrumb handlers.
-pub type BeforeCallback<T> = Arc<Box<Fn(T) -> Option<T> + Send + Sync>>;
+pub type BeforeCallback<T> = Arc<Box<dyn Fn(T) -> Option<T> + Send + Sync>>;
 
 /// Configuration settings for the client.
 pub struct ClientOptions {
@@ -54,7 +54,7 @@ pub struct ClientOptions {
     /// This is typically either a boxed function taking the client options by
     /// reference and returning a `Transport`, a boxed `Arc<Transport>` or
     /// alternatively the `DefaultTransportFactory`.
-    pub transport: Box<TransportFactory>,
+    pub transport: Box<dyn TransportFactory>,
     /// module prefixes that are always considered in_app
     pub in_app_include: Vec<&'static str>,
     /// module prefixes that are never in_app
@@ -107,7 +107,7 @@ pub struct ClientOptions {
 impl RefUnwindSafe for ClientOptions {}
 
 impl fmt::Debug for ClientOptions {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         #[derive(Debug)]
         struct TransportFactory;
         #[derive(Debug)]
@@ -207,7 +207,7 @@ impl Default for ClientOptions {
     }
 }
 
-lazy_static! {
+lazy_static::lazy_static! {
     static ref CRATE_RE: Regex = Regex::new(r"^(?:_<)?([a-zA-Z0-9_]+?)(?:\.\.|::)").unwrap();
 }
 
@@ -385,7 +385,7 @@ impl Client {
         mut event: Event<'static>,
         scope: Option<&Scope>,
     ) -> Option<Event<'static>> {
-        lazy_static! {
+        lazy_static::lazy_static! {
             static ref DEBUG_META: DebugMeta = DebugMeta {
                 images: utils::debug_images(),
                 ..Default::default()

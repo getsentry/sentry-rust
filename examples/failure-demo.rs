@@ -1,9 +1,5 @@
-extern crate failure;
-#[macro_use]
-extern crate failure_derive;
-#[macro_use]
-extern crate sentry;
-
+use failure::Fail;
+use sentry::sentry_crate_release;
 use sentry::integrations::failure::capture_error;
 
 #[derive(Fail, Debug)]

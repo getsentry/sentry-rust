@@ -12,7 +12,7 @@ mod model_support {
     use regex::Regex;
     use std::ptr;
 
-    lazy_static! {
+    lazy_static::lazy_static! {
         static ref FAMILY_RE: Regex = Regex::new(r#"([a-zA-Z]+)\d"#).unwrap();
     }
 

@@ -74,10 +74,6 @@
 //! });
 //! # }
 //! ```
-extern crate actix_web;
-extern crate failure;
-extern crate fragile;
-extern crate sentry;
 
 use std::borrow::Cow;
 use std::cell::RefCell;
@@ -326,7 +322,7 @@ impl ActixWebHubExt for Hub {
 
     fn capture_actix_error(&self, err: &Error) -> Uuid {
         let mut exceptions = vec![];
-        let mut ptr: Option<&Fail> = Some(err.as_fail());
+        let mut ptr: Option<&dyn Fail> = Some(err.as_fail());
         let mut idx = 0;
         while let Some(fail) = ptr {
             // Check whether the failure::Fail held by err is a failure::Error wrapped in Compat

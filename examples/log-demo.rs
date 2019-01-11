@@ -1,7 +1,3 @@
-extern crate log;
-extern crate pretty_env_logger;
-extern crate sentry;
-
 use log::{debug, error, info, warn};
 use sentry::sentry_crate_release;
 

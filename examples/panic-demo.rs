@@ -1,5 +1,4 @@
-#[macro_use]
-extern crate sentry;
+use sentry::sentry_crate_release;
 
 fn main() {
     let _sentry = sentry::init((

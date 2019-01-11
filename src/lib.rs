@@ -106,82 +106,29 @@
 //! * `with_test_support`: enables the test support module
 #![warn(missing_docs)]
 
-#[cfg(feature = "with_backtrace")]
-extern crate backtrace;
-#[cfg(feature = "with_client_implementation")]
-extern crate im;
-#[cfg(any(
-    feature = "with_backtrace",
-    feature = "with_client_implementation",
-    feature = "with_failure",
-    feature = "with_device_info"
-))]
-#[macro_use]
-extern crate lazy_static;
-#[cfg(feature = "with_client_implementation")]
-extern crate httpdate;
-#[cfg(feature = "with_client_implementation")]
-extern crate reqwest;
-extern crate sentry_types;
-#[cfg(feature = "with_client_implementation")]
-extern crate url;
-
-#[cfg(feature = "with_device_info")]
-extern crate libc;
-
-#[cfg(feature = "with_device_info")]
-extern crate hostname;
-
-#[cfg(all(feature = "with_device_info", not(windows)))]
-extern crate uname;
-
-#[cfg(any(feature = "with_backtrace", feature = "with_device_info"))]
-extern crate regex;
-
-#[cfg(feature = "with_failure")]
-extern crate failure;
-
-#[cfg(feature = "with_error_chain")]
-extern crate error_chain;
-
-#[cfg(any(feature = "with_log", feature = "with_debug_to_log"))]
-#[cfg_attr(feature = "with_debug_to_log", macro_use)]
-extern crate log;
-
-#[cfg(feature = "with_env_logger")]
-extern crate env_logger;
-
-#[cfg(feature = "with_debug_meta")]
-extern crate findshlibs;
-
-#[cfg(all(feature = "with_debug_meta", unix))]
-extern crate memmap;
-
-#[cfg(all(feature = "with_debug_meta", unix))]
-extern crate goblin;
-
-extern crate rand;
-
 #[macro_use]
 mod macros;
 
 mod api;
-#[cfg(feature = "with_client_implementation")]
-mod client;
 mod hub;
 mod scope;
 
+pub mod integrations;
+
 #[cfg(feature = "with_backtrace")]
 mod backtrace_support;
+
+#[cfg(feature = "with_client_implementation")]
+mod client;
 #[cfg(feature = "with_client_implementation")]
 mod constants;
-pub mod integrations;
-#[cfg(any(test, feature = "with_test_support"))]
-pub mod test;
 #[cfg(feature = "with_client_implementation")]
 mod transport;
 #[cfg(feature = "with_client_implementation")]
 pub mod utils;
+
+#[cfg(any(test, feature = "with_test_support"))]
+pub mod test;
 
 /// Useful internals.
 ///
@@ -191,26 +138,27 @@ pub mod utils;
 pub mod internals {
     pub use crate::hub::IntoBreadcrumbs;
     pub use crate::scope::ScopeGuard;
+
     #[cfg(feature = "with_client_implementation")]
     pub use crate::{
         client::{ClientInitGuard, IntoDsn},
         transport::{DefaultTransportFactory, HttpTransport, Transport, TransportFactory},
     };
+
     pub use sentry_types::{
         Auth, ChronoParseError, DateTime, DebugId, Dsn, DsnParseError, ParseDebugIdError,
         ProjectId, ProjectIdParseError, Scheme, TimeZone, Utc, Uuid, UuidVariant, UuidVersion,
     };
 }
 
-/// Directly exposed apis.
+// public api or exports from this crate
 pub use crate::api::*;
+pub use crate::hub::Hub;
+pub use crate::scope::Scope;
+
+#[cfg(feature = "with_client_implementation")]
+pub use crate::client::{init, Client, ClientOptions};
 
 // public api from other crates
 pub use sentry_types::protocol::v7 as protocol;
 pub use sentry_types::protocol::v7::{Breadcrumb, Level, User};
-
-// public exports from this crate
-#[cfg(feature = "with_client_implementation")]
-pub use crate::client::{init, Client, ClientOptions};
-pub use crate::hub::Hub;
-pub use crate::scope::Scope;
