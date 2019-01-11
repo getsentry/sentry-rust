@@ -1,9 +1,11 @@
+#![cfg(feature = "with_test_support")]
+
 extern crate sentry;
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
-use sentry::Uuid;
+use sentry::internals::Uuid;
 
 #[test]
 fn test_basic_capture_message() {

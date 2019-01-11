@@ -1,4 +1,4 @@
-use api::protocol::{ClientSdkInfo, ClientSdkPackage};
+use crate::protocol::{ClientSdkInfo, ClientSdkPackage};
 
 /// The version of the library
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

@@ -79,16 +79,17 @@ extern crate failure;
 extern crate fragile;
 extern crate sentry;
 
+use std::borrow::Cow;
+use std::cell::RefCell;
+use std::sync::{Arc, Mutex};
+
 use actix_web::middleware::{Finished, Middleware, Response, Started};
 use actix_web::{Error, HttpMessage, HttpRequest, HttpResponse};
 use failure::Fail;
 use sentry::integrations::failure::exception_from_single_fail;
-use sentry::internals::ScopeGuard;
+use sentry::internals::{ScopeGuard, Uuid};
 use sentry::protocol::{ClientSdkPackage, Event, Level};
-use sentry::{Hub, Uuid};
-use std::borrow::Cow;
-use std::cell::RefCell;
-use std::sync::{Arc, Mutex};
+use sentry::Hub;
 
 /// A helper construct that can be used to reconfigure and build the middleware.
 pub struct SentryMiddlewareBuilder {

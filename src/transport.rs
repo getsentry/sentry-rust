@@ -5,12 +5,11 @@ use std::thread::{self, JoinHandle};
 use std::time::{Duration, SystemTime};
 
 use httpdate::parse_http_date;
-use reqwest::header::RETRY_AFTER;
-use reqwest::{Client, Proxy};
+use reqwest::{header::RETRY_AFTER, Client, Proxy};
 
-use api::protocol::Event;
-use client::ClientOptions;
-use Dsn;
+use crate::client::ClientOptions;
+use crate::internals::Dsn;
+use crate::protocol::Event;
 
 /// The trait for transports.
 ///
@@ -196,7 +195,7 @@ impl HttpTransport {
         let (sender, receiver) = sync_channel(30);
         let shutdown_signal = Arc::new(Condvar::new());
         let shutdown_immediately = Arc::new(AtomicBool::new(false));
-        #[cfg_attr(feature = "cargo-clippy", allow(mutex_atomic))]
+        #[allow(clippy::mutex_atomic)]
         let queue_size = Arc::new(Mutex::new(0));
         let mut client = Client::builder();
         if let Some(url) = http_proxy {

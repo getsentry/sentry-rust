@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fmt;
 use std::panic::RefUnwindSafe;
@@ -10,15 +9,14 @@ use std::time::Duration;
 use rand::random;
 use regex::Regex;
 
-use api::protocol::{Breadcrumb, DebugMeta, Event};
-use api::{Dsn, Uuid};
-use backtrace_support::{function_starts_with, is_sys_function, trim_stacktrace};
-use constants::{SDK_INFO, USER_AGENT};
-use hub::Hub;
-use internals::DsnParseError;
-use scope::Scope;
-use transport::{DefaultTransportFactory, Transport, TransportFactory};
-use utils::{debug_images, server_name};
+use crate::backtrace_support::{function_starts_with, is_sys_function, trim_stacktrace};
+use crate::constants::{SDK_INFO, USER_AGENT};
+use crate::hub::Hub;
+use crate::internals::{Dsn, DsnParseError, Uuid};
+use crate::protocol::{Breadcrumb, DebugMeta, Event};
+use crate::scope::Scope;
+use crate::transport::{DefaultTransportFactory, Transport, TransportFactory};
+use crate::utils;
 
 /// The Sentry client object.
 pub struct Client {
@@ -175,7 +173,7 @@ impl Default for ClientOptions {
     fn default() -> ClientOptions {
         ClientOptions {
             // any invalid dsn including the empty string disables the dsn
-            dsn: env::var("SENTRY_DSN")
+            dsn: std::env::var("SENTRY_DSN")
                 .ok()
                 .and_then(|dsn| dsn.parse::<Dsn>().ok()),
             transport: Box::new(DefaultTransportFactory),
@@ -190,15 +188,15 @@ impl Default for ClientOptions {
             } else {
                 "release".into()
             }),
-            server_name: server_name().map(Cow::Owned),
+            server_name: utils::server_name().map(Cow::Owned),
             sample_rate: 1.0,
             user_agent: Cow::Borrowed(&USER_AGENT),
-            http_proxy: env::var("http_proxy").ok().map(Cow::Owned),
-            https_proxy: env::var("https_proxy")
+            http_proxy: std::env::var("http_proxy").ok().map(Cow::Owned),
+            https_proxy: std::env::var("https_proxy")
                 .ok()
                 .map(Cow::Owned)
-                .or_else(|| env::var("HTTPS_PROXY").ok().map(Cow::Owned))
-                .or_else(|| env::var("http_proxy").ok().map(Cow::Owned)),
+                .or_else(|| std::env::var("HTTPS_PROXY").ok().map(Cow::Owned))
+                .or_else(|| std::env::var("http_proxy").ok().map(Cow::Owned)),
             shutdown_timeout: Duration::from_secs(2),
             debug: false,
             attach_stacktrace: false,
@@ -352,11 +350,9 @@ impl Client {
     /// If the DSN on the options is set to `None` the client will be entirely
     /// disabled.
     pub fn with_options(options: ClientOptions) -> Client {
-        #[cfg_attr(feature = "cargo-clippy", allow(question_mark))]
-        let transport = RwLock::new(if options.dsn.is_none() {
-            None
-        } else {
-            Some(Arc::new(options.transport.create_transport(&options)))
+        let transport = RwLock::new(match options.dsn {
+            Some(_) => Some(Arc::new(options.transport.create_transport(&options))),
+            None => None,
         });
         Client { options, transport }
     }
@@ -383,7 +379,7 @@ impl Client {
         }
     }
 
-    #[cfg_attr(feature = "cargo-clippy", allow(cyclomatic_complexity))]
+    #[allow(clippy::cyclomatic_complexity)]
     fn prepare_event(
         &self,
         mut event: Event<'static>,
@@ -391,7 +387,7 @@ impl Client {
     ) -> Option<Event<'static>> {
         lazy_static! {
             static ref DEBUG_META: DebugMeta = DebugMeta {
-                images: debug_images(),
+                images: utils::debug_images(),
                 ..Default::default()
             };
         }

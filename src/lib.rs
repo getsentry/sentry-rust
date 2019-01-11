@@ -183,4 +183,34 @@ mod transport;
 #[cfg(feature = "with_client_implementation")]
 pub mod utils;
 
-pub use api::*;
+/// Useful internals.
+///
+/// This module contains types that users of the create typically do not
+/// have to directly interface with directly.  These are often returned
+/// from methods on other types.
+pub mod internals {
+    pub use crate::hub::IntoBreadcrumbs;
+    pub use crate::scope::ScopeGuard;
+    #[cfg(feature = "with_client_implementation")]
+    pub use crate::{
+        client::{ClientInitGuard, IntoDsn},
+        transport::{DefaultTransportFactory, HttpTransport, Transport, TransportFactory},
+    };
+    pub use sentry_types::{
+        Auth, ChronoParseError, DateTime, DebugId, Dsn, DsnParseError, ParseDebugIdError,
+        ProjectId, ProjectIdParseError, Scheme, TimeZone, Utc, Uuid, UuidVariant, UuidVersion,
+    };
+}
+
+/// Directly exposed apis.
+pub use crate::api::*;
+
+// public api from other crates
+pub use sentry_types::protocol::v7 as protocol;
+pub use sentry_types::protocol::v7::{Breadcrumb, Level, User};
+
+// public exports from this crate
+#[cfg(feature = "with_client_implementation")]
+pub use crate::client::{init, Client, ClientOptions};
+pub use crate::hub::Hub;
+pub use crate::scope::Scope;

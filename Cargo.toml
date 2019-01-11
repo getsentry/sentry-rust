@@ -11,6 +11,7 @@ description = """
 Sentry (getsentry.com) client for rust ;)
 """
 build = "build.rs"
+autoexamples = true
 
 [package.metadata.docs.rs]
 all-features = true
@@ -66,26 +67,6 @@ actix-web = { version = "0.7.17", default-features = false }
 [[example]]
 name = "error-chain-demo"
 required-features = ["with_error_chain"]
-
-# TODO: Remove these once autoexamples are stable
-[[example]]
-name = "failure-demo"
-[[example]]
-name = "log-demo"
-[[example]]
-name = "message-demo"
-[[example]]
-name = "panic-demo"
-[[example]]
-name = "thread-demo"
-[[example]]
-name = "init-with-client"
-[[example]]
-name = "event-processors"
-[[example]]
-name = "before-send"
-[[example]]
-name = "send-with-extra"
 
 [workspace]
 members = [".", "integrations/sentry-actix"]

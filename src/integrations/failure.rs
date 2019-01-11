@@ -27,14 +27,13 @@
 //! ```
 //!
 //! To capture fails and not errors use `capture_fail`.
-use failure;
 use failure::{Error, Fail};
 use regex::Regex;
 
-use api::protocol::{Event, Exception, Frame, Level, Stacktrace};
-use api::Uuid;
-use backtrace_support::{demangle_symbol, error_typename, filename, strip_symbol};
-use hub::Hub;
+use crate::backtrace_support::{demangle_symbol, error_typename, filename, strip_symbol};
+use crate::hub::Hub;
+use crate::internals::Uuid;
+use crate::protocol::{Event, Exception, Frame, Level, Stacktrace};
 
 lazy_static! {
     static ref MODULE_SPLIT_RE: Regex = Regex::new(r"^(.*)::(.*?)$").unwrap();

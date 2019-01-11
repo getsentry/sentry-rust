@@ -18,12 +18,12 @@ We currently only verify this crate against a recent version of Sentry hosted on
 [sentry.io](https://sentry.io/) but it should work with on-prem Sentry versions
 8.20 and later.
 
-Additionally, the lowest Rust version we target is _1.24.0_.
+Additionally, the lowest Rust version we target is _1.31.0_.
 
 ## Resources
 
-* [crates.io](https://crates.io/crate/sentry)
-* [Documentation](https://docs.rs/sentry)
-* [Bug Tracker](https://github.com/getsentry/sentry-rust/issues)
-* [IRC](irc://chat.freenode.net/sentry) (chat.freenode.net, #sentry)
-* Follow [@getsentry](https://twitter.com/getsentry) on Twitter for updates
+- [crates.io](https://crates.io/crate/sentry)
+- [Documentation](https://docs.rs/sentry)
+- [Bug Tracker](https://github.com/getsentry/sentry-rust/issues)
+- [IRC](irc://chat.freenode.net/sentry) (chat.freenode.net, #sentry)
+- Follow [@getsentry](https://twitter.com/getsentry) on Twitter for updates
