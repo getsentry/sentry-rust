@@ -1,4 +1,3 @@
-use sentry::sentry_crate_release;
 use sentry::integrations::error_chain::capture_error_chain;
 
 error_chain::error_chain! {
@@ -21,7 +20,7 @@ fn main() {
                 .parse()
                 .unwrap(),
         ),
-        release: sentry_crate_release!(),
+        release: sentry::release_name!(),
         ..Default::default()
     });
 

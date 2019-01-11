@@ -1,8 +1,6 @@
 use std::sync::Arc;
 use std::thread;
 
-use sentry::sentry_crate_release;
-
 fn main() {
     // this initializes sentry.  It also gives the thread that calls this some
     // special behavior in that all other threads spawned will get a hub based on
@@ -10,7 +8,7 @@ fn main() {
     let _sentry = sentry::init((
         "https://a94ae32be2584e0bbd7a4cbb95971fee@sentry.io/1041156",
         sentry::ClientOptions {
-            release: sentry_crate_release!(),
+            release: sentry::release_name!(),
             ..Default::default()
         },
     ));
