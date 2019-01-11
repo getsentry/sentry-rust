@@ -84,7 +84,7 @@ format-check:
 
 lint:
 	@rustup component add clippy 2> /dev/null
-	@cargo clippy --all-features --tests --all --examples -- -D clippy
+	@cargo clippy --all-features --tests --all --examples -- -D clippy::all
 .PHONY: lint
 
 travis-push-docs:

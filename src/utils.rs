@@ -108,9 +108,7 @@ mod findshlibs_support {
             if let Some(note) = elf_obj
                 .iter_note_headers(&mmap)?
                 .filter_map(|note_result| note_result.ok())
-                .filter(|note| note.n_type == NT_GNU_BUILD_ID)
-                .filter(|note| note.desc.len() >= 16)
-                .next()
+                .find(|note| note.n_type == NT_GNU_BUILD_ID && note.desc.len() >= 16)
             {
                 // Can only fail if length of input is not 16
                 let build_id = from_be(Uuid::from_slice(&note.desc[0..16]).unwrap());

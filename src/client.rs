@@ -350,11 +350,9 @@ impl Client {
     /// If the DSN on the options is set to `None` the client will be entirely
     /// disabled.
     pub fn with_options(options: ClientOptions) -> Client {
-        #[allow(clippy::question_mark)]
-        let transport = RwLock::new(if options.dsn.is_none() {
-            None
-        } else {
-            Some(Arc::new(options.transport.create_transport(&options)))
+        let transport = RwLock::new(match options.dsn {
+            Some(_) => Some(Arc::new(options.transport.create_transport(&options))),
+            None => None,
         });
         Client { options, transport }
     }
