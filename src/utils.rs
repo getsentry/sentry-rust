@@ -241,7 +241,7 @@ pub fn os_context() -> Option<Context> {
     }
     #[cfg(all(feature = "with_device_info", windows))]
     {
-        use constants::PLATFORM;
+        use crate::constants::PLATFORM;
         Some(
             OsContext {
                 name: Some(PLATFORM.into()),
