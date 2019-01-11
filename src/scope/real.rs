@@ -7,7 +7,7 @@ use crate::protocol::map::Entry;
 use crate::protocol::{Breadcrumb, Context, Event, Level, User, Value};
 use crate::utils;
 
-lazy_static! {
+lazy_static::lazy_static! {
     static ref CONTEXT_DEFAULTS: ContextDefaults = ContextDefaults {
         os: utils::os_context(),
         rust: utils::rust_context(),
@@ -27,7 +27,7 @@ pub struct Stack {
     layers: Vec<StackLayer>,
 }
 
-pub type EventProcessor = Box<Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync>;
+pub type EventProcessor = Box<dyn Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync>;
 
 /// Holds contextual data for the current scope.
 ///
@@ -58,7 +58,7 @@ pub struct Scope {
 }
 
 impl fmt::Debug for Scope {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Scope")
             .field("level", &self.level)
             .field("fingerprint", &self.fingerprint)
@@ -133,7 +133,7 @@ impl Stack {
 pub struct ScopeGuard(pub(crate) Option<(Arc<RwLock<Stack>>, usize)>);
 
 impl fmt::Debug for ScopeGuard {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "ScopeGuard")
     }
 }
@@ -215,7 +215,7 @@ impl Scope {
     /// Add an event processor to the scope.
     pub fn add_event_processor(
         &mut self,
-        f: Box<Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync>,
+        f: Box<dyn Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync>,
     ) {
         self.event_processors.push_back(Arc::new(f));
     }

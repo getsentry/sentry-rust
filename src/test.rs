@@ -26,7 +26,7 @@ use crate::internals::Dsn;
 use crate::protocol::Event;
 use crate::transport::Transport;
 
-lazy_static! {
+lazy_static::lazy_static! {
     static ref TEST_DSN: Dsn = "https://public@sentry.invalid/1".parse().unwrap();
 }
 

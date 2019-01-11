@@ -4,7 +4,7 @@
 /// the information supplied by cargo to calculate a release.
 #[macro_export]
 #[cfg(feature = "with_client_implementation")]
-macro_rules! sentry_crate_release {
+macro_rules! release_name {
     () => {{
         use std::sync::{Once, ONCE_INIT};
         static mut INIT: Once = ONCE_INIT;
@@ -21,6 +21,15 @@ macro_rules! sentry_crate_release {
             })
         }
     }};
+}
+
+#[macro_export]
+#[cfg(feature = "with_client_implementation")]
+#[deprecated(since = "0.13.0", note = "use sentry::release_name! instead")]
+macro_rules! sentry_crate_release {
+    () => {
+        ::sentry::release_name!()
+    };
 }
 
 macro_rules! with_client_impl {
@@ -41,7 +50,7 @@ macro_rules! sentry_debug {
     ($($arg:tt)*) => {
         with_client_impl! {{
             #[cfg(feature = "with_debug_to_log")] {
-                debug!(target: "sentry", $($arg)*);
+                ::log::debug!(target: "sentry", $($arg)*);
             }
             #[cfg(not(feature = "with_debug_to_log"))] {
                 $crate::Hub::with(|hub| {

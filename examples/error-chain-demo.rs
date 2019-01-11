@@ -1,7 +1,5 @@
 #[macro_use]
 extern crate error_chain;
-#[macro_use]
-extern crate sentry;
 
 use sentry::integrations::error_chain::capture_error_chain;
 
@@ -25,7 +23,7 @@ fn main() {
                 .parse()
                 .unwrap(),
         ),
-        release: sentry_crate_release!(),
+        release: sentry::release_name!(),
         ..Default::default()
     });
 

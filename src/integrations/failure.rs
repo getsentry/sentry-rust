@@ -35,7 +35,7 @@ use crate::hub::Hub;
 use crate::internals::Uuid;
 use crate::protocol::{Event, Exception, Frame, Level, Stacktrace};
 
-lazy_static! {
+lazy_static::lazy_static! {
     static ref MODULE_SPLIT_RE: Regex = Regex::new(r"^(.*)::(.*?)$").unwrap();
     static ref FRAME_RE: Regex = Regex::new(
         r#"(?xm)
@@ -160,7 +160,7 @@ pub fn event_from_error(err: &failure::Error) -> Event<'static> {
 pub fn event_from_fail<F: Fail + ?Sized>(fail: &F) -> Event<'static> {
     let mut exceptions = vec![exception_from_single_fail(fail, fail.backtrace())];
 
-    let mut ptr: Option<&Fail> = None;
+    let mut ptr: Option<&dyn Fail> = None;
     while let Some(cause) = ptr.map(Fail::cause).unwrap_or_else(|| fail.cause()) {
         exceptions.push(exception_from_single_fail(cause, cause.backtrace()));
         ptr = Some(cause);
