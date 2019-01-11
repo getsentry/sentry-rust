@@ -69,26 +69,27 @@ mod model_support {
 mod findshlibs_support {
     use super::*;
 
+    use std::env;
+    use std::ffi::CStr;
+
     use findshlibs::{
         Segment, SharedLibrary, SharedLibraryId, TargetSharedLibrary, TARGET_SUPPORTED,
     };
 
-    use internals::Uuid;
-    use protocol::debugid::DebugId;
-    use protocol::SymbolicDebugImage;
-
-    use std::env;
-    use std::ffi::CStr;
+    use crate::internals::Uuid;
+    use crate::protocol::debugid::DebugId;
+    use crate::protocol::SymbolicDebugImage;
 
     #[cfg(unix)]
     pub fn find_build_id_from_binary(name: &CStr) -> Option<DebugId> {
-        use goblin::elf::note::NT_GNU_BUILD_ID;
-        use goblin::elf::Elf;
-        use memmap::Mmap;
         use std::ffi::OsStr;
         use std::fs::File;
         use std::os::unix::ffi::OsStrExt;
         use std::path::Path;
+
+        use goblin::elf::note::NT_GNU_BUILD_ID;
+        use goblin::elf::Elf;
+        use memmap::Mmap;
 
         fn from_be(id: Uuid) -> Uuid {
             let (a, b, c, d) = id.as_fields();

@@ -1,6 +1,6 @@
 use std::fmt;
 
-use protocol::{Context, Event, Level, User, Value};
+use crate::protocol::{Context, Event, Level, User, Value};
 
 /// The minimal scope.
 ///

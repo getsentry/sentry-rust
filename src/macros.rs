@@ -50,7 +50,7 @@ macro_rules! sentry_debug {
     ($($arg:tt)*) => {
         with_client_impl! {{
             #[cfg(feature = "with_debug_to_log")] {
-                debug!(target: "sentry", $($arg)*);
+                ::log::debug!(target: "sentry", $($arg)*);
             }
             #[cfg(not(feature = "with_debug_to_log"))] {
                 $crate::Hub::with(|hub| {
