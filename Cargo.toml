@@ -11,6 +11,7 @@ description = """
 Sentry (getsentry.com) client for rust ;)
 """
 build = "build.rs"
+edition = "2018"
 autoexamples = true
 
 [package.metadata.docs.rs]
