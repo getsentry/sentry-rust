@@ -107,6 +107,7 @@
 //! * `with_test_support`: enables the test support module
 //! * `with_reqwest_transport`: enables the reqwest transport explicitly.  This
 //!   is currently the default transport.
+//! * `with_curl_transport`: enables the curl transport.
 #![warn(missing_docs)]
 
 #[macro_use]
@@ -145,16 +146,29 @@ pub mod internals {
     #[cfg(feature = "with_client_implementation")]
     pub use crate::{
         client::{ClientInitGuard, IntoDsn},
-        transport::{DefaultTransportFactory, Transport, TransportFactory},
+        transport::{Transport, TransportFactory},
     };
-
-    #[cfg(feature = "with_reqwest_transport")]
-    pub use crate::transport::{HttpTransport, ReqwestHttpTransport};
 
     pub use sentry_types::{
         Auth, ChronoParseError, DateTime, DebugId, Dsn, DsnParseError, ParseDebugIdError,
         ProjectId, ProjectIdParseError, Scheme, TimeZone, Utc, Uuid, UuidVariant, UuidVersion,
     };
+}
+
+/// The provided transports.
+///
+/// This module exposes all transports that are compiled into the sentry
+/// library.  The `with_reqwest_transport` and `with_curl_transport` flags
+/// turn on these transports.
+pub mod transports {
+    #[cfg(any(feature = "with_reqwest_transport", feature = "with_curl_transport"))]
+    pub use crate::transport::{DefaultTransportFactory, HttpTransport};
+
+    #[cfg(feature = "with_reqwest_transport")]
+    pub use crate::transport::ReqwestHttpTransport;
+
+    #[cfg(feature = "with_curl_transport")]
+    pub use crate::transport::CurlHttpTransport;
 }
 
 // public api or exports from this crate

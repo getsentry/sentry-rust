@@ -1,9 +1,7 @@
 //! Useful utilities for working with events.
 use std::thread;
 
-use crate::protocol::{
-    Context, DebugImage, DeviceContext, Map, OsContext, RuntimeContext, Stacktrace, Thread,
-};
+use crate::protocol::{Context, DebugImage, Stacktrace, Thread};
 
 #[cfg(all(feature = "with_device_info", target_os = "macos"))]
 mod model_support {
@@ -230,7 +228,7 @@ pub fn os_context() -> Option<Context> {
         use uname::uname;
         if let Ok(info) = uname() {
             Some(
-                OsContext {
+                crate::protocol::OsContext {
                     name: Some(info.sysname),
                     kernel_version: Some(info.version),
                     version: Some(info.release),
@@ -246,7 +244,7 @@ pub fn os_context() -> Option<Context> {
     {
         use crate::constants::PLATFORM;
         Some(
-            OsContext {
+            crate::protocol::OsContext {
                 name: Some(PLATFORM.into()),
                 ..Default::default()
             }
@@ -264,11 +262,11 @@ pub fn rust_context() -> Option<Context> {
     #[cfg(feature = "with_device_info")]
     {
         use crate::constants::{RUSTC_CHANNEL, RUSTC_VERSION};
-        let ctx = RuntimeContext {
+        let ctx = crate::protocol::RuntimeContext {
             name: Some("rustc".into()),
             version: RUSTC_VERSION.map(|x| x.into()),
             other: {
-                let mut map = Map::default();
+                let mut map = crate::protocol::Map::default();
                 if let Some(channel) = RUSTC_CHANNEL {
                     map.insert("channel".to_string(), channel.into());
                 }
@@ -292,7 +290,7 @@ pub fn device_context() -> Option<Context> {
         let family = device_family();
         let arch = cpu_arch();
         Some(
-            DeviceContext {
+            crate::protocol::DeviceContext {
                 model,
                 family,
                 arch,
