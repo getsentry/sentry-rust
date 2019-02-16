@@ -26,6 +26,7 @@ macro_rules! release_name {
 #[macro_export]
 #[cfg(feature = "with_client_implementation")]
 #[deprecated(since = "0.13.0", note = "use sentry::release_name! instead")]
+#[doc(hidden)]
 macro_rules! sentry_crate_release {
     () => {
         ::sentry::release_name!()
