@@ -182,12 +182,17 @@ impl Default for ClientOptions {
             extra_border_frames: vec![],
             max_breadcrumbs: 100,
             trim_backtraces: true,
-            release: None,
-            environment: Some(if cfg!(debug_assertions) {
-                "debug".into()
-            } else {
-                "release".into()
-            }),
+            release: std::env::var("SENTRY_RELEASE").ok().map(Cow::Owned),
+            environment: std::env::var("SENTRY_ENVIRONMENT")
+                .ok()
+                .map(Cow::Owned)
+                .or_else(|| {
+                    Some(Cow::Borrowed(if cfg!(debug_assertions) {
+                        "debug"
+                    } else {
+                        "release"
+                    }))
+                }),
             server_name: utils::server_name().map(Cow::Owned),
             sample_rate: 1.0,
             user_agent: Cow::Borrowed(&USER_AGENT),
