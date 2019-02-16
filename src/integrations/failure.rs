@@ -29,7 +29,6 @@
 //! To capture fails and not errors use `capture_fail`.
 use failure::{Error, Fail};
 use regex::Regex;
-use std::fmt::Display;
 
 use crate::backtrace_support::{demangle_symbol, error_typename, filename, strip_symbol};
 use crate::hub::Hub;
