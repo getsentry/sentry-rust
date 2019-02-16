@@ -5,12 +5,11 @@ use std::thread::{self, JoinHandle};
 use std::time::{Duration, SystemTime};
 
 use httpdate::parse_http_date;
-use reqwest::header::RETRY_AFTER;
-use reqwest::{Client, Proxy};
+use reqwest::{header::RETRY_AFTER, Client, Proxy};
 
-use api::protocol::Event;
-use client::ClientOptions;
-use Dsn;
+use crate::client::ClientOptions;
+use crate::internals::Dsn;
+use crate::protocol::Event;
 
 /// The trait for transports.
 ///
@@ -33,11 +32,11 @@ pub trait Transport: Send + Sync + 'static {
 }
 
 pub trait InternalTransportFactoryClone {
-    fn clone_factory(&self) -> Box<TransportFactory>;
+    fn clone_factory(&self) -> Box<dyn TransportFactory>;
 }
 
 impl<T: 'static + TransportFactory + Clone> InternalTransportFactoryClone for T {
-    fn clone_factory(&self) -> Box<TransportFactory> {
+    fn clone_factory(&self) -> Box<dyn TransportFactory> {
         Box::new(self.clone())
     }
 }
@@ -57,14 +56,14 @@ impl<T: 'static + TransportFactory + Clone> InternalTransportFactoryClone for T 
 /// options and returning a boxed factory.
 pub trait TransportFactory: Send + Sync + InternalTransportFactoryClone {
     /// Given some options creates a transport.
-    fn create_transport(&self, options: &ClientOptions) -> Box<Transport>;
+    fn create_transport(&self, options: &ClientOptions) -> Box<dyn Transport>;
 }
 
 impl<F> TransportFactory for F
 where
-    F: Fn(&ClientOptions) -> Box<Transport> + Clone + Send + Sync + 'static,
+    F: Fn(&ClientOptions) -> Box<dyn Transport> + Clone + Send + Sync + 'static,
 {
-    fn create_transport(&self, options: &ClientOptions) -> Box<Transport> {
+    fn create_transport(&self, options: &ClientOptions) -> Box<dyn Transport> {
         (*self)(options)
     }
 }
@@ -80,7 +79,7 @@ impl<T: Transport> Transport for Arc<T> {
 }
 
 impl<T: Transport> TransportFactory for Arc<T> {
-    fn create_transport(&self, options: &ClientOptions) -> Box<Transport> {
+    fn create_transport(&self, options: &ClientOptions) -> Box<dyn Transport> {
         let _options = options;
         Box::new(self.clone())
     }
@@ -94,7 +93,7 @@ impl<T: Transport> TransportFactory for Arc<T> {
 pub struct DefaultTransportFactory;
 
 impl TransportFactory for DefaultTransportFactory {
-    fn create_transport(&self, options: &ClientOptions) -> Box<Transport> {
+    fn create_transport(&self, options: &ClientOptions) -> Box<dyn Transport> {
         Box::new(HttpTransport::new(options))
     }
 }
@@ -196,7 +195,7 @@ impl HttpTransport {
         let (sender, receiver) = sync_channel(30);
         let shutdown_signal = Arc::new(Condvar::new());
         let shutdown_immediately = Arc::new(AtomicBool::new(false));
-        #[cfg_attr(feature = "cargo-clippy", allow(mutex_atomic))]
+        #[allow(clippy::mutex_atomic)]
         let queue_size = Arc::new(Mutex::new(0));
         let mut client = Client::builder();
         if let Some(url) = http_proxy {

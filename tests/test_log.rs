@@ -1,4 +1,5 @@
-#[macro_use]
+#![cfg(feature = "with_test_support")]
+
 extern crate log;
 extern crate sentry;
 
@@ -11,8 +12,8 @@ fn test_log() {
             scope.set_tag("worker", "worker1");
         });
 
-        info!("Hello World!");
-        error!("Shit's on fire yo");
+        log::info!("Hello World!");
+        log::error!("Shit's on fire yo");
     });
 
     assert_eq!(events.len(), 1);

@@ -3,9 +3,9 @@ use std::fmt;
 use backtrace::Backtrace;
 use regex::{Captures, Regex};
 
-use api::protocol::{Frame, Stacktrace};
+use crate::protocol::{Frame, Stacktrace};
 
-lazy_static! {
+lazy_static::lazy_static! {
     static ref HASH_FUNC_RE: Regex = Regex::new(r#"(?x)
         ^(.*)::h[a-f0-9]{16}$
     "#).unwrap();
@@ -27,6 +27,7 @@ pub static ref WELL_KNOWN_SYS_MODULES: Vec<&'static str> = {
     }
     rv
 };
+
 pub static ref WELL_KNOWN_BORDER_FRAMES: Vec<&'static str> = {
     #[allow(unused_mut)]
     let mut rv = vec![
@@ -44,6 +45,7 @@ pub static ref WELL_KNOWN_BORDER_FRAMES: Vec<&'static str> = {
     }
     rv
 };
+
 pub static ref SECONDARY_BORDER_FRAMES: Vec<(&'static str, &'static str)> = {
     #![allow(unused_mut)]
     let mut rv = Vec::new();
@@ -74,7 +76,7 @@ pub fn strip_symbol(s: &str) -> &str {
 
 pub fn demangle_symbol(s: &str) -> String {
     COMMON_RUST_SYMBOL_ESCAPES_RE
-        .replace_all(s, |caps: &Captures| {
+        .replace_all(s, |caps: &Captures<'_>| {
             match &caps[1] {
                 "SP" => "@",
                 "BP" => "*",

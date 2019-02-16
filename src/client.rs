@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fmt;
 use std::panic::RefUnwindSafe;
@@ -10,24 +9,23 @@ use std::time::Duration;
 use rand::random;
 use regex::Regex;
 
-use api::protocol::{Breadcrumb, DebugMeta, Event};
-use api::{Dsn, Uuid};
-use backtrace_support::{function_starts_with, is_sys_function, trim_stacktrace};
-use constants::{SDK_INFO, USER_AGENT};
-use hub::Hub;
-use internals::DsnParseError;
-use scope::Scope;
-use transport::{DefaultTransportFactory, Transport, TransportFactory};
-use utils::{debug_images, server_name};
+use crate::backtrace_support::{function_starts_with, is_sys_function, trim_stacktrace};
+use crate::constants::{SDK_INFO, USER_AGENT};
+use crate::hub::Hub;
+use crate::internals::{Dsn, DsnParseError, Uuid};
+use crate::protocol::{Breadcrumb, DebugMeta, Event};
+use crate::scope::Scope;
+use crate::transport::{DefaultTransportFactory, Transport, TransportFactory};
+use crate::utils;
 
 /// The Sentry client object.
 pub struct Client {
     options: ClientOptions,
-    transport: RwLock<Option<Arc<Box<Transport>>>>,
+    transport: RwLock<Option<Arc<Box<dyn Transport>>>>,
 }
 
 impl fmt::Debug for Client {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Client")
             .field("dsn", &self.dsn())
             .field("options", &self.options)
@@ -45,7 +43,7 @@ impl Clone for Client {
 }
 
 /// Type alias for before event/breadcrumb handlers.
-pub type BeforeCallback<T> = Arc<Box<Fn(T) -> Option<T> + Send + Sync>>;
+pub type BeforeCallback<T> = Arc<Box<dyn Fn(T) -> Option<T> + Send + Sync>>;
 
 /// Configuration settings for the client.
 pub struct ClientOptions {
@@ -56,7 +54,7 @@ pub struct ClientOptions {
     /// This is typically either a boxed function taking the client options by
     /// reference and returning a `Transport`, a boxed `Arc<Transport>` or
     /// alternatively the `DefaultTransportFactory`.
-    pub transport: Box<TransportFactory>,
+    pub transport: Box<dyn TransportFactory>,
     /// module prefixes that are always considered in_app
     pub in_app_include: Vec<&'static str>,
     /// module prefixes that are never in_app
@@ -109,7 +107,7 @@ pub struct ClientOptions {
 impl RefUnwindSafe for ClientOptions {}
 
 impl fmt::Debug for ClientOptions {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         #[derive(Debug)]
         struct TransportFactory;
         #[derive(Debug)]
@@ -175,7 +173,7 @@ impl Default for ClientOptions {
     fn default() -> ClientOptions {
         ClientOptions {
             // any invalid dsn including the empty string disables the dsn
-            dsn: env::var("SENTRY_DSN")
+            dsn: std::env::var("SENTRY_DSN")
                 .ok()
                 .and_then(|dsn| dsn.parse::<Dsn>().ok()),
             transport: Box::new(DefaultTransportFactory),
@@ -190,15 +188,15 @@ impl Default for ClientOptions {
             } else {
                 "release".into()
             }),
-            server_name: server_name().map(Cow::Owned),
+            server_name: utils::server_name().map(Cow::Owned),
             sample_rate: 1.0,
             user_agent: Cow::Borrowed(&USER_AGENT),
-            http_proxy: env::var("http_proxy").ok().map(Cow::Owned),
-            https_proxy: env::var("https_proxy")
+            http_proxy: std::env::var("http_proxy").ok().map(Cow::Owned),
+            https_proxy: std::env::var("https_proxy")
                 .ok()
                 .map(Cow::Owned)
-                .or_else(|| env::var("HTTPS_PROXY").ok().map(Cow::Owned))
-                .or_else(|| env::var("http_proxy").ok().map(Cow::Owned)),
+                .or_else(|| std::env::var("HTTPS_PROXY").ok().map(Cow::Owned))
+                .or_else(|| std::env::var("http_proxy").ok().map(Cow::Owned)),
             shutdown_timeout: Duration::from_secs(2),
             debug: false,
             attach_stacktrace: false,
@@ -209,7 +207,7 @@ impl Default for ClientOptions {
     }
 }
 
-lazy_static! {
+lazy_static::lazy_static! {
     static ref CRATE_RE: Regex = Regex::new(r"^(?:_<)?([a-zA-Z0-9_]+?)(?:\.\.|::)").unwrap();
 }
 
@@ -352,11 +350,9 @@ impl Client {
     /// If the DSN on the options is set to `None` the client will be entirely
     /// disabled.
     pub fn with_options(options: ClientOptions) -> Client {
-        #[cfg_attr(feature = "cargo-clippy", allow(question_mark))]
-        let transport = RwLock::new(if options.dsn.is_none() {
-            None
-        } else {
-            Some(Arc::new(options.transport.create_transport(&options)))
+        let transport = RwLock::new(match options.dsn {
+            Some(_) => Some(Arc::new(options.transport.create_transport(&options))),
+            None => None,
         });
         Client { options, transport }
     }
@@ -383,15 +379,15 @@ impl Client {
         }
     }
 
-    #[cfg_attr(feature = "cargo-clippy", allow(cyclomatic_complexity))]
+    #[allow(clippy::cyclomatic_complexity)]
     fn prepare_event(
         &self,
         mut event: Event<'static>,
         scope: Option<&Scope>,
     ) -> Option<Event<'static>> {
-        lazy_static! {
+        lazy_static::lazy_static! {
             static ref DEBUG_META: DebugMeta = DebugMeta {
-                images: debug_images(),
+                images: utils::debug_images(),
                 ..Default::default()
             };
         }

@@ -1,30 +1,27 @@
 #![allow(unused)]
 
 use std::cell::{Cell, UnsafeCell};
-use std::iter;
 use std::mem::drop;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, RwLock, TryLockError};
 use std::thread;
 use std::time::Duration;
 
-use api::Uuid;
-#[cfg(feature = "with_client_implementation")]
-use client::Client;
-use protocol::{Breadcrumb, Event, Level};
-#[cfg(feature = "with_client_implementation")]
-use scope::Stack;
-use scope::{Scope, ScopeGuard};
-#[cfg(feature = "with_client_implementation")]
-use utils::current_thread;
+use crate::internals::Uuid;
+use crate::protocol::{Breadcrumb, Event, Level};
+use crate::scope::{Scope, ScopeGuard};
 
 #[cfg(feature = "with_client_implementation")]
-lazy_static! {
+use crate::{client::Client, scope::Stack, utils};
+
+#[cfg(feature = "with_client_implementation")]
+lazy_static::lazy_static! {
     static ref PROCESS_HUB: (Arc<Hub>, thread::ThreadId) = (
         Arc::new(Hub::new(None, Arc::new(Default::default()))),
         thread::current().id()
     );
 }
+
 #[cfg(feature = "with_client_implementation")]
 thread_local! {
     static THREAD_HUB: UnsafeCell<Arc<Hub>> = UnsafeCell::new(
@@ -42,10 +39,10 @@ pub trait IntoBreadcrumbs {
 }
 
 impl IntoBreadcrumbs for Breadcrumb {
-    type Output = iter::Once<Breadcrumb>;
+    type Output = std::iter::Once<Breadcrumb>;
 
     fn into_breadcrumbs(self) -> Self::Output {
-        iter::once(self)
+        std::iter::once(self)
     }
 }
 
@@ -220,7 +217,7 @@ impl Hub {
 
     /// Binds a hub to the current thread for the duration of the call.
     #[cfg(feature = "with_client_implementation")]
-    #[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
+    #[allow(clippy::needless_pass_by_value)]
     pub fn run<F: FnOnce() -> R, R>(hub: Arc<Hub>, f: F) -> R {
         let mut restore_process_hub = false;
         let did_switch = THREAD_HUB.with(|ctx| unsafe {
@@ -300,7 +297,7 @@ impl Hub {
                         ..Default::default()
                     };
                     if client.options().attach_stacktrace {
-                        let thread = current_thread(true);
+                        let thread = utils::current_thread(true);
                         if thread.stacktrace.is_some() {
                             event.threads.values.push(thread);
                         }

@@ -1,5 +1,3 @@
-extern crate sentry;
-
 fn main() {
     let client =
         sentry::Client::from_config("https://a94ae32be2584e0bbd7a4cbb95971fee@sentry.io/1041156");

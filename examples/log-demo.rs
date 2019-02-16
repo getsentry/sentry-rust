@@ -1,14 +1,10 @@
-#[macro_use]
-extern crate log;
-extern crate pretty_env_logger;
-#[macro_use]
-extern crate sentry;
+use log::{debug, error, info, warn};
 
 fn main() {
     let _sentry = sentry::init((
         "https://a94ae32be2584e0bbd7a4cbb95971fee@sentry.io/1041156",
         sentry::ClientOptions {
-            release: sentry_crate_release!(),
+            release: sentry::release_name!(),
             ..Default::default()
         },
     ));

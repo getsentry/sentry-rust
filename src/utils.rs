@@ -1,8 +1,7 @@
 //! Useful utilities for working with events.
-use std::mem;
 use std::thread;
 
-use api::protocol::{
+use crate::protocol::{
     Context, DebugImage, DeviceContext, Map, OsContext, RuntimeContext, Stacktrace, Thread,
 };
 
@@ -13,7 +12,7 @@ mod model_support {
     use regex::Regex;
     use std::ptr;
 
-    lazy_static! {
+    lazy_static::lazy_static! {
         static ref FAMILY_RE: Regex = Regex::new(r#"([a-zA-Z]+)\d"#).unwrap();
     }
 
@@ -70,26 +69,27 @@ mod model_support {
 mod findshlibs_support {
     use super::*;
 
+    use std::env;
+    use std::ffi::CStr;
+
     use findshlibs::{
         Segment, SharedLibrary, SharedLibraryId, TargetSharedLibrary, TARGET_SUPPORTED,
     };
 
-    use api::protocol::debugid::DebugId;
-    use api::protocol::SymbolicDebugImage;
-    use api::Uuid;
-
-    use std::env;
-    use std::ffi::CStr;
+    use crate::internals::Uuid;
+    use crate::protocol::debugid::DebugId;
+    use crate::protocol::SymbolicDebugImage;
 
     #[cfg(unix)]
     pub fn find_build_id_from_binary(name: &CStr) -> Option<DebugId> {
-        use goblin::elf::note::NT_GNU_BUILD_ID;
-        use goblin::elf::Elf;
-        use memmap::Mmap;
         use std::ffi::OsStr;
         use std::fs::File;
         use std::os::unix::ffi::OsStrExt;
         use std::path::Path;
+
+        use goblin::elf::note::NT_GNU_BUILD_ID;
+        use goblin::elf::Elf;
+        use memmap::Mmap;
 
         fn from_be(id: Uuid) -> Uuid {
             let (a, b, c, d) = id.as_fields();
@@ -109,9 +109,7 @@ mod findshlibs_support {
             if let Some(note) = elf_obj
                 .iter_note_headers(&mmap)?
                 .filter_map(|note_result| note_result.ok())
-                .filter(|note| note.n_type == NT_GNU_BUILD_ID)
-                .filter(|note| note.desc.len() >= 16)
-                .next()
+                .find(|note| note.n_type == NT_GNU_BUILD_ID && note.desc.len() >= 16)
             {
                 // Can only fail if length of input is not 16
                 let build_id = from_be(Uuid::from_slice(&note.desc[0..16]).unwrap());
@@ -208,7 +206,7 @@ pub fn device_family() -> Option<String> {
 
 /// Returns the CPU architecture.
 pub fn cpu_arch() -> Option<String> {
-    use constants::ARCH;
+    use crate::constants::ARCH;
     Some(ARCH.into())
 }
 
@@ -246,7 +244,7 @@ pub fn os_context() -> Option<Context> {
     }
     #[cfg(all(feature = "with_device_info", windows))]
     {
-        use constants::PLATFORM;
+        use crate::constants::PLATFORM;
         Some(
             OsContext {
                 name: Some(PLATFORM.into()),
@@ -265,7 +263,7 @@ pub fn os_context() -> Option<Context> {
 pub fn rust_context() -> Option<Context> {
     #[cfg(feature = "with_device_info")]
     {
-        use constants::{RUSTC_CHANNEL, RUSTC_VERSION};
+        use crate::constants::{RUSTC_CHANNEL, RUSTC_VERSION};
         let ctx = RuntimeContext {
             name: Some("rustc".into()),
             version: RUSTC_VERSION.map(|x| x.into()),
@@ -319,7 +317,7 @@ pub fn debug_images() -> Vec<DebugImage> {
 /// If `with_stack` is set to `true` the current stacktrace is
 /// attached.
 pub fn current_thread(with_stack: bool) -> Thread {
-    let thread_id: u64 = unsafe { mem::transmute(thread::current().id()) };
+    let thread_id: u64 = unsafe { std::mem::transmute(thread::current().id()) };
     Thread {
         id: Some(thread_id.to_string().into()),
         name: thread::current().name().map(|x| x.to_string()),
@@ -337,7 +335,7 @@ pub fn current_thread(with_stack: bool) -> Thread {
 pub fn current_stacktrace() -> Option<Stacktrace> {
     #[cfg(feature = "with_backtrace")]
     {
-        use backtrace_support::current_stacktrace;
+        use crate::backtrace_support::current_stacktrace;
         current_stacktrace()
     }
     #[cfg(not(feature = "with_backtrace"))]

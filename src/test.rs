@@ -18,18 +18,15 @@
 //! assert_eq!(events.len(), 1);
 //! assert_eq!(events[0].message.as_ref().unwrap(), "Hello World!");
 //! ```
-use std::mem;
-use std::sync::Arc;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
-use client::ClientOptions;
-use hub::Hub;
-use transport::Transport;
+use crate::client::ClientOptions;
+use crate::hub::Hub;
+use crate::internals::Dsn;
+use crate::protocol::Event;
+use crate::transport::Transport;
 
-use protocol::Event;
-use Dsn;
-
-lazy_static! {
+lazy_static::lazy_static! {
     static ref TEST_DSN: Dsn = "https://public@sentry.invalid/1".parse().unwrap();
 }
 
@@ -56,7 +53,7 @@ pub struct TestTransport {
 
 impl TestTransport {
     /// Creates a new test transport.
-    #[cfg_attr(feature = "cargo-clippy", allow(new_ret_no_self))]
+    #[allow(clippy::new_ret_no_self)]
     pub fn new() -> Arc<TestTransport> {
         Arc::new(TestTransport {
             collected: Mutex::new(vec![]),
@@ -66,7 +63,7 @@ impl TestTransport {
     /// Fetches and clears the contained events.
     pub fn fetch_and_clear_events(&self) -> Vec<Event<'static>> {
         let mut guard = self.collected.lock().unwrap();
-        mem::replace(&mut *guard, vec![])
+        std::mem::replace(&mut *guard, vec![])
     }
 }
 

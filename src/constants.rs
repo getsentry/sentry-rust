@@ -1,11 +1,11 @@
-use api::protocol::{ClientSdkInfo, ClientSdkPackage};
+use crate::protocol::{ClientSdkInfo, ClientSdkPackage};
 
 /// The version of the library
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 include!(concat!(env!("OUT_DIR"), "/constants.gen.rs"));
 
-lazy_static! {
+lazy_static::lazy_static! {
     pub static ref USER_AGENT: String = format!("sentry.rust/{}", VERSION);
     pub static ref SDK_INFO: ClientSdkInfo = ClientSdkInfo {
         name: "sentry-rust".into(),

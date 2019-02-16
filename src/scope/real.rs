@@ -2,14 +2,12 @@ use std::borrow::Cow;
 use std::fmt;
 use std::sync::{Arc, RwLock};
 
-use api::protocol::map::Entry;
-use api::protocol::{Breadcrumb, Context, Event, Level, User, Value};
-use client::Client;
-use utils;
+use crate::client::Client;
+use crate::protocol::map::Entry;
+use crate::protocol::{Breadcrumb, Context, Event, Level, User, Value};
+use crate::utils;
 
-use im;
-
-lazy_static! {
+lazy_static::lazy_static! {
     static ref CONTEXT_DEFAULTS: ContextDefaults = ContextDefaults {
         os: utils::os_context(),
         rust: utils::rust_context(),
@@ -29,7 +27,7 @@ pub struct Stack {
     layers: Vec<StackLayer>,
 }
 
-pub type EventProcessor = Box<Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync>;
+pub type EventProcessor = Box<dyn Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync>;
 
 /// Holds contextual data for the current scope.
 ///
@@ -60,7 +58,7 @@ pub struct Scope {
 }
 
 impl fmt::Debug for Scope {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Scope")
             .field("level", &self.level)
             .field("fingerprint", &self.fingerprint)
@@ -135,7 +133,7 @@ impl Stack {
 pub struct ScopeGuard(pub(crate) Option<(Arc<RwLock<Stack>>, usize)>);
 
 impl fmt::Debug for ScopeGuard {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "ScopeGuard")
     }
 }
@@ -184,7 +182,7 @@ impl Scope {
     }
 
     /// Sets a tag to a specific value.
-    #[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
+    #[allow(clippy::needless_pass_by_value)]
     pub fn set_tag<V: ToString>(&mut self, key: &str, value: V) {
         self.tags.insert(key.to_string(), value.to_string());
     }
@@ -217,13 +215,13 @@ impl Scope {
     /// Add an event processor to the scope.
     pub fn add_event_processor(
         &mut self,
-        f: Box<Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync>,
+        f: Box<dyn Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync>,
     ) {
         self.event_processors.push_back(Arc::new(f));
     }
 
     /// Applies the contained scoped data to fill an event.
-    #[cfg_attr(feature = "cargo-clippy", allow(cyclomatic_complexity))]
+    #[allow(clippy::cyclomatic_complexity)]
     pub fn apply_to_event(&self, mut event: Event<'static>) -> Option<Event<'static>> {
         let mut add_os = true;
         let mut add_rust = true;

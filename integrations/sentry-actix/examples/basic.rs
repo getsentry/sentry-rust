@@ -1,7 +1,3 @@
-extern crate actix_web;
-extern crate sentry;
-extern crate sentry_actix;
-
 use std::env;
 use std::io;
 

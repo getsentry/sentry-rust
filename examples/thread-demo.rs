@@ -1,9 +1,3 @@
-#[macro_use]
-extern crate log;
-extern crate pretty_env_logger;
-#[macro_use]
-extern crate sentry;
-
 use std::sync::Arc;
 use std::thread;
 
@@ -14,7 +8,7 @@ fn main() {
     let _sentry = sentry::init((
         "https://a94ae32be2584e0bbd7a4cbb95971fee@sentry.io/1041156",
         sentry::ClientOptions {
-            release: sentry_crate_release!(),
+            release: sentry::release_name!(),
             ..Default::default()
         },
     ));
@@ -25,12 +19,12 @@ fn main() {
     sentry::integrations::panic::register_panic_handler();
 
     // the log integration sends to Hub::current()
-    info!("Spawning thread");
+    log::info!("Spawning thread");
 
     thread::spawn(|| {
         // The thread spawned here gets a new hub cloned from the hub of the
         // main thread.
-        info!("Spawned thread, configuring scope.");
+        log::info!("Spawned thread, configuring scope.");
 
         // now we want to create a new hub based on the thread's normal hub for
         // working with it explicitly.
@@ -47,7 +41,7 @@ fn main() {
             sentry::Hub::run(hub, || {
                 // the log integration picks up the Hub::current which is now bound
                 // to the outer hub.
-                error!("Failing!");
+                log::error!("Failing!");
             });
         })
         .join()

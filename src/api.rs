@@ -1,35 +1,10 @@
-use api::protocol::Event;
-
-// public api from other crates
-pub use sentry_types::protocol::v7 as protocol;
-pub use sentry_types::protocol::v7::{Breadcrumb, Level, User};
-pub use sentry_types::{
-    ChronoParseError, DateTime, DebugId, Dsn, ParseDebugIdError, TimeZone, Utc, Uuid, UuidVariant,
-    UuidVersion,
-};
-
-// public exports from this crate
 #[cfg(feature = "with_client_implementation")]
-pub use client::{init, Client, ClientOptions};
-pub use hub::Hub;
-pub use scope::Scope;
+use crate::hub::Hub;
+use crate::scope::Scope;
 
-use hub::IntoBreadcrumbs;
-
-/// Useful internals.
-///
-/// This module contains types that users of the create typically do not
-/// have to directly interface with directly.  These are often returned
-/// from methods on other types.
-pub mod internals {
-    #[cfg(feature = "with_client_implementation")]
-    pub use client::{ClientInitGuard, IntoDsn};
-    pub use hub::IntoBreadcrumbs;
-    pub use scope::ScopeGuard;
-    pub use sentry_types::{Auth, DsnParseError, ProjectId, ProjectIdParseError, Scheme};
-    #[cfg(feature = "with_client_implementation")]
-    pub use transport::{DefaultTransportFactory, HttpTransport, Transport, TransportFactory};
-}
+use crate::hub::IntoBreadcrumbs;
+use crate::internals;
+use crate::protocol::{Event, Level};
 
 /// Captures an event on the currently active client if any.
 ///
@@ -50,7 +25,7 @@ pub mod internals {
 /// });
 /// ```
 #[allow(unused_variables)]
-pub fn capture_event(event: Event<'static>) -> Uuid {
+pub fn capture_event(event: Event<'static>) -> internals::Uuid {
     with_client_impl! {{
         Hub::with(|hub| hub.capture_event(event))
     }}
@@ -60,7 +35,7 @@ pub fn capture_event(event: Event<'static>) -> Uuid {
 ///
 /// This creates an event form the given message and sends it to the current hub.
 #[allow(unused_variables)]
-pub fn capture_message(msg: &str, level: Level) -> Uuid {
+pub fn capture_message(msg: &str, level: Level) -> internals::Uuid {
     with_client_impl! {{
         Hub::with_active(|hub| {
             hub.capture_message(msg, level)
@@ -189,7 +164,7 @@ where
 }
 
 /// Returns the last event ID captured.
-pub fn last_event_id() -> Option<Uuid> {
+pub fn last_event_id() -> Option<internals::Uuid> {
     with_client_impl! {{
         Hub::with_active(|hub| {
             hub.last_event_id()

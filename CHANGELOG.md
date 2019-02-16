@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.13.0
+
+**Breaking Change**: This release requires Rust 1.31 or newer.
+
+- Upgrade the logger integration to `env_logger:0.6`
+- Support debug identifiers of loaded images on Linux (#114)
+- Update `sentry-types` to the latest version
+- Fix `log::log_enabled!` when log integration is active
+
 ## 0.12.1
 
 - Resolve a memory leak in the actix integration.

@@ -1,9 +1,4 @@
-extern crate failure;
-#[macro_use]
-extern crate failure_derive;
-#[macro_use]
-extern crate sentry;
-
+use failure::Fail;
 use sentry::integrations::failure::capture_error;
 
 #[derive(Fail, Debug)]
@@ -25,7 +20,7 @@ fn main() {
     let _sentry = sentry::init((
         "https://a94ae32be2584e0bbd7a4cbb95971fee@sentry.io/1041156",
         sentry::ClientOptions {
-            release: sentry_crate_release!(),
+            release: sentry::release_name!(),
             ..Default::default()
         },
     ));
