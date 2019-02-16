@@ -34,7 +34,8 @@ pub fn message_from_panic_info<'a>(info: &'a PanicInfo<'_>) -> &'a str {
 ///
 /// The stacktrace is calculated from the current frame.
 pub fn event_from_panic_info(info: &PanicInfo<'_>) -> Event<'static> {
-    #[cfg(feature = "with_failure")] {
+    #[cfg(feature = "with_failure")]
+    {
         use crate::integrations::failure::event_from_error;
         use failure::Error;
 
