@@ -146,6 +146,9 @@ mod findshlibs_support {
             let mut highest_addr = 0;
 
             for seg in shlib.segments() {
+                if !seg.is_code() {
+                    continue;
+                }
                 let svma: u64 = seg.stated_virtual_memory_address().0 as u64;
                 let avma: u64 = seg.actual_virtual_memory_address(shlib).0 as u64;
                 if lowest_addr > avma {
