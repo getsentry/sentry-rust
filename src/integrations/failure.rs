@@ -219,7 +219,7 @@ pub trait FailureResultExt {
 
 impl<T, E> FailureResultExt for Result<T, E>
 where
-    E: Into<Error>
+    E: Into<Error>,
 {
     type Value = T;
     fn fallible_unwrap(self) -> Self::Value {
