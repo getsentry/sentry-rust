@@ -205,3 +205,29 @@ impl FailureHubExt for Hub {
         self.capture_event(event_from_fail(fail))
     }
 }
+
+/// Extension trait providing methods to unwrap a result, preserving backtraces from the
+/// underlying error in the event of a panic.
+pub trait FailureResultExt {
+    /// Type of the success case
+    type Value;
+    /// Unwraps the result, panicking if it contains an error. Any backtrace attached to the
+    /// error will be preserved with the panic.
+    fn fallible_unwrap(self) -> Self::Value;
+}
+
+impl<T, E> FailureResultExt for Result<T, E>
+where
+    E: Into<Error>,
+{
+    type Value = T;
+    fn fallible_unwrap(self) -> Self::Value {
+        match self {
+            Ok(v) => v,
+            Err(e) => {
+                let e: Error = e.into();
+                panic!(e)
+            }
+        }
+    }
+}

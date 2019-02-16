@@ -34,6 +34,19 @@ pub fn message_from_panic_info<'a>(info: &'a PanicInfo<'_>) -> &'a str {
 ///
 /// The stacktrace is calculated from the current frame.
 pub fn event_from_panic_info(info: &PanicInfo<'_>) -> Event<'static> {
+    #[cfg(feature = "with_failure")]
+    {
+        use crate::integrations::failure::event_from_error;
+        use failure::Error;
+
+        if let Some(e) = info.payload().downcast_ref::<Error>() {
+            return Event {
+                level: Level::Fatal,
+                ..event_from_error(e)
+            };
+        }
+    }
+
     let msg = message_from_panic_info(info);
     Event {
         exception: vec![Exception {
