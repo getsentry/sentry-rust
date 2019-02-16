@@ -337,14 +337,14 @@ implement_http_transport! {
                 handle.url(&url).unwrap();
                 handle.custom_request("POST").unwrap();
 
-                if dsn.scheme() == Scheme::Https {
-                    if let Some(ref proxy) = https_proxy {
+                match (dsn.scheme(), &http_proxy, &https_proxy) {
+                    (Scheme::Https, _, &Some(ref proxy)) => {
                         handle.proxy(&proxy).unwrap();
                     }
-                } else {
-                    if let Some(ref proxy) = http_proxy {
+                    (_, &Some(ref proxy), _) => {
                         handle.proxy(&proxy).unwrap();
                     }
+                    _ => {}
                 }
 
                 let body = serde_json::to_vec(&event).unwrap();
