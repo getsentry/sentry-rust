@@ -89,6 +89,7 @@
 //! default flags:
 //!
 //! * `with_client_implementation`: turns on the real client implementation.
+//! * `with_default_transport`: compiles in the default HTTP transport.
 //! * `with_backtrace`: enables backtrace support (automatically turned on in a few cases)
 //! * `with_panic`: enables the panic integration
 //! * `with_failure`: enables the `failure` integration
@@ -104,6 +105,8 @@
 //!
 //! * `with_error_chain`: enables the error-chain integration
 //! * `with_test_support`: enables the test support module
+//! * `with_reqwest_transport`: enables the reqwest transport explicitly.  This
+//!   is currently the default transport.
 #![warn(missing_docs)]
 
 #[macro_use]
@@ -142,8 +145,11 @@ pub mod internals {
     #[cfg(feature = "with_client_implementation")]
     pub use crate::{
         client::{ClientInitGuard, IntoDsn},
-        transport::{DefaultTransportFactory, HttpTransport, Transport, TransportFactory},
+        transport::{DefaultTransportFactory, Transport, TransportFactory},
     };
+
+    #[cfg(feature = "with_reqwest_transport")]
+    pub use crate::transport::{HttpTransport, ReqwestHttpTransport};
 
     pub use sentry_types::{
         Auth, ChronoParseError, DateTime, DebugId, Dsn, DsnParseError, ParseDebugIdError,

@@ -4,8 +4,11 @@ use std::sync::{Arc, Condvar, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, SystemTime};
 
-use httpdate::parse_http_date;
-use reqwest::{header::RETRY_AFTER, Client, Proxy};
+#[cfg(feature = "with_reqwest_transport")]
+use {
+    httpdate::parse_http_date,
+    reqwest::{header::RETRY_AFTER, Client, Proxy},
+};
 
 use crate::client::ClientOptions;
 use crate::internals::Dsn;
@@ -88,19 +91,34 @@ impl<T: Transport> TransportFactory for Arc<T> {
 /// Creates the default HTTP transport.
 ///
 /// This is the default value for `transport` on the client options.  It
-/// creates a `HttpTransport`.
+/// creates a `HttpTransport`.  If no http transport was compiled into the
+/// library it will panic on transport creation.
 #[derive(Clone)]
 pub struct DefaultTransportFactory;
 
 impl TransportFactory for DefaultTransportFactory {
     fn create_transport(&self, options: &ClientOptions) -> Box<dyn Transport> {
-        Box::new(HttpTransport::new(options))
+        #[cfg(feature = "with_reqwest_transport")]
+        {
+            Box::new(HttpTransport::new(options))
+        }
+        #[cfg(not(feature = "with_reqwest_transport"))]
+        {
+            panic!(
+                "sentry crate was compiled without transport, enable at \
+                 least with_default_transport for default implementation."
+            )
+        }
     }
 }
 
-/// A transport can send events via HTTP to sentry.
+/// A transport can send events via HTTP to sentry via `reqwest`.
+///
+/// When the `with_default_transport` feature is enabled this will currently
+/// be the default transport.
+#[cfg(feature = "with_reqwest_transport")]
 #[derive(Debug)]
-pub struct HttpTransport {
+pub struct ReqwestHttpTransport {
     dsn: Dsn,
     sender: Mutex<SyncSender<Option<Event<'static>>>>,
     shutdown_signal: Arc<Condvar>,
@@ -109,6 +127,7 @@ pub struct HttpTransport {
     _handle: Option<JoinHandle<()>>,
 }
 
+#[cfg(feature = "with_reqwest_transport")]
 fn parse_retry_after(s: &str) -> Option<SystemTime> {
     if let Ok(value) = s.parse::<f64>() {
         Some(SystemTime::now() + Duration::from_secs(value.ceil() as u64))
@@ -119,6 +138,7 @@ fn parse_retry_after(s: &str) -> Option<SystemTime> {
     }
 }
 
+#[cfg(feature = "with_reqwest_transport")]
 fn spawn_http_sender(
     client: Client,
     receiver: Receiver<Option<Event<'static>>>,
@@ -184,9 +204,10 @@ fn spawn_http_sender(
     })
 }
 
-impl HttpTransport {
+#[cfg(feature = "with_reqwest_transport")]
+impl ReqwestHttpTransport {
     /// Creates a new transport.
-    pub fn new(options: &ClientOptions) -> HttpTransport {
+    pub fn new(options: &ClientOptions) -> ReqwestHttpTransport {
         let dsn = options.dsn.clone().unwrap();
         let user_agent = options.user_agent.to_string();
         let http_proxy = options.http_proxy.as_ref().map(|x| x.to_string());
@@ -213,7 +234,7 @@ impl HttpTransport {
             queue_size.clone(),
             user_agent,
         ));
-        HttpTransport {
+        ReqwestHttpTransport {
             dsn,
             sender: Mutex::new(sender),
             shutdown_signal,
@@ -224,7 +245,8 @@ impl HttpTransport {
     }
 }
 
-impl Transport for HttpTransport {
+#[cfg(feature = "with_reqwest_transport")]
+impl Transport for ReqwestHttpTransport {
     fn send_event(&self, event: Event<'static>) {
         // we count up before we put the item on the queue and in case the
         // queue is filled with too many items or we shut down, we decrement
@@ -249,7 +271,8 @@ impl Transport for HttpTransport {
     }
 }
 
-impl Drop for HttpTransport {
+#[cfg(feature = "with_reqwest_transport")]
+impl Drop for ReqwestHttpTransport {
     fn drop(&mut self) {
         sentry_debug!("dropping http transport");
         self.shutdown_immediately.store(true, Ordering::SeqCst);
@@ -258,3 +281,7 @@ impl Drop for HttpTransport {
         }
     }
 }
+
+/// The default http transport.
+#[cfg(feature = "with_reqwest_transport")]
+pub type HttpTransport = ReqwestHttpTransport;
