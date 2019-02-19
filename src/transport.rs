@@ -232,59 +232,61 @@ implement_http_transport! {
 
         let mut disabled = SystemTime::now();
 
-        thread::spawn(move || {
-            sentry_debug!("spawning reqwest transport");
-            let url = dsn.store_api_url().to_string();
+        thread::Builder::new()
+            .name("sentry-transport".to_string())
+            .spawn(move || {
+                sentry_debug!("spawning reqwest transport");
+                let url = dsn.store_api_url().to_string();
 
-            while let Some(event) = receiver.recv().unwrap_or(None) {
-                // on drop we want to not continue processing the queue.
-                if shutdown_immediately.load(Ordering::SeqCst) {
-                    let mut size = queue_size.lock().unwrap();
-                    *size = 0;
-                    signal.notify_all();
-                    break;
-                }
+                while let Some(event) = receiver.recv().unwrap_or(None) {
+                    // on drop we want to not continue processing the queue.
+                    if shutdown_immediately.load(Ordering::SeqCst) {
+                        let mut size = queue_size.lock().unwrap();
+                        *size = 0;
+                        signal.notify_all();
+                        break;
+                    }
 
-                // while we are disabled due to rate limits, skip
-                let now = SystemTime::now();
-                if let Ok(time_left) = disabled.duration_since(now) {
-                    sentry_debug!(
-                        "Skipping event send because we're disabled due to rate limits for {}s",
-                        time_left.as_secs()
-                    );
-                    continue;
-                }
+                    // while we are disabled due to rate limits, skip
+                    let now = SystemTime::now();
+                    if let Ok(time_left) = disabled.duration_since(now) {
+                        sentry_debug!(
+                            "Skipping event send because we're disabled due to rate limits for {}s",
+                            time_left.as_secs()
+                        );
+                        continue;
+                    }
 
-                match client
-                    .post(url.as_str())
-                    .json(&event)
-                    .header("X-Sentry-Auth", dsn.to_auth(Some(&user_agent)).to_string())
-                    .send()
-                {
-                    Ok(resp) => {
-                        if resp.status() == 429 {
-                            if let Some(retry_after) = resp
-                                .headers()
-                                .get(RETRY_AFTER)
-                                .and_then(|x| x.to_str().ok())
-                                .and_then(parse_retry_after)
-                            {
-                                disabled = retry_after;
+                    match client
+                        .post(url.as_str())
+                        .json(&event)
+                        .header("X-Sentry-Auth", dsn.to_auth(Some(&user_agent)).to_string())
+                        .send()
+                    {
+                        Ok(resp) => {
+                            if resp.status() == 429 {
+                                if let Some(retry_after) = resp
+                                    .headers()
+                                    .get(RETRY_AFTER)
+                                    .and_then(|x| x.to_str().ok())
+                                    .and_then(parse_retry_after)
+                                {
+                                    disabled = retry_after;
+                                }
                             }
                         }
+                        Err(err) => {
+                            sentry_debug!("Failed to send event: {}", err);
+                        }
                     }
-                    Err(err) => {
-                        sentry_debug!("Failed to send event: {}", err);
-                    }
-                }
 
-                let mut size = queue_size.lock().unwrap();
-                *size -= 1;
-                if *size == 0 {
-                    signal.notify_all();
+                    let mut size = queue_size.lock().unwrap();
+                    *size -= 1;
+                    if *size == 0 {
+                        signal.notify_all();
+                    }
                 }
-            }
-        })
+            }).unwrap()
     }
 }
 

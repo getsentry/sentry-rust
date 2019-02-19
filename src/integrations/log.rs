@@ -41,12 +41,15 @@ pub struct LoggerOptions {
     pub global_filter: Option<log::LevelFilter>,
     /// The sentry specific log level filter (defaults to `Info`)
     pub filter: log::LevelFilter,
-    /// If set to `true`, breadcrumbs are emitted. (defaults to `true`)
+    /// If set to `true`, breadcrumbs will be emitted. (defaults to `true`)
     pub emit_breadcrumbs: bool,
-    /// If set to `true` error events are sent for errors in the log. (defaults to `true`)
+    /// If set to `true` error events will be sent for errors in the log. (defaults to `true`)
     pub emit_error_events: bool,
-    /// If set to `true` warning events are sent for warnings in the log. (defaults to `false`)
+    /// If set to `true` warning events will be sent for warnings in the log. (defaults to `false`)
     pub emit_warning_events: bool,
+    /// If set to `true` current stacktrace will be resolved and attached
+    /// to each event. (expensive, defaults to `true`)
+    pub attach_stacktraces: bool,
 }
 
 impl Default for LoggerOptions {
@@ -57,6 +60,7 @@ impl Default for LoggerOptions {
             emit_breadcrumbs: true,
             emit_error_events: true,
             emit_warning_events: false,
+            attach_stacktraces: true,
         }
     }
 }
@@ -177,9 +181,11 @@ impl log::Log for Logger {
 
     fn log(&self, record: &log::Record<'_>) {
         if self.options.create_issue_for_record(record) {
-            Hub::with_active(|hub| hub.capture_event(event_from_record(record, true)));
+            Hub::with_active(|hub| {
+                hub.capture_event(event_from_record(record, self.options.attach_stacktraces))
+            });
         }
-        if record.level() <= self.options.filter {
+        if self.options.emit_breadcrumbs && record.level() <= self.options.filter {
             add_breadcrumb(|| breadcrumb_from_record(record))
         }
         if let Some(ref log) = self.dest {
