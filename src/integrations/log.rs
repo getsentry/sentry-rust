@@ -181,8 +181,9 @@ impl log::Log for Logger {
 
     fn log(&self, record: &log::Record<'_>) {
         if self.options.create_issue_for_record(record) {
-            Hub::with_active(|hub| hub.capture_event(
-                event_from_record(record, self.options.attach_stacktraces)));
+            Hub::with_active(|hub| {
+                hub.capture_event(event_from_record(record, self.options.attach_stacktraces))
+            });
         }
         if self.options.emit_breadcrumbs && record.level() <= self.options.filter {
             add_breadcrumb(|| breadcrumb_from_record(record))
