@@ -28,6 +28,7 @@ matrix:
     - os: osx
       env: SUITE=cargotestall
     - env: SUITE=travis-push-docs
+      if: branch = master
 
 notifications:
   webhooks:
