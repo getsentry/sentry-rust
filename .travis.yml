@@ -28,7 +28,7 @@ matrix:
     - os: osx
       env: SUITE=cargotestall
     - env: SUITE=travis-push-docs
-      if: branch = master
+      script: make $SUITE || [[ ! "$TRAVIS_BRANCH" =~ ^release/ ]]
 
 notifications:
   webhooks:
