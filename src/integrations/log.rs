@@ -179,7 +179,7 @@ impl log::Log for Logger {
         if self.options.create_issue_for_record(record) {
             Hub::with_active(|hub| hub.capture_event(event_from_record(record, true)));
         }
-        if record.level() <= self.options.filter {
+        if self.options.emit_breadcrumbs && record.level() <= self.options.filter {
             add_breadcrumb(|| breadcrumb_from_record(record))
         }
         if let Some(ref log) = self.dest {
