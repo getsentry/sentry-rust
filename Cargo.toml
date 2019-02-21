@@ -18,8 +18,11 @@ autoexamples = true
 all-features = true
 
 [features]
-default = ["with_client_implementation", "with_panic", "with_failure", "with_log", "with_env_logger", "with_device_info", "with_rust_info"]
-with_client_implementation = ["reqwest", "im", "url", "with_backtrace"]
+default = ["with_client_implementation", "with_default_transport", "with_panic", "with_failure", "with_log", "with_env_logger", "with_device_info", "with_rust_info"]
+with_reqwest_transport = ["reqwest", "httpdate", "with_client_implementation"]
+with_curl_transport = ["curl", "httpdate", "serde_json", "with_client_implementation"]
+with_default_transport = ["with_reqwest_transport"]
+with_client_implementation = ["im", "url", "with_backtrace"]
 with_backtrace = ["backtrace", "regex"]
 with_panic = ["with_backtrace"]
 with_failure = ["failure", "with_backtrace"]
@@ -48,7 +51,9 @@ libc = { version = "0.2.48", optional = true }
 hostname = { version = "0.1.5", optional = true }
 findshlibs = { version = "0.4.1", optional = true }
 rand = "0.6.5"
-httpdate = "0.3.2"
+httpdate = { version = "0.3.2", optional = true }
+curl = { version = "0.4.19", optional = true }
+serde_json = { version = "1.0.38", optional = true }
 
 [target."cfg(not(windows))".dependencies]
 uname = { version = "0.1.1", optional = true }

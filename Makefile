@@ -53,6 +53,13 @@ check-all-impls:
 	@RUSTFLAGS=-Dwarnings cargo check --no-default-features --features 'with_failure,with_log,with_panic,with_error_chain'
 .PHONY: check-all-impls
 
+check-curl-transport:
+	@echo 'CURL TRANSPORT'
+	@RUSTFLAGS=-Dwarnings cargo check --features with_curl_transport
+	@echo 'CURL TRANSPORT ONLY'
+	@RUSTFLAGS=-Dwarnings cargo check --no-default-features --features 'with_curl_transport,with_client_implementation,with_panic'
+.PHONY: check-curl-transport
+
 check-actix:
 	@echo 'ACTIX INTEGRATION'
 	@RUSTFLAGS=-Dwarnings cargo check --manifest-path integrations/sentry-actix/Cargo.toml
@@ -61,7 +68,7 @@ check-actix:
 check: check-no-default-features check-default-features
 .PHONY: check-all-features
 
-checkall: check-all-features check-no-default-features check-default-features check-failure check-log check-panic check-error-chain check-all-impls check-actix
+checkall: check-all-features check-no-default-features check-default-features check-failure check-log check-panic check-error-chain check-all-impls check-curl-transport check-actix
 .PHONY: checkall
 
 cargotest:
