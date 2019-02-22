@@ -312,7 +312,7 @@ implement_http_transport! {
         let http_proxy = options.http_proxy.as_ref().map(|x| x.to_string());
         let https_proxy = options.https_proxy.as_ref().map(|x| x.to_string());
 
-        let mut disabled = SystemTime::now();
+        let mut disabled = None::<SystemTime>;
         let mut handle = curl::easy::Easy::new();
 
         thread::spawn(move || {
@@ -329,13 +329,16 @@ implement_http_transport! {
                 }
 
                 // while we are disabled due to rate limits, skip
-                let now = SystemTime::now();
-                if let Ok(time_left) = disabled.duration_since(now) {
-                    sentry_debug!(
-                        "Skipping event send because we're disabled due to rate limits for {}s",
-                        time_left.as_secs()
-                    );
-                    continue;
+                if let Some(ts) = disabled {
+                    if let Ok(time_left) = ts.duration_since(SystemTime::now()) {
+                        sentry_debug!(
+                            "Skipping event send because we're disabled due to rate limits for {}s",
+                            time_left.as_secs()
+                        );
+                        continue;
+                    } else {
+                        disabled = None;
+                    }
                 }
 
                 handle.reset();
@@ -397,7 +400,7 @@ implement_http_transport! {
                             .map(|x| x.as_str())
                             .and_then(parse_retry_after)
                         {
-                            disabled = retry_after;
+                            disabled = Some(retry_after);
                         }
                     }
                     Ok(200) | Ok(201) => {}
