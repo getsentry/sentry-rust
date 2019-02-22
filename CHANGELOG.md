@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.14.2
+
+- Fixed a potential issue where an event might have been dropped if it was sent
+  right after the curl transport was created.
+
 ## 0.14.1
 
 - Fixed an issue where turning off the http transports would cause a compile error.
@@ -11,10 +16,10 @@
 - Added support for panicking with failure errors.
 - Added `attach_stacktraces` configuration option to logging integration
 - Fixed a bug where `emit_breadcrumbs` was incorrectly handled.
-- Restructured the transport system. You can now disbale the builtin HTTP
+- Restructured the transport system. You can now disable the builtin HTTP
   reqwest based transport or opt for the curl transport.
 - Fixed a potential issue where an event might have been dropped if it was sent
-  right after the transport was created.
+  right after the reqwest transport was created.
 - Added support for server side symbolication for linux platforms.
 
 ## 0.13.0
