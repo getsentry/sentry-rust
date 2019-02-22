@@ -593,6 +593,9 @@ pub struct Mechanism {
     /// An optional flag indicating whether this exception was handled.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub handled: Option<bool>,
+    /// An optional flag indicating a synthetic exception.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub synthetic: Option<bool>,
     /// Additional attributes depending on the mechanism type.
     #[serde(default, skip_serializing_if = "Map::is_empty")]
     pub data: Map<String, Value>,
