@@ -426,4 +426,5 @@ type DefaultTransport = ReqwestHttpTransport;
 type DefaultTransport = CurlHttpTransport;
 
 /// The default http transport.
+#[cfg(any(feature = "with_reqwest_transport", feature = "with_curl_transport"))]
 pub type HttpTransport = DefaultTransport;
