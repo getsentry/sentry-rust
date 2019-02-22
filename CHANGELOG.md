@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.14.1
+
+- Fixed an issue where turning off the http transports would cause a compile error.
+
 ## 0.14.0
 
 - Added support for reading `SENTRY_ENVIRONMENT` and `SENTRY_RELEASE` environment
