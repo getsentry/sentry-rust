@@ -230,7 +230,7 @@ implement_http_transport! {
         };
         let client = client.build().unwrap();
 
-        let mut disabled = SystemTime::now();
+        let mut disabled = None::<SystemTime>;
 
         thread::Builder::new()
             .name("sentry-transport".to_string())
@@ -248,13 +248,16 @@ implement_http_transport! {
                     }
 
                     // while we are disabled due to rate limits, skip
-                    let now = SystemTime::now();
-                    if let Ok(time_left) = disabled.duration_since(now) {
-                        sentry_debug!(
-                            "Skipping event send because we're disabled due to rate limits for {}s",
-                            time_left.as_secs()
-                        );
-                        continue;
+                    if let Some(ts) = disabled {
+                        if let Ok(time_left) = ts.duration_since(SystemTime::now()) {
+                            sentry_debug!(
+                                "Skipping event send because we're disabled due to rate limits for {}s",
+                                time_left.as_secs()
+                            );
+                            continue;
+                        } else {
+                            disabled = None;
+                        }
                     }
 
                     match client
@@ -271,7 +274,7 @@ implement_http_transport! {
                                     .and_then(|x| x.to_str().ok())
                                     .and_then(parse_retry_after)
                                 {
-                                    disabled = retry_after;
+                                    disabled = Some(retry_after);
                                 }
                             }
                         }
