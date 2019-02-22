@@ -428,6 +428,9 @@
 <span id="428">428</span>
 <span id="429">429</span>
 <span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">atomic</span>::{<span class="ident">AtomicBool</span>, <span class="ident">Ordering</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">mpsc</span>::{<span class="ident">sync_channel</span>, <span class="ident">Receiver</span>, <span class="ident">SyncSender</span>};
@@ -743,7 +746,7 @@
         <span class="kw">let</span> <span class="ident">http_proxy</span> <span class="op">=</span> <span class="ident">options</span>.<span class="ident">http_proxy</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">to_string</span>());
         <span class="kw">let</span> <span class="ident">https_proxy</span> <span class="op">=</span> <span class="ident">options</span>.<span class="ident">https_proxy</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">to_string</span>());
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">disabled</span> <span class="op">=</span> <span class="ident">SystemTime</span>::<span class="ident">now</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">disabled</span> <span class="op">=</span> <span class="prelude-val">None</span>::<span class="op">&lt;</span><span class="ident">SystemTime</span><span class="op">&gt;</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">handle</span> <span class="op">=</span> <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">Easy</span>::<span class="ident">new</span>();
 
         <span class="ident">thread</span>::<span class="ident">spawn</span>(<span class="kw">move</span> <span class="op">||</span> {
@@ -760,13 +763,16 @@
                 }
 
                 <span class="comment">// while we are disabled due to rate limits, skip</span>
-                <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">SystemTime</span>::<span class="ident">now</span>();
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">time_left</span>) <span class="op">=</span> <span class="ident">disabled</span>.<span class="ident">duration_since</span>(<span class="ident">now</span>) {
-                    <span class="macro">sentry_debug</span><span class="macro">!</span>(
-                        <span class="string">&quot;Skipping event send because we&#39;re disabled due to rate limits for {}s&quot;</span>,
-                        <span class="ident">time_left</span>.<span class="ident">as_secs</span>()
-                    );
-                    <span class="kw">continue</span>;
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">ts</span>) <span class="op">=</span> <span class="ident">disabled</span> {
+                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">time_left</span>) <span class="op">=</span> <span class="ident">ts</span>.<span class="ident">duration_since</span>(<span class="ident">SystemTime</span>::<span class="ident">now</span>()) {
+                        <span class="macro">sentry_debug</span><span class="macro">!</span>(
+                            <span class="string">&quot;Skipping event send because we&#39;re disabled due to rate limits for {}s&quot;</span>,
+                            <span class="ident">time_left</span>.<span class="ident">as_secs</span>()
+                        );
+                        <span class="kw">continue</span>;
+                    } <span class="kw">else</span> {
+                        <span class="ident">disabled</span> <span class="op">=</span> <span class="prelude-val">None</span>;
+                    }
                 }
 
                 <span class="ident">handle</span>.<span class="ident">reset</span>();
@@ -828,7 +834,7 @@
                             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">as_str</span>())
                             .<span class="ident">and_then</span>(<span class="ident">parse_retry_after</span>)
                         {
-                            <span class="ident">disabled</span> <span class="op">=</span> <span class="ident">retry_after</span>;
+                            <span class="ident">disabled</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">retry_after</span>);
                         }
                     }
                     <span class="prelude-val">Ok</span>(<span class="number">200</span>) <span class="op">|</span> <span class="prelude-val">Ok</span>(<span class="number">201</span>) <span class="op">=&gt;</span> {}
