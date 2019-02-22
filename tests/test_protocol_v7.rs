@@ -1043,6 +1043,7 @@ mod test_exception {
                             .unwrap(),
                     ),
                     handled: Some(false),
+                    synthetic: None,
                     data: {
                         let mut map = v7::Map::new();
                         map.insert("relevant_address".into(), "0x1".into());
