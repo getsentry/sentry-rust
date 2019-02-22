@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.14.0
+
+- Added support for reading `SENTRY_ENVIRONMENT` and `SENTRY_RELEASE` environment
+  variables.
+- Added support for panicking with failure errors.
+- Added `attach_stacktraces` configuration option to logging integration
+- Fixed a bug where `emit_breadcrumbs` was incorrectly handled.
+- Restructured the transport system. You can now disbale the builtin HTTP
+  reqwest based transport or opt for the curl transport.
+- Fixed a potential issue where an event might have been dropped if it was sent
+  right after the transport was created.
+- Added support for server side symbolication for linux platforms.
+
 ## 0.13.0
 
 **Breaking Change**: This release requires Rust 1.31 or newer.
