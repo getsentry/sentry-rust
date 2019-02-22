@@ -4,326 +4,46 @@ cleanup by renaming attributes has been applied.  The idea here is that
 a future sentry protocol will be a cleanup of the old one and is mapped
 to similar values on the rust side.</p>
 </div><h2 id='modules' class='section-header'><a href="#modules">Modules</a></h2>
-<table>
-                       <tr class=' module-item'>
-                           <td><a class="mod" href="debugid/index.html"
-                                  title='mod sentry::protocol::debugid'>debugid</a></td>
-                           <td class='docblock-short'>
-                                <p>Represents a debug ID.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="mod" href="map/index.html"
-                                  title='mod sentry::protocol::map'>map</a></td>
-                           <td class='docblock-short'>
-                                <p>The internally used arbitrary data map type.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="mod" href="value/index.html"
-                                  title='mod sentry::protocol::value'>value</a></td>
-                           <td class='docblock-short'>
-                                <p>An arbitrary (JSON) value.</p>
-
-                           </td>
-                       </tr></table><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
-<table>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.Addr.html"
-                                  title='struct sentry::protocol::Addr'>Addr</a></td>
-                           <td class='docblock-short'>
-                                <p>Represents an address.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.AppContext.html"
-                                  title='struct sentry::protocol::AppContext'>AppContext</a></td>
-                           <td class='docblock-short'>
-                                <p>Holds app information.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.AppleDebugImage.html"
-                                  title='struct sentry::protocol::AppleDebugImage'>AppleDebugImage</a></td>
-                           <td class='docblock-short'>
-                                <p>Represents an apple debug image in the debug meta.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.Breadcrumb.html"
-                                  title='struct sentry::protocol::Breadcrumb'>Breadcrumb</a></td>
-                           <td class='docblock-short'>
-                                <p>Represents a single breadcrumb.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.BrowserContext.html"
-                                  title='struct sentry::protocol::BrowserContext'>BrowserContext</a></td>
-                           <td class='docblock-short'>
-                                <p>Holds information about the web browser.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.CError.html"
-                                  title='struct sentry::protocol::CError'>CError</a></td>
-                           <td class='docblock-short'>
-                                <p>POSIX signal with optional extended data.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.ClientSdkInfo.html"
-                                  title='struct sentry::protocol::ClientSdkInfo'>ClientSdkInfo</a></td>
-                           <td class='docblock-short'>
-                                <p>Information on the SDK client.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.ClientSdkPackage.html"
-                                  title='struct sentry::protocol::ClientSdkPackage'>ClientSdkPackage</a></td>
-                           <td class='docblock-short'>
-                                <p>Represents an installed package relevant to the SDK.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.DebugMeta.html"
-                                  title='struct sentry::protocol::DebugMeta'>DebugMeta</a></td>
-                           <td class='docblock-short'>
-                                <p>Represents debug meta information.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.DeviceContext.html"
-                                  title='struct sentry::protocol::DeviceContext'>DeviceContext</a></td>
-                           <td class='docblock-short'>
-                                <p>Holds device information.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.Event.html"
-                                  title='struct sentry::protocol::Event'>Event</a></td>
-                           <td class='docblock-short'>
-                                <p>Represents a full event for Sentry.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.Exception.html"
-                                  title='struct sentry::protocol::Exception'>Exception</a></td>
-                           <td class='docblock-short'>
-                                <p>Represents a single exception.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.Frame.html"
-                                  title='struct sentry::protocol::Frame'>Frame</a></td>
-                           <td class='docblock-short'>
-                                <p>Represents a frame.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.LogEntry.html"
-                                  title='struct sentry::protocol::LogEntry'>LogEntry</a></td>
-                           <td class='docblock-short'>
-                                <p>Represents a log entry message.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.MachException.html"
-                                  title='struct sentry::protocol::MachException'>MachException</a></td>
-                           <td class='docblock-short'>
-                                <p>Mach exception information.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.Mechanism.html"
-                                  title='struct sentry::protocol::Mechanism'>Mechanism</a></td>
-                           <td class='docblock-short'>
-                                <p>Represents a single exception.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.MechanismMeta.html"
-                                  title='struct sentry::protocol::MechanismMeta'>MechanismMeta</a></td>
-                           <td class='docblock-short'>
-                                <p>Operating system or runtime meta information to an exception mechanism.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.OsContext.html"
-                                  title='struct sentry::protocol::OsContext'>OsContext</a></td>
-                           <td class='docblock-short'>
-                                <p>Holds operating system information.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.ParseLevelError.html"
-                                  title='struct sentry::protocol::ParseLevelError'>ParseLevelError</a></td>
-                           <td class='docblock-short'>
-                                <p>An error used when parsing <code>Level</code>.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.PosixSignal.html"
-                                  title='struct sentry::protocol::PosixSignal'>PosixSignal</a></td>
-                           <td class='docblock-short'>
-                                <p>POSIX signal with optional extended data.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.ProguardDebugImage.html"
-                                  title='struct sentry::protocol::ProguardDebugImage'>ProguardDebugImage</a></td>
-                           <td class='docblock-short'>
-                                <p>Represents a proguard mapping file reference.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.RegVal.html"
-                                  title='struct sentry::protocol::RegVal'>RegVal</a></td>
-                           <td class='docblock-short'>
-                                <p>Represents a register value.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.Request.html"
-                                  title='struct sentry::protocol::Request'>Request</a></td>
-                           <td class='docblock-short'>
-                                <p>Represents http request data.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.RuntimeContext.html"
-                                  title='struct sentry::protocol::RuntimeContext'>RuntimeContext</a></td>
-                           <td class='docblock-short'>
-                                <p>Holds information about the runtime.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.Stacktrace.html"
-                                  title='struct sentry::protocol::Stacktrace'>Stacktrace</a></td>
-                           <td class='docblock-short'>
-                                <p>Represents a stacktrace.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.SymbolicDebugImage.html"
-                                  title='struct sentry::protocol::SymbolicDebugImage'>SymbolicDebugImage</a></td>
-                           <td class='docblock-short'>
-                                <p>Represents a symbolic debug image.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.SystemSdkInfo.html"
-                                  title='struct sentry::protocol::SystemSdkInfo'>SystemSdkInfo</a></td>
-                           <td class='docblock-short'>
-                                <p>Holds information about the system SDK.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.TemplateInfo.html"
-                                  title='struct sentry::protocol::TemplateInfo'>TemplateInfo</a></td>
-                           <td class='docblock-short'>
-                                <p>Represents template debug info.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.Thread.html"
-                                  title='struct sentry::protocol::Thread'>Thread</a></td>
-                           <td class='docblock-short'>
-                                <p>Represents a single thread.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.User.html"
-                                  title='struct sentry::protocol::User'>User</a></td>
-                           <td class='docblock-short'>
-                                <p>Represents user info.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.Values.html"
-                                  title='struct sentry::protocol::Values'>Values</a></td>
-                           <td class='docblock-short'>
-                                <p>A wrapper type for collections with attached meta data.</p>
-
-                           </td>
-                       </tr></table><h2 id='enums' class='section-header'><a href="#enums">Enums</a></h2>
-<table>
-                       <tr class=' module-item'>
-                           <td><a class="enum" href="enum.Context.html"
-                                  title='enum sentry::protocol::Context'>Context</a></td>
-                           <td class='docblock-short'>
-                                <p>Typed contextual data.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="enum" href="enum.DebugImage.html"
-                                  title='enum sentry::protocol::DebugImage'>DebugImage</a></td>
-                           <td class='docblock-short'>
-                                <p>Represents a debug image.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="enum" href="enum.IpAddress.html"
-                                  title='enum sentry::protocol::IpAddress'>IpAddress</a></td>
-                           <td class='docblock-short'>
-                                <p>An IP address, either IPv4, IPv6 or Auto.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="enum" href="enum.Level.html"
-                                  title='enum sentry::protocol::Level'>Level</a></td>
-                           <td class='docblock-short'>
-                                <p>Represents the level of severity of an event or breadcrumb.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="enum" href="enum.Orientation.html"
-                                  title='enum sentry::protocol::Orientation'>Orientation</a></td>
-                           <td class='docblock-short'>
-                                <p>Optional device screen orientation</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="enum" href="enum.ThreadId.html"
-                                  title='enum sentry::protocol::ThreadId'>ThreadId</a></td>
-                           <td class='docblock-short'>
-                                <p>Represents a thread id.</p>
-
-                           </td>
-                       </tr></table></section><section id="search" class="content hidden"></section><section class="footer"></section><aside id="help" class="hidden"><div><h1 class="hidden">Help</h1><div class="shortcuts"><h2>Keyboard Shortcuts</h2><dl><dt><kbd>?</kbd></dt><dd>Show this help dialog</dd><dt><kbd>S</kbd></dt><dd>Focus the search field</dd><dt><kbd>↑</kbd></dt><dd>Move up in search results</dd><dt><kbd>↓</kbd></dt><dd>Move down in search results</dd><dt><kbd>↹</kbd></dt><dd>Switch tab</dd><dt><kbd>&#9166;</kbd></dt><dd>Go to active search result</dd><dt><kbd>+</kbd></dt><dd>Expand all sections</dd><dt><kbd>-</kbd></dt><dd>Collapse all sections</dd></dl></div><div class="infos"><h2>Search Tricks</h2><p>Prefix searches with a type followed by a colon (e.g. <code>fn:</code>) to restrict the search to a given type.</p><p>Accepted types are: <code>fn</code>, <code>mod</code>, <code>struct</code>, <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, and <code>const</code>.</p><p>Search functions by type signature (e.g. <code>vec -> usize</code> or <code>* -> vec</code>)</p><p>Search multiple things at once by splitting your query with comma (e.g. <code>str,u8</code> or <code>String,struct:Vec,test</code>)</p></div></div></aside><script>window.rootPath = "../../";window.currentCrate = "sentry";</script><script src="../../aliases.js"></script><script src="../../main.js"></script><script defer src="../../search-index.js"></script></body></html>
+<table><tr class='module-item'><td><a class="mod" href="debugid/index.html" title='sentry::protocol::debugid mod'>debugid</a></td><td class='docblock-short'><p>Represents a debug ID.</p>
+</td></tr><tr class='module-item'><td><a class="mod" href="map/index.html" title='sentry::protocol::map mod'>map</a></td><td class='docblock-short'><p>The internally used arbitrary data map type.</p>
+</td></tr><tr class='module-item'><td><a class="mod" href="value/index.html" title='sentry::protocol::value mod'>value</a></td><td class='docblock-short'><p>An arbitrary (JSON) value.</p>
+</td></tr></table><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
+<table><tr class='module-item'><td><a class="struct" href="struct.Addr.html" title='sentry::protocol::Addr struct'>Addr</a></td><td class='docblock-short'><p>Represents an address.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.AppContext.html" title='sentry::protocol::AppContext struct'>AppContext</a></td><td class='docblock-short'><p>Holds app information.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.AppleDebugImage.html" title='sentry::protocol::AppleDebugImage struct'>AppleDebugImage</a></td><td class='docblock-short'><p>Represents an apple debug image in the debug meta.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.Breadcrumb.html" title='sentry::protocol::Breadcrumb struct'>Breadcrumb</a></td><td class='docblock-short'><p>Represents a single breadcrumb.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.BrowserContext.html" title='sentry::protocol::BrowserContext struct'>BrowserContext</a></td><td class='docblock-short'><p>Holds information about the web browser.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.CError.html" title='sentry::protocol::CError struct'>CError</a></td><td class='docblock-short'><p>POSIX signal with optional extended data.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.ClientSdkInfo.html" title='sentry::protocol::ClientSdkInfo struct'>ClientSdkInfo</a></td><td class='docblock-short'><p>Information on the SDK client.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.ClientSdkPackage.html" title='sentry::protocol::ClientSdkPackage struct'>ClientSdkPackage</a></td><td class='docblock-short'><p>Represents an installed package relevant to the SDK.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.DebugMeta.html" title='sentry::protocol::DebugMeta struct'>DebugMeta</a></td><td class='docblock-short'><p>Represents debug meta information.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.DeviceContext.html" title='sentry::protocol::DeviceContext struct'>DeviceContext</a></td><td class='docblock-short'><p>Holds device information.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.Event.html" title='sentry::protocol::Event struct'>Event</a></td><td class='docblock-short'><p>Represents a full event for Sentry.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.Exception.html" title='sentry::protocol::Exception struct'>Exception</a></td><td class='docblock-short'><p>Represents a single exception.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.Frame.html" title='sentry::protocol::Frame struct'>Frame</a></td><td class='docblock-short'><p>Represents a frame.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.LogEntry.html" title='sentry::protocol::LogEntry struct'>LogEntry</a></td><td class='docblock-short'><p>Represents a log entry message.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.MachException.html" title='sentry::protocol::MachException struct'>MachException</a></td><td class='docblock-short'><p>Mach exception information.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.Mechanism.html" title='sentry::protocol::Mechanism struct'>Mechanism</a></td><td class='docblock-short'><p>Represents a single exception.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.MechanismMeta.html" title='sentry::protocol::MechanismMeta struct'>MechanismMeta</a></td><td class='docblock-short'><p>Operating system or runtime meta information to an exception mechanism.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.OsContext.html" title='sentry::protocol::OsContext struct'>OsContext</a></td><td class='docblock-short'><p>Holds operating system information.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.ParseLevelError.html" title='sentry::protocol::ParseLevelError struct'>ParseLevelError</a></td><td class='docblock-short'><p>An error used when parsing <code>Level</code>.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.PosixSignal.html" title='sentry::protocol::PosixSignal struct'>PosixSignal</a></td><td class='docblock-short'><p>POSIX signal with optional extended data.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.ProguardDebugImage.html" title='sentry::protocol::ProguardDebugImage struct'>ProguardDebugImage</a></td><td class='docblock-short'><p>Represents a proguard mapping file reference.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.RegVal.html" title='sentry::protocol::RegVal struct'>RegVal</a></td><td class='docblock-short'><p>Represents a register value.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.Request.html" title='sentry::protocol::Request struct'>Request</a></td><td class='docblock-short'><p>Represents http request data.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.RuntimeContext.html" title='sentry::protocol::RuntimeContext struct'>RuntimeContext</a></td><td class='docblock-short'><p>Holds information about the runtime.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.Stacktrace.html" title='sentry::protocol::Stacktrace struct'>Stacktrace</a></td><td class='docblock-short'><p>Represents a stacktrace.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.SymbolicDebugImage.html" title='sentry::protocol::SymbolicDebugImage struct'>SymbolicDebugImage</a></td><td class='docblock-short'><p>Represents a symbolic debug image.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.SystemSdkInfo.html" title='sentry::protocol::SystemSdkInfo struct'>SystemSdkInfo</a></td><td class='docblock-short'><p>Holds information about the system SDK.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.TemplateInfo.html" title='sentry::protocol::TemplateInfo struct'>TemplateInfo</a></td><td class='docblock-short'><p>Represents template debug info.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.Thread.html" title='sentry::protocol::Thread struct'>Thread</a></td><td class='docblock-short'><p>Represents a single thread.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.User.html" title='sentry::protocol::User struct'>User</a></td><td class='docblock-short'><p>Represents user info.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.Values.html" title='sentry::protocol::Values struct'>Values</a></td><td class='docblock-short'><p>A wrapper type for collections with attached meta data.</p>
+</td></tr></table><h2 id='enums' class='section-header'><a href="#enums">Enums</a></h2>
+<table><tr class='module-item'><td><a class="enum" href="enum.Context.html" title='sentry::protocol::Context enum'>Context</a></td><td class='docblock-short'><p>Typed contextual data.</p>
+</td></tr><tr class='module-item'><td><a class="enum" href="enum.DebugImage.html" title='sentry::protocol::DebugImage enum'>DebugImage</a></td><td class='docblock-short'><p>Represents a debug image.</p>
+</td></tr><tr class='module-item'><td><a class="enum" href="enum.IpAddress.html" title='sentry::protocol::IpAddress enum'>IpAddress</a></td><td class='docblock-short'><p>An IP address, either IPv4, IPv6 or Auto.</p>
+</td></tr><tr class='module-item'><td><a class="enum" href="enum.Level.html" title='sentry::protocol::Level enum'>Level</a></td><td class='docblock-short'><p>Represents the level of severity of an event or breadcrumb.</p>
+</td></tr><tr class='module-item'><td><a class="enum" href="enum.Orientation.html" title='sentry::protocol::Orientation enum'>Orientation</a></td><td class='docblock-short'><p>Optional device screen orientation</p>
+</td></tr><tr class='module-item'><td><a class="enum" href="enum.ThreadId.html" title='sentry::protocol::ThreadId enum'>ThreadId</a></td><td class='docblock-short'><p>Represents a thread id.</p>
+</td></tr></table></section><section id="search" class="content hidden"></section><section class="footer"></section><aside id="help" class="hidden"><div><h1 class="hidden">Help</h1><div class="shortcuts"><h2>Keyboard Shortcuts</h2><dl><dt><kbd>?</kbd></dt><dd>Show this help dialog</dd><dt><kbd>S</kbd></dt><dd>Focus the search field</dd><dt><kbd>↑</kbd></dt><dd>Move up in search results</dd><dt><kbd>↓</kbd></dt><dd>Move down in search results</dd><dt><kbd>↹</kbd></dt><dd>Switch tab</dd><dt><kbd>&#9166;</kbd></dt><dd>Go to active search result</dd><dt><kbd>+</kbd></dt><dd>Expand all sections</dd><dt><kbd>-</kbd></dt><dd>Collapse all sections</dd></dl></div><div class="infos"><h2>Search Tricks</h2><p>Prefix searches with a type followed by a colon (e.g. <code>fn:</code>) to restrict the search to a given type.</p><p>Accepted types are: <code>fn</code>, <code>mod</code>, <code>struct</code>, <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, and <code>const</code>.</p><p>Search functions by type signature (e.g. <code>vec -> usize</code> or <code>* -> vec</code>)</p><p>Search multiple things at once by splitting your query with comma (e.g. <code>str,u8</code> or <code>String,struct:Vec,test</code>)</p></div></div></aside><script>window.rootPath = "../../";window.currentCrate = "sentry";</script><script src="../../aliases.js"></script><script src="../../main.js"></script><script defer src="../../search-index.js"></script></body></html>

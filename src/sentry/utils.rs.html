@@ -340,13 +340,12 @@
 <span id="340">340</span>
 <span id="341">341</span>
 <span id="342">342</span>
-</pre><pre class="rust ">
+<span id="343">343</span>
+</pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Useful utilities for working with events.</span>
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">thread</span>;
 
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">protocol</span>::{
-    <span class="ident">Context</span>, <span class="ident">DebugImage</span>, <span class="ident">DeviceContext</span>, <span class="ident">Map</span>, <span class="ident">OsContext</span>, <span class="ident">RuntimeContext</span>, <span class="ident">Stacktrace</span>, <span class="ident">Thread</span>,
-};
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">protocol</span>::{<span class="ident">Context</span>, <span class="ident">DebugImage</span>, <span class="ident">Stacktrace</span>, <span class="ident">Thread</span>};
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">all</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_device_info&quot;</span>, <span class="ident">target_os</span> <span class="op">=</span> <span class="string">&quot;macos&quot;</span>))]</span>
 <span class="kw">mod</span> <span class="ident">model_support</span> {
@@ -489,6 +488,9 @@
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">highest_addr</span> <span class="op">=</span> <span class="number">0</span>;
 
             <span class="kw">for</span> <span class="ident">seg</span> <span class="kw">in</span> <span class="ident">shlib</span>.<span class="ident">segments</span>() {
+                <span class="kw">if</span> <span class="op">!</span><span class="ident">seg</span>.<span class="ident">is_code</span>() {
+                    <span class="kw">continue</span>;
+                }
                 <span class="kw">let</span> <span class="ident">svma</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">seg</span>.<span class="ident">stated_virtual_memory_address</span>().<span class="number">0</span> <span class="kw">as</span> <span class="ident">u64</span>;
                 <span class="kw">let</span> <span class="ident">avma</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">seg</span>.<span class="ident">actual_virtual_memory_address</span>(<span class="ident">shlib</span>).<span class="number">0</span> <span class="kw">as</span> <span class="ident">u64</span>;
                 <span class="kw">if</span> <span class="ident">lowest_addr</span> <span class="op">&gt;</span> <span class="ident">avma</span> {
@@ -570,7 +572,7 @@
         <span class="kw">use</span> <span class="ident">uname</span>::<span class="ident">uname</span>;
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">info</span>) <span class="op">=</span> <span class="ident">uname</span>() {
             <span class="prelude-val">Some</span>(
-                <span class="ident">OsContext</span> {
+                <span class="kw">crate</span>::<span class="ident">protocol</span>::<span class="ident">OsContext</span> {
                     <span class="ident">name</span>: <span class="prelude-val">Some</span>(<span class="ident">info</span>.<span class="ident">sysname</span>),
                     <span class="ident">kernel_version</span>: <span class="prelude-val">Some</span>(<span class="ident">info</span>.<span class="ident">version</span>),
                     <span class="ident">version</span>: <span class="prelude-val">Some</span>(<span class="ident">info</span>.<span class="ident">release</span>),
@@ -586,7 +588,7 @@
     {
         <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">constants</span>::<span class="ident">PLATFORM</span>;
         <span class="prelude-val">Some</span>(
-            <span class="ident">OsContext</span> {
+            <span class="kw">crate</span>::<span class="ident">protocol</span>::<span class="ident">OsContext</span> {
                 <span class="ident">name</span>: <span class="prelude-val">Some</span>(<span class="ident">PLATFORM</span>.<span class="ident">into</span>()),
                 ..<span class="ident">Default</span>::<span class="ident">default</span>()
             }
@@ -604,11 +606,11 @@
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_device_info&quot;</span>)]</span>
     {
         <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">constants</span>::{<span class="ident">RUSTC_CHANNEL</span>, <span class="ident">RUSTC_VERSION</span>};
-        <span class="kw">let</span> <span class="ident">ctx</span> <span class="op">=</span> <span class="ident">RuntimeContext</span> {
+        <span class="kw">let</span> <span class="ident">ctx</span> <span class="op">=</span> <span class="kw">crate</span>::<span class="ident">protocol</span>::<span class="ident">RuntimeContext</span> {
             <span class="ident">name</span>: <span class="prelude-val">Some</span>(<span class="string">&quot;rustc&quot;</span>.<span class="ident">into</span>()),
             <span class="ident">version</span>: <span class="ident">RUSTC_VERSION</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">into</span>()),
             <span class="ident">other</span>: {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">map</span> <span class="op">=</span> <span class="ident">Map</span>::<span class="ident">default</span>();
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">map</span> <span class="op">=</span> <span class="kw">crate</span>::<span class="ident">protocol</span>::<span class="ident">Map</span>::<span class="ident">default</span>();
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">channel</span>) <span class="op">=</span> <span class="ident">RUSTC_CHANNEL</span> {
                     <span class="ident">map</span>.<span class="ident">insert</span>(<span class="string">&quot;channel&quot;</span>.<span class="ident">to_string</span>(), <span class="ident">channel</span>.<span class="ident">into</span>());
                 }
@@ -632,7 +634,7 @@
         <span class="kw">let</span> <span class="ident">family</span> <span class="op">=</span> <span class="ident">device_family</span>();
         <span class="kw">let</span> <span class="ident">arch</span> <span class="op">=</span> <span class="ident">cpu_arch</span>();
         <span class="prelude-val">Some</span>(
-            <span class="ident">DeviceContext</span> {
+            <span class="kw">crate</span>::<span class="ident">protocol</span>::<span class="ident">DeviceContext</span> {
                 <span class="ident">model</span>,
                 <span class="ident">family</span>,
                 <span class="ident">arch</span>,
@@ -683,5 +685,5 @@
         <span class="prelude-val">None</span>
     }
 }
-</pre>
-</section><section id="search" class="content hidden"></section><section class="footer"></section><aside id="help" class="hidden"><div><h1 class="hidden">Help</h1><div class="shortcuts"><h2>Keyboard Shortcuts</h2><dl><dt><kbd>?</kbd></dt><dd>Show this help dialog</dd><dt><kbd>S</kbd></dt><dd>Focus the search field</dd><dt><kbd>↑</kbd></dt><dd>Move up in search results</dd><dt><kbd>↓</kbd></dt><dd>Move down in search results</dd><dt><kbd>↹</kbd></dt><dd>Switch tab</dd><dt><kbd>&#9166;</kbd></dt><dd>Go to active search result</dd><dt><kbd>+</kbd></dt><dd>Expand all sections</dd><dt><kbd>-</kbd></dt><dd>Collapse all sections</dd></dl></div><div class="infos"><h2>Search Tricks</h2><p>Prefix searches with a type followed by a colon (e.g. <code>fn:</code>) to restrict the search to a given type.</p><p>Accepted types are: <code>fn</code>, <code>mod</code>, <code>struct</code>, <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, and <code>const</code>.</p><p>Search functions by type signature (e.g. <code>vec -> usize</code> or <code>* -> vec</code>)</p><p>Search multiple things at once by splitting your query with comma (e.g. <code>str,u8</code> or <code>String,struct:Vec,test</code>)</p></div></div></aside><script>window.rootPath = "../../";window.currentCrate = "sentry";</script><script src="../../aliases.js"></script><script src="../../main.js"></script><script defer src="../../search-index.js"></script></body></html>
+</pre></div>
+</section><section id="search" class="content hidden"></section><section class="footer"></section><aside id="help" class="hidden"><div><h1 class="hidden">Help</h1><div class="shortcuts"><h2>Keyboard Shortcuts</h2><dl><dt><kbd>?</kbd></dt><dd>Show this help dialog</dd><dt><kbd>S</kbd></dt><dd>Focus the search field</dd><dt><kbd>↑</kbd></dt><dd>Move up in search results</dd><dt><kbd>↓</kbd></dt><dd>Move down in search results</dd><dt><kbd>↹</kbd></dt><dd>Switch tab</dd><dt><kbd>&#9166;</kbd></dt><dd>Go to active search result</dd><dt><kbd>+</kbd></dt><dd>Expand all sections</dd><dt><kbd>-</kbd></dt><dd>Collapse all sections</dd></dl></div><div class="infos"><h2>Search Tricks</h2><p>Prefix searches with a type followed by a colon (e.g. <code>fn:</code>) to restrict the search to a given type.</p><p>Accepted types are: <code>fn</code>, <code>mod</code>, <code>struct</code>, <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, and <code>const</code>.</p><p>Search functions by type signature (e.g. <code>vec -> usize</code> or <code>* -> vec</code>)</p><p>Search multiple things at once by splitting your query with comma (e.g. <code>str,u8</code> or <code>String,struct:Vec,test</code>)</p></div></div></aside><script>window.rootPath = "../../";window.currentCrate = "sentry";</script><script src="../../aliases.js"></script><script src="../../main.js"></script><script src="../../source-files.js"></script><script src="../../source-script.js"></script><script defer src="../../search-index.js"></script></body></html>

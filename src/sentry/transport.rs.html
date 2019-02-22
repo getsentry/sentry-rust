@@ -258,18 +258,192 @@
 <span id="258">258</span>
 <span id="259">259</span>
 <span id="260">260</span>
-</pre><pre class="rust ">
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
+<span id="342">342</span>
+<span id="343">343</span>
+<span id="344">344</span>
+<span id="345">345</span>
+<span id="346">346</span>
+<span id="347">347</span>
+<span id="348">348</span>
+<span id="349">349</span>
+<span id="350">350</span>
+<span id="351">351</span>
+<span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
+<span id="357">357</span>
+<span id="358">358</span>
+<span id="359">359</span>
+<span id="360">360</span>
+<span id="361">361</span>
+<span id="362">362</span>
+<span id="363">363</span>
+<span id="364">364</span>
+<span id="365">365</span>
+<span id="366">366</span>
+<span id="367">367</span>
+<span id="368">368</span>
+<span id="369">369</span>
+<span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
+<span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
+<span id="391">391</span>
+<span id="392">392</span>
+<span id="393">393</span>
+<span id="394">394</span>
+<span id="395">395</span>
+<span id="396">396</span>
+<span id="397">397</span>
+<span id="398">398</span>
+<span id="399">399</span>
+<span id="400">400</span>
+<span id="401">401</span>
+<span id="402">402</span>
+<span id="403">403</span>
+<span id="404">404</span>
+<span id="405">405</span>
+<span id="406">406</span>
+<span id="407">407</span>
+<span id="408">408</span>
+<span id="409">409</span>
+<span id="410">410</span>
+<span id="411">411</span>
+<span id="412">412</span>
+<span id="413">413</span>
+<span id="414">414</span>
+<span id="415">415</span>
+<span id="416">416</span>
+<span id="417">417</span>
+<span id="418">418</span>
+<span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+</pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">atomic</span>::{<span class="ident">AtomicBool</span>, <span class="ident">Ordering</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">mpsc</span>::{<span class="ident">sync_channel</span>, <span class="ident">Receiver</span>, <span class="ident">SyncSender</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::{<span class="ident">Arc</span>, <span class="ident">Condvar</span>, <span class="ident">Mutex</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">thread</span>::{<span class="self">self</span>, <span class="ident">JoinHandle</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">time</span>::{<span class="ident">Duration</span>, <span class="ident">SystemTime</span>};
 
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_reqwest_transport&quot;</span>, <span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_curl_transport&quot;</span>))]</span>
 <span class="kw">use</span> <span class="ident">httpdate</span>::<span class="ident">parse_http_date</span>;
+
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_reqwest_transport&quot;</span>)]</span>
 <span class="kw">use</span> <span class="ident">reqwest</span>::{<span class="ident">header</span>::<span class="ident">RETRY_AFTER</span>, <span class="ident">Client</span>, <span class="ident">Proxy</span>};
 
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_curl_transport&quot;</span>)]</span>
+<span class="kw">use</span> {<span class="kw">crate</span>::<span class="ident">internals</span>::<span class="ident">Scheme</span>, <span class="ident">curl</span>, <span class="ident">std</span>::<span class="ident">io</span>::<span class="ident">Read</span>};
+
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">client</span>::<span class="ident">ClientOptions</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">internals</span>::<span class="ident">Dsn</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">protocol</span>::<span class="ident">Event</span>;
 
 <span class="doccomment">/// The trait for transports.</span>
@@ -349,27 +523,25 @@
 <span class="doccomment">/// Creates the default HTTP transport.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// This is the default value for `transport` on the client options.  It</span>
-<span class="doccomment">/// creates a `HttpTransport`.</span>
+<span class="doccomment">/// creates a `HttpTransport`.  If no http transport was compiled into the</span>
+<span class="doccomment">/// library it will panic on transport creation.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DefaultTransportFactory</span>;
 
 <span class="kw">impl</span> <span class="ident">TransportFactory</span> <span class="kw">for</span> <span class="ident">DefaultTransportFactory</span> {
     <span class="kw">fn</span> <span class="ident">create_transport</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">options</span>: <span class="kw-2">&amp;</span><span class="ident">ClientOptions</span>) <span class="op">-&gt;</span> <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Transport</span><span class="op">&gt;</span> {
-        <span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">HttpTransport</span>::<span class="ident">new</span>(<span class="ident">options</span>))
+        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_reqwest_transport&quot;</span>, <span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_curl_transport&quot;</span>))]</span>
+        {
+            <span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">HttpTransport</span>::<span class="ident">new</span>(<span class="ident">options</span>))
+        }
+        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_reqwest_transport&quot;</span>, <span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_curl_transport&quot;</span>)))]</span>
+        {
+            <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;sentry crate was compiled without transport&quot;</span>)
+        }
     }
 }
 
-<span class="doccomment">/// A transport can send events via HTTP to sentry.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">HttpTransport</span> {
-    <span class="ident">dsn</span>: <span class="ident">Dsn</span>,
-    <span class="ident">sender</span>: <span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">SyncSender</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Event</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;&gt;</span><span class="op">&gt;&gt;</span>,
-    <span class="ident">shutdown_signal</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Condvar</span><span class="op">&gt;</span>,
-    <span class="ident">shutdown_immediately</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">AtomicBool</span><span class="op">&gt;</span>,
-    <span class="ident">queue_size</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;&gt;</span>,
-    <span class="ident">_handle</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">JoinHandle</span><span class="op">&lt;</span>()<span class="op">&gt;&gt;</span>,
-}
-
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_reqwest_transport&quot;</span>, <span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_curl_transport&quot;</span>))]</span>
 <span class="kw">fn</span> <span class="ident">parse_retry_after</span>(<span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SystemTime</span><span class="op">&gt;</span> {
     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">value</span>) <span class="op">=</span> <span class="ident">s</span>.<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span>() {
         <span class="prelude-val">Some</span>(<span class="ident">SystemTime</span>::<span class="ident">now</span>() <span class="op">+</span> <span class="ident">Duration</span>::<span class="ident">from_secs</span>(<span class="ident">value</span>.<span class="ident">ceil</span>() <span class="kw">as</span> <span class="ident">u64</span>))
@@ -380,84 +552,105 @@
     }
 }
 
-<span class="kw">fn</span> <span class="ident">spawn_http_sender</span>(
-    <span class="ident">client</span>: <span class="ident">Client</span>,
-    <span class="ident">receiver</span>: <span class="ident">Receiver</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Event</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">dsn</span>: <span class="ident">Dsn</span>,
-    <span class="ident">signal</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Condvar</span><span class="op">&gt;</span>,
-    <span class="ident">shutdown_immediately</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">AtomicBool</span><span class="op">&gt;</span>,
-    <span class="ident">queue_size</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;&gt;</span>,
-    <span class="ident">user_agent</span>: <span class="ident">String</span>,
-) <span class="op">-&gt;</span> <span class="ident">JoinHandle</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">disabled</span> <span class="op">=</span> <span class="ident">SystemTime</span>::<span class="ident">now</span>();
+<span class="macro">macro_rules</span><span class="macro">!</span> <span class="ident">implement_http_transport</span> {
+    (
+        $(<span class="attribute">#[<span class="macro-nonterminal">$</span><span class="macro-nonterminal">attr</span>:<span class="ident">meta</span>]</span>)<span class="op">*</span>
+        <span class="kw">pub</span> <span class="kw">struct</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typename</span>:<span class="ident">ident</span>;
+        <span class="kw">fn</span> <span class="ident">spawn</span>($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">argname</span>:<span class="ident">ident</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">argty</span>:<span class="ident">ty</span>,)<span class="kw-2">*</span>) <span class="macro-nonterminal">$</span><span class="macro-nonterminal">body</span>:<span class="ident">block</span>
+    ) <span class="op">=&gt;</span> {
+        $(<span class="attribute">#[<span class="macro-nonterminal">$</span><span class="macro-nonterminal">attr</span>]</span>)<span class="op">*</span>
+        <span class="kw">pub</span> <span class="kw">struct</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typename</span> {
+            <span class="ident">sender</span>: <span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">SyncSender</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Event</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;&gt;</span><span class="op">&gt;&gt;</span>,
+            <span class="ident">shutdown_signal</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Condvar</span><span class="op">&gt;</span>,
+            <span class="ident">shutdown_immediately</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">AtomicBool</span><span class="op">&gt;</span>,
+            <span class="ident">queue_size</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;&gt;</span>,
+            <span class="ident">_handle</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">JoinHandle</span><span class="op">&lt;</span>()<span class="op">&gt;&gt;</span>,
+        }
 
-    <span class="ident">thread</span>::<span class="ident">spawn</span>(<span class="kw">move</span> <span class="op">||</span> {
-        <span class="kw">let</span> <span class="ident">url</span> <span class="op">=</span> <span class="ident">dsn</span>.<span class="ident">store_api_url</span>().<span class="ident">to_string</span>();
+        <span class="kw">impl</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typename</span> {
+            <span class="doccomment">/// Creates a new transport.</span>
+            <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">options</span>: <span class="kw-2">&amp;</span><span class="ident">ClientOptions</span>) <span class="op">-&gt;</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typename</span> {
+                <span class="kw">fn</span> <span class="ident">spawn</span>($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">argname</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">argty</span>,)<span class="kw-2">*</span>) <span class="op">-&gt;</span> <span class="ident">JoinHandle</span><span class="op">&lt;</span>()<span class="op">&gt;</span> { <span class="macro-nonterminal">$</span><span class="macro-nonterminal">body</span> }
 
-        <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">event</span>) <span class="op">=</span> <span class="ident">receiver</span>.<span class="ident">recv</span>().<span class="ident">unwrap_or</span>(<span class="prelude-val">None</span>) {
-            <span class="comment">// on drop we want to not continue processing the queue.</span>
-            <span class="kw">if</span> <span class="ident">shutdown_immediately</span>.<span class="ident">load</span>(<span class="ident">Ordering</span>::<span class="ident">SeqCst</span>) {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">size</span> <span class="op">=</span> <span class="ident">queue_size</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
-                <span class="kw-2">*</span><span class="ident">size</span> <span class="op">=</span> <span class="number">0</span>;
-                <span class="ident">signal</span>.<span class="ident">notify_all</span>();
-                <span class="kw">break</span>;
-            }
-
-            <span class="comment">// while we are disabled due to rate limits, skip</span>
-            <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">SystemTime</span>::<span class="ident">now</span>();
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">time_left</span>) <span class="op">=</span> <span class="ident">disabled</span>.<span class="ident">duration_since</span>(<span class="ident">now</span>) {
-                <span class="macro">sentry_debug</span><span class="macro">!</span>(
-                    <span class="string">&quot;Skipping event send because we&#39;re disabled due to rate limits for {}s&quot;</span>,
-                    <span class="ident">time_left</span>.<span class="ident">as_secs</span>()
-                );
-                <span class="kw">continue</span>;
-            }
-
-            <span class="kw">match</span> <span class="ident">client</span>
-                .<span class="ident">post</span>(<span class="ident">url</span>.<span class="ident">as_str</span>())
-                .<span class="ident">json</span>(<span class="kw-2">&amp;</span><span class="ident">event</span>)
-                .<span class="ident">header</span>(<span class="string">&quot;X-Sentry-Auth&quot;</span>, <span class="ident">dsn</span>.<span class="ident">to_auth</span>(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">user_agent</span>)).<span class="ident">to_string</span>())
-                .<span class="ident">send</span>()
-            {
-                <span class="prelude-val">Ok</span>(<span class="ident">resp</span>) <span class="op">=&gt;</span> {
-                    <span class="kw">if</span> <span class="ident">resp</span>.<span class="ident">status</span>() <span class="op">==</span> <span class="number">429</span> {
-                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">retry_after</span>) <span class="op">=</span> <span class="ident">resp</span>
-                            .<span class="ident">headers</span>()
-                            .<span class="ident">get</span>(<span class="ident">RETRY_AFTER</span>)
-                            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">to_str</span>().<span class="ident">ok</span>())
-                            .<span class="ident">and_then</span>(<span class="ident">parse_retry_after</span>)
-                        {
-                            <span class="ident">disabled</span> <span class="op">=</span> <span class="ident">retry_after</span>;
-                        }
-                    }
+                <span class="kw">let</span> (<span class="ident">sender</span>, <span class="ident">receiver</span>) <span class="op">=</span> <span class="ident">sync_channel</span>(<span class="number">30</span>);
+                <span class="kw">let</span> <span class="ident">shutdown_signal</span> <span class="op">=</span> <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">Condvar</span>::<span class="ident">new</span>());
+                <span class="kw">let</span> <span class="ident">shutdown_immediately</span> <span class="op">=</span> <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">AtomicBool</span>::<span class="ident">new</span>(<span class="bool-val">false</span>));
+                <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy</span>::<span class="ident">mutex_atomic</span>)]</span>
+                <span class="kw">let</span> <span class="ident">queue_size</span> <span class="op">=</span> <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">Mutex</span>::<span class="ident">new</span>(<span class="number">0</span>));
+                <span class="kw">let</span> <span class="ident">_handle</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">spawn</span>(
+                    <span class="ident">options</span>,
+                    <span class="ident">receiver</span>,
+                    <span class="ident">shutdown_signal</span>.<span class="ident">clone</span>(),
+                    <span class="ident">shutdown_immediately</span>.<span class="ident">clone</span>(),
+                    <span class="ident">queue_size</span>.<span class="ident">clone</span>(),
+                ));
+                <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typename</span> {
+                    <span class="ident">sender</span>: <span class="ident">Mutex</span>::<span class="ident">new</span>(<span class="ident">sender</span>),
+                    <span class="ident">shutdown_signal</span>,
+                    <span class="ident">shutdown_immediately</span>,
+                    <span class="ident">queue_size</span>,
+                    <span class="ident">_handle</span>,
                 }
-                <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=&gt;</span> {
-                    <span class="macro">sentry_debug</span><span class="macro">!</span>(<span class="string">&quot;Failed to send event: {}&quot;</span>, <span class="ident">err</span>);
-                }
-            }
-
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">size</span> <span class="op">=</span> <span class="ident">queue_size</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
-            <span class="kw-2">*</span><span class="ident">size</span> <span class="op">-=</span> <span class="number">1</span>;
-            <span class="kw">if</span> <span class="kw-2">*</span><span class="ident">size</span> <span class="op">==</span> <span class="number">0</span> {
-                <span class="ident">signal</span>.<span class="ident">notify_all</span>();
             }
         }
-    })
+
+        <span class="kw">impl</span> <span class="ident">Transport</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typename</span> {
+            <span class="kw">fn</span> <span class="ident">send_event</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">event</span>: <span class="ident">Event</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span>) {
+                <span class="comment">// we count up before we put the item on the queue and in case the</span>
+                <span class="comment">// queue is filled with too many items or we shut down, we decrement</span>
+                <span class="comment">// the count again as there is nobody that can pick it up.</span>
+                <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">queue_size</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>() <span class="op">+=</span> <span class="number">1</span>;
+                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">sender</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>().<span class="ident">try_send</span>(<span class="prelude-val">Some</span>(<span class="ident">event</span>)).<span class="ident">is_err</span>() {
+                    <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">queue_size</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>() <span class="op">-=</span> <span class="number">1</span>;
+                }
+            }
+
+            <span class="kw">fn</span> <span class="ident">shutdown</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">timeout</span>: <span class="ident">Duration</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
+                <span class="macro">sentry_debug</span><span class="macro">!</span>(<span class="string">&quot;shutting down http transport&quot;</span>);
+                <span class="kw">let</span> <span class="ident">guard</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">queue_size</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
+                <span class="kw">if</span> <span class="kw-2">*</span><span class="ident">guard</span> <span class="op">==</span> <span class="number">0</span> {
+                    <span class="bool-val">true</span>
+                } <span class="kw">else</span> {
+                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">sender</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">sender</span>.<span class="ident">lock</span>() {
+                        <span class="ident">sender</span>.<span class="ident">send</span>(<span class="prelude-val">None</span>).<span class="ident">ok</span>();
+                    }
+                    <span class="self">self</span>.<span class="ident">shutdown_signal</span>.<span class="ident">wait_timeout</span>(<span class="ident">guard</span>, <span class="ident">timeout</span>).<span class="ident">is_ok</span>()
+                }
+            }
+        }
+
+        <span class="kw">impl</span> <span class="ident">Drop</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">typename</span> {
+            <span class="kw">fn</span> <span class="ident">drop</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {
+                <span class="macro">sentry_debug</span><span class="macro">!</span>(<span class="string">&quot;dropping http transport&quot;</span>);
+                <span class="self">self</span>.<span class="ident">shutdown_immediately</span>.<span class="ident">store</span>(<span class="bool-val">true</span>, <span class="ident">Ordering</span>::<span class="ident">SeqCst</span>);
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">sender</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">sender</span>.<span class="ident">lock</span>() {
+                    <span class="ident">sender</span>.<span class="ident">send</span>(<span class="prelude-val">None</span>).<span class="ident">ok</span>();
+                }
+            }
+        }
+    }
 }
 
-<span class="kw">impl</span> <span class="ident">HttpTransport</span> {
-    <span class="doccomment">/// Creates a new transport.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">options</span>: <span class="kw-2">&amp;</span><span class="ident">ClientOptions</span>) <span class="op">-&gt;</span> <span class="ident">HttpTransport</span> {
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_reqwest_transport&quot;</span>)]</span>
+<span class="macro">implement_http_transport</span><span class="macro">!</span> {
+    <span class="doccomment">/// A transport can send events via HTTP to sentry via `reqwest`.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// When the `with_default_transport` feature is enabled this will currently</span>
+    <span class="doccomment">/// be the default transport.  This is separately enabled by the</span>
+    <span class="doccomment">/// `with_reqwest_transport` flag.</span>
+    <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ReqwestHttpTransport</span>;
+
+    <span class="kw">fn</span> <span class="ident">spawn</span>(
+        <span class="ident">options</span>: <span class="kw-2">&amp;</span><span class="ident">ClientOptions</span>,
+        <span class="ident">receiver</span>: <span class="ident">Receiver</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Event</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">signal</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Condvar</span><span class="op">&gt;</span>,
+        <span class="ident">shutdown_immediately</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">AtomicBool</span><span class="op">&gt;</span>,
+        <span class="ident">queue_size</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;&gt;</span>,
+    ) {
         <span class="kw">let</span> <span class="ident">dsn</span> <span class="op">=</span> <span class="ident">options</span>.<span class="ident">dsn</span>.<span class="ident">clone</span>().<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="ident">user_agent</span> <span class="op">=</span> <span class="ident">options</span>.<span class="ident">user_agent</span>.<span class="ident">to_string</span>();
         <span class="kw">let</span> <span class="ident">http_proxy</span> <span class="op">=</span> <span class="ident">options</span>.<span class="ident">http_proxy</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">to_string</span>());
         <span class="kw">let</span> <span class="ident">https_proxy</span> <span class="op">=</span> <span class="ident">options</span>.<span class="ident">https_proxy</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">to_string</span>());
-
-        <span class="kw">let</span> (<span class="ident">sender</span>, <span class="ident">receiver</span>) <span class="op">=</span> <span class="ident">sync_channel</span>(<span class="number">30</span>);
-        <span class="kw">let</span> <span class="ident">shutdown_signal</span> <span class="op">=</span> <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">Condvar</span>::<span class="ident">new</span>());
-        <span class="kw">let</span> <span class="ident">shutdown_immediately</span> <span class="op">=</span> <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">AtomicBool</span>::<span class="ident">new</span>(<span class="bool-val">false</span>));
-        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy</span>::<span class="ident">mutex_atomic</span>)]</span>
-        <span class="kw">let</span> <span class="ident">queue_size</span> <span class="op">=</span> <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">Mutex</span>::<span class="ident">new</span>(<span class="number">0</span>));
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">Client</span>::<span class="ident">builder</span>();
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">url</span>) <span class="op">=</span> <span class="ident">http_proxy</span> {
             <span class="ident">client</span> <span class="op">=</span> <span class="ident">client</span>.<span class="ident">proxy</span>(<span class="ident">Proxy</span>::<span class="ident">http</span>(<span class="kw-2">&amp;</span><span class="ident">url</span>).<span class="ident">unwrap</span>());
@@ -465,59 +658,204 @@
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">url</span>) <span class="op">=</span> <span class="ident">https_proxy</span> {
             <span class="ident">client</span> <span class="op">=</span> <span class="ident">client</span>.<span class="ident">proxy</span>(<span class="ident">Proxy</span>::<span class="ident">https</span>(<span class="kw-2">&amp;</span><span class="ident">url</span>).<span class="ident">unwrap</span>());
         };
-        <span class="kw">let</span> <span class="ident">_handle</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">spawn_http_sender</span>(
-            <span class="ident">client</span>.<span class="ident">build</span>().<span class="ident">unwrap</span>(),
-            <span class="ident">receiver</span>,
-            <span class="ident">dsn</span>.<span class="ident">clone</span>(),
-            <span class="ident">shutdown_signal</span>.<span class="ident">clone</span>(),
-            <span class="ident">shutdown_immediately</span>.<span class="ident">clone</span>(),
-            <span class="ident">queue_size</span>.<span class="ident">clone</span>(),
-            <span class="ident">user_agent</span>,
-        ));
-        <span class="ident">HttpTransport</span> {
-            <span class="ident">dsn</span>,
-            <span class="ident">sender</span>: <span class="ident">Mutex</span>::<span class="ident">new</span>(<span class="ident">sender</span>),
-            <span class="ident">shutdown_signal</span>,
-            <span class="ident">shutdown_immediately</span>,
-            <span class="ident">queue_size</span>,
-            <span class="ident">_handle</span>,
-        }
+        <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">client</span>.<span class="ident">build</span>().<span class="ident">unwrap</span>();
+
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">disabled</span> <span class="op">=</span> <span class="prelude-val">None</span>::<span class="op">&lt;</span><span class="ident">SystemTime</span><span class="op">&gt;</span>;
+
+        <span class="ident">thread</span>::<span class="ident">Builder</span>::<span class="ident">new</span>()
+            .<span class="ident">name</span>(<span class="string">&quot;sentry-transport&quot;</span>.<span class="ident">to_string</span>())
+            .<span class="ident">spawn</span>(<span class="kw">move</span> <span class="op">||</span> {
+                <span class="macro">sentry_debug</span><span class="macro">!</span>(<span class="string">&quot;spawning reqwest transport&quot;</span>);
+                <span class="kw">let</span> <span class="ident">url</span> <span class="op">=</span> <span class="ident">dsn</span>.<span class="ident">store_api_url</span>().<span class="ident">to_string</span>();
+
+                <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">event</span>) <span class="op">=</span> <span class="ident">receiver</span>.<span class="ident">recv</span>().<span class="ident">unwrap_or</span>(<span class="prelude-val">None</span>) {
+                    <span class="comment">// on drop we want to not continue processing the queue.</span>
+                    <span class="kw">if</span> <span class="ident">shutdown_immediately</span>.<span class="ident">load</span>(<span class="ident">Ordering</span>::<span class="ident">SeqCst</span>) {
+                        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">size</span> <span class="op">=</span> <span class="ident">queue_size</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
+                        <span class="kw-2">*</span><span class="ident">size</span> <span class="op">=</span> <span class="number">0</span>;
+                        <span class="ident">signal</span>.<span class="ident">notify_all</span>();
+                        <span class="kw">break</span>;
+                    }
+
+                    <span class="comment">// while we are disabled due to rate limits, skip</span>
+                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">ts</span>) <span class="op">=</span> <span class="ident">disabled</span> {
+                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">time_left</span>) <span class="op">=</span> <span class="ident">ts</span>.<span class="ident">duration_since</span>(<span class="ident">SystemTime</span>::<span class="ident">now</span>()) {
+                            <span class="macro">sentry_debug</span><span class="macro">!</span>(
+                                <span class="string">&quot;Skipping event send because we&#39;re disabled due to rate limits for {}s&quot;</span>,
+                                <span class="ident">time_left</span>.<span class="ident">as_secs</span>()
+                            );
+                            <span class="kw">continue</span>;
+                        } <span class="kw">else</span> {
+                            <span class="ident">disabled</span> <span class="op">=</span> <span class="prelude-val">None</span>;
+                        }
+                    }
+
+                    <span class="kw">match</span> <span class="ident">client</span>
+                        .<span class="ident">post</span>(<span class="ident">url</span>.<span class="ident">as_str</span>())
+                        .<span class="ident">json</span>(<span class="kw-2">&amp;</span><span class="ident">event</span>)
+                        .<span class="ident">header</span>(<span class="string">&quot;X-Sentry-Auth&quot;</span>, <span class="ident">dsn</span>.<span class="ident">to_auth</span>(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">user_agent</span>)).<span class="ident">to_string</span>())
+                        .<span class="ident">send</span>()
+                    {
+                        <span class="prelude-val">Ok</span>(<span class="ident">resp</span>) <span class="op">=&gt;</span> {
+                            <span class="kw">if</span> <span class="ident">resp</span>.<span class="ident">status</span>() <span class="op">==</span> <span class="number">429</span> {
+                                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">retry_after</span>) <span class="op">=</span> <span class="ident">resp</span>
+                                    .<span class="ident">headers</span>()
+                                    .<span class="ident">get</span>(<span class="ident">RETRY_AFTER</span>)
+                                    .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">to_str</span>().<span class="ident">ok</span>())
+                                    .<span class="ident">and_then</span>(<span class="ident">parse_retry_after</span>)
+                                {
+                                    <span class="ident">disabled</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">retry_after</span>);
+                                }
+                            }
+                        }
+                        <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=&gt;</span> {
+                            <span class="macro">sentry_debug</span><span class="macro">!</span>(<span class="string">&quot;Failed to send event: {}&quot;</span>, <span class="ident">err</span>);
+                        }
+                    }
+
+                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">size</span> <span class="op">=</span> <span class="ident">queue_size</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
+                    <span class="kw-2">*</span><span class="ident">size</span> <span class="op">-=</span> <span class="number">1</span>;
+                    <span class="kw">if</span> <span class="kw-2">*</span><span class="ident">size</span> <span class="op">==</span> <span class="number">0</span> {
+                        <span class="ident">signal</span>.<span class="ident">notify_all</span>();
+                    }
+                }
+            }).<span class="ident">unwrap</span>()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Transport</span> <span class="kw">for</span> <span class="ident">HttpTransport</span> {
-    <span class="kw">fn</span> <span class="ident">send_event</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">event</span>: <span class="ident">Event</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span>) {
-        <span class="comment">// we count up before we put the item on the queue and in case the</span>
-        <span class="comment">// queue is filled with too many items or we shut down, we decrement</span>
-        <span class="comment">// the count again as there is nobody that can pick it up.</span>
-        <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">queue_size</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>() <span class="op">+=</span> <span class="number">1</span>;
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">sender</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>().<span class="ident">try_send</span>(<span class="prelude-val">Some</span>(<span class="ident">event</span>)).<span class="ident">is_err</span>() {
-            <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">queue_size</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>() <span class="op">-=</span> <span class="number">1</span>;
-        }
-    }
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_curl_transport&quot;</span>)]</span>
+<span class="macro">implement_http_transport</span><span class="macro">!</span> {
+    <span class="doccomment">/// A transport can send events via HTTP to sentry via `curl`.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// This is enabled by the `with_curl_transport` flag.</span>
+    <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CurlHttpTransport</span>;
 
-    <span class="kw">fn</span> <span class="ident">shutdown</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">timeout</span>: <span class="ident">Duration</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
-        <span class="macro">sentry_debug</span><span class="macro">!</span>(<span class="string">&quot;shutting down http transport&quot;</span>);
-        <span class="kw">let</span> <span class="ident">guard</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">queue_size</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
-        <span class="kw">if</span> <span class="kw-2">*</span><span class="ident">guard</span> <span class="op">==</span> <span class="number">0</span> {
-            <span class="bool-val">true</span>
-        } <span class="kw">else</span> {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">sender</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">sender</span>.<span class="ident">lock</span>() {
-                <span class="ident">sender</span>.<span class="ident">send</span>(<span class="prelude-val">None</span>).<span class="ident">ok</span>();
+    <span class="kw">fn</span> <span class="ident">spawn</span>(
+        <span class="ident">options</span>: <span class="kw-2">&amp;</span><span class="ident">ClientOptions</span>,
+        <span class="ident">receiver</span>: <span class="ident">Receiver</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Event</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">signal</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Condvar</span><span class="op">&gt;</span>,
+        <span class="ident">shutdown_immediately</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">AtomicBool</span><span class="op">&gt;</span>,
+        <span class="ident">queue_size</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;&gt;</span>,
+    ) {
+        <span class="kw">let</span> <span class="ident">dsn</span> <span class="op">=</span> <span class="ident">options</span>.<span class="ident">dsn</span>.<span class="ident">clone</span>().<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">user_agent</span> <span class="op">=</span> <span class="ident">options</span>.<span class="ident">user_agent</span>.<span class="ident">to_string</span>();
+        <span class="kw">let</span> <span class="ident">http_proxy</span> <span class="op">=</span> <span class="ident">options</span>.<span class="ident">http_proxy</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">to_string</span>());
+        <span class="kw">let</span> <span class="ident">https_proxy</span> <span class="op">=</span> <span class="ident">options</span>.<span class="ident">https_proxy</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">to_string</span>());
+
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">disabled</span> <span class="op">=</span> <span class="ident">SystemTime</span>::<span class="ident">now</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">handle</span> <span class="op">=</span> <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">Easy</span>::<span class="ident">new</span>();
+
+        <span class="ident">thread</span>::<span class="ident">spawn</span>(<span class="kw">move</span> <span class="op">||</span> {
+            <span class="macro">sentry_debug</span><span class="macro">!</span>(<span class="string">&quot;spawning curl transport&quot;</span>);
+            <span class="kw">let</span> <span class="ident">url</span> <span class="op">=</span> <span class="ident">dsn</span>.<span class="ident">store_api_url</span>().<span class="ident">to_string</span>();
+
+            <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">event</span>) <span class="op">=</span> <span class="ident">receiver</span>.<span class="ident">recv</span>().<span class="ident">unwrap_or</span>(<span class="prelude-val">None</span>) {
+                <span class="comment">// on drop we want to not continue processing the queue.</span>
+                <span class="kw">if</span> <span class="ident">shutdown_immediately</span>.<span class="ident">load</span>(<span class="ident">Ordering</span>::<span class="ident">SeqCst</span>) {
+                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">size</span> <span class="op">=</span> <span class="ident">queue_size</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
+                    <span class="kw-2">*</span><span class="ident">size</span> <span class="op">=</span> <span class="number">0</span>;
+                    <span class="ident">signal</span>.<span class="ident">notify_all</span>();
+                    <span class="kw">break</span>;
+                }
+
+                <span class="comment">// while we are disabled due to rate limits, skip</span>
+                <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">SystemTime</span>::<span class="ident">now</span>();
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">time_left</span>) <span class="op">=</span> <span class="ident">disabled</span>.<span class="ident">duration_since</span>(<span class="ident">now</span>) {
+                    <span class="macro">sentry_debug</span><span class="macro">!</span>(
+                        <span class="string">&quot;Skipping event send because we&#39;re disabled due to rate limits for {}s&quot;</span>,
+                        <span class="ident">time_left</span>.<span class="ident">as_secs</span>()
+                    );
+                    <span class="kw">continue</span>;
+                }
+
+                <span class="ident">handle</span>.<span class="ident">reset</span>();
+                <span class="ident">handle</span>.<span class="ident">url</span>(<span class="kw-2">&amp;</span><span class="ident">url</span>).<span class="ident">unwrap</span>();
+                <span class="ident">handle</span>.<span class="ident">custom_request</span>(<span class="string">&quot;POST&quot;</span>).<span class="ident">unwrap</span>();
+
+                <span class="kw">match</span> (<span class="ident">dsn</span>.<span class="ident">scheme</span>(), <span class="kw-2">&amp;</span><span class="ident">http_proxy</span>, <span class="kw-2">&amp;</span><span class="ident">https_proxy</span>) {
+                    (<span class="ident">Scheme</span>::<span class="ident">Https</span>, <span class="kw">_</span>, <span class="kw-2">&amp;</span><span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">proxy</span>)) <span class="op">=&gt;</span> {
+                        <span class="ident">handle</span>.<span class="ident">proxy</span>(<span class="kw-2">&amp;</span><span class="ident">proxy</span>).<span class="ident">unwrap</span>();
+                    }
+                    (<span class="kw">_</span>, <span class="kw-2">&amp;</span><span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">proxy</span>), <span class="kw">_</span>) <span class="op">=&gt;</span> {
+                        <span class="ident">handle</span>.<span class="ident">proxy</span>(<span class="kw-2">&amp;</span><span class="ident">proxy</span>).<span class="ident">unwrap</span>();
+                    }
+                    <span class="kw">_</span> <span class="op">=&gt;</span> {}
+                }
+
+                <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">serde_json</span>::<span class="ident">to_vec</span>(<span class="kw-2">&amp;</span><span class="ident">event</span>).<span class="ident">unwrap</span>();
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">retry_after</span> <span class="op">=</span> <span class="prelude-val">None</span>;
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">headers</span> <span class="op">=</span> <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">List</span>::<span class="ident">new</span>();
+                <span class="ident">headers</span>.<span class="ident">append</span>(<span class="kw-2">&amp;</span><span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;X-Sentry-Auth: {}&quot;</span>, <span class="ident">dsn</span>.<span class="ident">to_auth</span>(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">user_agent</span>)))).<span class="ident">unwrap</span>();
+                <span class="ident">headers</span>.<span class="ident">append</span>(<span class="string">&quot;Expect:&quot;</span>).<span class="ident">unwrap</span>();
+                <span class="ident">headers</span>.<span class="ident">append</span>(<span class="string">&quot;Content-Type: application/json&quot;</span>).<span class="ident">unwrap</span>();
+                <span class="ident">handle</span>.<span class="ident">http_headers</span>(<span class="ident">headers</span>).<span class="ident">unwrap</span>();
+                <span class="ident">handle</span>.<span class="ident">upload</span>(<span class="bool-val">true</span>).<span class="ident">unwrap</span>();
+                <span class="ident">handle</span>.<span class="ident">in_filesize</span>(<span class="ident">body</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u64</span>).<span class="ident">unwrap</span>();
+                <span class="ident">handle</span>.<span class="ident">read_function</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">buf</span><span class="op">|</span> <span class="prelude-val">Ok</span>((<span class="kw-2">&amp;</span><span class="ident">body</span>[..]).<span class="ident">read</span>(<span class="ident">buf</span>).<span class="ident">unwrap_or</span>(<span class="number">0</span>))).<span class="ident">unwrap</span>();
+                <span class="ident">handle</span>.<span class="ident">verbose</span>(<span class="bool-val">true</span>).<span class="ident">unwrap</span>();
+                <span class="ident">handle</span>.<span class="ident">debug_function</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">info</span>, <span class="ident">data</span><span class="op">|</span> {
+                    <span class="kw">let</span> <span class="ident">prefix</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">info</span> {
+                        <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">InfoType</span>::<span class="ident">HeaderIn</span> <span class="op">=&gt;</span> <span class="string">&quot;&lt; &quot;</span>,
+                        <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">InfoType</span>::<span class="ident">HeaderOut</span> <span class="op">=&gt;</span> <span class="string">&quot;&gt; &quot;</span>,
+                        <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">InfoType</span>::<span class="ident">DataOut</span> <span class="op">=&gt;</span> <span class="string">&quot;&quot;</span>,
+                        <span class="kw">_</span> <span class="op">=&gt;</span> <span class="kw">return</span>
+                    };
+                    <span class="macro">sentry_debug</span><span class="macro">!</span>(<span class="string">&quot;curl: {}{}&quot;</span>, <span class="ident">prefix</span>, <span class="ident">String</span>::<span class="ident">from_utf8_lossy</span>(<span class="ident">data</span>).<span class="ident">trim</span>());
+                }).<span class="ident">unwrap</span>();
+
+                {
+                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">handle</span> <span class="op">=</span> <span class="ident">handle</span>.<span class="ident">transfer</span>();
+                    <span class="kw">let</span> <span class="ident">retry_after_setter</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">retry_after</span>;
+                    <span class="ident">handle</span>.<span class="ident">header_function</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">data</span><span class="op">|</span> {
+                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">data</span>) <span class="op">=</span> <span class="ident">std</span>::<span class="ident">str</span>::<span class="ident">from_utf8</span>(<span class="ident">data</span>) {
+                            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">iter</span> <span class="op">=</span> <span class="ident">data</span>.<span class="ident">split</span>(<span class="string">&#39;:&#39;</span>);
+                            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">key</span>) <span class="op">=</span> <span class="ident">iter</span>.<span class="ident">next</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">to_lowercase</span>()) {
+                                <span class="kw">if</span> <span class="ident">key</span> <span class="op">==</span> <span class="string">&quot;retry-after&quot;</span> {
+                                    <span class="kw-2">*</span><span class="ident">retry_after_setter</span> <span class="op">=</span> <span class="ident">iter</span>.<span class="ident">next</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">trim</span>().<span class="ident">to_string</span>());
+                                }
+                            }
+                        }
+                        <span class="bool-val">true</span>
+                    }).<span class="ident">unwrap</span>();
+                    <span class="ident">handle</span>.<span class="ident">perform</span>().<span class="ident">ok</span>();
+                }
+
+                <span class="kw">match</span> <span class="ident">handle</span>.<span class="ident">response_code</span>() {
+                    <span class="prelude-val">Ok</span>(<span class="number">429</span>) <span class="op">=&gt;</span> {
+                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">retry_after</span>) <span class="op">=</span> <span class="ident">retry_after</span>
+                            .<span class="ident">as_ref</span>()
+                            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">as_str</span>())
+                            .<span class="ident">and_then</span>(<span class="ident">parse_retry_after</span>)
+                        {
+                            <span class="ident">disabled</span> <span class="op">=</span> <span class="ident">retry_after</span>;
+                        }
+                    }
+                    <span class="prelude-val">Ok</span>(<span class="number">200</span>) <span class="op">|</span> <span class="prelude-val">Ok</span>(<span class="number">201</span>) <span class="op">=&gt;</span> {}
+                    <span class="kw">_</span> <span class="op">=&gt;</span> {
+                        <span class="macro">sentry_debug</span><span class="macro">!</span>(<span class="string">&quot;Failed to send event&quot;</span>);
+                    }
+                }
+
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">size</span> <span class="op">=</span> <span class="ident">queue_size</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
+                <span class="kw-2">*</span><span class="ident">size</span> <span class="op">-=</span> <span class="number">1</span>;
+                <span class="kw">if</span> <span class="kw-2">*</span><span class="ident">size</span> <span class="op">==</span> <span class="number">0</span> {
+                    <span class="ident">signal</span>.<span class="ident">notify_all</span>();
+                }
             }
-            <span class="self">self</span>.<span class="ident">shutdown_signal</span>.<span class="ident">wait_timeout</span>(<span class="ident">guard</span>, <span class="ident">timeout</span>).<span class="ident">is_ok</span>()
-        }
+        })
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Drop</span> <span class="kw">for</span> <span class="ident">HttpTransport</span> {
-    <span class="kw">fn</span> <span class="ident">drop</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {
-        <span class="macro">sentry_debug</span><span class="macro">!</span>(<span class="string">&quot;dropping http transport&quot;</span>);
-        <span class="self">self</span>.<span class="ident">shutdown_immediately</span>.<span class="ident">store</span>(<span class="bool-val">true</span>, <span class="ident">Ordering</span>::<span class="ident">SeqCst</span>);
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">sender</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">sender</span>.<span class="ident">lock</span>() {
-            <span class="ident">sender</span>.<span class="ident">send</span>(<span class="prelude-val">None</span>).<span class="ident">ok</span>();
-        }
-    }
-}
-</pre>
-</section><section id="search" class="content hidden"></section><section class="footer"></section><aside id="help" class="hidden"><div><h1 class="hidden">Help</h1><div class="shortcuts"><h2>Keyboard Shortcuts</h2><dl><dt><kbd>?</kbd></dt><dd>Show this help dialog</dd><dt><kbd>S</kbd></dt><dd>Focus the search field</dd><dt><kbd>↑</kbd></dt><dd>Move up in search results</dd><dt><kbd>↓</kbd></dt><dd>Move down in search results</dd><dt><kbd>↹</kbd></dt><dd>Switch tab</dd><dt><kbd>&#9166;</kbd></dt><dd>Go to active search result</dd><dt><kbd>+</kbd></dt><dd>Expand all sections</dd><dt><kbd>-</kbd></dt><dd>Collapse all sections</dd></dl></div><div class="infos"><h2>Search Tricks</h2><p>Prefix searches with a type followed by a colon (e.g. <code>fn:</code>) to restrict the search to a given type.</p><p>Accepted types are: <code>fn</code>, <code>mod</code>, <code>struct</code>, <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, and <code>const</code>.</p><p>Search functions by type signature (e.g. <code>vec -> usize</code> or <code>* -> vec</code>)</p><p>Search multiple things at once by splitting your query with comma (e.g. <code>str,u8</code> or <code>String,struct:Vec,test</code>)</p></div></div></aside><script>window.rootPath = "../../";window.currentCrate = "sentry";</script><script src="../../aliases.js"></script><script src="../../main.js"></script><script defer src="../../search-index.js"></script></body></html>
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_reqwest_transport&quot;</span>)]</span>
+<span class="kw">type</span> <span class="ident">DefaultTransport</span> <span class="op">=</span> <span class="ident">ReqwestHttpTransport</span>;
+
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">all</span>(
+    <span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_curl_transport&quot;</span>,
+    <span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_reqwest_transport&quot;</span>)
+))]</span>
+<span class="kw">type</span> <span class="ident">DefaultTransport</span> <span class="op">=</span> <span class="ident">CurlHttpTransport</span>;
+
+<span class="doccomment">/// The default http transport.</span>
+<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">HttpTransport</span> <span class="op">=</span> <span class="ident">DefaultTransport</span>;
+</pre></div>
+</section><section id="search" class="content hidden"></section><section class="footer"></section><aside id="help" class="hidden"><div><h1 class="hidden">Help</h1><div class="shortcuts"><h2>Keyboard Shortcuts</h2><dl><dt><kbd>?</kbd></dt><dd>Show this help dialog</dd><dt><kbd>S</kbd></dt><dd>Focus the search field</dd><dt><kbd>↑</kbd></dt><dd>Move up in search results</dd><dt><kbd>↓</kbd></dt><dd>Move down in search results</dd><dt><kbd>↹</kbd></dt><dd>Switch tab</dd><dt><kbd>&#9166;</kbd></dt><dd>Go to active search result</dd><dt><kbd>+</kbd></dt><dd>Expand all sections</dd><dt><kbd>-</kbd></dt><dd>Collapse all sections</dd></dl></div><div class="infos"><h2>Search Tricks</h2><p>Prefix searches with a type followed by a colon (e.g. <code>fn:</code>) to restrict the search to a given type.</p><p>Accepted types are: <code>fn</code>, <code>mod</code>, <code>struct</code>, <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, and <code>const</code>.</p><p>Search functions by type signature (e.g. <code>vec -> usize</code> or <code>* -> vec</code>)</p><p>Search multiple things at once by splitting your query with comma (e.g. <code>str,u8</code> or <code>String,struct:Vec,test</code>)</p></div></div></aside><script>window.rootPath = "../../";window.currentCrate = "sentry";</script><script src="../../aliases.js"></script><script src="../../main.js"></script><script src="../../source-files.js"></script><script src="../../source-script.js"></script><script defer src="../../search-index.js"></script></body></html>

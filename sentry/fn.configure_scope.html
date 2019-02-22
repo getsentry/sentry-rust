@@ -5,13 +5,13 @@ it's possible that the callback might not be called at all.  As a result of this
 the return value of this closure must have a default that is returned in such
 cases.</p>
 <h1 id="example" class="section-header"><a href="#example">Example</a></h1>
-<pre class="rust rust-example-rendered">
+<div class="example-wrap"><pre class="rust rust-example-rendered">
 <span class="ident">sentry</span>::<span class="ident">configure_scope</span>(<span class="op">|</span><span class="ident">scope</span><span class="op">|</span> {
     <span class="ident">scope</span>.<span class="ident">set_user</span>(<span class="prelude-val">Some</span>(<span class="ident">sentry</span>::<span class="ident">User</span> {
         <span class="ident">username</span>: <span class="prelude-val">Some</span>(<span class="string">&quot;john_doe&quot;</span>.<span class="ident">into</span>()),
         ..<span class="ident">Default</span>::<span class="ident">default</span>()
     }));
-});</pre>
+});</pre></div>
 <h1 id="panics" class="section-header"><a href="#panics">Panics</a></h1>
 <p>While the scope is being configured accessing scope related functionality is
 not permitted.  In this case a wide range of panics will be raised.  It's
