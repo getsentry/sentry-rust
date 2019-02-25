@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.1
+
+- Correct dependency bump for sentry types.
+
 ## 0.15.0
 
 - Upgraded to newer version of the internal sentry types crate.
