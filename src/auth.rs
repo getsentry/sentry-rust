@@ -5,6 +5,8 @@ use std::fmt;
 use std::str::FromStr;
 
 use chrono::{DateTime, Utc};
+use failure::Fail;
+use serde::{Deserialize, Serialize};
 use url::form_urlencoded;
 
 use crate::dsn::Dsn;

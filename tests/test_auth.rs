@@ -1,6 +1,4 @@
-extern crate chrono;
-extern crate sentry_types;
-extern crate serde_json;
+use serde_json;
 
 use std::collections::HashMap;
 

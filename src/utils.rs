@@ -1,3 +1,4 @@
+#![cfg_attr(not(feature = "with_protocol"), allow(unused))]
 use chrono::{DateTime, TimeZone, Utc};
 
 /// Converts a datetime object into a float timestamp.
@@ -15,7 +16,6 @@ pub fn timestamp_to_datetime(ts: f64) -> DateTime<Utc> {
     Utc.timestamp_opt(secs, micros * 1000).unwrap()
 }
 
-#[cfg(feature = "with_serde")]
 pub mod ts_seconds_float {
     use chrono::{DateTime, TimeZone, Utc};
     use serde::{de, ser};

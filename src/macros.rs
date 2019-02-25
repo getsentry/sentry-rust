@@ -1,3 +1,5 @@
+#![cfg_attr(not(feature = "with_protocol"), allow(unused))]
+
 /// Helper macro to implement string based serialization.
 ///
 /// If a type implements `Display` then this automatically
@@ -5,7 +7,6 @@
 /// appropriately.
 macro_rules! impl_str_ser {
     ($type:ty) => {
-        #[cfg(feature = "with_serde")]
         impl ::serde::ser::Serialize for $type {
             fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
             where
@@ -25,7 +26,6 @@ macro_rules! impl_str_ser {
 #[allow(unused_macros)]
 macro_rules! impl_str_de {
     ($type:ty) => {
-        #[cfg(feature = "with_serde")]
         impl<'de> ::serde::de::Deserialize<'de> for $type {
             fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
             where
@@ -107,7 +107,6 @@ macro_rules! impl_hex_ser {
             }
         }
 
-        #[cfg(feature = "with_serde")]
         impl ::serde::ser::Serialize for $type {
             fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
             where
@@ -136,7 +135,6 @@ macro_rules! impl_hex_de {
             }
         }
 
-        #[cfg(feature = "with_serde")]
         impl<'de> ::serde::de::Deserialize<'de> for $type {
             fn deserialize<D>(deserializer: D) -> Result<$type, D::Error>
             where

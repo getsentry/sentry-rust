@@ -1,6 +1,7 @@
 use std::fmt;
 use std::str::FromStr;
 
+use failure::Fail;
 use url::Url;
 
 use crate::auth::{auth_from_dsn_and_client, Auth};

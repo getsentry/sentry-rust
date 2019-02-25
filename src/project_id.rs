@@ -1,6 +1,8 @@
 use std::fmt;
 use std::str::FromStr;
 
+use failure::Fail;
+
 /// Represents a project ID.
 ///
 /// This is a thin wrapper around IDs supported by the Sentry

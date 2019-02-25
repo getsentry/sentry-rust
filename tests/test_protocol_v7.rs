@@ -1,10 +1,9 @@
 #[macro_use]
 extern crate serde_json;
 
-extern crate chrono;
-extern crate sentry_types;
-extern crate serde;
-extern crate uuid;
+use chrono;
+
+use uuid;
 
 use chrono::{DateTime, TimeZone, Utc};
 use std::borrow::Cow;
@@ -20,12 +19,12 @@ fn event_time() -> DateTime<Utc> {
     Utc.ymd(2017, 12, 24).and_hms(8, 12, 0)
 }
 
-fn reserialize(event: &v7::Event) -> v7::Event<'static> {
+fn reserialize(event: &v7::Event<'_>) -> v7::Event<'static> {
     let json = serde_json::to_string(event).unwrap();
     serde_json::from_str(&json).unwrap()
 }
 
-fn assert_roundtrip(event: &v7::Event) {
+fn assert_roundtrip(event: &v7::Event<'_>) {
     let event_roundtripped = reserialize(event);
     assert_eq!(&event.clone().into_owned(), &event_roundtripped);
 }
@@ -303,7 +302,7 @@ mod test_timestamp {
             "{\"event_id\":\"d43e86c96e424a93a4fbda156dd17341\",\"timestamp\":1514103120}"
         );
 
-        let event: v7::Event =
+        let event: v7::Event<'_> =
             serde_json::from_slice(b"{\"timestamp\":\"2017-12-24T08:12:00Z\"}").unwrap();
         assert_eq!(event.timestamp, event_time());
     }
@@ -827,7 +826,7 @@ mod test_exception {
 
     #[test]
     fn test_exception_stacktrace_minimal() {
-        let event: v7::Event = v7::Event {
+        let event: v7::Event<'_> = v7::Event {
             event_id: event_id(),
             timestamp: event_time(),
             exception: vec![v7::Exception {
@@ -863,7 +862,7 @@ mod test_exception {
 
     #[test]
     fn test_exception_stacktrace_larger() {
-        let event: v7::Event = v7::Event {
+        let event: v7::Event<'_> = v7::Event {
             event_id: event_id(),
             timestamp: event_time(),
             exception: vec![v7::Exception {
@@ -911,7 +910,7 @@ mod test_exception {
 
     #[test]
     fn test_exception_stacktrace_full() {
-        let event: v7::Event = v7::Event {
+        let event: v7::Event<'_> = v7::Event {
             event_id: event_id(),
             timestamp: event_time(),
             exception: vec![v7::Exception {
@@ -1028,7 +1027,7 @@ mod test_exception {
 
     #[test]
     fn test_exception_mechanism() {
-        let event: v7::Event = v7::Event {
+        let event: v7::Event<'_> = v7::Event {
             event_id: event_id(),
             timestamp: event_time(),
             exception: vec![v7::Exception {

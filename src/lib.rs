@@ -36,26 +36,6 @@
 //! };
 //! ```
 #![warn(missing_docs)]
-#![cfg_attr(feature = "cargo-clippy", allow(cast_lossless))]
-#![cfg_attr(feature = "cargo-clippy", allow(trivially_copy_pass_by_ref))]
-
-#[macro_use]
-extern crate failure_derive;
-#[macro_use]
-extern crate serde_derive;
-
-extern crate chrono;
-extern crate debugid;
-extern crate failure;
-#[cfg(feature = "with_serde")]
-extern crate serde;
-#[cfg(feature = "with_serde")]
-#[cfg(feature = "with_serde")]
-extern crate serde_json;
-extern crate url;
-#[cfg(feature = "with_serde")]
-extern crate url_serde;
-extern crate uuid;
 
 #[macro_use]
 mod macros;

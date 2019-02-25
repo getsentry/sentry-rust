@@ -12,9 +12,11 @@ use std::net::{AddrParseError, IpAddr};
 use std::ops;
 use std::str;
 
+use ::debugid::DebugId;
 use chrono::{DateTime, Utc};
-use debugid::DebugId;
+use failure::Fail;
 use serde::Serializer;
+use serde::{Deserialize, Serialize};
 use url::Url;
 use url_serde;
 use uuid::Uuid;

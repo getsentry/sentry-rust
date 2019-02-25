@@ -13,31 +13,23 @@ exclude = [
     ".vscode/**/*",
     "scripts/**/*"
 ]
+edition = "2018"
 
 [features]
-default = ["with_protocol", "with_serde"]
-with_protocol = ["with_serde"]
-with_serde = [
-    "serde",
-    "serde_derive",
-    "serde_json",
-    "url_serde",
-    "chrono/serde",
-    "uuid/serde",
-    "debugid/with_serde"
-]
+default = ["with_protocol"]
+with_protocol = []
+# No longer used
+with_serde = []
 
 [badges]
 travis-ci = { repository = "getsentry/rust-sentry-types" }
 
 [dependencies]
 failure = "0.1.5"
-failure_derive = "0.1.5"
 url = "1.7.2"
-serde = { version = "1.0.84", optional = true }
-serde_derive = { version = "1.0.84", optional = true }
-serde_json = { version = "1.0.34", optional = true }
-url_serde = { version = "0.2.0", optional = true }
-chrono = "0.4.6"
-uuid = { version = "0.7.1", features = ["v4"] }
-debugid = "0.3.1"
+serde = { version = "1.0.88", features = ["derive"] }
+serde_json = "1.0.38"
+url_serde = "0.2.0"
+chrono = { version = "0.4.6", features = ["serde"] }
+uuid = { version = "0.7.2", features = ["v4", "serde"] }
+debugid = { version = "0.4.0", features = ["with_serde"] }
