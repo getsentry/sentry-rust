@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.0
+
+- Upgraded to newer version of the internal sentry types crate.
+
 ## 0.14.2
 
 - Fixed a potential issue where an event might have been dropped if it was sent
