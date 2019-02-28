@@ -183,6 +183,7 @@ impl Clone for ClientOptions {
             send_default_pii: self.send_default_pii,
             before_send: self.before_send.clone(),
             before_breadcrumb: self.before_breadcrumb.clone(),
+            #[cfg(feature = "with_reqwest_transport")]
             reqwest_client: self.reqwest_client.clone(),
         }
     }
@@ -227,6 +228,7 @@ impl Default for ClientOptions {
             send_default_pii: false,
             before_send: None,
             before_breadcrumb: None,
+            #[cfg(feature = "with_reqwest_transport")]
             reqwest_client: None,
         }
     }
