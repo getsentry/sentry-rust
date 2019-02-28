@@ -219,16 +219,21 @@ implement_http_transport! {
     ) {
         let dsn = options.dsn.clone().unwrap();
         let user_agent = options.user_agent.to_string();
-        let http_proxy = options.http_proxy.as_ref().map(|x| x.to_string());
-        let https_proxy = options.https_proxy.as_ref().map(|x| x.to_string());
-        let mut client = Client::builder();
-        if let Some(url) = http_proxy {
-            client = client.proxy(Proxy::http(&url).unwrap());
+
+        let client = if let Some(client) = &options.reqwest_client {
+            client.clone()
+        } else {
+            let http_proxy = options.http_proxy.as_ref().map(|x| x.to_string());
+            let https_proxy = options.https_proxy.as_ref().map(|x| x.to_string());
+            let mut client = Client::builder();
+            if let Some(url) = http_proxy {
+                client = client.proxy(Proxy::http(&url).unwrap());
+            };
+            if let Some(url) = https_proxy {
+                client = client.proxy(Proxy::https(&url).unwrap());
+            };
+            Arc::new(client.build().unwrap())
         };
-        if let Some(url) = https_proxy {
-            client = client.proxy(Proxy::https(&url).unwrap());
-        };
-        let client = client.build().unwrap();
 
         let mut disabled = None::<SystemTime>;
 

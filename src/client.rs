@@ -101,6 +101,17 @@ pub struct ClientOptions {
     pub before_send: Option<BeforeCallback<Event<'static>>>,
     /// Before breadcrumb add callback.
     pub before_breadcrumb: Option<BeforeCallback<Breadcrumb>>,
+
+    #[cfg(feature = "with_reqwest_transport")]
+    /// If the application already holds a HTTP client, it can be injected here,
+    /// otherwise `TransportFactory` will build a new one. Other options that are effective
+    /// only at the client build phase and are in conflict, like proxy configuration,
+    /// will be ignored.
+    ///
+    /// The motivation for this option is that each instance of Reqwest client starts
+    /// multiple additional threads (1*reqwest-internal + 4*hyper-dns on 4 CPU machine)
+    /// that are not typically necessary.
+    pub reqwest_client: Option<Arc<reqwest::Client>>,
 }
 
 // make this unwind safe.  It's not out of the box because of the contained `BeforeCallback`s.
@@ -114,6 +125,12 @@ impl fmt::Debug for ClientOptions {
         struct BeforeSendSet(bool);
         #[derive(Debug)]
         struct BeforeBreadcrumbSet(bool);
+
+        #[cfg(feature = "with_reqwest_transport")]
+        let reqwest_client = self.reqwest_client.is_some();
+        #[cfg(not(feature = "with_reqwest_transport"))]
+        let reqwest_client = false;
+
         f.debug_struct("ClientOptions")
             .field("dsn", &self.dsn)
             .field("transport", &TransportFactory)
@@ -134,6 +151,7 @@ impl fmt::Debug for ClientOptions {
             .field("attach_stacktrace", &self.attach_stacktrace)
             .field("send_default_pii", &self.send_default_pii)
             .field("before_send", &BeforeSendSet(self.before_send.is_some()))
+            .field("reqwest_client", &reqwest_client)
             .field(
                 "before_send",
                 &BeforeBreadcrumbSet(self.before_breadcrumb.is_some()),
@@ -165,6 +183,7 @@ impl Clone for ClientOptions {
             send_default_pii: self.send_default_pii,
             before_send: self.before_send.clone(),
             before_breadcrumb: self.before_breadcrumb.clone(),
+            reqwest_client: self.reqwest_client.clone(),
         }
     }
 }
@@ -208,6 +227,7 @@ impl Default for ClientOptions {
             send_default_pii: false,
             before_send: None,
             before_breadcrumb: None,
+            reqwest_client: None,
         }
     }
 }
