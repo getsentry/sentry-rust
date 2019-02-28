@@ -221,7 +221,7 @@ implement_http_transport! {
         signal: Arc<Condvar>,
         shutdown_immediately: Arc<AtomicBool>,
         queue_size: Arc<Mutex<usize>>,
-        http_client: Arc<Client>,
+        http_client: Client,
     ) {
         let dsn = options.dsn.clone().unwrap();
         let user_agent = options.user_agent.to_string();
@@ -288,7 +288,7 @@ implement_http_transport! {
             }).unwrap()
     }
 
-    fn http_client(options: &ClientOptions, client: Option<Arc<Client>>) -> Arc<Client> {
+    fn http_client(options: &ClientOptions, client: Option<Client>) -> Client {
         if let Some(client) = client {
             client
         } else {
@@ -301,7 +301,7 @@ implement_http_transport! {
             if let Some(url) = https_proxy {
                 client = client.proxy(Proxy::https(&url).unwrap());
             };
-            Arc::new(client.build().unwrap())
+            client.build().unwrap()
         }
     }
 }
