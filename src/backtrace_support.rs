@@ -256,7 +256,7 @@ pub fn function_starts_with(mut func_name: &str, mut pattern: &str) -> bool {
             }
         }
     } else {
-        func_name = func_name.trim_left_matches('<').trim_left_matches("_<");
+        func_name = func_name.trim_start_matches('<').trim_start_matches("_<");
     }
 
     if !func_name.is_char_boundary(pattern.len()) {
