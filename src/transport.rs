@@ -441,7 +441,7 @@ implement_http_transport! {
     }
 
     fn http_client(_options: &ClientOptions, client: Option<curl::easy::Easy>) -> curl::easy::Easy {
-        client.unwrap_or_else(|| curl::easy::Easy::new())
+        client.unwrap_or_else(curl::easy::Easy::new)
     }
 }
 
