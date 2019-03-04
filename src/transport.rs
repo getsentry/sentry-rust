@@ -102,7 +102,7 @@ impl TransportFactory for DefaultTransportFactory {
     fn create_transport(&self, options: &ClientOptions) -> Box<dyn Transport> {
         #[cfg(any(feature = "with_reqwest_transport", feature = "with_curl_transport"))]
         {
-            Box::new(HttpTransport::new(options, None))
+            Box::new(HttpTransport::new(options))
         }
         #[cfg(not(any(feature = "with_reqwest_transport", feature = "with_curl_transport")))]
         {
@@ -140,7 +140,17 @@ macro_rules! implement_http_transport {
 
         impl $typename {
             /// Creates a new transport.
-            pub fn new(options: &ClientOptions, $hc_client: Option<$hc_client_ty>) -> $typename {
+            pub fn new(options: &ClientOptions) -> Self {
+                Self::new_internal(options, None)
+            }
+
+            /// Creates a new transport that uses the passed HTTP client.
+            pub fn with_client(options: &ClientOptions, $hc_client: $hc_client_ty) -> Self {
+                Self::new_internal(options, Some($hc_client))
+            }
+
+            /// Creates a new transport that uses the passed HTTP client or builds a new one.
+            fn new_internal(options: &ClientOptions, $hc_client: Option<$hc_client_ty>) -> Self {
                 fn spawn($($argname: $argty,)*) -> JoinHandle<()> { $body }
 
                 fn http_client($hc_options: &ClientOptions, $hc_client: Option<$hc_client_ty>) -> $hc_ret { $hc_body }
@@ -289,9 +299,7 @@ implement_http_transport! {
     }
 
     fn http_client(options: &ClientOptions, client: Option<Client>) -> Client {
-        if let Some(client) = client {
-            client
-        } else {
+        client.unwrap_or_else(|| {
             let http_proxy = options.http_proxy.as_ref().map(|x| x.to_string());
             let https_proxy = options.https_proxy.as_ref().map(|x| x.to_string());
             let mut client = Client::builder();
@@ -302,7 +310,7 @@ implement_http_transport! {
                 client = client.proxy(Proxy::https(&url).unwrap());
             };
             client.build().unwrap()
-        }
+        })
     }
 }
 
@@ -433,11 +441,7 @@ implement_http_transport! {
     }
 
     fn http_client(_options: &ClientOptions, client: Option<curl::easy::Easy>) -> curl::easy::Easy {
-        if let Some(client) = client {
-            client
-        } else {
-            curl::easy::Easy::new()
-        }
+        client.unwrap_or_else(|| curl::easy::Easy::new())
     }
 }
 
