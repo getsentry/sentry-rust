@@ -127,6 +127,7 @@ macro_rules! implement_http_transport {
         $(#[$attr:meta])*
         pub struct $typename:ident;
         fn spawn($($argname:ident: $argty:ty,)*) $body:block
+        fn http_client($hc_options:ident: &ClientOptions, $hc_client:ident: Option<$hc_client_ty:ty>) -> $hc_ret:ty $hc_body:block
     ) => {
         $(#[$attr])*
         pub struct $typename {
@@ -139,20 +140,34 @@ macro_rules! implement_http_transport {
 
         impl $typename {
             /// Creates a new transport.
-            pub fn new(options: &ClientOptions) -> $typename {
+            pub fn new(options: &ClientOptions) -> Self {
+                Self::new_internal(options, None)
+            }
+
+            /// Creates a new transport that uses the passed HTTP client.
+            pub fn with_client(options: &ClientOptions, $hc_client: $hc_client_ty) -> Self {
+                Self::new_internal(options, Some($hc_client))
+            }
+
+            /// Creates a new transport that uses the passed HTTP client or builds a new one.
+            fn new_internal(options: &ClientOptions, $hc_client: Option<$hc_client_ty>) -> Self {
                 fn spawn($($argname: $argty,)*) -> JoinHandle<()> { $body }
+
+                fn http_client($hc_options: &ClientOptions, $hc_client: Option<$hc_client_ty>) -> $hc_ret { $hc_body }
 
                 let (sender, receiver) = sync_channel(30);
                 let shutdown_signal = Arc::new(Condvar::new());
                 let shutdown_immediately = Arc::new(AtomicBool::new(false));
                 #[allow(clippy::mutex_atomic)]
                 let queue_size = Arc::new(Mutex::new(0));
+                let http_client = http_client(options, $hc_client);
                 let _handle = Some(spawn(
                     options,
                     receiver,
                     shutdown_signal.clone(),
                     shutdown_immediately.clone(),
                     queue_size.clone(),
+                    http_client,
                 ));
                 $typename {
                     sender: Mutex::new(sender),
@@ -216,19 +231,10 @@ implement_http_transport! {
         signal: Arc<Condvar>,
         shutdown_immediately: Arc<AtomicBool>,
         queue_size: Arc<Mutex<usize>>,
+        http_client: Client,
     ) {
         let dsn = options.dsn.clone().unwrap();
         let user_agent = options.user_agent.to_string();
-        let http_proxy = options.http_proxy.as_ref().map(|x| x.to_string());
-        let https_proxy = options.https_proxy.as_ref().map(|x| x.to_string());
-        let mut client = Client::builder();
-        if let Some(url) = http_proxy {
-            client = client.proxy(Proxy::http(&url).unwrap());
-        };
-        if let Some(url) = https_proxy {
-            client = client.proxy(Proxy::https(&url).unwrap());
-        };
-        let client = client.build().unwrap();
 
         let mut disabled = None::<SystemTime>;
 
@@ -260,7 +266,7 @@ implement_http_transport! {
                         }
                     }
 
-                    match client
+                    match http_client
                         .post(url.as_str())
                         .json(&event)
                         .header("X-Sentry-Auth", dsn.to_auth(Some(&user_agent)).to_string())
@@ -291,6 +297,21 @@ implement_http_transport! {
                 }
             }).unwrap()
     }
+
+    fn http_client(options: &ClientOptions, client: Option<Client>) -> Client {
+        client.unwrap_or_else(|| {
+            let http_proxy = options.http_proxy.as_ref().map(|x| x.to_string());
+            let https_proxy = options.https_proxy.as_ref().map(|x| x.to_string());
+            let mut client = Client::builder();
+            if let Some(url) = http_proxy {
+                client = client.proxy(Proxy::http(&url).unwrap());
+            };
+            if let Some(url) = https_proxy {
+                client = client.proxy(Proxy::https(&url).unwrap());
+            };
+            client.build().unwrap()
+        })
+    }
 }
 
 #[cfg(feature = "with_curl_transport")]
@@ -306,6 +327,7 @@ implement_http_transport! {
         signal: Arc<Condvar>,
         shutdown_immediately: Arc<AtomicBool>,
         queue_size: Arc<Mutex<usize>>,
+        http_client: curl::easy::Easy,
     ) {
         let dsn = options.dsn.clone().unwrap();
         let user_agent = options.user_agent.to_string();
@@ -313,7 +335,7 @@ implement_http_transport! {
         let https_proxy = options.https_proxy.as_ref().map(|x| x.to_string());
 
         let mut disabled = None::<SystemTime>;
-        let mut handle = curl::easy::Easy::new();
+        let mut handle = http_client;
 
         thread::spawn(move || {
             sentry_debug!("spawning curl transport");
@@ -416,6 +438,10 @@ implement_http_transport! {
                 }
             }
         })
+    }
+
+    fn http_client(_options: &ClientOptions, client: Option<curl::easy::Easy>) -> curl::easy::Easy {
+        client.unwrap_or_else(curl::easy::Easy::new)
     }
 }
 
