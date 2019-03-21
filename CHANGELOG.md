@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.2
+
+- Added support for passing custom reqwest clients/curl handles to the transport (#130)
+
 ## 0.15.1
 
 - Correct dependency bump for sentry types.
