@@ -19,13 +19,18 @@ check: style lint test
 # Linting
 
 style:
-	@rustup component add rustfmt 2> /dev/null
-	cargo fmt -- --check
+	@rustup component add rustfmt --toolchain stable 2> /dev/null
+	cargo +stable fmt -- --check
 .PHONY: style
 
+format:
+	@rustup component add rustfmt --toolchain stable 2> /dev/null
+	cargo +stable fmt
+.PHONY: format
+
 lint:
-	@rustup component add clippy 2> /dev/null
-	cargo clippy --all-features --tests --all --examples -- -D clippy::all
+	@rustup component add clippy --toolchain stable 2> /dev/null
+	cargo +stable clippy --all-features --tests --all --examples -- -D clippy::all
 .PHONY: lint
 
 # Tests
