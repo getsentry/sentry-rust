@@ -24,7 +24,7 @@ matrix:
     - os: osx
       env: SUITE=checkall
     - os: osx
-      env: SUITE=cargotestall
+      env: SUITE=testall
 
     # Minimum Rust
     - env: SUITE=checkfast
