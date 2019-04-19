@@ -140,7 +140,7 @@ pub fn backtrace_to_stacktrace(bt: &Backtrace) -> Option<Stacktrace> {
                         instruction_addr: Some(frame.ip().into()),
                         abs_path,
                         filename,
-                        lineno: sym.lineno().map(|l| l.into()),
+                        lineno: sym.lineno().map(u64::from),
                         colno: None,
                         ..Default::default()
                     }

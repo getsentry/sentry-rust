@@ -129,7 +129,7 @@ pub fn exception_from_single_fail<F: Fail + ?Sized>(
         module,
         value: Some(f.to_string()),
         stacktrace: bt
-            .map(|backtrace| backtrace.to_string())
+            .map(failure::Backtrace::to_string)
             .and_then(|x| parse_stacktrace(&x)),
         ..Default::default()
     }

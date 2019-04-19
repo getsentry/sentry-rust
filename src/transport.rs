@@ -300,8 +300,8 @@ implement_http_transport! {
 
     fn http_client(options: &ClientOptions, client: Option<Client>) -> Client {
         client.unwrap_or_else(|| {
-            let http_proxy = options.http_proxy.as_ref().map(|x| x.to_string());
-            let https_proxy = options.https_proxy.as_ref().map(|x| x.to_string());
+            let http_proxy = options.http_proxy.as_ref().map(ToString::to_string);
+            let https_proxy = options.https_proxy.as_ref().map(ToString::to_string);
             let mut client = Client::builder();
             if let Some(url) = http_proxy {
                 client = client.proxy(Proxy::http(&url).unwrap());
@@ -331,8 +331,8 @@ implement_http_transport! {
     ) {
         let dsn = options.dsn.clone().unwrap();
         let user_agent = options.user_agent.to_string();
-        let http_proxy = options.http_proxy.as_ref().map(|x| x.to_string());
-        let https_proxy = options.https_proxy.as_ref().map(|x| x.to_string());
+        let http_proxy = options.http_proxy.as_ref().map(ToString::to_string);
+        let https_proxy = options.https_proxy.as_ref().map(ToString::to_string);
 
         let mut disabled = None::<SystemTime>;
         let mut handle = http_client;
@@ -404,7 +404,7 @@ implement_http_transport! {
                     handle.header_function(move |data| {
                         if let Ok(data) = std::str::from_utf8(data) {
                             let mut iter = data.split(':');
-                            if let Some(key) = iter.next().map(|x| x.to_lowercase()) {
+                            if let Some(key) = iter.next().map(str::to_lowercase) {
                                 if key == "retry-after" {
                                     *retry_after_setter = iter.next().map(|x| x.trim().to_string());
                                 }
@@ -419,7 +419,7 @@ implement_http_transport! {
                     Ok(429) => {
                         if let Some(retry_after) = retry_after
                             .as_ref()
-                            .map(|x| x.as_str())
+                            .map(String::as_str)
                             .and_then(parse_retry_after)
                         {
                             disabled = Some(retry_after);

@@ -3,7 +3,7 @@
 use std::cell::{Cell, UnsafeCell};
 use std::mem::drop;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex, RwLock, TryLockError};
+use std::sync::{Arc, Mutex, PoisonError, RwLock, TryLockError};
 use std::thread;
 use std::time::Duration;
 
@@ -79,12 +79,12 @@ struct HubImpl {
 #[cfg(feature = "with_client_implementation")]
 impl HubImpl {
     fn with<F: FnOnce(&Stack) -> R, R>(&self, f: F) -> R {
-        let guard = self.stack.read().unwrap_or_else(|x| x.into_inner());
+        let guard = self.stack.read().unwrap_or_else(PoisonError::into_inner);
         f(&*guard)
     }
 
     fn with_mut<F: FnOnce(&mut Stack) -> R, R>(&self, f: F) -> R {
-        let mut guard = self.stack.write().unwrap_or_else(|x| x.into_inner());
+        let mut guard = self.stack.write().unwrap_or_else(PoisonError::into_inner);
         f(&mut *guard)
     }
 
@@ -160,7 +160,7 @@ impl Hub {
     /// When using the minimal API set use `Hub::with_active` instead.
     #[cfg(feature = "with_client_implementation")]
     pub fn current() -> Arc<Hub> {
-        Hub::with(|hub| hub.clone())
+        Hub::with(Arc::clone)
     }
 
     /// Returns the main thread's hub.
@@ -181,7 +181,7 @@ impl Hub {
     where
         F: FnOnce(&Arc<Hub>) -> R,
     {
-        if USE_PROCESS_HUB.with(|x| x.get()) {
+        if USE_PROCESS_HUB.with(Cell::get) {
             f(&PROCESS_HUB.0)
         } else {
             // not on safety: this is safe because even though we change the Arc
