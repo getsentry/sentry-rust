@@ -33,7 +33,7 @@ pub fn capture_event(event: Event<'static>) -> internals::Uuid {
 
 /// Captures an arbitrary message.
 ///
-/// This creates an event form the given message and sends it to the current hub.
+/// This creates an event from the given message and sends it to the current hub.
 #[allow(unused_variables)]
 pub fn capture_message(msg: &str, level: Level) -> internals::Uuid {
     with_client_impl! {{
