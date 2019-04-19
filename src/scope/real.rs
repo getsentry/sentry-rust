@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 use std::fmt;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, PoisonError, RwLock};
 
 use crate::client::Client;
 use crate::protocol::map::Entry;
@@ -141,7 +141,7 @@ impl fmt::Debug for ScopeGuard {
 impl Drop for ScopeGuard {
     fn drop(&mut self) {
         if let Some((stack, depth)) = self.0.take() {
-            let mut stack = stack.write().unwrap_or_else(|x| x.into_inner());
+            let mut stack = stack.write().unwrap_or_else(PoisonError::into_inner);
             if stack.depth() != depth {
                 panic!("Tried to pop guards out of order");
             }

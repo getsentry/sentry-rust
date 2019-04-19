@@ -106,7 +106,7 @@ mod findshlibs_support {
         if let Ok(elf_obj) = Elf::parse(&mmap) {
             if let Some(note) = elf_obj
                 .iter_note_headers(&mmap)?
-                .filter_map(|note_result| note_result.ok())
+                .filter_map(Result::ok)
                 .find(|note| note.n_type == NT_GNU_BUILD_ID && note.desc.len() >= 16)
             {
                 // Can only fail if length of input is not 16
@@ -318,7 +318,7 @@ pub fn current_thread(with_stack: bool) -> Thread {
     let thread_id: u64 = unsafe { std::mem::transmute(thread::current().id()) };
     Thread {
         id: Some(thread_id.to_string().into()),
-        name: thread::current().name().map(|x| x.to_string()),
+        name: thread::current().name().map(str::to_owned),
         current: true,
         stacktrace: if with_stack {
             current_stacktrace()

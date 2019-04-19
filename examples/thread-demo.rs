@@ -14,7 +14,7 @@ fn main() {
     ));
 
     let mut log_builder = pretty_env_logger::formatted_builder();
-    log_builder.parse("info");
+    log_builder.parse_filters("info");
     sentry::integrations::log::init(Some(Box::new(log_builder.build())), Default::default());
     sentry::integrations::panic::register_panic_handler();
 

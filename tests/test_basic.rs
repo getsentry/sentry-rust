@@ -67,7 +67,7 @@ fn test_breadcrumbs() {
         .iter()
         .map(|x| {
             (
-                x.message.as_ref().map(|x| x.as_str()).unwrap(),
+                x.message.as_ref().map(String::as_str).unwrap(),
                 x.ty.as_str(),
             )
         })

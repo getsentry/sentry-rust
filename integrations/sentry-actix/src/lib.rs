@@ -331,7 +331,7 @@ impl ActixWebHubExt for Hub {
             // that is however impossible to do as of now because it conflicts with the generic implementation of Fail also provided in failure.
             // Waiting for update that allows overlap, (https://github.com/rust-lang/rfcs/issues/1053), but chances are by then failure/std::error will be refactored anyway
             let compat: Option<&failure::Compat<failure::Error>> = fail.downcast_ref();
-            let failure_err = compat.map(|compat| compat.get_ref());
+            let failure_err = compat.map(failure::Compat::get_ref);
             let fail = failure_err.map_or(fail, |x| x.as_fail());
             exceptions.push(exception_from_single_fail(
                 fail,
