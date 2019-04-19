@@ -15,18 +15,24 @@ script: make $SUITE
 
 matrix:
   include:
-    - env: SUITE=format-check
+    - env: SUITE=style
     - env: SUITE=lint
-    - env: SUITE=check
-      rust: "1.31.0"
-    - env: SUITE=cargotest
-      rust: "1.31.0"
     - env: SUITE=checkall
-    - env: SUITE=cargotestall
+    - env: SUITE=testall
+
+    # MacOS
     - os: osx
       env: SUITE=checkall
     - os: osx
       env: SUITE=cargotestall
+
+    # Minimum Rust
+    - env: SUITE=checkfast
+      rust: "1.31.0"
+    - env: SUITE=testfast
+      rust: "1.31.0"
+
+    # Build Docs
     - env: SUITE=travis-push-docs
       script: make $SUITE || [[ ! "$TRAVIS_BRANCH" =~ ^release/ ]]
 

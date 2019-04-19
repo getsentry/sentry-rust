@@ -1,4 +1,4 @@
-all: test
+all: check
 .PHONY: all
 
 clean:
@@ -12,6 +12,44 @@ build:
 doc:
 	@cargo doc
 .PHONY: doc
+
+check: style lint test
+.PHONY: check
+
+# Linting
+
+style:
+	@rustup component add rustfmt 2> /dev/null
+	cargo fmt -- --check
+.PHONY: style
+
+lint:
+	@rustup component add clippy 2> /dev/null
+	cargo clippy --all-features --tests --all --examples -- -D clippy::all
+.PHONY: lint
+
+# Tests
+
+test: checkall testall
+.PHONY: test
+
+testfast:
+	@echo 'TESTSUITE'
+	cargo test --features=with_test_support
+.PHONY: testfast
+
+testall:
+	@echo 'TESTSUITE'
+	cargo test --all-features --all
+.PHONY: testall
+
+# Checks
+
+checkfast: check-no-default-features check-default-features
+.PHONY: checkfast
+
+checkall: check-all-features check-no-default-features check-default-features check-failure check-log check-panic check-error-chain check-all-impls check-curl-transport check-actix
+.PHONY: checkall
 
 check-all-features:
 	@echo 'ALL FEATURES'
@@ -65,34 +103,7 @@ check-actix:
 	@RUSTFLAGS=-Dwarnings cargo check --manifest-path integrations/sentry-actix/Cargo.toml
 .PHONY: check-actix
 
-check: check-no-default-features check-default-features
-.PHONY: check-all-features
-
-checkall: check-all-features check-no-default-features check-default-features check-failure check-log check-panic check-error-chain check-all-impls check-curl-transport check-actix
-.PHONY: checkall
-
-cargotest:
-	@echo 'TESTSUITE'
-	@cargo test --features=with_test_support
-.PHONY: cargotest
-
-cargotestall:
-	@echo 'TESTSUITE'
-	@cargo test --all-features --all
-.PHONY: cargotest
-
-test: checkall cargotestall
-.PHONY: test
-
-format-check:
-	@rustup component add rustfmt 2> /dev/null
-	@cargo fmt -- --check
-.PHONY: format-check
-
-lint:
-	@rustup component add clippy 2> /dev/null
-	@cargo clippy --all-features --tests --all --examples -- -D clippy::all
-.PHONY: lint
+# Other
 
 travis-push-docs:
 	@# Intentionally allow command output
