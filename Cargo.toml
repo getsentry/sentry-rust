@@ -18,7 +18,7 @@ autoexamples = true
 all-features = true
 
 [features]
-default = ["with_client_implementation", "with_default_transport", "with_panic", "with_failure", "with_log", "with_env_logger", "with_device_info", "with_rust_info", "native-tls"]
+default = ["with_client_implementation", "with_default_transport", "with_panic", "with_failure", "with_log", "with_env_logger", "with_device_info", "with_rust_info", "with_native_tls"]
 with_reqwest_transport = ["reqwest", "httpdate", "with_client_implementation"]
 with_curl_transport = ["curl", "httpdate", "serde_json", "with_client_implementation"]
 with_default_transport = ["with_reqwest_transport"]
@@ -34,8 +34,8 @@ with_device_info = ["libc", "hostname", "uname", "with_client_implementation"]
 with_rust_info = ["rustc_version", "with_client_implementation"]
 with_debug_meta = ["findshlibs", "goblin", "memmap", "with_client_implementation"]
 with_test_support = []
-rustls = ["reqwest/rustls-tls"]
-native-tls = ["reqwest/default-tls"]
+with_rustls = ["reqwest/rustls-tls"]
+with_native_tls = ["reqwest/default-tls"]
 
 [dependencies]
 backtrace = { version = "0.3.15", optional = true }
