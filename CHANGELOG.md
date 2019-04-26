@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.15.3
+
+- Added `with_rustls` and `with_native_tls` features to control SSL in the default
+  reqwest transport.  (#137)
+
 ## 0.15.2
 
 - Added support for passing custom reqwest clients/curl handles to the transport (#130)
