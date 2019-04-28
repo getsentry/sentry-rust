@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.4
+
+- Added a feature flag to disable the default sentry features in sentry-actix.  (#139)
+
 ## 0.15.3
 
 - Added `with_rustls` and `with_native_tls` features to control SSL in the default
