@@ -32,7 +32,8 @@
 use crate::api::add_breadcrumb;
 use crate::backtrace_support::current_stacktrace;
 use crate::hub::Hub;
-use crate::protocol::{Breadcrumb, Event, Exception, Level};
+pub use crate::protocol;
+use crate::protocol::{Breadcrumb, Event, Exception, Level, LogEntry, Value};
 
 /// Logger specific options.
 pub struct LoggerOptions {
@@ -50,6 +51,8 @@ pub struct LoggerOptions {
     /// If set to `true` current stacktrace will be resolved and attached
     /// to each event. (expensive, defaults to `true`)
     pub attach_stacktraces: bool,
+    /// allow you to custom event,will respect attach_stacktraces is exception is empty
+    pub custom_event_from_record: Option<Box<Fn(&log::Record<'_>) -> Event<'static> + Send + Sync>>,
 }
 
 impl Default for LoggerOptions {
@@ -61,6 +64,7 @@ impl Default for LoggerOptions {
             emit_error_events: true,
             emit_warning_events: false,
             attach_stacktraces: true,
+            custom_event_from_record: None,
         }
     }
 }
@@ -182,7 +186,24 @@ impl log::Log for Logger {
     fn log(&self, record: &log::Record<'_>) {
         if self.options.create_issue_for_record(record) {
             Hub::with_active(|hub| {
-                hub.capture_event(event_from_record(record, self.options.attach_stacktraces))
+                let event = if let Some(custom_event_from_record) =
+                    &self.options.custom_event_from_record
+                {
+                    let mut event = custom_event_from_record(record);
+                    if self.options.attach_stacktraces && event.exception.is_empty() {
+                        event.exception = vec![Exception {
+                            ty: record.target().into(),
+                            value: Some(format!("{}", record.args())),
+                            stacktrace: current_stacktrace(),
+                            ..Default::default()
+                        }]
+                        .into()
+                    }
+                    event
+                } else {
+                    event_from_record(record, self.options.attach_stacktraces)
+                };
+                hub.capture_event(event)
             });
         }
         if self.options.emit_breadcrumbs && record.level() <= self.options.filter {
