@@ -40,20 +40,24 @@ lazy_static::lazy_static! {
     static ref FRAME_RE: Regex = Regex::new(
         r#"(?xm)
         ^
-            [\ ]*(?:\d+:)[\ ]*                  # leading frame number
+            \s*(?:\d+:)?\s*                      # frame number (missing for inline)
+
             (?:
-                (?P<addr_oldsyntax>0x[a-f0-9]+)               # addr
-                [\ ]-[\ ]
-                (?P<symbol_oldsyntax>[^\r\n]+)
-              |
-                (?P<symbol>[^\r\n]+)
-                \((?P<addr>0x[a-f0-9]+)\)               # addr
-            )
+                (?P<addr_old>0x[a-f0-9]+)        # old style address prefix
+                \s-\s
+            )?
+
+            (?P<symbol>[^\r\n\(]+)               # symbol name
+
+            (?:
+                \s\((?P<addr_new>0x[a-f0-9]+)\)  # new style address in parens
+            )?
+
             (?:
                 \r?\n
-                [\ \t]+at[\ ]
-                (?P<path>[^\r\n]+?)
-                (?::(?P<lineno>\d+))?
+                \s+at\s                          # padded "at" in new line
+                (?P<path>[^\r\n]+?)              # path to source file
+                (?::(?P<lineno>\d+))?            # optional source line
             )?
         $
     "#
@@ -62,17 +66,25 @@ lazy_static::lazy_static! {
 }
 
 fn parse_stacktrace(bt: &str) -> Option<Stacktrace> {
+    let mut last_address = None;
+
     let frames = FRAME_RE
         .captures_iter(&bt)
         .map(|captures| {
             let abs_path = captures.name("path").map(|m| m.as_str().to_string());
             let filename = abs_path.as_ref().map(|p| filename(p));
-            let real_symbol = captures
-                .name("symbol")
-                .map_or_else(|| &captures["symbol_oldsyntax"], |m| m.as_str())
-                .to_string();
+            let real_symbol = captures["symbol"].to_string();
             let symbol = strip_symbol(&real_symbol);
             let function = demangle_symbol(symbol);
+
+            // Obtain the instruction address. A missing address usually indicates an inlined stack
+            // frame, in which case the previous address needs to be used.
+            last_address = captures
+                .name("addr_new")
+                .or_else(|| captures.name("addr_old"))
+                .and_then(|m| m.as_str().parse().ok())
+                .or(last_address);
+
             Frame {
                 symbol: if symbol != function {
                     Some(symbol.into())
@@ -80,13 +92,7 @@ fn parse_stacktrace(bt: &str) -> Option<Stacktrace> {
                     None
                 },
                 function: Some(function),
-                instruction_addr: Some(
-                    captures
-                        .name("addr")
-                        .map_or_else(|| &captures["addr_oldsyntax"], |m| m.as_str())
-                        .parse()
-                        .unwrap(),
-                ),
+                instruction_addr: last_address,
                 abs_path,
                 filename,
                 lineno: captures
@@ -230,4 +236,42 @@ where
             }
         }
     }
+}
+
+#[test]
+fn test_parse_stacktrace() {
+    use crate::protocol::Addr;
+
+    let backtrace = r#"
+   2: <failure::error::error_impl::ErrorImpl as core::convert::From<F>>::from::h3bae66c036570137 (0x55a12174de62)
+             at /root/.cargo/registry/src/github.com-1ecc6299db9ec823/failure-0.1.5/src/error/error_impl.rs:19
+      <failure::error::Error as core::convert::From<F>>::from::hc7d0d62dae166cea
+             at /root/.cargo/registry/src/github.com-1ecc6299db9ec823/failure-0.1.5/src/error/mod.rs:36
+      failure::error_message::err_msg::he322d3ed9409189a
+             at /root/.cargo/registry/src/github.com-1ecc6299db9ec823/failure-0.1.5/src/error_message.rs:12
+      rust::inline2::h562e5687710b6a71
+             at src/main.rs:5
+      rust::not_inline::h16f5b6019e5f0815
+             at src/main.rs:10
+   7: main (0x55e3895a4dc7)
+"#;
+
+    let stacktrace = parse_stacktrace(backtrace).expect("stacktrace");
+    assert_eq!(stacktrace.frames.len(), 6);
+
+    assert_eq!(stacktrace.frames[0].function, Some("main".into()));
+    assert_eq!(
+        stacktrace.frames[0].instruction_addr,
+        Some(Addr(0x55e3_895a_4dc7))
+    );
+
+    // Inlined frame, inherits address from parent
+    assert_eq!(
+        stacktrace.frames[1].function,
+        Some("rust::not_inline".into())
+    );
+    assert_eq!(
+        stacktrace.frames[1].instruction_addr,
+        Some(Addr(0x55a1_2174_de62))
+    );
 }
