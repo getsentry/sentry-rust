@@ -687,6 +687,25 @@
 <span id="687">687</span>
 <span id="688">688</span>
 <span id="689">689</span>
+<span id="690">690</span>
+<span id="691">691</span>
+<span id="692">692</span>
+<span id="693">693</span>
+<span id="694">694</span>
+<span id="695">695</span>
+<span id="696">696</span>
+<span id="697">697</span>
+<span id="698">698</span>
+<span id="699">699</span>
+<span id="700">700</span>
+<span id="701">701</span>
+<span id="702">702</span>
+<span id="703">703</span>
+<span id="704">704</span>
+<span id="705">705</span>
+<span id="706">706</span>
+<span id="707">707</span>
+<span id="708">708</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">borrow</span>::<span class="ident">Cow</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">ffi</span>::{<span class="ident">OsStr</span>, <span class="ident">OsString</span>};
@@ -903,7 +922,13 @@
 }
 
 <span class="ident">lazy_static</span>::<span class="macro">lazy_static</span><span class="macro">!</span> {
-    <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">CRATE_RE</span>: <span class="ident">Regex</span> <span class="op">=</span> <span class="ident">Regex</span>::<span class="ident">new</span>(<span class="string">r&quot;^(?:_&lt;)?([a-zA-Z0-9_]+?)(?:\.\.|::)&quot;</span>).<span class="ident">unwrap</span>();
+    <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">CRATE_RE</span>: <span class="ident">Regex</span> <span class="op">=</span> <span class="ident">Regex</span>::<span class="ident">new</span>(<span class="string">r#&quot;(?x)
+        ^
+        (?:_?&lt;)?           # trait impl syntax
+        (?:\w+\ as \ )?    # anonymous implementor
+        ([a-zA-Z0-9_]+?)   # crate name
+        (?:\.\.|::)        # crate delimiter (.. or ::)
+    &quot;#</span>).<span class="ident">unwrap</span>();
 }
 
 <span class="doccomment">/// Tries to parse the rust crate from a function name.</span>
@@ -1370,10 +1395,23 @@
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_parse_crate_name_unknown</span>() {
+    <span class="kw">fn</span> <span class="ident">test_parse_crate_name_anonymous_impl</span>() {
         <span class="macro">assert_eq</span><span class="macro">!</span>(
             <span class="ident">parse_crate_name</span>(<span class="string">&quot;_&lt;F as alloc..boxed..FnBox&lt;A&gt;&gt;::call_box&quot;</span>),
-            <span class="prelude-val">None</span>
+            <span class="prelude-val">Some</span>(<span class="string">&quot;alloc&quot;</span>.<span class="ident">into</span>())
+        );
+    }
+
+    <span class="attribute">#[<span class="ident">test</span>]</span>
+    <span class="kw">fn</span> <span class="ident">test_parse_crate_name_none</span>() {
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">parse_crate_name</span>(<span class="string">&quot;main&quot;</span>), <span class="prelude-val">None</span>);
+    }
+
+    <span class="attribute">#[<span class="ident">test</span>]</span>
+    <span class="kw">fn</span> <span class="ident">test_parse_crate_name_newstyle</span>() {
+        <span class="macro">assert_eq</span><span class="macro">!</span>(
+            <span class="ident">parse_crate_name</span>(<span class="string">&quot;&lt;failure::error::Error as core::convert::From&lt;F&gt;&gt;::from&quot;</span>),
+            <span class="prelude-val">Some</span>(<span class="string">&quot;failure&quot;</span>.<span class="ident">into</span>())
         );
     }
 }

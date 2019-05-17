@@ -330,6 +330,16 @@
 <span id="330">330</span>
 <span id="331">331</span>
 <span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
+<span id="342">342</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fmt</span>;
 
@@ -354,9 +364,16 @@
         <span class="string">&quot;sentry_types::&quot;</span>,
         <span class="comment">// these are not modules but things like __rust_maybe_catch_panic</span>
         <span class="string">&quot;__rust_&quot;</span>,
+        <span class="string">&quot;___rust_&quot;</span>,
     ];
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_failure&quot;</span>)]</span> {
         <span class="ident">rv</span>.<span class="ident">push</span>(<span class="string">&quot;failure::&quot;</span>);
+    }
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_log&quot;</span>)]</span> {
+        <span class="ident">rv</span>.<span class="ident">push</span>(<span class="string">&quot;log::&quot;</span>);
+    }
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_error_chain&quot;</span>)]</span> {
+        <span class="ident">rv</span>.<span class="ident">push</span>(<span class="string">&quot;error_chain::&quot;</span>);
     }
     <span class="ident">rv</span>
 };
@@ -365,10 +382,13 @@
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rv</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[
         <span class="string">&quot;std::panicking::begin_panic&quot;</span>,
+        <span class="string">&quot;core::panicking::panic&quot;</span>,
     ];
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_failure&quot;</span>)]</span> {
         <span class="ident">rv</span>.<span class="ident">push</span>(<span class="string">&quot;failure::error_message::err_msg&quot;</span>);
         <span class="ident">rv</span>.<span class="ident">push</span>(<span class="string">&quot;failure::backtrace::Backtrace::new&quot;</span>);
+        <span class="ident">rv</span>.<span class="ident">push</span>(<span class="string">&quot;failure::backtrace::internal::InternalBacktrace::new&quot;</span>);
+        <span class="ident">rv</span>.<span class="ident">push</span>(<span class="string">&quot;failure::Fail::context&quot;</span>);
     }
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;with_log&quot;</span>)]</span> {
         <span class="ident">rv</span>.<span class="ident">push</span>(<span class="string">&quot;&lt;sentry::integrations::log::Logger as log::Log&gt;::log&quot;</span>);
