@@ -21,9 +21,16 @@ pub static ref WELL_KNOWN_SYS_MODULES: Vec<&'static str> = {
         "sentry_types::",
         // these are not modules but things like __rust_maybe_catch_panic
         "__rust_",
+        "___rust_",
     ];
     #[cfg(feature = "with_failure")] {
         rv.push("failure::");
+    }
+    #[cfg(feature = "with_log")] {
+        rv.push("log::");
+    }
+    #[cfg(feature = "with_error_chain")] {
+        rv.push("error_chain::");
     }
     rv
 };
@@ -32,10 +39,13 @@ pub static ref WELL_KNOWN_BORDER_FRAMES: Vec<&'static str> = {
     #[allow(unused_mut)]
     let mut rv = vec![
         "std::panicking::begin_panic",
+        "core::panicking::panic",
     ];
     #[cfg(feature = "with_failure")] {
         rv.push("failure::error_message::err_msg");
         rv.push("failure::backtrace::Backtrace::new");
+        rv.push("failure::backtrace::internal::InternalBacktrace::new");
+        rv.push("failure::Fail::context");
     }
     #[cfg(feature = "with_log")] {
         rv.push("<sentry::integrations::log::Logger as log::Log>::log");

@@ -213,7 +213,13 @@ impl Default for ClientOptions {
 }
 
 lazy_static::lazy_static! {
-    static ref CRATE_RE: Regex = Regex::new(r"^(?:_<)?([a-zA-Z0-9_]+?)(?:\.\.|::)").unwrap();
+    static ref CRATE_RE: Regex = Regex::new(r#"(?x)
+        ^
+        (?:_?<)?           # trait impl syntax
+        (?:\w+\ as \ )?    # anonymous implementor
+        ([a-zA-Z0-9_]+?)   # crate name
+        (?:\.\.|::)        # crate delimiter (.. or ::)
+    "#).unwrap();
 }
 
 /// Tries to parse the rust crate from a function name.
@@ -680,10 +686,23 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_crate_name_unknown() {
+    fn test_parse_crate_name_anonymous_impl() {
         assert_eq!(
             parse_crate_name("_<F as alloc..boxed..FnBox<A>>::call_box"),
-            None
+            Some("alloc".into())
+        );
+    }
+
+    #[test]
+    fn test_parse_crate_name_none() {
+        assert_eq!(parse_crate_name("main"), None);
+    }
+
+    #[test]
+    fn test_parse_crate_name_newstyle() {
+        assert_eq!(
+            parse_crate_name("<failure::error::Error as core::convert::From<F>>::from"),
+            Some("failure".into())
         );
     }
 }
