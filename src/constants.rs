@@ -8,7 +8,7 @@ include!(concat!(env!("OUT_DIR"), "/constants.gen.rs"));
 lazy_static::lazy_static! {
     pub static ref USER_AGENT: String = format!("sentry.rust/{}", VERSION);
     pub static ref SDK_INFO: ClientSdkInfo = ClientSdkInfo {
-        name: "sentry-rust".into(),
+        name: "sentry.rust".into(),
         version: VERSION.into(),
         packages: vec![ClientSdkPackage {
             name: "cargo:sentry".into(),
