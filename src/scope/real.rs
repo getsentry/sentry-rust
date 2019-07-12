@@ -221,7 +221,7 @@ impl Scope {
     }
 
     /// Applies the contained scoped data to fill an event.
-    #[allow(clippy::cyclomatic_complexity)]
+    #[allow(clippy::cognitive_complexity)]
     pub fn apply_to_event(&self, mut event: Event<'static>) -> Option<Event<'static>> {
         let mut add_os = true;
         let mut add_rust = true;
