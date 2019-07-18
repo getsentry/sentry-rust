@@ -7,7 +7,7 @@
 
 # Sentry Rust
 
-[![Build Status](https://travis-ci.org/getsentry/sentry-rust.svg?branch=master)](https://travis-ci.org/getsentry/sentry-rust)
+[![Build Status](https://travis-ci.com/getsentry/sentry-rust.svg?branch=master)](https://travis-ci.com/getsentry/sentry-rust)
 [![Crates.io](https://img.shields.io/crates/v/sentry.svg?style=flat)](https://crates.io/crates/sentry)
 
 This crate provides support for logging events and errors / panics to the
