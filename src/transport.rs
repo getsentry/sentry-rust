@@ -4,6 +4,9 @@ use std::sync::{Arc, Condvar, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, SystemTime};
 
+#[cfg(feature = "with_curl_transport")]
+use std::io::Cursor;
+
 #[cfg(any(feature = "with_reqwest_transport", feature = "with_curl_transport"))]
 use httpdate::parse_http_date;
 
@@ -377,7 +380,7 @@ implement_http_transport! {
                     _ => {}
                 }
 
-                let body = serde_json::to_vec(&event).unwrap();
+                let mut body = Cursor::new(serde_json::to_vec(&event).unwrap());
                 let mut retry_after = None;
                 let mut headers = curl::easy::List::new();
                 headers.append(&format!("X-Sentry-Auth: {}", dsn.to_auth(Some(&user_agent)))).unwrap();
@@ -385,8 +388,8 @@ implement_http_transport! {
                 headers.append("Content-Type: application/json").unwrap();
                 handle.http_headers(headers).unwrap();
                 handle.upload(true).unwrap();
-                handle.in_filesize(body.len() as u64).unwrap();
-                handle.read_function(move |buf| Ok((&body[..]).read(buf).unwrap_or(0))).unwrap();
+                handle.in_filesize(body.get_ref().len() as u64).unwrap();
+                handle.read_function(move |buf| Ok(body.read(buf).unwrap_or(0))).unwrap();
                 handle.verbose(true).unwrap();
                 handle.debug_function(move |info, data| {
                     let prefix = match info {
