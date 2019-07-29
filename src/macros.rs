@@ -6,8 +6,8 @@
 #[cfg(feature = "with_client_implementation")]
 macro_rules! release_name {
     () => {{
-        use std::sync::{Once, ONCE_INIT};
-        static mut INIT: Once = ONCE_INIT;
+        use std::sync::Once;
+        static mut INIT: Once = Once::new();
         static mut RELEASE: Option<String> = None;
         unsafe {
             INIT.call_once(|| {
