@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.16.0
+
+- Bump the minimum required Rust version to **1.34.0**.
+- Fix potentially broken payloads when using the `curl` transport (#152).
+- Report the SDK as `sentry.rust` for analytics (#142).
+
 ## 0.15.5
 
 - Fix backtraces with inline frames in newer Rust versions (#141).
