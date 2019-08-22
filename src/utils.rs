@@ -67,21 +67,19 @@ mod model_support {
 mod findshlibs_support {
     use super::*;
 
-    use std::env;
-
-    use findshlibs::{
-        Segment, SharedLibrary, SharedLibraryId, TargetSharedLibrary, TARGET_SUPPORTED,
-    };
-
-    use crate::internals::Uuid;
-    use crate::protocol::debugid::DebugId;
-    use crate::protocol::SymbolicDebugImage;
-
     #[cfg(unix)]
     pub fn find_shlibs() -> Option<Vec<DebugImage>> {
         if !TARGET_SUPPORTED {
             return None;
         }
+
+        use std::env;
+        use findshlibs::{
+            Segment, SharedLibrary, SharedLibraryId, TargetSharedLibrary, TARGET_SUPPORTED,
+        };
+        use crate::internals::Uuid;
+        use crate::protocol::debugid::DebugId;
+        use crate::protocol::SymbolicDebugImage;
 
         let mut rv = vec![];
         TargetSharedLibrary::each(|shlib| {
