@@ -85,14 +85,10 @@ mod findshlibs_support {
 
         let mut rv = vec![];
         TargetSharedLibrary::each(|shlib| {
-            let maybe_debug_id = shlib
-                .id()
-                .and_then(|id| {
-                    match id {
-                        SharedLibraryId::Uuid(bytes) => Some(DebugId::from_uuid(Uuid::from_bytes(bytes))),
-                        SharedLibraryId::GnuBuildId(ref id) => DebugId::from_guid_age(&id[..16], 0).ok(),
-                    }
-                });
+            let maybe_debug_id = shlib.id().and_then(|id| match id {
+                SharedLibraryId::Uuid(bytes) => Some(DebugId::from_uuid(Uuid::from_bytes(bytes))),
+                SharedLibraryId::GnuBuildId(ref id) => DebugId::from_guid_age(&id[..16], 0).ok(),
+            });
 
             let debug_id = match maybe_debug_id {
                 Some(debug_id) => debug_id,
