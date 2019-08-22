@@ -73,13 +73,13 @@ mod findshlibs_support {
             return None;
         }
 
-        use std::env;
-        use findshlibs::{
-            Segment, SharedLibrary, SharedLibraryId, TargetSharedLibrary, TARGET_SUPPORTED,
-        };
         use crate::internals::Uuid;
         use crate::protocol::debugid::DebugId;
         use crate::protocol::SymbolicDebugImage;
+        use findshlibs::{
+            Segment, SharedLibrary, SharedLibraryId, TargetSharedLibrary, TARGET_SUPPORTED,
+        };
+        use std::env;
 
         let mut rv = vec![];
         TargetSharedLibrary::each(|shlib| {
