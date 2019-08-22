@@ -142,6 +142,11 @@ mod findshlibs_support {
 
         Some(rv)
     }
+
+    #[cfg(not(unix))]
+    pub fn find_shlibs() -> Option<Vec<DebugImage>> {
+        None
+    }
 }
 
 #[cfg(not(feature = "with_debug_meta"))]
