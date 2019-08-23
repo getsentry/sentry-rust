@@ -97,7 +97,7 @@ impl Scope {
     /// Add an event processor to the scope.
     pub fn add_event_processor(
         &mut self,
-        f: Box<Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync>,
+        f: Box<dyn Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync>,
     ) {
         let _f = f;
         minimal_unreachable!();
