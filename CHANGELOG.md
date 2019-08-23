@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.17.0
+
+- Upgrade findshlibs (#153)
+
 ## 0.16.0
 
 - Bump the minimum required Rust version to **1.34.0**.
