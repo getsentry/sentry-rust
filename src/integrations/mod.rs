@@ -13,5 +13,8 @@ pub mod log;
 #[cfg(feature = "with_env_logger")]
 pub mod env_logger;
 
+#[cfg(feature = "with_slog")]
+pub mod slog;
+
 #[cfg(feature = "with_panic")]
 pub mod panic;

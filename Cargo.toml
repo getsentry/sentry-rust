@@ -29,6 +29,8 @@ with_failure = ["failure", "with_backtrace"]
 with_log = ["log", "with_backtrace"]
 with_debug_to_log = ["log"]
 with_env_logger = ["with_log", "env_logger"]
+with_slog = ["slog", "serde_json"]
+with_slog_nested = ["with_slog", "slog/nested-values"]
 with_error_chain = ["error-chain", "with_backtrace"]
 with_device_info = ["libc", "hostname", "uname", "with_client_implementation"]
 with_rust_info = ["rustc_version", "with_client_implementation"]
@@ -44,6 +46,7 @@ failure = { version = "0.1.6", optional = true }
 log = { version = "0.4.8", optional = true, features = ["std"] }
 sentry-types = "0.14.1"
 env_logger = { version = "0.7.1", optional = true }
+slog = { version = "2.5.2", optional = true, default-features = false }
 reqwest = { version = "0.10.1", optional = true, features = ["blocking", "json"], default-features = false }
 lazy_static = "1.4.0"
 regex = { version = "1.3.4", optional = true }
@@ -79,6 +82,10 @@ required-features = ["with_env_logger"]
 [[example]]
 name = "thread-demo"
 required-features = ["with_env_logger"]
+
+[[example]]
+name = "slog-demo"
+required-features = ["with_slog_nested"]
 
 [workspace]
 members = [".", "integrations/sentry-actix"]

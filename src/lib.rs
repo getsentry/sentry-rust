@@ -105,6 +105,8 @@
 //! * `with_rustls`: Enables the `rustls` TLS implementation.  This is currently the default when
 //!   using the `with_reqwest_transport` feature.
 //! * `with_native_tls`: Enables the `default-tls` feature of the `reqwest` library.
+//! * `with_slog`: enables the `slog` integration
+//! * `with_slog_nested`: enables the `slog` integration with nested feature compiled
 //!
 //! Testing:
 //!
