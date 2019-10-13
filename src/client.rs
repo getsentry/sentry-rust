@@ -622,7 +622,7 @@ impl Drop for ClientInitGuard {
 /// }
 /// ```
 ///
-/// Of if draining on shutdown should be ignored:
+/// Or if draining on shutdown should be ignored:
 ///
 /// ```rust
 /// use std::mem;
