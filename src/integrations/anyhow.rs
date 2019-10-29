@@ -2,7 +2,7 @@
 //!
 //! **Feature:** `with_anyhow` (disabled by default)
 //!
-//! This does not support capturing backtraces on nightly.
+//! This does not support capturing backtraces (which is a nightly-only feature in anyhow).
 //!
 //! # Example
 //!
