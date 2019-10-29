@@ -26,6 +26,7 @@ with_client_implementation = ["im", "url", "with_backtrace"]
 with_backtrace = ["backtrace", "regex"]
 with_panic = ["with_backtrace"]
 with_failure = ["failure", "with_backtrace"]
+with_anyhow = ["anyhow", "with_backtrace"]
 with_log = ["log", "with_backtrace"]
 with_debug_to_log = ["log"]
 with_env_logger = ["with_log", "env_logger"]
@@ -41,6 +42,7 @@ with_native_tls = ["reqwest/default-tls"]
 backtrace = { version = "0.3.15", optional = true }
 url = { version = "1.7.2", optional = true }
 failure = { version = "0.1.5", optional = true }
+anyhow = { version = "1.0.17", optional = true }
 log = { version = "0.4.6", optional = true, features = ["std"] }
 sentry-types = "0.11.0"
 env_logger = { version = "0.6.1", optional = true }

@@ -104,6 +104,7 @@
 //! additional features:
 //!
 //! * `with_error_chain`: enables the error-chain integration
+//! * `with_anyhow`: enables the anyhow integration
 //! * `with_test_support`: enables the test support module
 //! * `with_reqwest_transport`: enables the reqwest transport explicitly.  This
 //!   is currently the default transport.
