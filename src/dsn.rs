@@ -40,8 +40,8 @@ pub enum Scheme {
 
 impl Scheme {
     /// Returns the default port for this scheme.
-    pub fn default_port(&self) -> u16 {
-        match *self {
+    pub fn default_port(self) -> u16 {
+        match self {
             Scheme::Http => 80,
             Scheme::Https => 443,
         }

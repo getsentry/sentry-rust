@@ -18,11 +18,7 @@ matrix:
     - env: SUITE=test
     - env: SUITE=test
       rust: "1.31.0"
-    - env: SUITE=format-check
-    - env: SUITE=lint
-
-  allow_failures:
-    - env: SUITE=format-check
+    - env: SUITE=style
     - env: SUITE=lint
 
 notifications:
