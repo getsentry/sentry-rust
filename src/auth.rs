@@ -175,7 +175,7 @@ impl FromStr for Auth {
             match (kviter.next(), kviter.next()) {
                 (Some("sentry_timestamp"), Some(ts)) => {
                     let f = ts.parse().map_err(|_| AuthParseError::InvalidTimestamp)?;
-                    rv.timestamp = Some(timestamp_to_datetime(f));
+                    rv.timestamp = timestamp_to_datetime(f).single();
                 }
                 (Some("sentry_client"), Some(client)) => {
                     rv.client = Some(client.into());

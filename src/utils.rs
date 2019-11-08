@@ -1,5 +1,5 @@
 #![cfg_attr(not(feature = "with_protocol"), allow(unused))]
-use chrono::{DateTime, TimeZone, Utc};
+use chrono::{DateTime, LocalResult, TimeZone, Utc};
 
 /// Converts a datetime object into a float timestamp.
 pub fn datetime_to_timestamp(dt: &DateTime<Utc>) -> f64 {
@@ -10,14 +10,14 @@ pub fn datetime_to_timestamp(dt: &DateTime<Utc>) -> f64 {
     }
 }
 
-pub fn timestamp_to_datetime(ts: f64) -> DateTime<Utc> {
+pub fn timestamp_to_datetime(ts: f64) -> LocalResult<DateTime<Utc>> {
     let secs = ts as i64;
     let micros = (ts.fract() * 1_000_000f64) as u32;
-    Utc.timestamp_opt(secs, micros * 1000).unwrap()
+    Utc.timestamp_opt(secs, micros * 1000)
 }
 
 pub mod ts_seconds_float {
-    use chrono::{DateTime, TimeZone, Utc};
+    use chrono::{DateTime, LocalResult, TimeZone, Utc};
     use serde::{de, ser};
     use std::fmt;
 
@@ -57,7 +57,14 @@ pub mod ts_seconds_float {
         where
             E: de::Error,
         {
-            Ok(timestamp_to_datetime(value))
+            match timestamp_to_datetime(value) {
+                LocalResult::None => Err(E::custom(format!("No such local time for {}", value))),
+                LocalResult::Single(date) => Ok(date),
+                LocalResult::Ambiguous(t1, t2) => Err(E::custom(format!(
+                    "Ambiguous local time, ranging from {:?} to {:?}",
+                    t1, t2
+                ))),
+            }
         }
 
         fn visit_i64<E>(self, value: i64) -> Result<DateTime<Utc>, E>
