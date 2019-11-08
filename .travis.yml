@@ -16,8 +16,6 @@ script: make $SUITE
 matrix:
   include:
     - env: SUITE=test
-    - env: SUITE=test
-      rust: "1.31.0"
     - env: SUITE=style
     - env: SUITE=lint
 
