@@ -32,5 +32,5 @@ Additionally, the lowest Rust version we target is _1.34.0_.
 - [crates.io](https://crates.io/crates/sentry)
 - [Documentation](https://getsentry.github.io/sentry-rust)
 - [Bug Tracker](https://github.com/getsentry/sentry-rust/issues)
-- [IRC](irc://chat.freenode.net/sentry) (chat.freenode.net, #sentry)
+- [Discord](https://discord.gg/ez5KZN7) server for project discussions.
 - Follow [@getsentry](https://twitter.com/getsentry) on Twitter for updates

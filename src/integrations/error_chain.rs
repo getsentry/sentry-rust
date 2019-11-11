@@ -43,7 +43,7 @@ where
     rv.push(Exception {
         ty: error_typename(error.kind()),
         value: Some(error.kind().to_string()),
-        stacktrace: error.backtrace().and_then(backtrace_to_stacktrace),
+        stacktrace: error_chain::ChainedError::backtrace(error).and_then(backtrace_to_stacktrace),
         ..Default::default()
     });
 
