@@ -10,6 +10,9 @@ pub mod error_chain;
 #[cfg(feature = "with_log")]
 pub mod log;
 
+#[cfg(feature = "with_slog")]
+pub mod slog;
+
 #[cfg(feature = "with_env_logger")]
 pub mod env_logger;
 
