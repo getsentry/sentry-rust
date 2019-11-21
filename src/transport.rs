@@ -195,14 +195,22 @@ macro_rules! implement_http_transport {
 
             fn shutdown(&self, timeout: Duration) -> bool {
                 sentry_debug!("shutting down http transport");
-                let guard = self.queue_size.lock().unwrap();
-                if *guard == 0 {
+
+                // prevent deadlock with `spawn` thread by creating temporary variable
+                if *self.queue_size.lock().unwrap() == 0 {
                     true
                 } else {
                     if let Ok(sender) = self.sender.lock() {
                         sender.send(None).ok();
                     }
-                    self.shutdown_signal.wait_timeout(guard, timeout).is_ok()
+
+                    let guard = self.queue_size.lock().unwrap();
+                    if *guard > 0 {
+                        self.shutdown_signal.wait_timeout(guard, timeout).is_ok()
+                    }
+                    else {
+                        true
+                    }
                 }
             }
         }
