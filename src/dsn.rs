@@ -69,6 +69,7 @@ pub struct Dsn {
     secret_key: Option<String>,
     host: String,
     port: Option<u16>,
+    path: String,
     project_id: ProjectId,
 }
 
@@ -88,7 +89,7 @@ impl Dsn {
         if self.port() != self.scheme.default_port() {
             write!(&mut buf, ":{}", self.port()).unwrap();
         }
-        write!(&mut buf, "/api/{}/store/", self.project_id()).unwrap();
+        write!(&mut buf, "{}api/{}/store/", self.path, self.project_id()).unwrap();
         Url::parse(&buf).unwrap()
     }
 
@@ -117,6 +118,11 @@ impl Dsn {
         self.port.unwrap_or_else(|| self.scheme.default_port())
     }
 
+    /// Returns the path
+    pub fn path(&self) -> &str {
+        &self.path
+    }
+
     /// Returns the project_id
     pub fn project_id(&self) -> ProjectId {
         self.project_id
@@ -133,7 +139,7 @@ impl fmt::Display for Dsn {
         if let Some(ref port) = self.port {
             write!(f, ":{}", port)?;
         }
-        write!(f, "/{}", self.project_id)?;
+        write!(f, "{}{}", self.path, self.project_id)?;
         Ok(())
     }
 }
@@ -148,12 +154,17 @@ impl FromStr for Dsn {
             return Err(DsnParseError::NoProjectId);
         }
 
-        let path_segments = url
-            .path_segments()
-            .ok_or_else(|| DsnParseError::NoProjectId)?;
-        if path_segments.count() > 1 {
-            return Err(DsnParseError::InvalidUrl);
-        }
+        let mut path_segments = url.path().trim_matches('/').rsplitn(2, '/');
+
+        let project_id = path_segments
+            .next()
+            .ok_or_else(|| DsnParseError::NoProjectId)?
+            .parse()
+            .map_err(DsnParseError::InvalidProjectId)?;
+        let path = match path_segments.next().unwrap_or("") {
+            "" | "/" => "/".into(),
+            other => format!("/{}/", other),
+        };
 
         let public_key = match url.username() {
             "" => return Err(DsnParseError::NoUsername),
@@ -172,11 +183,6 @@ impl FromStr for Dsn {
             Some(host) => host.into(),
             None => return Err(DsnParseError::InvalidUrl),
         };
-        let project_id = url
-            .path()
-            .trim_matches('/')
-            .parse()
-            .map_err(DsnParseError::InvalidProjectId)?;
 
         Ok(Dsn {
             scheme,
@@ -184,6 +190,7 @@ impl FromStr for Dsn {
             secret_key,
             port,
             host,
+            path,
             project_id,
         })
     }
@@ -215,6 +222,7 @@ mod test {
         assert_eq!(dsn.secret_key(), Some("password"));
         assert_eq!(dsn.host(), "domain");
         assert_eq!(dsn.port(), 8888);
+        assert_eq!(dsn.path(), "/");
         assert_eq!(dsn.project_id(), ProjectId::from(23));
         assert_eq!(url, dsn.to_string());
     }
@@ -262,7 +270,7 @@ mod test {
     }
 
     #[test]
-    #[should_panic(expected = "InvalidUrl")]
+    #[should_panic(expected = "InvalidProjectId")]
     fn test_dsn_more_than_one_non_integer_path() {
         Dsn::from_str("http://username@domain:8888/path/path2").unwrap();
     }
