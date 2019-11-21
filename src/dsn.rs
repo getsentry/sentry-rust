@@ -131,9 +131,9 @@ impl Dsn {
 
 impl fmt::Display for Dsn {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}://{}", self.scheme, self.public_key)?;
+        write!(f, "{}://{}:", self.scheme, self.public_key)?;
         if let Some(ref secret_key) = self.secret_key {
-            write!(f, ":{}", secret_key)?;
+            write!(f, "{}", secret_key)?;
         }
         write!(f, "@{}", self.host)?;
         if let Some(ref port) = self.port {
@@ -206,11 +206,11 @@ mod test {
 
     #[test]
     fn test_dsn_serialize_deserialize() {
-        let dsn = Dsn::from_str("https://username@domain/42").unwrap();
+        let dsn = Dsn::from_str("https://username:@domain/42").unwrap();
         let serialized = serde_json::to_string(&dsn).unwrap();
-        assert_eq!(serialized, "\"https://username@domain/42\"");
+        assert_eq!(serialized, "\"https://username:@domain/42\"");
         let deserialized: Dsn = serde_json::from_str(&serialized).unwrap();
-        assert_eq!(deserialized.to_string(), "https://username@domain/42");
+        assert_eq!(deserialized.to_string(), "https://username:@domain/42");
     }
 
     #[test]
@@ -229,7 +229,7 @@ mod test {
 
     #[test]
     fn test_dsn_no_port() {
-        let url = "https://username@domain/42";
+        let url = "https://username:@domain/42";
         let dsn = Dsn::from_str(url).unwrap();
         assert_eq!(dsn.port(), 443);
         assert_eq!(url, dsn.to_string());
@@ -241,7 +241,7 @@ mod test {
 
     #[test]
     fn test_insecure_dsn_no_port() {
-        let url = "http://username@domain/42";
+        let url = "http://username:@domain/42";
         let dsn = Dsn::from_str(url).unwrap();
         assert_eq!(dsn.port(), 80);
         assert_eq!(url, dsn.to_string());
@@ -253,7 +253,7 @@ mod test {
 
     #[test]
     fn test_dsn_no_password() {
-        let url = "https://username@domain:8888/42";
+        let url = "https://username:@domain:8888/42";
         let dsn = Dsn::from_str(url).unwrap();
         assert_eq!(url, dsn.to_string());
         assert_eq!(
@@ -263,8 +263,15 @@ mod test {
     }
 
     #[test]
+    fn test_dsn_no_password_colon() {
+        let url = "https://username@domain:8888/42";
+        let dsn = Dsn::from_str(url).unwrap();
+        assert_eq!("https://username:@domain:8888/42", dsn.to_string());
+    }
+
+    #[test]
     fn test_dsn_http_url() {
-        let url = "http://username@domain:8888/42";
+        let url = "http://username:@domain:8888/42";
         let dsn = Dsn::from_str(url).unwrap();
         assert_eq!(url, dsn.to_string());
     }
@@ -272,7 +279,7 @@ mod test {
     #[test]
     #[should_panic(expected = "InvalidProjectId")]
     fn test_dsn_more_than_one_non_integer_path() {
-        Dsn::from_str("http://username@domain:8888/path/path2").unwrap();
+        Dsn::from_str("http://username:@domain:8888/path/path2").unwrap();
     }
 
     #[test]
