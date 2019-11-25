@@ -138,7 +138,7 @@ macro_rules! implement_http_transport {
             shutdown_signal: Arc<Condvar>,
             shutdown_immediately: Arc<AtomicBool>,
             queue_size: Arc<Mutex<usize>>,
-            _handle: Option<JoinHandle<()>>,
+            handle: Option<JoinHandle<()>>,
         }
 
         impl $typename {
@@ -164,7 +164,7 @@ macro_rules! implement_http_transport {
                 #[allow(clippy::mutex_atomic)]
                 let queue_size = Arc::new(Mutex::new(0));
                 let http_client = http_client(options, $hc_client);
-                let _handle = Some(spawn(
+                let handle = Some(spawn(
                     options,
                     receiver,
                     shutdown_signal.clone(),
@@ -177,7 +177,7 @@ macro_rules! implement_http_transport {
                     shutdown_signal,
                     shutdown_immediately,
                     queue_size,
-                    _handle,
+                    handle,
                 }
             }
         }
@@ -220,7 +220,13 @@ macro_rules! implement_http_transport {
                 sentry_debug!("dropping http transport");
                 self.shutdown_immediately.store(true, Ordering::SeqCst);
                 if let Ok(sender) = self.sender.lock() {
-                    sender.send(None).ok();
+                    // send stop signal
+                    if sender.send(None).is_ok() {
+                        // and wait for actual stopping
+                        if let Some(handle) = self.handle.take() {
+                            handle.join().ok();
+                        }
+                    }
                 }
             }
         }
