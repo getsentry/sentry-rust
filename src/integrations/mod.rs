@@ -15,3 +15,6 @@ pub mod env_logger;
 
 #[cfg(feature = "with_panic")]
 pub mod panic;
+
+#[cfg(feature = "with_std_error")]
+pub mod std_error;
