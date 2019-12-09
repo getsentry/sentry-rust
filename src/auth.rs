@@ -65,17 +65,23 @@ impl Auth {
             }
             match key {
                 "timestamp" => {
-                    rv.timestamp = Some(
-                        value
-                            .parse()
-                            .map_err(|_| AuthParseError::InvalidTimestamp)?,
-                    );
+                    let timestamp = value
+                        .parse()
+                        .ok()
+                        .and_then(|ts| timestamp_to_datetime(ts).single())
+                        .or_else(|| value.parse().ok())
+                        .ok_or(AuthParseError::InvalidTimestamp)?;
+                    rv.timestamp = Some(timestamp);
                 }
                 "client" => {
                     rv.client = Some(value.into());
                 }
                 "version" => {
-                    rv.version = value.parse().map_err(|_| AuthParseError::InvalidVersion)?;
+                    rv.version = value
+                        .splitn(2, '.')
+                        .next()
+                        .and_then(|v| v.parse().ok())
+                        .ok_or(AuthParseError::InvalidVersion)?;
                 }
                 "key" => {
                     rv.key = value.into();
@@ -154,13 +160,6 @@ impl FromStr for Auth {
     type Err = AuthParseError;
 
     fn from_str(s: &str) -> Result<Auth, AuthParseError> {
-        let mut rv = Auth {
-            timestamp: None,
-            client: None,
-            version: protocol::LATEST,
-            key: "".into(),
-            secret: None,
-        };
         let mut base_iter = s.splitn(2, ' ');
         if !base_iter
             .next()
@@ -170,30 +169,10 @@ impl FromStr for Auth {
             return Err(AuthParseError::NonSentryAuth);
         }
         let items = base_iter.next().unwrap_or("");
-        for item in items.split(',') {
+        let rv = Self::from_pairs(items.split(',').filter_map(|item| {
             let mut kviter = item.trim().split('=');
-            match (kviter.next(), kviter.next()) {
-                (Some("sentry_timestamp"), Some(ts)) => {
-                    let f = ts.parse().map_err(|_| AuthParseError::InvalidTimestamp)?;
-                    rv.timestamp = timestamp_to_datetime(f).single();
-                }
-                (Some("sentry_client"), Some(client)) => {
-                    rv.client = Some(client.into());
-                }
-                (Some("sentry_version"), Some(version)) => {
-                    rv.version = version
-                        .parse()
-                        .map_err(|_| AuthParseError::InvalidVersion)?;
-                }
-                (Some("sentry_key"), Some(key)) => {
-                    rv.key = key.into();
-                }
-                (Some("sentry_secret"), Some(secret)) => {
-                    rv.secret = Some(secret.into());
-                }
-                _ => {}
-            }
-        }
+            Some((Cow::Borrowed(kviter.next()?), Cow::Borrowed(kviter.next()?)))
+        }))?;
 
         if rv.key.is_empty() {
             return Err(AuthParseError::MissingPublicKey);

@@ -34,6 +34,21 @@ fn test_auth_parsing() {
 }
 
 #[test]
+fn test_auth_float_parsing() {
+    let auth: Auth = "Sentry sentry_version=2.0, \
+                      sentry_key=public"
+        .parse()
+        .unwrap();
+    assert_eq!(auth.version(), 2);
+    assert_eq!(auth.public_key(), "public");
+
+    assert_eq!(
+        auth.to_string(),
+        "Sentry sentry_key=public, \
+         sentry_version=2"
+    );
+}
+#[test]
 fn test_auth_from_iterator() {
     let mut cont = HashMap::new();
     cont.insert("sentry_version", "7");
