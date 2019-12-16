@@ -133,3 +133,9 @@ fn test_auth_from_json() {
     assert_eq!(auth.public_key(), "4bb5d94de752a36b8b87851a3f82726a");
     assert_eq!(auth.secret_key(), None);
 }
+
+#[test]
+fn test_auth_string_timestamp() {
+    let auth = Auth::from_querystring(b"sentry_version=7&sentry_client=raven-clj&sentry_key=4bb5d94de752a36b8b87851a3f82726a&sentry_timestamp=2019-12-13 12:02:58.94").unwrap();
+    assert_eq!(auth.timestamp(), None);
+}

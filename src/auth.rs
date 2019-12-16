@@ -19,9 +19,6 @@ pub enum AuthParseError {
     /// Raised if the auth header is not indicating sentry auth
     #[fail(display = "non sentry auth")]
     NonSentryAuth,
-    /// Raised if the timestamp value is invalid.
-    #[fail(display = "invalid value for timestamp")]
-    InvalidTimestamp,
     /// Raised if the version value is invalid
     #[fail(display = "invalid value for version")]
     InvalidVersion,
@@ -69,9 +66,9 @@ impl Auth {
                         .parse()
                         .ok()
                         .and_then(|ts| timestamp_to_datetime(ts).single())
-                        .or_else(|| value.parse().ok())
-                        .ok_or(AuthParseError::InvalidTimestamp)?;
-                    rv.timestamp = Some(timestamp);
+                        .or_else(|| value.parse().ok());
+
+                    rv.timestamp = timestamp;
                 }
                 "client" => {
                     rv.client = Some(value.into());
