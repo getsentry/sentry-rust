@@ -84,9 +84,11 @@ pub fn breadcrumb_from_record(record: &log::Record<'_>) -> Breadcrumb {
 /// If `with_stacktrace` is set to `true` then a stacktrace is attached
 /// from the current frame.
 pub fn event_from_record(record: &log::Record<'_>, with_stacktrace: bool) -> Event<'static> {
-    let culprit = format!("{}:{}",
-                          record.file().unwrap_or("<unknown>"),
-                          record.line().unwrap_or(0));
+    let culprit = format!(
+        "{}:{}",
+        record.file().unwrap_or("<unknown>"),
+        record.line().unwrap_or(0)
+    );
     Event {
         logger: Some(record.target().into()),
         level: convert_log_level(record.level()),
@@ -100,12 +102,11 @@ pub fn event_from_record(record: &log::Record<'_>, with_stacktrace: bool) -> Eve
             },
             ..Default::default()
         }]
-            .into(),
+        .into(),
         culprit: Some(culprit),
         ..Default::default()
     }
 }
-
 
 fn convert_log_level(level: log::Level) -> Level {
     match level {
@@ -116,15 +117,17 @@ fn convert_log_level(level: log::Level) -> Level {
     }
 }
 
-
 impl Drain for Logger {
     type Ok = ();
     type Err = Never;
 
     fn log(&self, record: &Record, _values: &OwnedKVList) -> Result<Self::Ok, Self::Err> {
         let level = to_log_level(record.level());
-        let md = log::MetadataBuilder::new().level(level).target(record.tag()).build();
-        let args = record.msg().clone();
+        let md = log::MetadataBuilder::new()
+            .level(level)
+            .target(record.tag())
+            .build();
+        let args = *record.msg();
 
         let record = log::RecordBuilder::new()
             .metadata(md)
@@ -156,7 +159,6 @@ impl Drain for Logger {
         level <= self.options.filter
     }
 }
-
 
 fn to_log_level(level: SlogLevel) -> log::Level {
     match level {
