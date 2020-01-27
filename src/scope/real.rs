@@ -168,7 +168,7 @@ impl Scope {
     /// Sets the fingerprint.
     pub fn set_fingerprint(&mut self, fingerprint: Option<&[&str]>) {
         self.fingerprint =
-            fingerprint.map(|fp| Arc::new(fp.iter().map(|x| Cow::Owned(x.to_string())).collect()))
+            fingerprint.map(|fp| Arc::new(fp.iter().map(|x| Cow::Owned((*x).to_string())).collect()))
     }
 
     /// Sets the transaction.

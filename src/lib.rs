@@ -24,14 +24,10 @@
 //! of this.  Keep the guard around or sending events will not work.
 //!
 //! ```
-//! extern crate sentry;
-//!
-//! fn main() {
-//!     let _guard = sentry::init("https://key@sentry.io/42");
-//!     sentry::capture_message("Hello World!", sentry::Level::Info);
-//!     // when the guard goes out of scope here, the client will wait up to two
-//!     // seconds to send remaining events to the service.
-//! }
+//! let _guard = sentry::init("https://key@sentry.io/42");
+//! sentry::capture_message("Hello World!", sentry::Level::Info);
+//! // when the guard goes out of scope here, the client will wait up to two
+//! // seconds to send remaining events to the service.
 //! ```
 //!
 //! # Integrations

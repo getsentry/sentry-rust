@@ -617,19 +617,13 @@ impl Drop for ClientInitGuard {
 /// # Examples
 ///
 /// ```rust
-/// fn main() {
-///     let _sentry = sentry::init("https://key@sentry.io/1234");
-/// }
+/// let _sentry = sentry::init("https://key@sentry.io/1234");
 /// ```
 ///
 /// Or if draining on shutdown should be ignored:
 ///
 /// ```rust
-/// use std::mem;
-///
-/// fn main() {
-///     mem::forget(sentry::init("https://key@sentry.io/1234"));
-/// }
+/// std::mem::forget(sentry::init("https://key@sentry.io/1234"));
 /// ```
 ///
 /// The guard returned can also be inspected to see if a client has been
@@ -638,14 +632,12 @@ impl Drop for ClientInitGuard {
 /// ```rust
 /// use sentry::integrations::panic::register_panic_handler;
 ///
-/// fn main() {
-///     let sentry = sentry::init(sentry::ClientOptions {
-///         release: Some("foo-bar-baz@1.0.0".into()),
-///         ..Default::default()
-///     });
-///     if sentry.is_enabled() {
-///         register_panic_handler();
-///     }
+/// let sentry = sentry::init(sentry::ClientOptions {
+///     release: Some("foo-bar-baz@1.0.0".into()),
+///     ..Default::default()
+/// });
+/// if sentry.is_enabled() {
+///     register_panic_handler();
 /// }
 /// ```
 ///
