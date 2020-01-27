@@ -171,8 +171,7 @@ pub fn cpu_arch() -> Option<String> {
 pub fn server_name() -> Option<String> {
     #[cfg(feature = "with_device_info")]
     {
-        use hostname::get_hostname;
-        get_hostname()
+        hostname::get().ok().and_then(|s| s.into_string().ok())
     }
     #[cfg(not(feature = "with_device_info"))]
     {
