@@ -8,7 +8,6 @@
 //! # Example
 //!
 //! ```no_run
-//! # extern crate sentry;
 //! # #[macro_use] extern crate error_chain;
 //! # error_chain! {}
 //! use sentry::integrations::error_chain::capture_error_chain;
@@ -22,7 +21,6 @@
 //!     }
 //! };
 //! # Ok(()) }
-//! # fn main() { test().unwrap() }
 //! ```
 use std::fmt::{Debug, Display};
 
