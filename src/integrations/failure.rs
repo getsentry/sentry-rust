@@ -23,7 +23,6 @@
 //!     }
 //! };
 //! # Ok(()) }
-//! # fn main() { test().unwrap() }
 //! ```
 //!
 //! To capture fails and not errors use `capture_fail`.

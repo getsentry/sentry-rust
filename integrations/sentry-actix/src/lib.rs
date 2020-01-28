@@ -8,12 +8,8 @@
 //!
 //! # Example
 //!
-//! ```
-//! extern crate actix_web;
-//! extern crate sentry;
-//! extern crate sentry_actix;
-//!
-//! # fn main() {
+#![allow(clippy::needless_doctest_main)]
+//! ```no_run
 //! use std::env;
 //! use std::io;
 //!
@@ -37,7 +33,6 @@
 //!         .unwrap()
 //!         .run();
 //! }
-//! # }
 //! ```
 //!
 //! # Reusing the Hub
