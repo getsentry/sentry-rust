@@ -23,7 +23,12 @@ fn main() {
         )
         .ok();
         if let Ok(version) = version() {
-            writeln!(f, "#[allow(dead_code)] pub const RUSTC_VERSION: Option<&'static str> = Some(\"{}\");", version).ok();
+            writeln!(
+                f,
+                "#[allow(dead_code)] pub const RUSTC_VERSION: Option<&'static str> = Some(\"{}\");",
+                version
+            )
+            .ok();
         } else {
             writeln!(
                 f,
@@ -38,7 +43,12 @@ fn main() {
                 Channel::Beta => "beta",
                 Channel::Stable => "stable",
             };
-            writeln!(f, "#[allow(dead_code)] pub const RUSTC_CHANNEL: Option<&'static str> = Some(\"{}\");", chan).ok();
+            writeln!(
+                f,
+                "#[allow(dead_code)] pub const RUSTC_CHANNEL: Option<&'static str> = Some(\"{}\");",
+                chan
+            )
+            .ok();
         } else {
             writeln!(
                 f,
