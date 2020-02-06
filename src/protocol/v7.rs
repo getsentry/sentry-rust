@@ -20,7 +20,6 @@ use failure::Fail;
 use serde::Serializer;
 use serde::{Deserialize, Serialize};
 use url::Url;
-use url_serde;
 use uuid::Uuid;
 
 use crate::utils::ts_seconds_float;
@@ -592,7 +591,7 @@ pub struct Mechanism {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     /// An optional link to online resources describing this error.
-    #[serde(default, with = "url_serde", skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub help_link: Option<Url>,
     /// An optional flag indicating whether this exception was handled.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -865,7 +864,7 @@ pub struct User {
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub struct Request {
     /// The current URL of the request.
-    #[serde(default, with = "url_serde", skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub url: Option<Url>,
     /// The HTTP request method.
     #[serde(default, skip_serializing_if = "Option::is_none")]
