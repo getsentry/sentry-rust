@@ -28,9 +28,9 @@ matrix:
 
     # Minimum Rust
     - env: SUITE=checkfast
-      rust: "1.39.0"
+      rust: "1.40.0"
     - env: SUITE=testfast
-      rust: "1.39.0"
+      rust: "1.40.0"
 
     # Build Docs
     - env: SUITE=travis-push-docs
