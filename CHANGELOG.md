@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.18.0
+
+- Upgrade most dependencies to their current versions (#183):
+  - `env_logger 0.7`
+  - `reqwest 0.10`
+  - `error-chain 0.12`
+  - `url 2.1`
+  - `sentry-types 0.14`
+
+- Remove the `log` and `env_logger` integration from default features (#183).
+- Fix backtraces for newer `failure` and `backtrace` versions (#183).
+- Fix compilation of the `with_rust_info` feature (#183).
+- Add "panics" sections to functions that may panic (#174).
+- Document all feature flags consistently.
+
 ## 0.17.0
 
 - Upgrade findshlibs (#153)
