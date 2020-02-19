@@ -6,7 +6,7 @@ use failure::Fail;
 
 /// Raised if a project ID cannot be parsed from a string.
 #[derive(Debug, Fail, PartialEq, Eq, PartialOrd, Ord)]
-pub enum ProjectIdParseError {
+pub enum ParseProjectIdError {
     /// Raised if the value is not an integer in the supported range.
     #[fail(display = "invalid value for project id")]
     InvalidValue,
@@ -64,13 +64,13 @@ impl_from!(u64);
 macro_rules! impl_try_from {
     ($ty:ty) => {
         impl TryFrom<$ty> for ProjectId {
-            type Error = ProjectIdParseError;
+            type Error = ParseProjectIdError;
 
             #[inline]
             fn try_from(val: $ty) -> Result<Self, Self::Error> {
                 match u64::try_from(val) {
                     Ok(id) => Ok(Self::new(id)),
-                    Err(_) => Err(ProjectIdParseError::InvalidValue),
+                    Err(_) => Err(ParseProjectIdError::InvalidValue),
                 }
             }
         }
@@ -84,16 +84,16 @@ impl_try_from!(i32);
 impl_try_from!(i64);
 
 impl FromStr for ProjectId {
-    type Err = ProjectIdParseError;
+    type Err = ParseProjectIdError;
 
-    fn from_str(s: &str) -> Result<ProjectId, ProjectIdParseError> {
+    fn from_str(s: &str) -> Result<ProjectId, ParseProjectIdError> {
         if s.is_empty() {
-            return Err(ProjectIdParseError::EmptyValue);
+            return Err(ParseProjectIdError::EmptyValue);
         }
 
         match s.parse::<u64>() {
             Ok(val) => Ok(ProjectId::new(val)),
-            Err(_) => Err(ProjectIdParseError::InvalidValue),
+            Err(_) => Err(ParseProjectIdError::InvalidValue),
         }
     }
 }
@@ -111,11 +111,11 @@ mod test {
         assert_eq!(id, ProjectId::new(42));
         assert_eq!(
             "42xxx".parse::<ProjectId>(),
-            Err(ProjectIdParseError::InvalidValue)
+            Err(ParseProjectIdError::InvalidValue)
         );
         assert_eq!(
             "".parse::<ProjectId>(),
-            Err(ProjectIdParseError::EmptyValue)
+            Err(ParseProjectIdError::EmptyValue)
         );
         assert_eq!(ProjectId::new(42).to_string(), "42");
 

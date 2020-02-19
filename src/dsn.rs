@@ -5,11 +5,11 @@ use failure::Fail;
 use url::Url;
 
 use crate::auth::{auth_from_dsn_and_client, Auth};
-use crate::project_id::{ProjectId, ProjectIdParseError};
+use crate::project_id::{ParseProjectIdError, ProjectId};
 
 /// Represents a dsn url parsing error.
 #[derive(Debug, Fail)]
-pub enum DsnParseError {
+pub enum ParseDsnError {
     /// raised on completely invalid urls
     #[fail(display = "no valid url provided")]
     InvalidUrl,
@@ -24,7 +24,7 @@ pub enum DsnParseError {
     NoProjectId,
     /// raised the project id is invalid.
     #[fail(display = "invalid project id")]
-    InvalidProjectId(#[cause] ProjectIdParseError),
+    InvalidProjectId(#[cause] ParseProjectIdError),
 }
 
 /// Represents the scheme of an url http/https.
@@ -145,43 +145,43 @@ impl fmt::Display for Dsn {
 }
 
 impl FromStr for Dsn {
-    type Err = DsnParseError;
+    type Err = ParseDsnError;
 
-    fn from_str(s: &str) -> Result<Dsn, DsnParseError> {
-        let url = Url::parse(s).map_err(|_| DsnParseError::InvalidUrl)?;
+    fn from_str(s: &str) -> Result<Dsn, ParseDsnError> {
+        let url = Url::parse(s).map_err(|_| ParseDsnError::InvalidUrl)?;
 
         if url.path() == "/" {
-            return Err(DsnParseError::NoProjectId);
+            return Err(ParseDsnError::NoProjectId);
         }
 
         let mut path_segments = url.path().trim_matches('/').rsplitn(2, '/');
 
         let project_id = path_segments
             .next()
-            .ok_or_else(|| DsnParseError::NoProjectId)?
+            .ok_or_else(|| ParseDsnError::NoProjectId)?
             .parse()
-            .map_err(DsnParseError::InvalidProjectId)?;
+            .map_err(ParseDsnError::InvalidProjectId)?;
         let path = match path_segments.next().unwrap_or("") {
             "" | "/" => "/".into(),
             other => format!("/{}/", other),
         };
 
         let public_key = match url.username() {
-            "" => return Err(DsnParseError::NoUsername),
+            "" => return Err(ParseDsnError::NoUsername),
             username => username.to_string(),
         };
 
         let scheme = match url.scheme() {
             "http" => Scheme::Http,
             "https" => Scheme::Https,
-            _ => return Err(DsnParseError::InvalidScheme),
+            _ => return Err(ParseDsnError::InvalidScheme),
         };
 
         let secret_key = url.password().map(|s| s.into());
         let port = url.port();
         let host = match url.host_str() {
             Some(host) => host.into(),
-            None => return Err(DsnParseError::InvalidUrl),
+            None => return Err(ParseDsnError::InvalidUrl),
         };
 
         Ok(Dsn {

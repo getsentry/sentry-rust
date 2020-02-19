@@ -15,7 +15,7 @@ use crate::utils::{datetime_to_timestamp, timestamp_to_datetime};
 
 /// Represents an auth header parsing error.
 #[derive(Debug, Fail, Copy, Clone, Eq, PartialEq)]
-pub enum AuthParseError {
+pub enum ParseAuthError {
     /// Raised if the auth header is not indicating sentry auth
     #[fail(display = "non sentry auth")]
     NonSentryAuth,
@@ -44,7 +44,7 @@ pub struct Auth {
 
 impl Auth {
     /// Creates an auth header from key value pairs.
-    pub fn from_pairs<'a, I, K, V>(pairs: I) -> Result<Auth, AuthParseError>
+    pub fn from_pairs<'a, I, K, V>(pairs: I) -> Result<Auth, ParseAuthError>
     where
         I: IntoIterator<Item = (K, V)>,
         K: AsRef<str>,
@@ -78,7 +78,7 @@ impl Auth {
                         .splitn(2, '.')
                         .next()
                         .and_then(|v| v.parse().ok())
-                        .ok_or(AuthParseError::InvalidVersion)?;
+                        .ok_or(ParseAuthError::InvalidVersion)?;
                 }
                 "sentry_key" => {
                     rv.key = value.into();
@@ -91,14 +91,14 @@ impl Auth {
         }
 
         if rv.key.is_empty() {
-            return Err(AuthParseError::MissingPublicKey);
+            return Err(ParseAuthError::MissingPublicKey);
         }
 
         Ok(rv)
     }
 
     /// Creates an auth header from a query string.
-    pub fn from_querystring(qs: &[u8]) -> Result<Auth, AuthParseError> {
+    pub fn from_querystring(qs: &[u8]) -> Result<Auth, ParseAuthError> {
         Auth::from_pairs(form_urlencoded::parse(qs))
     }
 
@@ -154,16 +154,16 @@ impl fmt::Display for Auth {
 }
 
 impl FromStr for Auth {
-    type Err = AuthParseError;
+    type Err = ParseAuthError;
 
-    fn from_str(s: &str) -> Result<Auth, AuthParseError> {
+    fn from_str(s: &str) -> Result<Auth, ParseAuthError> {
         let mut base_iter = s.splitn(2, ' ');
 
         let prefix = base_iter.next().unwrap_or("");
         let items = base_iter.next().unwrap_or("");
 
         if !prefix.eq_ignore_ascii_case("sentry") {
-            return Err(AuthParseError::NonSentryAuth);
+            return Err(ParseAuthError::NonSentryAuth);
         }
 
         let auth = Self::from_pairs(items.split(',').filter_map(|item| {
@@ -172,7 +172,7 @@ impl FromStr for Auth {
         }))?;
 
         if auth.key.is_empty() {
-            return Err(AuthParseError::MissingPublicKey);
+            return Err(ParseAuthError::MissingPublicKey);
         }
 
         Ok(auth)
