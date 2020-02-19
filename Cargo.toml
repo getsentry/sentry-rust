@@ -1,6 +1,6 @@
 [package]
 name = "sentry-types"
-version = "0.13.3"
+version = "0.14.0"
 license = "Apache-2.0"
 description = "Common reusable types for implementing the sentry.io protocol."
 homepage = "https://sentry.io/"
