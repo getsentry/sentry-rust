@@ -146,8 +146,8 @@ pub mod internals {
     };
 
     pub use sentry_types::{
-        Auth, ChronoParseError, DateTime, DebugId, Dsn, DsnParseError, ParseDebugIdError,
-        ProjectId, ProjectIdParseError, Scheme, TimeZone, Utc, Uuid, UuidVariant, UuidVersion,
+        Auth, ChronoParseError, DateTime, DebugId, Dsn, ParseDebugIdError, ParseDsnError,
+        ParseProjectIdError, ProjectId, Scheme, TimeZone, Utc, Uuid, UuidVariant, UuidVersion,
     };
 }
 

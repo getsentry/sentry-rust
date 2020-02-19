@@ -11,7 +11,7 @@ use std::io::Cursor;
 use httpdate::parse_http_date;
 
 #[cfg(feature = "with_reqwest_transport")]
-use reqwest::{header::RETRY_AFTER, Client, Proxy};
+use reqwest::{blocking::Client, header::RETRY_AFTER, Proxy};
 
 #[cfg(feature = "with_curl_transport")]
 use {crate::internals::Scheme, curl, std::io::Read};

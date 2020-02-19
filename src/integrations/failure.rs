@@ -10,8 +10,6 @@
 //! # Example
 //!
 //! ```no_run
-//! # extern crate sentry;
-//! # extern crate failure;
 //! # fn function_that_might_fail() -> Result<(), failure::Error> { Ok(()) }
 //! use sentry::integrations::failure::capture_error;
 //! # fn test() -> Result<(), failure::Error> {
@@ -134,7 +132,8 @@ pub fn exception_from_single_fail<F: Fail + ?Sized>(
         module,
         value: Some(f.to_string()),
         stacktrace: bt
-            .map(failure::Backtrace::to_string)
+            // format the stack trace with alternate debug to get addresses
+            .map(|bt| format!("{:#?}", bt))
             .and_then(|x| parse_stacktrace(&x)),
         ..Default::default()
     }
@@ -272,5 +271,47 @@ fn test_parse_stacktrace() {
     assert_eq!(
         stacktrace.frames[1].instruction_addr,
         Some(Addr(0x55a1_2174_de62))
+    );
+}
+
+#[test]
+fn test_parse_stacktrace_alternate() {
+    use crate::protocol::Addr;
+
+    let backtrace = r#"
+   1:        0x104f87e23 - backtrace::backtrace::trace::he6b6038e0eef17f8
+                               at /root/.cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.44/src/backtrace/mod.rs:53
+   2:        0x104f7a6f7 - backtrace::capture::Backtrace::create::h10a127635da03d41
+                               at /root/.cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.44/src/capture.rs:164
+   3:        0x104fb9f4f - __rust_maybe_catch_panic
+                               at src/libpanic_unwind/lib.rs:78
+   4:        0x104fb784e - std::panicking::try::h989c79f60ffdf02a
+                               at src/libstd/panicking.rs:270
+                           std::panic::catch_unwind::hd3f56528916c87b0
+                               at src/libstd/panic.rs:394
+                           std::rt::lang_start_internal::h3d261fac4b6382f2
+                               at src/libstd/rt.rs:51
+   5:        0x1046a06a2 - std::rt::lang_start::h8baa07060377e0b8
+                               at /rustc/5e1a799842ba6ed4a57e91f7ab9435947482f7d8/src/libstd/rt.rs:67
+   6:        0x10469fb62 - main
+"#;
+
+    let stacktrace = parse_stacktrace(backtrace).expect("stacktrace");
+    assert_eq!(stacktrace.frames.len(), 8);
+
+    assert_eq!(stacktrace.frames[0].function, Some("main".into()));
+    assert_eq!(
+        stacktrace.frames[0].instruction_addr,
+        Some(Addr(0x1_0469_fb62))
+    );
+
+    // Inlined frame, inherits address from parent
+    assert_eq!(
+        stacktrace.frames[3].function,
+        Some("std::panic::catch_unwind".into())
+    );
+    assert_eq!(
+        stacktrace.frames[1].instruction_addr,
+        Some(Addr(0x1_046a_06a2))
     );
 }

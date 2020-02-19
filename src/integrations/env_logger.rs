@@ -8,7 +8,6 @@
 //! from `env_logger` and pass `None` as logger:
 //!
 //! ```no_run
-//! # extern crate sentry;
 //! sentry::integrations::env_logger::init(None, Default::default());
 //! ```
 //!
@@ -17,10 +16,8 @@
 //! accordingly:
 //!
 //! ```no_run
-//! # extern crate sentry;
-//! # extern crate pretty_env_logger;
 //! let mut log_builder = pretty_env_logger::formatted_builder();
-//! log_builder.parse("info,foo=debug");
+//! log_builder.parse_filters("info,foo=debug");
 //! sentry::integrations::env_logger::init(Some(log_builder.build()), Default::default());
 //! ```
 use crate::integrations::log::{self as sentry_log, LoggerOptions};

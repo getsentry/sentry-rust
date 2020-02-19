@@ -17,17 +17,22 @@ fn main() {
     #[cfg(feature = "with_rust_info")]
     {
         use rustc_version::{version, version_meta, Channel};
-        write!(
+        writeln!(
             f,
-            "/// The rustc version that was used to compile this crate\n"
+            "/// The rustc version that was used to compile this crate"
         )
         .ok();
         if let Ok(version) = version() {
-            write!(f, "#[allow(dead_code)] pub const RUSTC_VERSION: Option<&'static str> = Some(\"{}\");\n", version).ok();
-        } else {
-            write!(
+            writeln!(
                 f,
-                "#[allow(dead_code)] pub const RUSTC_VERSION: Option<&'static str> = None;\n"
+                "#[allow(dead_code)] pub const RUSTC_VERSION: Option<&'static str> = Some(\"{}\");",
+                version
+            )
+            .ok();
+        } else {
+            writeln!(
+                f,
+                "#[allow(dead_code)] pub const RUSTC_VERSION: Option<&'static str> = None;"
             )
             .ok();
         }
@@ -38,30 +43,35 @@ fn main() {
                 Channel::Beta => "beta",
                 Channel::Stable => "stable",
             };
-            write!(f, "#[allow(dead_code)] pub const RUSTC_CHANNEL: Option<&'static str> = Some(\"{}\");\n", chan).ok();
-        } else {
-            write!(
+            writeln!(
                 f,
-                "#[allow(dead_code)] pub const RUSTC_CHANNEL: Option<&'static str> = None;\n"
+                "#[allow(dead_code)] pub const RUSTC_CHANNEL: Option<&'static str> = Some(\"{}\");",
+                chan
+            )
+            .ok();
+        } else {
+            writeln!(
+                f,
+                "#[allow(dead_code)] pub const RUSTC_CHANNEL: Option<&'static str> = None;"
             )
             .ok();
         }
     }
 
-    write!(f, "/// The platform identifier\n").ok();
-    write!(
+    writeln!(f, "/// The platform identifier").ok();
+    writeln!(
         f,
-        "#[allow(dead_code)] pub const PLATFORM: &str = \"{}\";\n",
+        "#[allow(dead_code)] pub const PLATFORM: &str = \"{}\";",
         platform
     )
     .ok();
-    write!(f, "/// The CPU architecture identifier\n").ok();
-    write!(
+    writeln!(f, "/// The CPU architecture identifier").ok();
+    writeln!(
         f,
-        "#[allow(dead_code)] pub const ARCH: &str = \"{}\";\n",
+        "#[allow(dead_code)] pub const ARCH: &str = \"{}\";",
         arch
     )
     .ok();
-    println!("cargo:rerun-if-changed=build.rs\n");
-    println!("cargo:rerun-if-changed=Cargo.toml\n");
+    println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=Cargo.toml");
 }

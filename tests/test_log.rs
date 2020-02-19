@@ -1,7 +1,5 @@
 #![cfg(feature = "with_test_support")]
-
-extern crate log;
-extern crate sentry;
+#![cfg(feature = "with_log")]
 
 #[test]
 fn test_log() {

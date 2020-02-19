@@ -14,10 +14,8 @@
 //! env logger crate:
 //!
 //! ```no_run
-//! # extern crate sentry;
-//! # extern crate pretty_env_logger;
 //! let mut log_builder = pretty_env_logger::formatted_builder();
-//! log_builder.parse("info");  // or env::var("RUST_LOG")
+//! log_builder.parse_filters("info");  // or env::var("RUST_LOG")
 //! let logger = log_builder.build();
 //! let options = sentry::integrations::log::LoggerOptions {
 //!     global_filter: Some(logger.filter()),
@@ -225,7 +223,6 @@ fn convert_log_level(level: log::Level) -> Level {
 ///
 /// ```ignore
 /// use sentry::integrations::log;
-/// use env_logger;
 ///
 /// let builder = env_logger::Builder::from_default_env();
 /// let logger = builder.build();

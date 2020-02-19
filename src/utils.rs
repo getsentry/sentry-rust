@@ -5,7 +5,6 @@ use crate::protocol::{Context, DebugImage, Stacktrace, Thread};
 
 #[cfg(all(feature = "with_device_info", target_os = "macos"))]
 mod model_support {
-    use libc;
     use libc::c_void;
     use regex::Regex;
     use std::ptr;
@@ -217,7 +216,7 @@ pub fn os_context() -> Option<Context> {
 
 /// Returns the rust info.
 pub fn rust_context() -> Option<Context> {
-    #[cfg(feature = "with_device_info")]
+    #[cfg(feature = "with_rust_info")]
     {
         use crate::constants::{RUSTC_CHANNEL, RUSTC_VERSION};
         let ctx = crate::protocol::RuntimeContext {
@@ -234,7 +233,7 @@ pub fn rust_context() -> Option<Context> {
         .into();
         Some(ctx)
     }
-    #[cfg(not(feature = "with_device_info"))]
+    #[cfg(not(feature = "with_rust_info"))]
     {
         None
     }
