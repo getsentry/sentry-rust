@@ -55,19 +55,7 @@ fn test_auth_from_iterator() {
     cont.insert("sentry_client", "raven-js/3.23.3");
     cont.insert("sentry_key", "4bb5d94de752a36b8b87851a3f82726a");
 
-    let auth = Auth::from_pairs(cont.into_iter().map(|(k, v)| (k.into(), v.into()))).unwrap();
-    assert_eq!(auth.timestamp(), None);
-    assert_eq!(auth.client_agent(), Some("raven-js/3.23.3"));
-    assert_eq!(auth.version(), 7);
-    assert_eq!(auth.public_key(), "4bb5d94de752a36b8b87851a3f82726a");
-    assert_eq!(auth.secret_key(), None);
-
-    let mut cont = HashMap::new();
-    cont.insert("version", "7");
-    cont.insert("client", "raven-js/3.23.3");
-    cont.insert("key", "4bb5d94de752a36b8b87851a3f82726a");
-
-    let auth = Auth::from_pairs(cont.into_iter().map(|(k, v)| (k.into(), v.into()))).unwrap();
+    let auth = Auth::from_pairs(cont.into_iter()).unwrap();
     assert_eq!(auth.timestamp(), None);
     assert_eq!(auth.client_agent(), Some("raven-js/3.23.3"));
     assert_eq!(auth.version(), 7);
@@ -78,17 +66,6 @@ fn test_auth_from_iterator() {
 #[test]
 fn test_auth_from_querystring() {
     let auth = Auth::from_querystring(b"sentry_version=7&sentry_client=raven-js/3.23.3&sentry_key=4bb5d94de752a36b8b87851a3f82726a").unwrap();
-
-    assert_eq!(auth.timestamp(), None);
-    assert_eq!(auth.client_agent(), Some("raven-js/3.23.3"));
-    assert_eq!(auth.version(), 7);
-    assert_eq!(auth.public_key(), "4bb5d94de752a36b8b87851a3f82726a");
-    assert_eq!(auth.secret_key(), None);
-
-    let auth = Auth::from_querystring(
-        b"version=7&client=raven-js/3.23.3&key=4bb5d94de752a36b8b87851a3f82726a",
-    )
-    .unwrap();
 
     assert_eq!(auth.timestamp(), None);
     assert_eq!(auth.client_agent(), Some("raven-js/3.23.3"));
@@ -115,7 +92,7 @@ fn test_auth_to_json() {
     cont.insert("sentry_client", "raven-js/3.23.3");
     cont.insert("sentry_key", "4bb5d94de752a36b8b87851a3f82726a");
 
-    let auth = Auth::from_pairs(cont.into_iter().map(|(k, v)| (k.into(), v.into()))).unwrap();
+    let auth = Auth::from_pairs(cont.into_iter()).unwrap();
     assert_eq!(
         serde_json::to_string(&auth).expect("could not serialize").as_str(),
         "{\"sentry_client\":\"raven-js/3.23.3\",\"sentry_version\":7,\"sentry_key\":\"4bb5d94de752a36b8b87851a3f82726a\",\"sentry_secret\":null}"
