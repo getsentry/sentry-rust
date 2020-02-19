@@ -13,7 +13,7 @@ branches:
 
 script: make $SUITE
 
-matrix:
+jobs:
   include:
     - env: SUITE=test
     - env: SUITE=style
