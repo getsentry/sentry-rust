@@ -72,5 +72,13 @@ actix-web = { version = "0.7.19", default-features = false }
 name = "error-chain-demo"
 required-features = ["with_error_chain"]
 
+[[example]]
+name = "log-demo"
+required-features = ["with_env_logger"]
+
+[[example]]
+name = "thread-demo"
+required-features = ["with_env_logger"]
+
 [workspace]
 members = [".", "integrations/sentry-actix"]
