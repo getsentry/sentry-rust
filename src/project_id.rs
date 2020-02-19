@@ -3,6 +3,7 @@ use std::fmt;
 use std::str::FromStr;
 
 use failure::Fail;
+use serde::{Deserialize, Serialize};
 
 /// Raised if a project ID cannot be parsed from a string.
 #[derive(Debug, Fail, PartialEq, Eq, PartialOrd, Ord)]
@@ -16,7 +17,7 @@ pub enum ParseProjectIdError {
 }
 
 /// Represents a project ID.
-#[derive(Copy, Clone, PartialEq, Eq, Ord, PartialOrd, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash, Deserialize, Serialize)]
 pub struct ProjectId(u64);
 
 impl ProjectId {
@@ -34,12 +35,6 @@ impl ProjectId {
 }
 
 impl fmt::Display for ProjectId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.value())
-    }
-}
-
-impl fmt::Debug for ProjectId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.value())
     }
@@ -98,8 +93,6 @@ impl FromStr for ProjectId {
     }
 }
 
-impl_str_serde!(ProjectId);
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -119,12 +112,9 @@ mod test {
         );
         assert_eq!(ProjectId::new(42).to_string(), "42");
 
+        assert_eq!(serde_json::to_string(&ProjectId::new(42)).unwrap(), "42");
         assert_eq!(
-            serde_json::to_string(&ProjectId::new(42)).unwrap(),
-            "\"42\""
-        );
-        assert_eq!(
-            serde_json::from_str::<ProjectId>("\"42\"").unwrap(),
+            serde_json::from_str::<ProjectId>("42").unwrap(),
             ProjectId::new(42)
         );
     }
