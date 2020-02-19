@@ -1,94 +1,96 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `sentry` crate."><meta name="keywords" content="rust, rustlang, rust-lang, sentry"><title>sentry - Rust</title><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../dark.css"><link rel="stylesheet" type="text/css" href="../light.css" id="themeStyle"><script src="../storage.js"></script><noscript><link rel="stylesheet" href="../noscript.css"></noscript><link rel="shortcut icon" href="../favicon.ico"><style type="text/css">#crate-search{background-image:url("../down-arrow.svg");}</style></head><body class="rustdoc mod"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../sentry/index.html'><div class='logo-container'><img src='../rust-logo.png' alt='logo'></div></a><p class='location'>Crate sentry</p><div class="sidebar-elems"><a id='all-types' href='all.html'><p>See all sentry's items</p></a><div class="block items"><ul><li><a href="#modules">Modules</a></li><li><a href="#macros">Macros</a></li><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#functions">Functions</a></li></ul></div><p class='location'></p><script>window.sidebarCurrent = {name: 'sentry', ty: 'mod', relpath: '../'};</script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../theme.js"></script><nav class="sub"><form class="search-form js-only"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><a id="settings-menu" href="../settings.html"><img src="../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><h1 class='fqn'><span class='out-of-band'><span id='render-detail'><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class='inner'>&#x2212;</span>]</a></span><a class='srclink' href='../src/sentry/lib.rs.html#1-184' title='goto source code'>[src]</a></span><span class='in-band'>Crate <a class="mod" href=''>sentry</a></span></h1><div class='docblock'><p style="margin: -10px 0 0 15px; padding: 0; float: right;">
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `sentry` crate."><meta name="keywords" content="rust, rustlang, rust-lang, sentry"><title>sentry - Rust</title><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../dark.css"><link rel="stylesheet" type="text/css" href="../light.css" id="themeStyle"><script src="../storage.js"></script><noscript><link rel="stylesheet" href="../noscript.css"></noscript><link rel="shortcut icon" href="../favicon.ico"><style type="text/css">#crate-search{background-image:url("../down-arrow.svg");}</style></head><body class="rustdoc mod"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../sentry/index.html'><div class='logo-container'><img src='../rust-logo.png' alt='logo'></div></a><p class='location'>Crate sentry</p><div class="sidebar-elems"><a id='all-types' href='all.html'><p>See all sentry's items</p></a><div class="block items"><ul><li><a href="#modules">Modules</a></li><li><a href="#macros">Macros</a></li><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#functions">Functions</a></li></ul></div><p class='location'></p><script>window.sidebarCurrent = {name: 'sentry', ty: 'mod', relpath: '../'};</script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><a id="settings-menu" href="../settings.html"><img src="../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><h1 class='fqn'><span class='out-of-band'><span id='render-detail'><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class='inner'>&#x2212;</span>]</a></span><a class='srclink' href='../src/sentry/lib.rs.html#1-185' title='goto source code'>[src]</a></span><span class='in-band'>Crate <a class="mod" href=''>sentry</a></span></h1><div class='docblock'><p style="margin: -10px 0 0 15px; padding: 0; float: right;">
   <a href="https://sentry.io/"><img
     src="https://sentry-brand.storage.googleapis.com/sentry-logo-black.png"
     style="width: 260px"></a>
 </p>
-<p>This crate provides support for logging events and errors / panics to
-the <a href="https://sentry.io/">Sentry</a> error logging service.  It integrates with
-the standard panic system in Rust as well as a few popular error handling
-setups.</p>
+<p>This crate provides support for logging events and errors / panics to the
+<a href="https://sentry.io/">Sentry</a> error logging service.  It integrates with the standard panic
+system in Rust as well as a few popular error handling setups.</p>
 <h1 id="quickstart" class="section-header"><a href="#quickstart">Quickstart</a></h1>
-<p>To use the crate you need to create a client first.  When a client is created
-it's typically bound to the current thread by calling <code>bind_client</code>.  By default
-this happens by using the <code>sentry::init</code> convenience function.  When the client
-is bound to the main thread it also becomes the default client for future
-threads created but it is always possible to override the client for a thread
-later by explicitly binding it.</p>
-<p>The <code>sentry::init</code> function returns a guard that when dropped will flush
-Events that were not yet sent to the sentry service.  It has a two second
-deadline for this so shutdown of applications might slightly delay as a result
-of this.  Keep the guard around or sending events will not work.</p>
+<p>To use the crate you need to create a client first.  When a client is created it's typically
+bound to the current thread by calling <code>bind_client</code>.  By default this happens by using the
+<code>sentry::init</code> convenience function.  When the client is bound to the main thread it also
+becomes the default client for future threads created but it is always possible to override the
+client for a thread later by explicitly binding it.</p>
+<p>The <code>sentry::init</code> function returns a guard that when dropped will flush Events that were not
+yet sent to the sentry service.  It has a two second deadline for this so shutdown of
+applications might slightly delay as a result of this.  Keep the guard around or sending events
+will not work.</p>
 
 <div class="example-wrap"><pre class="rust rust-example-rendered">
-<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">sentry</span>;
-
-<span class="kw">fn</span> <span class="ident">main</span>() {
-    <span class="kw">let</span> <span class="ident">_guard</span> <span class="op">=</span> <span class="ident">sentry</span>::<span class="ident">init</span>(<span class="string">&quot;https://key@sentry.io/42&quot;</span>);
-    <span class="ident">sentry</span>::<span class="ident">capture_message</span>(<span class="string">&quot;Hello World!&quot;</span>, <span class="ident">sentry</span>::<span class="ident">Level</span>::<span class="ident">Info</span>);
-    <span class="comment">// when the guard goes out of scope here, the client will wait up to two</span>
-    <span class="comment">// seconds to send remaining events to the service.</span>
-}</pre></div>
+<span class="kw">let</span> <span class="ident">_guard</span> <span class="op">=</span> <span class="ident">sentry</span>::<span class="ident">init</span>(<span class="string">&quot;https://key@sentry.io/42&quot;</span>);
+<span class="ident">sentry</span>::<span class="ident">capture_message</span>(<span class="string">&quot;Hello World!&quot;</span>, <span class="ident">sentry</span>::<span class="ident">Level</span>::<span class="ident">Info</span>);
+<span class="comment">// when the guard goes out of scope here, the client will wait up to two</span>
+<span class="comment">// seconds to send remaining events to the service.</span></pre></div>
 <h1 id="integrations" class="section-header"><a href="#integrations">Integrations</a></h1>
-<p>What makes this crate useful are the various integrations that exist.  Some
-of them are enabled by default, some uncommon ones or for deprecated parts of
-the ecosystem a feature flag needs to be enabled.  For the available
-integrations and how to use them see <a href="integrations/index.html">integrations</a>.</p>
+<p>What makes this crate useful are the various integrations that exist.  Some of them are enabled
+by default, some uncommon ones or for deprecated parts of the ecosystem a feature flag needs to
+be enabled.  For the available integrations and how to use them see
+<a href="integrations/index.html">integrations</a>.</p>
 <h1 id="scopes-threads-and-hubs" class="section-header"><a href="#scopes-threads-and-hubs">Scopes, Threads and Hubs</a></h1>
-<p>Data is typically bound to a <a href="struct.Scope.html"><code>Scope</code></a>.  Scopes are stored
-in a hidden stack on a <a href="struct.Hub.html"><code>Hub</code></a>.  Once the library has been
-initialized a hub is automatically available.  In the default config a new
-hub is created for each thread and they act independently.</p>
-<p>The thread that calls <code>sentry::init</code> initializes the first hub which then automatically
-becomes the base of new hubs (You can get that hub by calling <code>Hub::main()</code>).  If a
-new thread is spawned it gets a new hub based on that one (the thread calls
-<code>Hub::new_from_top(Hub::main())</code>).  The current thread's hub is returned from
-<code>Hub::current()</code>.  Any hub that is wrapped in an <code>Arc</code> can be temporarily bound to a
-thread with <code>Hub::run</code>.  For more information see <a href="struct.Hub.html"><code>Hub</code></a>.</p>
-<p>Users are expected to reconfigure the scope with
-<a href="fn.configure_scope.html"><code>configure_scope</code></a>.  For more elaborate scope management
-the hub needs to be interfaced with directly.</p>
-<p>In some situations (particularly in async code) it's often not possible to use
-the thread local hub.  In that case a hub can be explicitly created and passed
-around.  However due to the nature of some integrations some functionality like
-automatic breadcrumb recording depends on the thread local hub being correctly
-configured.</p>
+<p>Data is typically bound to a <a href="struct.Scope.html"><code>Scope</code></a>.  Scopes are stored in a hidden stack
+on a <a href="struct.Hub.html"><code>Hub</code></a>.  Once the library has been initialized a hub is automatically
+available.  In the default config a new hub is created for each thread and they act
+independently.</p>
+<p>The thread that calls <code>sentry::init</code> initializes the first hub which then automatically becomes
+the base of new hubs (You can get that hub by calling <code>Hub::main()</code>).  If a new thread is
+spawned it gets a new hub based on that one (the thread calls <code>Hub::new_from_top(Hub::main())</code>).
+The current thread's hub is returned from <code>Hub::current()</code>.  Any hub that is wrapped in an <code>Arc</code>
+can be temporarily bound to a thread with <code>Hub::run</code>.  For more information see
+<a href="struct.Hub.html"><code>Hub</code></a>.</p>
+<p>Users are expected to reconfigure the scope with <a href="fn.configure_scope.html"><code>configure_scope</code></a>.
+For more elaborate scope management the hub needs to be interfaced with directly.</p>
+<p>In some situations (particularly in async code) it's often not possible to use the thread local
+hub.  In that case a hub can be explicitly created and passed around.  However due to the nature
+of some integrations some functionality like automatic breadcrumb recording depends on the
+thread local hub being correctly configured.</p>
 <h1 id="minimal-api" class="section-header"><a href="#minimal-api">Minimal API</a></h1>
-<p>This crate can also be used in &quot;minimal&quot; mode.  This is enabled by disabling all
-default features of the crate.  In that mode a minimal API set is retained that
-can be used to instrument code for Sentry without actually using Sentry.  The
-minimal API is a small set of APIs that dispatch to the underlying implementations on
-the configured Sentry client.  If the client is not there the minimal API will blackhole
-a lot of operations.</p>
+<p>This crate can also be used in &quot;minimal&quot; mode.  This is enabled by disabling all default
+features of the crate.  In that mode a minimal API set is retained that can be used to
+instrument code for Sentry without actually using Sentry.  The minimal API is a small set of
+APIs that dispatch to the underlying implementations on the configured Sentry client.  If the
+client is not there the minimal API will blackhole a lot of operations.</p>
 <p>Only if a user then also uses and configures Sentry this code becomes used.</p>
-<p>In minimal mode some types are restricted in functionality.  For instance the
-<code>Client</code> is not available and the <code>Hub</code> does not retain all API functionality.
-To see what the APIs in mnimal mode look like you can build the docs for this
-crate without any features enabled.</p>
+<p>In minimal mode some types are restricted in functionality.  For instance the <code>Client</code> is not
+available and the <code>Hub</code> does not retain all API functionality. To see what the APIs in mnimal
+mode look like you can build the docs for this crate without any features enabled.</p>
 <h1 id="features" class="section-header"><a href="#features">Features</a></h1>
-<p>Functionality of the crate can be turned on and off by feature flags.  This is the
-current list of feature flags:</p>
-<p>default flags:</p>
+<p>Functionality of the crate can be turned on and off by feature flags.  This is the current list
+of feature flags:</p>
+<p>Default features:</p>
 <ul>
-<li><code>with_client_implementation</code>: turns on the real client implementation.</li>
-<li><code>with_default_transport</code>: compiles in the default HTTP transport.</li>
-<li><code>with_backtrace</code>: enables backtrace support (automatically turned on in a few cases)</li>
-<li><code>with_panic</code>: enables the panic integration</li>
-<li><code>with_failure</code>: enables the <code>failure</code> integration</li>
-<li><code>with_log</code>: enables the <code>log</code> integration</li>
-<li><code>with_env_logger</code>: enables the <code>env_logger</code> integration</li>
-<li><code>with_device_info</code>: enables the device info context</li>
-<li><code>with_rust_info</code>: enables the rust compiler info context</li>
-<li><code>with_debug_meta</code>: enables debug meta support (permits server side symbolication)</li>
-<li><code>with_debug_to_log</code>: when enabled sentry will debug log to a debug log at all times
-instead of printing to stderr when debug is enabled on the hub.</li>
+<li><code>with_client_implementation</code>: Turns on the real client implementation.</li>
+<li><code>with_default_transport</code>: Compiles in the default HTTP transport (see below).</li>
+<li><code>with_backtrace</code>: Enables backtrace support (automatically turned on in a few cases).</li>
+<li><code>with_panic</code>: Enables the panic integration.</li>
+<li><code>with_failure</code>: Enables the <code>failure</code> integration.</li>
+<li><code>with_device_info</code>: Enables the device info context.</li>
+<li><code>with_rust_info</code>: Enables the rust compiler info context instead of printing to stderr when
+debug is enabled on the hub.</li>
 </ul>
-<p>additional features:</p>
+<p>Additional context:</p>
 <ul>
-<li><code>with_error_chain</code>: enables the error-chain integration</li>
-<li><code>with_test_support</code>: enables the test support module</li>
-<li><code>with_reqwest_transport</code>: enables the reqwest transport explicitly.  This
-is currently the default transport.</li>
-<li><code>with_curl_transport</code>: enables the curl transport.</li>
+<li><code>with_debug_meta</code>: Adds debug meta to reported events (permits server side symbolication).</li>
+</ul>
+<p>Additional integrations:</p>
+<ul>
+<li><code>with_log</code>: Enables the <code>log</code> integration.</li>
+<li><code>with_env_logger</code>: Enables the <code>env_logger</code> integration.</li>
+<li><code>with_debug_to_log</code>: When enabled sentry will debug log to a debug log at all times.</li>
+<li><code>with_error_chain</code>: Enables the error-chain integration.</li>
+</ul>
+<p>Additional transports:</p>
+<ul>
+<li><code>with_reqwest_transport</code>: Enables the reqwest transport explicitly.  This is currently the
+default transport.</li>
+<li><code>with_curl_transport</code>: Enables the curl transport.</li>
+<li><code>with_rustls</code>: Enables the <code>rustls</code> TLS implementation.  This is currently the default when
+using the <code>with_reqwest_transport</code> feature.</li>
+<li><code>with_native_tls</code>: Enables the <code>default-tls</code> feature of the <code>reqwest</code> library.</li>
+</ul>
+<p>Testing:</p>
+<ul>
+<li><code>with_test_support</code>: Enables the test support module.</li>
 </ul>
 </div><h2 id='modules' class='section-header'><a href="#modules">Modules</a></h2>
 <table><tr class='module-item'><td><a class="mod" href="integrations/index.html" title='sentry::integrations mod'>integrations</a></td><td class='docblock-short'><p>This module provides support for various integrations.</p>
@@ -115,4 +117,4 @@ is currently the default transport.</li>
 </td></tr><tr class='module-item'><td><a class="fn" href="fn.init.html" title='sentry::init fn'>init</a></td><td class='docblock-short'><p>Creates the Sentry client for a given client config and binds it.</p>
 </td></tr><tr class='module-item'><td><a class="fn" href="fn.last_event_id.html" title='sentry::last_event_id fn'>last_event_id</a></td><td class='docblock-short'><p>Returns the last event ID captured.</p>
 </td></tr><tr class='module-item'><td><a class="fn" href="fn.with_scope.html" title='sentry::with_scope fn'>with_scope</a></td><td class='docblock-short'><p>Temporarily pushes a scope for a single call optionally reconfiguring it.</p>
-</td></tr></table></section><section id="search" class="content hidden"></section><section class="footer"></section><aside id="help" class="hidden"><div><h1 class="hidden">Help</h1><div class="shortcuts"><h2>Keyboard Shortcuts</h2><dl><dt><kbd>?</kbd></dt><dd>Show this help dialog</dd><dt><kbd>S</kbd></dt><dd>Focus the search field</dd><dt><kbd>↑</kbd></dt><dd>Move up in search results</dd><dt><kbd>↓</kbd></dt><dd>Move down in search results</dd><dt><kbd>↹</kbd></dt><dd>Switch tab</dd><dt><kbd>&#9166;</kbd></dt><dd>Go to active search result</dd><dt><kbd>+</kbd></dt><dd>Expand all sections</dd><dt><kbd>-</kbd></dt><dd>Collapse all sections</dd></dl></div><div class="infos"><h2>Search Tricks</h2><p>Prefix searches with a type followed by a colon (e.g., <code>fn:</code>) to restrict the search to a given type.</p><p>Accepted types are: <code>fn</code>, <code>mod</code>, <code>struct</code>, <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, and <code>const</code>.</p><p>Search functions by type signature (e.g., <code>vec -> usize</code> or <code>* -> vec</code>)</p><p>Search multiple things at once by splitting your query with comma (e.g., <code>str,u8</code> or <code>String,struct:Vec,test</code>)</p></div></div></aside><script>window.rootPath = "../";window.currentCrate = "sentry";</script><script src="../aliases.js"></script><script src="../main.js"></script><script defer src="../search-index.js"></script></body></html>
+</td></tr></table></section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../";window.currentCrate = "sentry";</script><script src="../aliases.js"></script><script src="../main.js"></script><script defer src="../search-index.js"></script></body></html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source to the Rust file `src/lib.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>lib.rs.html -- source</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css"><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script src="../../storage.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="shortcut icon" href="../../favicon.ico"><style type="text/css">#crate-search{background-image:url("../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../../sentry/index.html'><div class='logo-container'><img src='../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../theme.js"></script><nav class="sub"><form class="search-form js-only"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><a id="settings-menu" href="../../settings.html"><img src="../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source to the Rust file `src/lib.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>lib.rs.html -- source</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css"><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script src="../../storage.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="shortcut icon" href="../../favicon.ico"><style type="text/css">#crate-search{background-image:url("../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../../sentry/index.html'><div class='logo-container'><img src='../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><a id="settings-menu" href="../../settings.html"><img src="../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
 <span id="2">  2</span>
 <span id="3">  3</span>
 <span id="4">  4</span>
@@ -182,6 +182,7 @@
 <span id="182">182</span>
 <span id="183">183</span>
 <span id="184">184</span>
+<span id="185">185</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! &lt;p style=&quot;margin: -10px 0 0 15px; padding: 0; float: right;&quot;&gt;</span>
 <span class="doccomment">//!   &lt;a href=&quot;https://sentry.io/&quot;&gt;&lt;img</span>
@@ -189,110 +190,111 @@
 <span class="doccomment">//!     style=&quot;width: 260px&quot;&gt;&lt;/a&gt;</span>
 <span class="doccomment">//! &lt;/p&gt;</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! This crate provides support for logging events and errors / panics to</span>
-<span class="doccomment">//! the [Sentry](https://sentry.io/) error logging service.  It integrates with</span>
-<span class="doccomment">//! the standard panic system in Rust as well as a few popular error handling</span>
-<span class="doccomment">//! setups.</span>
+<span class="doccomment">//! This crate provides support for logging events and errors / panics to the</span>
+<span class="doccomment">//! [Sentry](https://sentry.io/) error logging service.  It integrates with the standard panic</span>
+<span class="doccomment">//! system in Rust as well as a few popular error handling setups.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # Quickstart</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! To use the crate you need to create a client first.  When a client is created</span>
-<span class="doccomment">//! it&#39;s typically bound to the current thread by calling `bind_client`.  By default</span>
-<span class="doccomment">//! this happens by using the `sentry::init` convenience function.  When the client</span>
-<span class="doccomment">//! is bound to the main thread it also becomes the default client for future</span>
-<span class="doccomment">//! threads created but it is always possible to override the client for a thread</span>
-<span class="doccomment">//! later by explicitly binding it.</span>
+<span class="doccomment">//! To use the crate you need to create a client first.  When a client is created it&#39;s typically</span>
+<span class="doccomment">//! bound to the current thread by calling `bind_client`.  By default this happens by using the</span>
+<span class="doccomment">//! `sentry::init` convenience function.  When the client is bound to the main thread it also</span>
+<span class="doccomment">//! becomes the default client for future threads created but it is always possible to override the</span>
+<span class="doccomment">//! client for a thread later by explicitly binding it.</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! The `sentry::init` function returns a guard that when dropped will flush</span>
-<span class="doccomment">//! Events that were not yet sent to the sentry service.  It has a two second</span>
-<span class="doccomment">//! deadline for this so shutdown of applications might slightly delay as a result</span>
-<span class="doccomment">//! of this.  Keep the guard around or sending events will not work.</span>
+<span class="doccomment">//! The `sentry::init` function returns a guard that when dropped will flush Events that were not</span>
+<span class="doccomment">//! yet sent to the sentry service.  It has a two second deadline for this so shutdown of</span>
+<span class="doccomment">//! applications might slightly delay as a result of this.  Keep the guard around or sending events</span>
+<span class="doccomment">//! will not work.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ```</span>
-<span class="doccomment">//! extern crate sentry;</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! fn main() {</span>
-<span class="doccomment">//!     let _guard = sentry::init(&quot;https://key@sentry.io/42&quot;);</span>
-<span class="doccomment">//!     sentry::capture_message(&quot;Hello World!&quot;, sentry::Level::Info);</span>
-<span class="doccomment">//!     // when the guard goes out of scope here, the client will wait up to two</span>
-<span class="doccomment">//!     // seconds to send remaining events to the service.</span>
-<span class="doccomment">//! }</span>
+<span class="doccomment">//! let _guard = sentry::init(&quot;https://key@sentry.io/42&quot;);</span>
+<span class="doccomment">//! sentry::capture_message(&quot;Hello World!&quot;, sentry::Level::Info);</span>
+<span class="doccomment">//! // when the guard goes out of scope here, the client will wait up to two</span>
+<span class="doccomment">//! // seconds to send remaining events to the service.</span>
 <span class="doccomment">//! ```</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # Integrations</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! What makes this crate useful are the various integrations that exist.  Some</span>
-<span class="doccomment">//! of them are enabled by default, some uncommon ones or for deprecated parts of</span>
-<span class="doccomment">//! the ecosystem a feature flag needs to be enabled.  For the available</span>
-<span class="doccomment">//! integrations and how to use them see [integrations](integrations/index.html).</span>
+<span class="doccomment">//! What makes this crate useful are the various integrations that exist.  Some of them are enabled</span>
+<span class="doccomment">//! by default, some uncommon ones or for deprecated parts of the ecosystem a feature flag needs to</span>
+<span class="doccomment">//! be enabled.  For the available integrations and how to use them see</span>
+<span class="doccomment">//! [integrations](integrations/index.html).</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # Scopes, Threads and Hubs</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! Data is typically bound to a [`Scope`](struct.Scope.html).  Scopes are stored</span>
-<span class="doccomment">//! in a hidden stack on a [`Hub`](struct.Hub.html).  Once the library has been</span>
-<span class="doccomment">//! initialized a hub is automatically available.  In the default config a new</span>
-<span class="doccomment">//! hub is created for each thread and they act independently.</span>
+<span class="doccomment">//! Data is typically bound to a [`Scope`](struct.Scope.html).  Scopes are stored in a hidden stack</span>
+<span class="doccomment">//! on a [`Hub`](struct.Hub.html).  Once the library has been initialized a hub is automatically</span>
+<span class="doccomment">//! available.  In the default config a new hub is created for each thread and they act</span>
+<span class="doccomment">//! independently.</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! The thread that calls `sentry::init` initializes the first hub which then automatically</span>
-<span class="doccomment">//! becomes the base of new hubs (You can get that hub by calling `Hub::main()`).  If a</span>
-<span class="doccomment">//! new thread is spawned it gets a new hub based on that one (the thread calls</span>
-<span class="doccomment">//! `Hub::new_from_top(Hub::main())`).  The current thread&#39;s hub is returned from</span>
-<span class="doccomment">//! `Hub::current()`.  Any hub that is wrapped in an `Arc` can be temporarily bound to a</span>
-<span class="doccomment">//! thread with `Hub::run`.  For more information see [`Hub`](struct.Hub.html).</span>
+<span class="doccomment">//! The thread that calls `sentry::init` initializes the first hub which then automatically becomes</span>
+<span class="doccomment">//! the base of new hubs (You can get that hub by calling `Hub::main()`).  If a new thread is</span>
+<span class="doccomment">//! spawned it gets a new hub based on that one (the thread calls `Hub::new_from_top(Hub::main())`).</span>
+<span class="doccomment">//! The current thread&#39;s hub is returned from `Hub::current()`.  Any hub that is wrapped in an `Arc`</span>
+<span class="doccomment">//! can be temporarily bound to a thread with `Hub::run`.  For more information see</span>
+<span class="doccomment">//! [`Hub`](struct.Hub.html).</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! Users are expected to reconfigure the scope with</span>
-<span class="doccomment">//! [`configure_scope`](fn.configure_scope.html).  For more elaborate scope management</span>
-<span class="doccomment">//! the hub needs to be interfaced with directly.</span>
+<span class="doccomment">//! Users are expected to reconfigure the scope with [`configure_scope`](fn.configure_scope.html).</span>
+<span class="doccomment">//! For more elaborate scope management the hub needs to be interfaced with directly.</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! In some situations (particularly in async code) it&#39;s often not possible to use</span>
-<span class="doccomment">//! the thread local hub.  In that case a hub can be explicitly created and passed</span>
-<span class="doccomment">//! around.  However due to the nature of some integrations some functionality like</span>
-<span class="doccomment">//! automatic breadcrumb recording depends on the thread local hub being correctly</span>
-<span class="doccomment">//! configured.</span>
+<span class="doccomment">//! In some situations (particularly in async code) it&#39;s often not possible to use the thread local</span>
+<span class="doccomment">//! hub.  In that case a hub can be explicitly created and passed around.  However due to the nature</span>
+<span class="doccomment">//! of some integrations some functionality like automatic breadcrumb recording depends on the</span>
+<span class="doccomment">//! thread local hub being correctly configured.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # Minimal API</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! This crate can also be used in &quot;minimal&quot; mode.  This is enabled by disabling all</span>
-<span class="doccomment">//! default features of the crate.  In that mode a minimal API set is retained that</span>
-<span class="doccomment">//! can be used to instrument code for Sentry without actually using Sentry.  The</span>
-<span class="doccomment">//! minimal API is a small set of APIs that dispatch to the underlying implementations on</span>
-<span class="doccomment">//! the configured Sentry client.  If the client is not there the minimal API will blackhole</span>
-<span class="doccomment">//! a lot of operations.</span>
+<span class="doccomment">//! This crate can also be used in &quot;minimal&quot; mode.  This is enabled by disabling all default</span>
+<span class="doccomment">//! features of the crate.  In that mode a minimal API set is retained that can be used to</span>
+<span class="doccomment">//! instrument code for Sentry without actually using Sentry.  The minimal API is a small set of</span>
+<span class="doccomment">//! APIs that dispatch to the underlying implementations on the configured Sentry client.  If the</span>
+<span class="doccomment">//! client is not there the minimal API will blackhole a lot of operations.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Only if a user then also uses and configures Sentry this code becomes used.</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! In minimal mode some types are restricted in functionality.  For instance the</span>
-<span class="doccomment">//! `Client` is not available and the `Hub` does not retain all API functionality.</span>
-<span class="doccomment">//! To see what the APIs in mnimal mode look like you can build the docs for this</span>
-<span class="doccomment">//! crate without any features enabled.</span>
+<span class="doccomment">//! In minimal mode some types are restricted in functionality.  For instance the `Client` is not</span>
+<span class="doccomment">//! available and the `Hub` does not retain all API functionality. To see what the APIs in mnimal</span>
+<span class="doccomment">//! mode look like you can build the docs for this crate without any features enabled.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # Features</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! Functionality of the crate can be turned on and off by feature flags.  This is the</span>
-<span class="doccomment">//! current list of feature flags:</span>
+<span class="doccomment">//! Functionality of the crate can be turned on and off by feature flags.  This is the current list</span>
+<span class="doccomment">//! of feature flags:</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! default flags:</span>
+<span class="doccomment">//! Default features:</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! * `with_client_implementation`: turns on the real client implementation.</span>
-<span class="doccomment">//! * `with_default_transport`: compiles in the default HTTP transport.</span>
-<span class="doccomment">//! * `with_backtrace`: enables backtrace support (automatically turned on in a few cases)</span>
-<span class="doccomment">//! * `with_panic`: enables the panic integration</span>
-<span class="doccomment">//! * `with_failure`: enables the `failure` integration</span>
-<span class="doccomment">//! * `with_log`: enables the `log` integration</span>
-<span class="doccomment">//! * `with_env_logger`: enables the `env_logger` integration</span>
-<span class="doccomment">//! * `with_device_info`: enables the device info context</span>
-<span class="doccomment">//! * `with_rust_info`: enables the rust compiler info context</span>
-<span class="doccomment">//! * `with_debug_meta`: enables debug meta support (permits server side symbolication)</span>
-<span class="doccomment">//! * `with_debug_to_log`: when enabled sentry will debug log to a debug log at all times</span>
-<span class="doccomment">//!   instead of printing to stderr when debug is enabled on the hub.</span>
+<span class="doccomment">//! * `with_client_implementation`: Turns on the real client implementation.</span>
+<span class="doccomment">//! * `with_default_transport`: Compiles in the default HTTP transport (see below).</span>
+<span class="doccomment">//! * `with_backtrace`: Enables backtrace support (automatically turned on in a few cases).</span>
+<span class="doccomment">//! * `with_panic`: Enables the panic integration.</span>
+<span class="doccomment">//! * `with_failure`: Enables the `failure` integration.</span>
+<span class="doccomment">//! * `with_device_info`: Enables the device info context.</span>
+<span class="doccomment">//! * `with_rust_info`: Enables the rust compiler info context instead of printing to stderr when</span>
+<span class="doccomment">//!   debug is enabled on the hub.</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! additional features:</span>
+<span class="doccomment">//! Additional context:</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! * `with_error_chain`: enables the error-chain integration</span>
-<span class="doccomment">//! * `with_test_support`: enables the test support module</span>
-<span class="doccomment">//! * `with_reqwest_transport`: enables the reqwest transport explicitly.  This</span>
-<span class="doccomment">//!   is currently the default transport.</span>
-<span class="doccomment">//! * `with_curl_transport`: enables the curl transport.</span>
+<span class="doccomment">//! * `with_debug_meta`: Adds debug meta to reported events (permits server side symbolication).</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! Additional integrations:</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! * `with_log`: Enables the `log` integration.</span>
+<span class="doccomment">//! * `with_env_logger`: Enables the `env_logger` integration.</span>
+<span class="doccomment">//! * `with_debug_to_log`: When enabled sentry will debug log to a debug log at all times.</span>
+<span class="doccomment">//! * `with_error_chain`: Enables the error-chain integration.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! Additional transports:</span>
+<span class="doccomment">//! * `with_reqwest_transport`: Enables the reqwest transport explicitly.  This is currently the</span>
+<span class="doccomment">//!   default transport.</span>
+<span class="doccomment">//! * `with_curl_transport`: Enables the curl transport.</span>
+<span class="doccomment">//! * `with_rustls`: Enables the `rustls` TLS implementation.  This is currently the default when</span>
+<span class="doccomment">//!   using the `with_reqwest_transport` feature.</span>
+<span class="doccomment">//! * `with_native_tls`: Enables the `default-tls` feature of the `reqwest` library.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! Testing:</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! * `with_test_support`: Enables the test support module.</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
 
 <span class="attribute">#[<span class="ident">macro_use</span>]</span>
@@ -335,8 +337,8 @@
     };
 
     <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">sentry_types</span>::{
-        <span class="ident">Auth</span>, <span class="ident">ChronoParseError</span>, <span class="ident">DateTime</span>, <span class="ident">DebugId</span>, <span class="ident">Dsn</span>, <span class="ident">DsnParseError</span>, <span class="ident">ParseDebugIdError</span>,
-        <span class="ident">ProjectId</span>, <span class="ident">ProjectIdParseError</span>, <span class="ident">Scheme</span>, <span class="ident">TimeZone</span>, <span class="ident">Utc</span>, <span class="ident">Uuid</span>, <span class="ident">UuidVariant</span>, <span class="ident">UuidVersion</span>,
+        <span class="ident">Auth</span>, <span class="ident">ChronoParseError</span>, <span class="ident">DateTime</span>, <span class="ident">DebugId</span>, <span class="ident">Dsn</span>, <span class="ident">ParseDebugIdError</span>, <span class="ident">ParseDsnError</span>,
+        <span class="ident">ParseProjectIdError</span>, <span class="ident">ProjectId</span>, <span class="ident">Scheme</span>, <span class="ident">TimeZone</span>, <span class="ident">Utc</span>, <span class="ident">Uuid</span>, <span class="ident">UuidVariant</span>, <span class="ident">UuidVersion</span>,
     };
 }
 
@@ -368,4 +370,4 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">sentry_types</span>::<span class="ident">protocol</span>::<span class="ident">v7</span> <span class="kw">as</span> <span class="ident">protocol</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">sentry_types</span>::<span class="ident">protocol</span>::<span class="ident">v7</span>::{<span class="ident">Breadcrumb</span>, <span class="ident">Level</span>, <span class="ident">User</span>};
 </pre></div>
-</section><section id="search" class="content hidden"></section><section class="footer"></section><aside id="help" class="hidden"><div><h1 class="hidden">Help</h1><div class="shortcuts"><h2>Keyboard Shortcuts</h2><dl><dt><kbd>?</kbd></dt><dd>Show this help dialog</dd><dt><kbd>S</kbd></dt><dd>Focus the search field</dd><dt><kbd>↑</kbd></dt><dd>Move up in search results</dd><dt><kbd>↓</kbd></dt><dd>Move down in search results</dd><dt><kbd>↹</kbd></dt><dd>Switch tab</dd><dt><kbd>&#9166;</kbd></dt><dd>Go to active search result</dd><dt><kbd>+</kbd></dt><dd>Expand all sections</dd><dt><kbd>-</kbd></dt><dd>Collapse all sections</dd></dl></div><div class="infos"><h2>Search Tricks</h2><p>Prefix searches with a type followed by a colon (e.g., <code>fn:</code>) to restrict the search to a given type.</p><p>Accepted types are: <code>fn</code>, <code>mod</code>, <code>struct</code>, <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, and <code>const</code>.</p><p>Search functions by type signature (e.g., <code>vec -> usize</code> or <code>* -> vec</code>)</p><p>Search multiple things at once by splitting your query with comma (e.g., <code>str,u8</code> or <code>String,struct:Vec,test</code>)</p></div></div></aside><script>window.rootPath = "../../";window.currentCrate = "sentry";</script><script src="../../aliases.js"></script><script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script><script defer src="../../search-index.js"></script></body></html>
+</section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../";window.currentCrate = "sentry";</script><script src="../../aliases.js"></script><script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script><script defer src="../../search-index.js"></script></body></html>

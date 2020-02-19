@@ -1,1 +1,0 @@
-initSidebarItems({"fn":[["init","Initializes the environment logger."]]});

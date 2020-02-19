@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["env_logger","Adds support for automatic breadcrumb capturing from logs with `env_logger`."],["failure","Adds support for the failure crate."],["log","Adds support for automatic breadcrumb capturing from logs."],["panic","Panic handler support."]]});
+initSidebarItems({"mod":[["failure","Adds support for the failure crate."],["panic","Panic handler support."]]});
