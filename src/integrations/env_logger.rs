@@ -30,6 +30,11 @@ use crate::integrations::log::{self as sentry_log, LoggerOptions};
 /// If a logger is given then it is used, otherwise a new logger is created in the same
 /// way as `env_logger::init` does normally.  The `global_filter` on the options is set
 /// to the filter of the logger.
+///
+/// # Panics
+///
+/// This function will panic if it is called more than once, or if another
+/// library has already initialized a global logger.
 pub fn init(logger: Option<env_logger::Logger>, mut options: LoggerOptions) {
     let logger =
         logger.unwrap_or_else(|| env_logger::Builder::from_env(env_logger::Env::default()).build());

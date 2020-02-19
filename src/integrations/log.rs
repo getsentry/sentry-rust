@@ -237,6 +237,11 @@ fn convert_log_level(level: log::Level) -> Level {
 ///
 /// (For using `env_logger` you can also use the `env_logger` integration
 /// which simplifies this).
+///
+/// # Panics
+///
+/// This function will panic if it is called more than once, or if another
+/// library has already initialized a global logger.
 pub fn init(dest: Option<Box<dyn log::Log>>, options: LoggerOptions) {
     let logger = Logger::new(dest, options);
     let filter = logger.options().effective_global_filter();
