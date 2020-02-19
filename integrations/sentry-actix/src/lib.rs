@@ -41,9 +41,6 @@
 //! To get the request specific one you need to use the `ActixWebHubExt` trait:
 //!
 //! ```
-//! # extern crate sentry;
-//! # extern crate sentry_actix;
-//! # extern crate actix_web;
 //! # fn test(req: &actix_web::HttpRequest) {
 //! use sentry::{Hub, Level};
 //! use sentry_actix::ActixWebHubExt;
@@ -56,9 +53,6 @@
 //! The hub can also be made current:
 //!
 //! ```
-//! # extern crate sentry;
-//! # extern crate sentry_actix;
-//! # extern crate actix_web;
 //! # fn test(req: &actix_web::HttpRequest) {
 //! use sentry::{Hub, Level};
 //! use sentry_actix::ActixWebHubExt;

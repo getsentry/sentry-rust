@@ -5,7 +5,6 @@ use crate::protocol::{Context, DebugImage, Stacktrace, Thread};
 
 #[cfg(all(feature = "with_device_info", target_os = "macos"))]
 mod model_support {
-    use libc;
     use libc::c_void;
     use regex::Regex;
     use std::ptr;

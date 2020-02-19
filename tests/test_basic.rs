@@ -1,7 +1,5 @@
 #![cfg(feature = "with_test_support")]
 
-extern crate sentry;
-
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 

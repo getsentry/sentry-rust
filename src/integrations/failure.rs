@@ -10,8 +10,6 @@
 //! # Example
 //!
 //! ```no_run
-//! # extern crate sentry;
-//! # extern crate failure;
 //! # fn function_that_might_fail() -> Result<(), failure::Error> { Ok(()) }
 //! use sentry::integrations::failure::capture_error;
 //! # fn test() -> Result<(), failure::Error> {

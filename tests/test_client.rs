@@ -3,8 +3,6 @@
 use std::panic;
 use std::sync::Arc;
 
-extern crate sentry;
-
 #[test]
 fn test_into_client() {
     let c: sentry::Client = sentry::Client::from_config("https://public@example.com/42");
@@ -13,7 +11,7 @@ fn test_into_client() {
         assert_eq!(dsn.public_key(), "public");
         assert_eq!(dsn.host(), "example.com");
         assert_eq!(dsn.scheme(), sentry::internals::Scheme::Https);
-        assert_eq!(dsn.project_id(), 42.into());
+        assert_eq!(dsn.project_id().value(), 42);
     }
 
     let c: sentry::Client = sentry::Client::from_config((
@@ -28,7 +26,7 @@ fn test_into_client() {
         assert_eq!(dsn.public_key(), "public");
         assert_eq!(dsn.host(), "example.com");
         assert_eq!(dsn.scheme(), sentry::internals::Scheme::Https);
-        assert_eq!(dsn.project_id(), 42.into());
+        assert_eq!(dsn.project_id().value(), 42);
         assert_eq!(&c.options().release.as_ref().unwrap(), &"foo@1.0");
     }
 
