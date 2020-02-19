@@ -38,7 +38,7 @@ with_rustls = ["reqwest/rustls-tls"]
 with_native_tls = ["reqwest/default-tls"]
 
 [dependencies]
-backtrace = { version = "0.3.15", optional = true }
+backtrace = { version = "0.3.44", optional = true }
 url = { version = "2.1.1", optional = true }
 failure = { version = "0.1.6", optional = true }
 log = { version = "0.4.8", optional = true, features = ["std"] }
