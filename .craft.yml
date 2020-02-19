@@ -1,8 +1,12 @@
 ---
 # Configuration for sentry-craft (https://github.com/getsentry/craft)
+minVersion: "0.9.0"
 github:
   owner: getsentry
   repo: rust-sentry-types
+changelogPolicy: none
+statusProvider:
+  name: github
 targets:
   - name: crates
   - name: github
