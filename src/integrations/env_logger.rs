@@ -1,6 +1,6 @@
 //! Adds support for automatic breadcrumb capturing from logs with `env_logger`.
 //!
-//! **Feature:** `with_env_logger` (*enabled by default*)
+//! **Feature:** `with_env_logger` (*disabled by default*)
 //!
 //! # Configuration
 //!
