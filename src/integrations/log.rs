@@ -1,6 +1,6 @@
 //! Adds support for automatic breadcrumb capturing from logs.
 //!
-//! **Feature:** `with_log` (*enabled by default*)
+//! **Feature:** `with_log` (*disabled by default*)
 //!
 //! The `log` crate is supported in two ways.  First events can be captured as
 //! breadcrumbs for later, secondly error events can be logged as events to
