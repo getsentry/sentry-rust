@@ -423,8 +423,7 @@ implement_http_transport! {
                 match handle.response_code() {
                     Ok(429) => {
                         if let Some(retry_after) = retry_after
-                            .as_ref()
-                            .map(String::as_str)
+                            .as_deref()
                             .and_then(parse_retry_after)
                         {
                             disabled = Some(retry_after);
