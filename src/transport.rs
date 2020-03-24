@@ -11,11 +11,7 @@ use std::io::Cursor;
 use httpdate::parse_http_date;
 
 #[cfg(feature = "with_reqwest_transport")]
-use reqwest::{
-    blocking::{Client, ClientBuilder},
-    header::RETRY_AFTER,
-    Proxy,
-};
+use reqwest::{blocking::Client, header::RETRY_AFTER, Proxy};
 
 #[cfg(feature = "with_curl_transport")]
 use {crate::internals::Scheme, curl, std::io::Read};
@@ -224,12 +220,6 @@ macro_rules! implement_http_transport {
 }
 
 #[cfg(feature = "with_reqwest_transport")]
-enum ReqwestClientOrBuilder {
-    Client(Client),
-    Builder(ClientBuilder),
-}
-
-#[cfg(feature = "with_reqwest_transport")]
 implement_http_transport! {
     /// A transport can send events via HTTP to sentry via `reqwest`.
     ///
@@ -244,21 +234,29 @@ implement_http_transport! {
         signal: Arc<Condvar>,
         shutdown_immediately: Arc<AtomicBool>,
         queue_size: Arc<Mutex<usize>>,
-        client_builder: ReqwestClientOrBuilder,
+        http_client: Option<Client>,
     ) {
         let dsn = options.dsn.clone().unwrap();
         let user_agent = options.user_agent.to_string();
 
         let mut disabled = None::<SystemTime>;
+        let http_proxy = options.http_proxy.as_ref().map(ToString::to_string);
+        let https_proxy = options.https_proxy.as_ref().map(ToString::to_string);
 
         thread::Builder::new()
             .name("sentry-transport".to_string())
             .spawn(move || {
                 sentry_debug!("spawning reqwest transport");
-                let http_client = match client_builder {
-                    ReqwestClientOrBuilder::Client(client) => client,
-                    ReqwestClientOrBuilder::Builder(builder) => builder.build().unwrap(),
-                };
+                let http_client = http_client.unwrap_or_else(|| {
+                    let mut builder = Client::builder();
+                    if let Some(url) = http_proxy {
+                        builder = builder.proxy(Proxy::http(&url).unwrap());
+                    };
+                    if let Some(url) = https_proxy {
+                        builder = builder.proxy(Proxy::https(&url).unwrap());
+                    };
+                    builder.build().unwrap()
+                });
 
                 let url = dsn.store_api_url().to_string();
 
@@ -316,22 +314,8 @@ implement_http_transport! {
             }).unwrap()
     }
 
-    fn http_client(options: &ClientOptions, client: Option<Client>) -> ReqwestClientOrBuilder {
-        match client {
-            Some(client) => ReqwestClientOrBuilder::Client(client),
-            _ => {
-                let http_proxy = options.http_proxy.as_ref().map(ToString::to_string);
-                let https_proxy = options.https_proxy.as_ref().map(ToString::to_string);
-                let mut builder = Client::builder();
-                if let Some(url) = http_proxy {
-                    builder = builder.proxy(Proxy::http(&url).unwrap());
-                };
-                if let Some(url) = https_proxy {
-                    builder = builder.proxy(Proxy::https(&url).unwrap());
-                };
-                ReqwestClientOrBuilder::Builder(builder)
-            }
-        }
+    fn http_client(_options: &ClientOptions, client: Option<Client>) -> Option<Client> {
+        client
     }
 }
 
