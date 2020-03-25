@@ -63,12 +63,7 @@ fn test_breadcrumbs() {
     let messages: Vec<_> = event
         .breadcrumbs
         .iter()
-        .map(|x| {
-            (
-                x.message.as_ref().map(String::as_str).unwrap(),
-                x.ty.as_str(),
-            )
-        })
+        .map(|x| (x.message.as_deref().unwrap(), x.ty.as_str()))
         .collect();
     assert_eq!(
         messages,

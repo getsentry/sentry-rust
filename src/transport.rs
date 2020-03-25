@@ -234,17 +234,30 @@ implement_http_transport! {
         signal: Arc<Condvar>,
         shutdown_immediately: Arc<AtomicBool>,
         queue_size: Arc<Mutex<usize>>,
-        http_client: Client,
+        http_client: Option<Client>,
     ) {
         let dsn = options.dsn.clone().unwrap();
         let user_agent = options.user_agent.to_string();
 
         let mut disabled = None::<SystemTime>;
+        let http_proxy = options.http_proxy.as_ref().map(ToString::to_string);
+        let https_proxy = options.https_proxy.as_ref().map(ToString::to_string);
 
         thread::Builder::new()
             .name("sentry-transport".to_string())
             .spawn(move || {
                 sentry_debug!("spawning reqwest transport");
+                let http_client = http_client.unwrap_or_else(|| {
+                    let mut builder = Client::builder();
+                    if let Some(url) = http_proxy {
+                        builder = builder.proxy(Proxy::http(&url).unwrap());
+                    };
+                    if let Some(url) = https_proxy {
+                        builder = builder.proxy(Proxy::https(&url).unwrap());
+                    };
+                    builder.build().unwrap()
+                });
+
                 let url = dsn.store_api_url().to_string();
 
                 while let Some(event) = receiver.recv().unwrap_or(None) {
@@ -301,19 +314,8 @@ implement_http_transport! {
             }).unwrap()
     }
 
-    fn http_client(options: &ClientOptions, client: Option<Client>) -> Client {
-        client.unwrap_or_else(|| {
-            let http_proxy = options.http_proxy.as_ref().map(ToString::to_string);
-            let https_proxy = options.https_proxy.as_ref().map(ToString::to_string);
-            let mut client = Client::builder();
-            if let Some(url) = http_proxy {
-                client = client.proxy(Proxy::http(&url).unwrap());
-            };
-            if let Some(url) = https_proxy {
-                client = client.proxy(Proxy::https(&url).unwrap());
-            };
-            client.build().unwrap()
-        })
+    fn http_client(_options: &ClientOptions, client: Option<Client>) -> Option<Client> {
+        client
     }
 }
 
@@ -421,8 +423,7 @@ implement_http_transport! {
                 match handle.response_code() {
                     Ok(429) => {
                         if let Some(retry_after) = retry_after
-                            .as_ref()
-                            .map(String::as_str)
+                            .as_deref()
                             .and_then(parse_retry_after)
                         {
                             disabled = Some(retry_after);
