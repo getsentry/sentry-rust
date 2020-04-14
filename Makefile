@@ -20,12 +20,12 @@ check: style lint test
 
 style:
 	@rustup component add rustfmt --toolchain stable 2> /dev/null
-	cargo +stable fmt -- --check
+	cargo +stable fmt --all -- --check
 .PHONY: style
 
 format:
 	@rustup component add rustfmt --toolchain stable 2> /dev/null
-	cargo +stable fmt
+	cargo +stable fmt --all
 .PHONY: format
 
 lint:
