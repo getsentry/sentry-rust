@@ -10,16 +10,12 @@
 [![Build Status](https://travis-ci.com/getsentry/sentry-rust.svg?branch=master)](https://travis-ci.com/getsentry/sentry-rust)
 [![Crates.io](https://img.shields.io/crates/v/sentry.svg?style=flat)](https://crates.io/crates/sentry)
 
-This workspace contains various crates that provide support for logging events
-and errors / panics to the [Sentry](https://sentry.io/) error logging service.
+This crate provides support for logging events and errors / panics to the
+[Sentry](https://sentry.io/) error logging service. It integrates with the
+standard panic system in Rust as well as a few popular error handling setups.
 
-- [sentry](./sentry) The main `sentry` crate aimed at application users that
-  want to log events to sentry.
-- [sentry-actix](./sentry-actix) An integration for the `actix-web (0.7)`
-  framework.
-
-**Note**: Until the _1.0_ release, the crates in this repository are considered work in
-progress and do not follow semver semantics. Between minor releases, we might
+**Note**: Until the _1.0_ release, the `sentry` crate is considered work in
+progress and does not follow semver semantics. Between minor releases, we might
 occasionally introduce breaking changes while we are exploring the best API and
 adding new features.
 

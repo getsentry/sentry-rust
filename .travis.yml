@@ -1,7 +1,5 @@
 os: linux
 language: rust
-cache:
-  cargo: true
 
 git:
   depth: 1
