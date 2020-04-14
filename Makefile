@@ -20,17 +20,17 @@ check: style lint test
 
 style:
 	@rustup component add rustfmt --toolchain stable 2> /dev/null
-	cargo +stable fmt --all -- --check
+	cargo +stable fmt -- --check
 .PHONY: style
 
 format:
 	@rustup component add rustfmt --toolchain stable 2> /dev/null
-	cargo +stable fmt --all
+	cargo +stable fmt
 .PHONY: format
 
 lint:
 	@rustup component add clippy --toolchain stable 2> /dev/null
-	cargo +stable clippy --all-features --tests --all --examples -- -D clippy::all
+	cargo +stable clippy --all-features --tests --examples -- -D clippy::all
 .PHONY: lint
 
 # Tests
@@ -40,12 +40,12 @@ test: checkall testall
 
 testfast:
 	@echo 'TESTSUITE'
-	cargo test --features=with_test_support
+	cd sentry && cargo test --features=with_test_support
 .PHONY: testfast
 
 testall:
 	@echo 'TESTSUITE'
-	cargo test --all-features --all
+	cargo test --all-features
 .PHONY: testall
 
 # Checks
@@ -58,54 +58,54 @@ checkall: check-all-features check-no-default-features check-default-features ch
 
 check-all-features:
 	@echo 'ALL FEATURES'
-	@RUSTFLAGS=-Dwarnings cargo check --all-features --all
+	@RUSTFLAGS=-Dwarnings cargo check --all-features
 .PHONY: check-all-features
-
-check-no-default-features:
-	@echo 'NO DEFAULT FEATURES'
-	@RUSTFLAGS=-Dwarnings cargo check --no-default-features
-.PHONY: check-no-default-features
 
 check-default-features:
 	@echo 'DEFAULT FEATURES'
 	@RUSTFLAGS=-Dwarnings cargo check
 .PHONY: check-default-features
 
+check-no-default-features:
+	@echo 'NO DEFAULT FEATURES'
+	@cd sentry && RUSTFLAGS=-Dwarnings cargo check --no-default-features
+.PHONY: check-no-default-features
+
 check-failure:
 	@echo 'NO CLIENT + FAILURE'
-	@RUSTFLAGS=-Dwarnings cargo check --no-default-features --features 'with_failure'
+	@cd sentry && RUSTFLAGS=-Dwarnings cargo check --no-default-features --features 'with_failure'
 .PHONY: check-failure
 
 check-log:
 	@echo 'NO CLIENT + LOG'
-	@RUSTFLAGS=-Dwarnings cargo check --no-default-features --features 'with_log'
+	@cd sentry && RUSTFLAGS=-Dwarnings cargo check --no-default-features --features 'with_log'
 .PHONY: check-log
 
 check-panic:
 	@echo 'NO CLIENT + PANIC'
-	@RUSTFLAGS=-Dwarnings cargo check --no-default-features --features 'with_panic'
+	@cd sentry && RUSTFLAGS=-Dwarnings cargo check --no-default-features --features 'with_panic'
 .PHONY: check-panic
 
 check-error-chain:
 	@echo 'NO CLIENT + ERROR_CHAIN'
-	@RUSTFLAGS=-Dwarnings cargo check --no-default-features --features 'with_error_chain'
+	@cd sentry && RUSTFLAGS=-Dwarnings cargo check --no-default-features --features 'with_error_chain'
 .PHONY: check-error-chain
 
 check-all-impls:
 	@echo 'NO CLIENT + ALL IMPLS'
-	@RUSTFLAGS=-Dwarnings cargo check --no-default-features --features 'with_failure,with_log,with_panic,with_error_chain'
+	@cd sentry && RUSTFLAGS=-Dwarnings cargo check --no-default-features --features 'with_failure,with_log,with_panic,with_error_chain'
 .PHONY: check-all-impls
 
 check-curl-transport:
 	@echo 'CURL TRANSPORT'
-	@RUSTFLAGS=-Dwarnings cargo check --features with_curl_transport
+	@cd sentry && RUSTFLAGS=-Dwarnings cargo check --features with_curl_transport
 	@echo 'CURL TRANSPORT ONLY'
-	@RUSTFLAGS=-Dwarnings cargo check --no-default-features --features 'with_curl_transport,with_client_implementation,with_panic'
+	@cd sentry && RUSTFLAGS=-Dwarnings cargo check --no-default-features --features 'with_curl_transport,with_client_implementation,with_panic'
 .PHONY: check-curl-transport
 
 check-actix:
 	@echo 'ACTIX INTEGRATION'
-	@RUSTFLAGS=-Dwarnings cargo check --manifest-path integrations/sentry-actix/Cargo.toml
+	@cd sentry-actix && RUSTFLAGS=-Dwarnings cargo check
 .PHONY: check-actix
 
 # Other
