@@ -114,10 +114,6 @@
 #[macro_use]
 mod macros;
 
-mod api;
-mod hub;
-mod scope;
-
 pub mod integrations;
 
 #[cfg(feature = "with_backtrace")]
@@ -141,8 +137,8 @@ pub mod test;
 /// have to directly interface with directly.  These are often returned
 /// from methods on other types.
 pub mod internals {
-    pub use crate::hub::IntoBreadcrumbs;
-    pub use crate::scope::ScopeGuard;
+    pub use sentry_core::internals::ScopeGuard;
+    pub use sentry_core::IntoBreadcrumbs;
 
     #[cfg(feature = "with_client_implementation")]
     pub use crate::{
@@ -173,12 +169,8 @@ pub mod transports {
 }
 
 // public api or exports from this crate
-pub use crate::api::*;
-pub use crate::hub::Hub;
-pub use crate::scope::Scope;
-
 #[cfg(feature = "with_client_implementation")]
 pub use crate::client::{init, Client, ClientOptions};
 
 // public api from other crates
-pub use sentry_core::{protocol, Breadcrumb, Level, User};
+pub use sentry_core::*;

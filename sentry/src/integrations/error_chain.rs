@@ -27,9 +27,9 @@ use std::fmt::{Debug, Display};
 use error_chain::ChainedError;
 
 use crate::backtrace_support::{backtrace_to_stacktrace, error_typename};
-use crate::hub::Hub;
 use crate::internals::Uuid;
 use crate::protocol::{Event, Exception, Level};
+use crate::Hub;
 
 fn exceptions_from_error_chain<T>(error: &T) -> Vec<Exception>
 where

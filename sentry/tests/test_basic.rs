@@ -101,9 +101,10 @@ fn test_factory() {
         ..Default::default()
     };
 
+    let client: sentry::Client = options.into();
     sentry::Hub::run(
         Arc::new(sentry::Hub::new(
-            Some(Arc::new(options.into())),
+            Some(Arc::new(client)),
             Arc::new(Default::default()),
         )),
         || {

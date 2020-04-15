@@ -21,10 +21,10 @@
 use std::sync::{Arc, Mutex};
 
 use crate::client::ClientOptions;
-use crate::hub::Hub;
 use crate::internals::Dsn;
 use crate::protocol::Event;
 use crate::transport::Transport;
+use crate::{Client, Hub};
 
 lazy_static::lazy_static! {
     static ref TEST_DSN: Dsn = "https://public@sentry.invalid/1".parse().unwrap();
@@ -45,7 +45,8 @@ lazy_static::lazy_static! {
 ///     transport: Box::new(transport.clone()),
 ///     ..ClientOptions::default()
 /// };
-/// Hub::current().bind_client(Some(Arc::new(options.into())));
+/// let client: sentry::Client = options.into();
+/// Hub::current().bind_client(Some(Arc::new(client)));
 /// ```
 pub struct TestTransport {
     collected: Mutex<Vec<Event<'static>>>,
@@ -97,9 +98,10 @@ pub fn with_captured_events_options<F: FnOnce(), O: Into<ClientOptions>>(
     let mut options = options.into();
     options.dsn = Some(options.dsn.unwrap_or_else(|| TEST_DSN.clone()));
     options.transport = Box::new(transport.clone());
+    let client: Client = options.into();
     Hub::run(
         Arc::new(Hub::new(
-            Some(Arc::new(options.into())),
+            Some(Arc::new(client)),
             Arc::new(Default::default()),
         )),
         f,

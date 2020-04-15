@@ -27,10 +27,10 @@
 //! For loggers based on `env_logger` (like `pretty_env_logger`) you can also
 //! use the [`env_logger`](../env_logger/index.html) integration which is
 //! much easier to use.
-use crate::api::add_breadcrumb;
+use crate::add_breadcrumb;
 use crate::backtrace_support::current_stacktrace;
-use crate::hub::Hub;
 use crate::protocol::{Breadcrumb, Event, Exception, Level};
+use crate::Hub;
 
 /// Logger specific options.
 pub struct LoggerOptions {

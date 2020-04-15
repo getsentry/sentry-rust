@@ -1,20 +1,10 @@
-#![allow(unused)]
-
 use std::cell::{Cell, UnsafeCell};
-use std::mem::drop;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex, PoisonError, RwLock, TryLockError};
+use std::sync::{Arc, PoisonError, RwLock, TryLockError};
 use std::thread;
-use std::time::Duration;
 
-use crate::internals::Uuid;
-use crate::protocol::{Breadcrumb, Event, Level};
-use crate::scope::{Scope, ScopeGuard};
+use crate::{breadcrumbs::IntoBreadcrumbs, stack::ScopeGuard, Client, Event, Level, Scope, Stack};
+use sentry_types::Uuid;
 
-#[cfg(feature = "with_client_implementation")]
-use crate::{client::Client, scope::Stack, utils};
-
-#[cfg(feature = "with_client_implementation")]
 lazy_static::lazy_static! {
     static ref PROCESS_HUB: (Arc<Hub>, thread::ThreadId) = (
         Arc::new(Hub::new(None, Arc::new(Default::default()))),
@@ -22,80 +12,10 @@ lazy_static::lazy_static! {
     );
 }
 
-#[cfg(feature = "with_client_implementation")]
 thread_local! {
     static THREAD_HUB: UnsafeCell<Arc<Hub>> = UnsafeCell::new(
         Arc::new(Hub::new_from_top(&PROCESS_HUB.0)));
     static USE_PROCESS_HUB: Cell<bool> = Cell::new(PROCESS_HUB.1 == thread::current().id());
-}
-
-/// A helper trait that converts an object into a breadcrumb.
-pub trait IntoBreadcrumbs {
-    /// The iterator type for the breadcrumbs.
-    type Output: Iterator<Item = Breadcrumb>;
-
-    /// This converts the object into an optional breadcrumb.
-    fn into_breadcrumbs(self) -> Self::Output;
-}
-
-impl IntoBreadcrumbs for Breadcrumb {
-    type Output = std::iter::Once<Breadcrumb>;
-
-    fn into_breadcrumbs(self) -> Self::Output {
-        std::iter::once(self)
-    }
-}
-
-impl IntoBreadcrumbs for Vec<Breadcrumb> {
-    type Output = ::std::vec::IntoIter<Breadcrumb>;
-
-    fn into_breadcrumbs(self) -> Self::Output {
-        self.into_iter()
-    }
-}
-
-impl IntoBreadcrumbs for Option<Breadcrumb> {
-    type Output = ::std::option::IntoIter<Breadcrumb>;
-
-    fn into_breadcrumbs(self) -> Self::Output {
-        self.into_iter()
-    }
-}
-
-impl<F: FnOnce() -> I, I: IntoBreadcrumbs> IntoBreadcrumbs for F {
-    type Output = I::Output;
-
-    fn into_breadcrumbs(self) -> Self::Output {
-        self().into_breadcrumbs()
-    }
-}
-
-#[cfg(feature = "with_client_implementation")]
-#[derive(Debug)]
-struct HubImpl {
-    stack: Arc<RwLock<Stack>>,
-}
-
-#[cfg(feature = "with_client_implementation")]
-impl HubImpl {
-    fn with<F: FnOnce(&Stack) -> R, R>(&self, f: F) -> R {
-        let guard = self.stack.read().unwrap_or_else(PoisonError::into_inner);
-        f(&*guard)
-    }
-
-    fn with_mut<F: FnOnce(&mut Stack) -> R, R>(&self, f: F) -> R {
-        let mut guard = self.stack.write().unwrap_or_else(PoisonError::into_inner);
-        f(&mut *guard)
-    }
-
-    fn is_active_and_usage_safe(&self) -> bool {
-        let guard = match self.stack.try_read() {
-            Err(TryLockError::Poisoned(err)) => err.into_inner(),
-            Err(TryLockError::WouldBlock) => return false,
-            Ok(guard) => guard,
-        };
-        guard.top().client.is_some()
-    }
 }
 
 /// The central object that can manages scopes and clients.
@@ -123,28 +43,23 @@ impl HubImpl {
 /// * `Hub::new_from_top`: creates a new hub with just the top scope of another hub.
 #[derive(Debug)]
 pub struct Hub {
-    #[cfg(feature = "with_client_implementation")]
-    inner: HubImpl,
+    stack: Arc<RwLock<Stack>>,
     last_event_id: RwLock<Option<Uuid>>,
 }
 
 impl Hub {
     /// Creates a new hub from the given client and scope.
-    #[cfg(feature = "with_client_implementation")]
-    pub fn new(client: Option<Arc<Client>>, scope: Arc<Scope>) -> Hub {
+    pub fn new(client: Option<Arc<dyn Client>>, scope: Arc<Scope>) -> Hub {
         Hub {
-            inner: HubImpl {
-                stack: Arc::new(RwLock::new(Stack::from_client_and_scope(client, scope))),
-            },
+            stack: Arc::new(RwLock::new(Stack::from_client_and_scope(client, scope))),
             last_event_id: RwLock::new(None),
         }
     }
 
     /// Creates a new hub based on the top scope of the given hub.
-    #[cfg(feature = "with_client_implementation")]
     pub fn new_from_top<H: AsRef<Hub>>(other: H) -> Hub {
         let hub = other.as_ref();
-        hub.inner.with(|stack| {
+        hub.with_stack(|stack| {
             let top = stack.top();
             Hub::new(top.client.clone(), top.scope.clone())
         })
@@ -158,7 +73,6 @@ impl Hub {
     ///
     /// This method is unavailable if the client implementation is disabled.
     /// When using the minimal API set use `Hub::with_active` instead.
-    #[cfg(feature = "with_client_implementation")]
     pub fn current() -> Arc<Hub> {
         Hub::with(Arc::clone)
     }
@@ -167,7 +81,6 @@ impl Hub {
     ///
     /// This is similar to `current` but instead of picking the current
     /// thread's hub it returns the main thread's hub instead.
-    #[cfg(feature = "with_client_implementation")]
     pub fn main() -> Arc<Hub> {
         PROCESS_HUB.0.clone()
     }
@@ -176,7 +89,6 @@ impl Hub {
     ///
     /// This is a slightly more efficient version than `Hub::current()` and
     /// also unavailable in minimal mode.
-    #[cfg(feature = "with_client_implementation")]
     pub fn with<F, R>(f: F) -> R
     where
         F: FnOnce(&Arc<Hub>) -> R,
@@ -204,20 +116,16 @@ impl Hub {
         F: FnOnce(&Arc<Hub>) -> R,
         R: Default,
     {
-        with_client_impl! {{
-            Hub::with(|hub| {
-                if hub.is_active_and_usage_safe() {
-                    f(hub)
-                } else {
-                    Default::default()
-                }
-            })
-        }}
+        Hub::with(|hub| {
+            if hub.is_active_and_usage_safe() {
+                f(hub)
+            } else {
+                Default::default()
+            }
+        })
     }
 
     /// Binds a hub to the current thread for the duration of the call.
-    #[cfg(feature = "with_client_implementation")]
-    #[allow(clippy::needless_pass_by_value)]
     pub fn run<F: FnOnce() -> R, R>(hub: Arc<Hub>, f: F) -> R {
         let mut restore_process_hub = false;
         let did_switch = THREAD_HUB.with(|ctx| unsafe {
@@ -271,75 +179,47 @@ impl Hub {
     ///
     /// In case no client is bound this does nothing instead.
     pub fn capture_event(&self, event: Event<'static>) -> Uuid {
-        with_client_impl! {{
-            self.inner.with(|stack| {
-                let top = stack.top();
-                if let Some(ref client) = top.client {
-                    let event_id = client.capture_event(event, Some(&top.scope));
-                    *self.last_event_id.write().unwrap() = Some(event_id);
-                    event_id
-                } else {
-                    Default::default()
-                }
-            })
-        }}
+        self.with_stack(|stack| {
+            let top = stack.top();
+            if let Some(ref client) = top.client {
+                let event_id = client.capture_event(event, Some(&top.scope));
+                *self.last_event_id.write().unwrap() = Some(event_id);
+                event_id
+            } else {
+                Default::default()
+            }
+        })
     }
 
     /// Captures an arbitrary message.
     pub fn capture_message(&self, msg: &str, level: Level) -> Uuid {
-        with_client_impl! {{
-            self.inner.with(|stack| {
-                let top = stack.top();
-                if let Some(ref client) = top.client {
-                    let mut event = Event {
-                        message: Some(msg.to_string()),
-                        level,
-                        ..Default::default()
-                    };
-                    if client.options().attach_stacktrace {
-                        let thread = utils::current_thread(true);
-                        if thread.stacktrace.is_some() {
-                            event.threads.values.push(thread);
-                        }
-                    }
-                    self.capture_event(event)
-                } else {
-                    Uuid::nil()
-                }
-            })
-        }}
+        self.capture_event(Event {
+            message: Some(msg.to_string()),
+            level,
+            ..Default::default()
+        })
     }
 
     /// Returns the currently bound client.
-    #[cfg(feature = "with_client_implementation")]
-    pub fn client(&self) -> Option<Arc<Client>> {
-        with_client_impl! {{
-            self.inner.with(|stack| {
-                stack.top().client.clone()
-            })
-        }}
+    pub fn client(&self) -> Option<Arc<dyn Client>> {
+        self.with_stack(|stack| stack.top().client.clone())
     }
 
     /// Binds a new client to the hub.
-    #[cfg(feature = "with_client_implementation")]
-    pub fn bind_client(&self, client: Option<Arc<Client>>) {
-        with_client_impl! {{
-            self.inner.with_mut(|stack| {
-                stack.top_mut().client = client;
-            })
-        }}
+    pub fn bind_client(&self, client: Option<Arc<dyn Client>>) {
+        self.with_stack_mut(|stack| {
+            stack.top_mut().client = client;
+        })
     }
 
     /// Pushes a new scope.
     ///
     /// This returns a guard that when dropped will pop the scope again.
     pub fn push_scope(&self) -> ScopeGuard {
-        with_client_impl! {{
-            self.inner.with_mut(|stack| {
-                stack.push();
-                ScopeGuard(Some((self.inner.stack.clone(), stack.depth())))
-            })
-        }}
+        self.with_stack_mut(|stack| {
+            stack.push();
+            ScopeGuard(Some((self.stack.clone(), stack.depth())))
+        })
     }
 
     /// Temporarily pushes a scope for a single call optionally reconfiguring it.
@@ -350,17 +230,9 @@ impl Hub {
         C: FnOnce(&mut Scope),
         F: FnOnce() -> R,
     {
-        #[cfg(feature = "with_client_implementation")]
-        {
-            let _guard = self.push_scope();
-            self.configure_scope(scope_config);
-            callback()
-        }
-        #[cfg(not(feature = "with_client_implementation"))]
-        {
-            let _scope_config = scope_config;
-            callback()
-        }
+        let _guard = self.push_scope();
+        self.configure_scope(scope_config);
+        callback()
     }
 
     /// Invokes a function that can modify the current scope.
@@ -371,15 +243,13 @@ impl Hub {
         R: Default,
         F: FnOnce(&mut Scope) -> R,
     {
-        with_client_impl! {{
-            let (new_scope, rv) = self.with_current_scope(|scope| {
-                let mut new_scope = (**scope).clone();
-                let rv = f(&mut new_scope);
-                (new_scope, rv)
-            });
-            self.with_current_scope_mut(|ptr| *ptr = new_scope);
-            rv
-        }}
+        let (new_scope, rv) = self.with_current_scope(|scope| {
+            let mut new_scope = (**scope).clone();
+            let rv = f(&mut new_scope);
+            (new_scope, rv)
+        });
+        self.with_current_scope_mut(|ptr| *ptr = new_scope);
+        rv
     }
 
     /// Adds a new breadcrumb to the current scope.
@@ -387,42 +257,48 @@ impl Hub {
     /// This is equivalent to the global [`sentry::add_breadcrumb`](fn.add_breadcrumb.html) but
     /// sends the breadcrumb into the hub instead.
     pub fn add_breadcrumb<B: IntoBreadcrumbs>(&self, breadcrumb: B) {
-        with_client_impl! {{
-            self.inner.with_mut(|stack| {
-                let top = stack.top_mut();
-                if let Some(ref client) = top.client {
-                    let scope = Arc::make_mut(&mut top.scope);
-                    let options = client.options();
-                    for breadcrumb in breadcrumb.into_breadcrumbs() {
-                        let breadcrumb_opt = match options.before_breadcrumb {
-                            Some(ref callback) => callback(breadcrumb),
-                            None => Some(breadcrumb)
-                        };
-                        if let Some(breadcrumb) = breadcrumb_opt {
-                            scope.breadcrumbs.push_back(breadcrumb);
-                        }
-                        while scope.breadcrumbs.len() > options.max_breadcrumbs {
-                            scope.breadcrumbs.pop_front();
-                        }
+        self.with_stack_mut(|stack| {
+            let top = stack.top_mut();
+            if let Some(ref client) = top.client {
+                let scope = Arc::make_mut(&mut top.scope);
+                let max_breadcrumbs = client.max_breadcrumbs();
+                for breadcrumb in breadcrumb.into_breadcrumbs() {
+                    let breadcrumb_opt = client.before_breadcrumb(breadcrumb);
+                    if let Some(breadcrumb) = breadcrumb_opt {
+                        scope.breadcrumbs.push_back(breadcrumb);
+                    }
+                    while scope.breadcrumbs.len() > max_breadcrumbs {
+                        scope.breadcrumbs.pop_front();
                     }
                 }
-            })
-        }}
+            }
+        })
     }
 
-    #[cfg(feature = "with_client_implementation")]
     pub(crate) fn is_active_and_usage_safe(&self) -> bool {
-        self.inner.is_active_and_usage_safe()
+        let guard = match self.stack.try_read() {
+            Err(TryLockError::Poisoned(err)) => err.into_inner(),
+            Err(TryLockError::WouldBlock) => return false,
+            Ok(guard) => guard,
+        };
+        guard.top().client.is_some()
     }
 
-    #[cfg(feature = "with_client_implementation")]
     pub(crate) fn with_current_scope<F: FnOnce(&Arc<Scope>) -> R, R>(&self, f: F) -> R {
-        self.inner.with(|stack| f(&stack.top().scope))
+        self.with_stack(|stack| f(&stack.top().scope))
     }
 
-    #[cfg(feature = "with_client_implementation")]
     pub(crate) fn with_current_scope_mut<F: FnOnce(&mut Scope) -> R, R>(&self, f: F) -> R {
-        self.inner
-            .with_mut(|stack| f(Arc::make_mut(&mut stack.top_mut().scope)))
+        self.with_stack_mut(|stack| f(Arc::make_mut(&mut stack.top_mut().scope)))
+    }
+
+    fn with_stack<F: FnOnce(&Stack) -> R, R>(&self, f: F) -> R {
+        let guard = self.stack.read().unwrap_or_else(PoisonError::into_inner);
+        f(&*guard)
+    }
+
+    fn with_stack_mut<F: FnOnce(&mut Stack) -> R, R>(&self, f: F) -> R {
+        let mut guard = self.stack.write().unwrap_or_else(PoisonError::into_inner);
+        f(&mut *guard)
     }
 }

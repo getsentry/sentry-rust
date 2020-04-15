@@ -1,10 +1,6 @@
-#[cfg(feature = "with_client_implementation")]
-use crate::hub::Hub;
-use crate::scope::Scope;
+use sentry_types::Uuid;
 
-use crate::hub::IntoBreadcrumbs;
-use crate::internals;
-use crate::protocol::{Event, Level};
+use crate::{Event, Hub, IntoBreadcrumbs, Level, Scope};
 
 /// Captures an event on the currently active client if any.
 ///
@@ -16,31 +12,31 @@ use crate::protocol::{Event, Level};
 /// # Example
 ///
 /// ```
-/// use sentry::protocol::{Event, Level};
+/// use sentry_core::protocol::{Event, Level};
 ///
-/// sentry::capture_event(Event {
+/// sentry_core::capture_event(Event {
 ///     message: Some("Hello World!".into()),
 ///     level: Level::Info,
 ///     ..Default::default()
 /// });
 /// ```
-#[allow(unused_variables)]
-pub fn capture_event(event: Event<'static>) -> internals::Uuid {
-    with_client_impl! {{
-        Hub::with(|hub| hub.capture_event(event))
-    }}
+pub fn capture_event(event: Event<'static>) -> Uuid {
+    Hub::with(|hub| hub.capture_event(event))
 }
 
 /// Captures an arbitrary message.
 ///
 /// This creates an event from the given message and sends it to the current hub.
-#[allow(unused_variables)]
-pub fn capture_message(msg: &str, level: Level) -> internals::Uuid {
-    with_client_impl! {{
-        Hub::with_active(|hub| {
-            hub.capture_message(msg, level)
-        })
-    }}
+///
+/// # Example
+///
+/// ```
+/// use sentry_core::protocol::{Event, Level};
+///
+/// sentry_core::capture_message("Hello World!", Level::Info);
+/// ```
+pub fn capture_message(msg: &str, level: Level) -> Uuid {
+    Hub::with_active(|hub| hub.capture_message(msg, level))
 }
 
 /// Records a breadcrumb by calling a function.
@@ -62,9 +58,9 @@ pub fn capture_message(msg: &str, level: Level) -> internals::Uuid {
 /// # Example
 ///
 /// ```
-/// use sentry::protocol::{Breadcrumb, Map};
+/// use sentry_core::protocol::{Breadcrumb, Map};
 ///
-/// sentry::add_breadcrumb(|| Breadcrumb {
+/// sentry_core::add_breadcrumb(|| Breadcrumb {
 ///     ty: "http".into(),
 ///     category: Some("request".into()),
 ///     data: {
@@ -76,13 +72,8 @@ pub fn capture_message(msg: &str, level: Level) -> internals::Uuid {
 ///     ..Default::default()
 /// });
 /// ```
-#[allow(unused_variables)]
 pub fn add_breadcrumb<B: IntoBreadcrumbs>(breadcrumb: B) {
-    with_client_impl! {{
-        Hub::with_active(|hub| {
-            hub.add_breadcrumb(breadcrumb)
-        })
-    }}
+    Hub::with_active(|hub| hub.add_breadcrumb(breadcrumb))
 }
 
 /// Invokes a function that can modify the current scope.
@@ -95,9 +86,9 @@ pub fn add_breadcrumb<B: IntoBreadcrumbs>(breadcrumb: B) {
 ///
 /// # Example
 ///
-/// ```rust
-/// sentry::configure_scope(|scope| {
-///     scope.set_user(Some(sentry::User {
+/// ```
+/// sentry_core::configure_scope(|scope| {
+///     scope.set_user(Some(sentry_core::User {
 ///         username: Some("john_doe".into()),
 ///         ..Default::default()
 ///     }));
@@ -110,17 +101,12 @@ pub fn add_breadcrumb<B: IntoBreadcrumbs>(breadcrumb: B) {
 /// not permitted.  In this case a wide range of panics will be raised.  It's
 /// unsafe to call into `sentry::bind_client` or similar functions from within
 /// the callback as a result of this.
-#[allow(unused_variables)]
 pub fn configure_scope<F, R>(f: F) -> R
 where
     R: Default,
     F: FnOnce(&mut Scope) -> R,
 {
-    with_client_impl! {{
-        Hub::with_active(|hub| {
-            hub.configure_scope(f)
-        })
-    }}
+    Hub::with_active(|hub| hub.configure_scope(f))
 }
 
 /// Temporarily pushes a scope for a single call optionally reconfiguring it.
@@ -132,13 +118,12 @@ where
 /// This is useful when extra data should be send with a single capture call
 /// for instance a different level or tags:
 ///
-/// ```rust,ignore
-/// use sentry::{with_scope, Level};
-/// use sentry::integrations::failure::capture_error;
+/// ```
+/// use sentry_core::Level;
 ///
-/// with_scope(
-///     |scope| scope.set_level(Level::Warning),
-///     || capture_error(err)
+/// sentry_core::with_scope(
+///     |scope| scope.set_level(Some(Level::Warning)),
+///     || sentry_core::capture_message("Hello World!", Level::Error),
 /// );
 /// ```
 pub fn with_scope<C, F, R>(scope_config: C, callback: F) -> R
@@ -146,28 +131,16 @@ where
     C: FnOnce(&mut Scope),
     F: FnOnce() -> R,
 {
-    #[cfg(feature = "with_client_implementation")]
-    {
-        Hub::with(|hub| {
-            if hub.is_active_and_usage_safe() {
-                hub.with_scope(scope_config, callback)
-            } else {
-                callback()
-            }
-        })
-    }
-    #[cfg(not(feature = "with_client_implementation"))]
-    {
-        let _scope_config = scope_config;
-        callback()
-    }
+    Hub::with(|hub| {
+        if hub.is_active_and_usage_safe() {
+            hub.with_scope(scope_config, callback)
+        } else {
+            callback()
+        }
+    })
 }
 
 /// Returns the last event ID captured.
-pub fn last_event_id() -> Option<internals::Uuid> {
-    with_client_impl! {{
-        Hub::with_active(|hub| {
-            hub.last_event_id()
-        })
-    }}
+pub fn last_event_id() -> Option<Uuid> {
+    Hub::with_active(|hub| hub.last_event_id())
 }

@@ -11,12 +11,11 @@ use regex::Regex;
 
 use crate::backtrace_support::{function_starts_with, is_sys_function, trim_stacktrace};
 use crate::constants::{SDK_INFO, USER_AGENT};
-use crate::hub::Hub;
 use crate::internals::{Dsn, ParseDsnError, Uuid};
 use crate::protocol::{Breadcrumb, Context, DebugMeta, Event};
 use crate::transport::{DefaultTransportFactory, Transport, TransportFactory};
 use crate::utils;
-use crate::Scope;
+use crate::{Hub, Scope};
 
 #[derive(Debug)]
 struct ContextDefaults {
@@ -37,6 +36,27 @@ lazy_static::lazy_static! {
 pub struct Client {
     options: ClientOptions,
     transport: RwLock<Option<Arc<Box<dyn Transport>>>>,
+}
+
+impl sentry_core::Client for Client {
+    fn capture_event(&self, event: Event<'static>, scope: Option<&Scope>) -> Uuid {
+        self.capture_event(event, scope)
+    }
+    fn before_breadcrumb(&self, breadcrumb: Breadcrumb) -> Option<Breadcrumb> {
+        match &self.options.before_breadcrumb {
+            Some(f) => f(breadcrumb),
+            None => Some(breadcrumb),
+        }
+    }
+    fn max_breadcrumbs(&self) -> usize {
+        self.options.max_breadcrumbs
+    }
+    fn send_default_pii(&self) -> bool {
+        self.options.send_default_pii
+    }
+    fn debug(&self) -> bool {
+        self.options.debug
+    }
 }
 
 impl fmt::Debug for Client {
@@ -428,6 +448,13 @@ impl Client {
         }
         if event.sdk.is_none() {
             event.sdk = Some(Cow::Borrowed(&SDK_INFO));
+        }
+
+        if self.options.attach_stacktrace {
+            let thread = utils::current_thread(true);
+            if thread.stacktrace.is_some() {
+                event.threads.values.push(thread);
+            }
         }
 
         if let Some(scope) = scope {

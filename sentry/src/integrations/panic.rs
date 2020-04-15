@@ -16,8 +16,8 @@
 use std::panic::{self, PanicInfo};
 
 use crate::backtrace_support::current_stacktrace;
-use crate::hub::Hub;
 use crate::protocol::{Event, Exception, Level};
+use crate::Hub;
 
 /// Extract the message of a panic.
 pub fn message_from_panic_info<'a>(info: &'a PanicInfo<'_>) -> &'a str {

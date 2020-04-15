@@ -1,9 +1,7 @@
 use std::fmt;
 use std::sync::{Arc, PoisonError, RwLock};
 
-use crate::client::Client;
-
-pub use sentry_core::{EventProcessor, Scope};
+use crate::{Client, Scope};
 
 #[derive(Debug)]
 pub struct Stack {
@@ -12,12 +10,12 @@ pub struct Stack {
 
 #[derive(Debug, Clone)]
 pub struct StackLayer {
-    pub client: Option<Arc<Client>>,
+    pub client: Option<Arc<dyn Client>>,
     pub scope: Arc<Scope>,
 }
 
 impl Stack {
-    pub fn from_client_and_scope(client: Option<Arc<Client>>, scope: Arc<Scope>) -> Stack {
+    pub fn from_client_and_scope(client: Option<Arc<dyn Client>>, scope: Arc<Scope>) -> Stack {
         Stack {
             layers: vec![StackLayer { client, scope }],
         }
