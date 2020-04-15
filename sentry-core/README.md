@@ -5,21 +5,13 @@
   <br />
 </p>
 
-# Sentry Rust
+# Sentry-Core
 
 [![Build Status](https://travis-ci.com/getsentry/sentry-rust.svg?branch=master)](https://travis-ci.com/getsentry/sentry-rust)
 [![Crates.io](https://img.shields.io/crates/v/sentry.svg?style=flat)](https://crates.io/crates/sentry)
 
-This workspace contains various crates that provide support for logging events
-and errors / panics to the [Sentry](https://sentry.io/) error logging service.
-
-- [sentry](./sentry) The main `sentry` crate aimed at application users that
-  want to log events to sentry.
-- [sentry-actix](./sentry-actix) An integration for the `actix-web (0.7)`
-  framework.
-- [sentry-core](./sentry-core) The core of `sentry`, which can be used to
-  instrument code, and to write integrations that generate events or hook into
-  event processing.
+The core of `sentry`, which can be used to instrument code, and to write
+integrations that generate events or hook into event processing.
 
 **Note**: Until the _1.0_ release, the crates in this repository are considered work in
 progress and do not follow semver semantics. Between minor releases, we might
@@ -36,7 +28,7 @@ Additionally, the lowest Rust version we target is _1.40.0_.
 
 ## Resources
 
-- [crates.io](https://crates.io/crates/sentry)
+- [crates.io](https://crates.io/crates/sentry-core)
 - [Documentation](https://getsentry.github.io/sentry-rust)
 - [Bug Tracker](https://github.com/getsentry/sentry-rust/issues)
 - [Discord](https://discord.gg/ez5KZN7) server for project discussions.

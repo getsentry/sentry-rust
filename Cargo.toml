@@ -2,4 +2,5 @@
 members = [
     "sentry",
     "sentry-actix",
+    "sentry-core",
 ]

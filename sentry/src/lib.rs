@@ -150,7 +150,7 @@ pub mod internals {
         transport::{Transport, TransportFactory},
     };
 
-    pub use sentry_types::{
+    pub use sentry_core::internals::{
         Auth, ChronoParseError, DateTime, DebugId, Dsn, ParseDebugIdError, ParseDsnError,
         ParseProjectIdError, ProjectId, Scheme, TimeZone, Utc, Uuid, UuidVariant, UuidVersion,
     };
@@ -181,5 +181,4 @@ pub use crate::scope::Scope;
 pub use crate::client::{init, Client, ClientOptions};
 
 // public api from other crates
-pub use sentry_types::protocol::v7 as protocol;
-pub use sentry_types::protocol::v7::{Breadcrumb, Level, User};
+pub use sentry_core::{protocol, Breadcrumb, Level, User};

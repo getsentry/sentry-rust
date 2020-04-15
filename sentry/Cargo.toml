@@ -38,11 +38,11 @@ with_rustls = ["reqwest/rustls-tls"]
 with_native_tls = ["reqwest/default-tls"]
 
 [dependencies]
+sentry-core = { version = "0.1.0", path = "../sentry-core" }
 backtrace = { version = "0.3.44", optional = true }
 url = { version = "2.1.1", optional = true }
 failure = { version = "0.1.6", optional = true }
 log = { version = "0.4.8", optional = true, features = ["std"] }
-sentry-types = "0.14.1"
 env_logger = { version = "0.7.1", optional = true }
 reqwest = { version = "0.10.1", optional = true, features = ["blocking", "json"], default-features = false }
 lazy_static = "1.4.0"
