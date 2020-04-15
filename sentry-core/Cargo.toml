@@ -1,0 +1,16 @@
+[package]
+name = "sentry-core"
+version = "0.1.0"
+authors = ["Sentry <hello@sentry.io>"]
+license = "Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/getsentry/sentry-rust"
+homepage = "https://github.com/getsentry/sentry-rust"
+documentation = "https://getsentry.github.io/sentry-rust"
+description = """
+Core sentry library used for instrumentation and integration development.
+"""
+edition = "2018"
+
+[dependencies]
+sentry-types = "0.15.0"
