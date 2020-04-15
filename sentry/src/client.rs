@@ -4,7 +4,7 @@ use std::fmt;
 use std::panic::RefUnwindSafe;
 use std::sync::Arc;
 use std::sync::RwLock;
-use std::time::Duration;
+use std::{collections::btree_map::Entry, time::Duration};
 
 use rand::random;
 use regex::Regex;
@@ -13,10 +13,25 @@ use crate::backtrace_support::{function_starts_with, is_sys_function, trim_stack
 use crate::constants::{SDK_INFO, USER_AGENT};
 use crate::hub::Hub;
 use crate::internals::{Dsn, ParseDsnError, Uuid};
-use crate::protocol::{Breadcrumb, DebugMeta, Event};
-use crate::scope::Scope;
+use crate::protocol::{Breadcrumb, Context, DebugMeta, Event};
 use crate::transport::{DefaultTransportFactory, Transport, TransportFactory};
 use crate::utils;
+use crate::Scope;
+
+#[derive(Debug)]
+struct ContextDefaults {
+    pub os: Option<Context>,
+    pub rust: Option<Context>,
+    pub device: Option<Context>,
+}
+
+lazy_static::lazy_static! {
+    static ref CONTEXT_DEFAULTS: ContextDefaults = ContextDefaults {
+        os: utils::os_context(),
+        rust: utils::rust_context(),
+        device: utils::device_context(),
+    };
+}
 
 /// The Sentry client object.
 pub struct Client {
@@ -416,10 +431,30 @@ impl Client {
         }
 
         if let Some(scope) = scope {
+            let id = event.event_id;
             event = match scope.apply_to_event(event) {
                 Some(event) => event,
-                None => return None,
+                None => {
+                    sentry_debug!("event processor dropped event {}", id);
+                    return None;
+                }
             };
+        }
+
+        if let Entry::Vacant(entry) = event.contexts.entry("os".to_string()) {
+            if let Some(ref os) = CONTEXT_DEFAULTS.os {
+                entry.insert(os.clone());
+            }
+        }
+        if let Entry::Vacant(entry) = event.contexts.entry("rust".to_string()) {
+            if let Some(ref rust) = CONTEXT_DEFAULTS.rust {
+                entry.insert(rust.clone());
+            }
+        }
+        if let Entry::Vacant(entry) = event.contexts.entry("device".to_string()) {
+            if let Some(ref device) = CONTEXT_DEFAULTS.device {
+                entry.insert(device.clone());
+            }
         }
 
         if event.release.is_none() {

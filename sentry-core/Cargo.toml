@@ -12,6 +12,6 @@ Core sentry library used for instrumentation and integration development.
 """
 edition = "2018"
 
-
 [dependencies]
 sentry-types = "0.14.1"
+im = "14.3.0"
