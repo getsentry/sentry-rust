@@ -25,11 +25,13 @@ pub struct Hub {}
 impl Hub {
     /// Creates a new hub from the given client and scope.
     pub fn new(client: Option<Client>, scope: Scope) -> Hub {
+        let _ = (client, scope);
         todo!()
     }
 
     /// Creates a new hub based on the top scope of the given hub.
     pub fn new_from_top<H: AsRef<Hub>>(other: H) -> Hub {
+        let _ = other;
         todo!()
     }
 
@@ -54,6 +56,7 @@ impl Hub {
     where
         F: FnOnce(&Hub) -> R,
     {
+        let _ = f;
         todo!()
     }
 
@@ -68,10 +71,13 @@ impl Hub {
         F: FnOnce(&Hub) -> R,
         R: Default,
     {
+        let _ = f;
         todo!()
     }
 
-    pub fn run<F: FnOnce() -> R, R>(hub: Hub, f: F) -> R {
+    /// Binds the hub to the current thread for the duration of the callback.
+    pub fn run<F: FnOnce() -> R, R>(&self, f: F) -> R {
+        let _ = f;
         todo!()
     }
 
@@ -80,6 +86,7 @@ impl Hub {
     /// See the global [`capture_event`](fn.capture_event.html)
     /// for more documentation.
     pub fn capture_event(&self, event: Event<'static>) -> Option<Uuid> {
+        let _ = event;
         todo!()
     }
 
@@ -105,6 +112,7 @@ impl Hub {
         R: Default,
         F: FnOnce(&mut Scope) -> R,
     {
+        let _ = f;
         todo!()
     }
 
@@ -124,6 +132,7 @@ impl Hub {
         C: FnOnce(&mut Scope),
         F: FnOnce() -> R,
     {
+        let _ = (scope_config, callback);
         todo!()
     }
 
@@ -132,6 +141,7 @@ impl Hub {
     /// See the global [`add_breadcrumb`](fn.add_breadcrumb.html)
     /// for more documentation.
     pub fn add_breadcrumb<B: IntoBreadcrumbs>(&self, breadcrumbs: B) {
+        let _ = breadcrumbs;
         todo!()
     }
 
@@ -142,6 +152,7 @@ impl Hub {
 
     /// Binds a new client to the hub.
     pub fn bind_client(&self, client: Option<Client>) {
+        let _ = client;
         todo!()
     }
 
