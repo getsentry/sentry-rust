@@ -10,5 +10,18 @@
 //! and to write integrations that can generate events or hook into the event
 //! processing pipeline.
 
+mod api;
+mod breadcrumbs;
+mod client;
+mod hub;
+mod scope;
+
+pub use api::*;
+pub use breadcrumbs::IntoBreadcrumbs;
+pub use client::Client;
+pub use hub::Hub;
+pub use scope::{Scope, ScopeGuard};
+
 pub use sentry_types::protocol::v7 as protocol;
-pub use sentry_types::protocol::v7::{Breadcrumb, Level, User};
+pub use sentry_types::protocol::v7::{Breadcrumb, Event, Level, User};
+pub use sentry_types::Uuid;
