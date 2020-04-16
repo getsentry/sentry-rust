@@ -25,10 +25,10 @@ with_serde = []
 travis-ci = { repository = "getsentry/rust-sentry-types" }
 
 [dependencies]
-failure = "0.1.6"
-url = { version = "2.1.1", features = ["serde"] }
+thiserror = "1.0.15"
 serde = { version = "1.0.104", features = ["derive"] }
 serde_json = "1.0.46"
+url = { version = "2.1.1", features = ["serde"] }
 chrono = { version = "0.4.10", features = ["serde"] }
 uuid = { version = "0.8.1", features = ["v4", "serde"] }
 debugid = { version = "0.7.0", features = ["serde"] }

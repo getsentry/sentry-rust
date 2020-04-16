@@ -2,17 +2,17 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::str::FromStr;
 
-use failure::Fail;
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 /// Raised if a project ID cannot be parsed from a string.
-#[derive(Debug, Fail, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Error, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ParseProjectIdError {
     /// Raised if the value is not an integer in the supported range.
-    #[fail(display = "invalid value for project id")]
+    #[error("invalid value for project id")]
     InvalidValue,
     /// Raised if an empty value is parsed.
-    #[fail(display = "empty or missing project id")]
+    #[error("empty or missing project id")]
     EmptyValue,
 }
 

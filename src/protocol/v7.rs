@@ -16,9 +16,9 @@ use std::str;
 
 use ::debugid::DebugId;
 use chrono::{DateTime, Utc};
-use failure::Fail;
 use serde::Serializer;
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 use url::Url;
 use uuid::Uuid;
 
@@ -634,8 +634,8 @@ pub struct Exception {
 }
 
 /// An error used when parsing `Level`.
-#[derive(Debug, Fail)]
-#[fail(display = "invalid level")]
+#[derive(Debug, Error)]
+#[error("invalid level")]
 pub struct ParseLevelError;
 
 /// Represents the level of severity of an event or breadcrumb.

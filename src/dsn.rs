@@ -1,30 +1,30 @@
 use std::fmt;
 use std::str::FromStr;
 
-use failure::Fail;
+use thiserror::Error;
 use url::Url;
 
 use crate::auth::{auth_from_dsn_and_client, Auth};
 use crate::project_id::{ParseProjectIdError, ProjectId};
 
 /// Represents a dsn url parsing error.
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 pub enum ParseDsnError {
     /// raised on completely invalid urls
-    #[fail(display = "no valid url provided")]
+    #[error("no valid url provided")]
     InvalidUrl,
     /// raised the scheme is invalid / unsupported.
-    #[fail(display = "no valid scheme")]
+    #[error("no valid scheme")]
     InvalidScheme,
     /// raised if the username (public key) portion is missing.
-    #[fail(display = "username is empty")]
+    #[error("username is empty")]
     NoUsername,
     /// raised the project is is missing (first path component)
-    #[fail(display = "empty path")]
+    #[error("empty path")]
     NoProjectId,
     /// raised the project id is invalid.
-    #[fail(display = "invalid project id")]
-    InvalidProjectId(#[cause] ParseProjectIdError),
+    #[error("invalid project id")]
+    InvalidProjectId(#[from] ParseProjectIdError),
 }
 
 /// Represents the scheme of an url http/https.
@@ -105,7 +105,7 @@ impl Dsn {
 
     /// Returns secret_key
     pub fn secret_key(&self) -> Option<&str> {
-        self.secret_key.as_ref().map(|x| x.as_str())
+        self.secret_key.as_deref()
     }
 
     /// Returns the host

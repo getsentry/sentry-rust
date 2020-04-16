@@ -5,8 +5,8 @@ use std::fmt;
 use std::str::FromStr;
 
 use chrono::{DateTime, Utc};
-use failure::Fail;
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 use url::form_urlencoded;
 
 use crate::dsn::Dsn;
@@ -14,16 +14,16 @@ use crate::protocol;
 use crate::utils::{datetime_to_timestamp, timestamp_to_datetime};
 
 /// Represents an auth header parsing error.
-#[derive(Debug, Fail, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Error, Copy, Clone, Eq, PartialEq)]
 pub enum ParseAuthError {
     /// Raised if the auth header is not indicating sentry auth
-    #[fail(display = "non sentry auth")]
+    #[error("non sentry auth")]
     NonSentryAuth,
     /// Raised if the version value is invalid
-    #[fail(display = "invalid value for version")]
+    #[error("invalid value for version")]
     InvalidVersion,
     /// Raised if the public key is missing entirely
-    #[fail(display = "missing public key in auth header")]
+    #[error("missing public key in auth header")]
     MissingPublicKey,
 }
 
@@ -119,7 +119,7 @@ impl Auth {
 
     /// Returns the client's secret if it authenticated with a secret.
     pub fn secret_key(&self) -> Option<&str> {
-        self.secret.as_ref().map(|x| x.as_str())
+        self.secret.as_deref()
     }
 
     /// Returns true if the authentication implies public auth (no secret)
@@ -129,7 +129,7 @@ impl Auth {
 
     /// Returns the client's agent
     pub fn client_agent(&self) -> Option<&str> {
-        self.client.as_ref().map(|x| x.as_str())
+        self.client.as_deref()
     }
 }
 
