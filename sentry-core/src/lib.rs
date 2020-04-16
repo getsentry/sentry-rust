@@ -10,6 +10,10 @@
 //! and to write integrations that can generate events or hook into the event
 //! processing pipeline.
 
+#![deny(missing_docs)]
+// hm, this lint does not trigger correctly for some reason
+#![warn(missing_doc_code_examples)]
+
 mod api;
 mod breadcrumbs;
 mod client;
