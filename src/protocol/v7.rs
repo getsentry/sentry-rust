@@ -30,9 +30,6 @@ pub mod value {
 }
 
 /// The internally used arbitrary data map type.
-///
-/// It is currently backed by the `linked-hash-map` crate's hash map so that
-/// insertion order is preserved.
 pub mod map {
     pub use std::collections::btree_map::{BTreeMap as Map, *};
 }

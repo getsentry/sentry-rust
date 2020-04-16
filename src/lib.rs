@@ -2,10 +2,6 @@
 //! Sentry server.  It's used by the Sentry Relay infrastructure as well as the
 //! rust Sentry client.
 //!
-//! Since this library is used in the Sentry relay as well it depends on
-//! `serde_json` with the `preserve_order` feature.  As such all maps used
-//! by the protocol are linked hash maps.
-//!
 //! Most of the types in this crate are serializable in one form or another.
 //! The types in the `protocol` module are generally really only serializable
 //! to JSON as other formats are not supported by Sentry at this date.
