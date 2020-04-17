@@ -1,4 +1,0 @@
-store: zeus
-targets:
-  - github
-  - cargo
