@@ -3,8 +3,8 @@ use crate::{Event, Hub, IntoBreadcrumbs, Level, Scope, Uuid};
 /// Captures an event on the currently active client if any.
 ///
 /// The event must already be assembled. Typically code would instead use
-/// the utility methods like `capture_message` or other integration provided
-/// methods.
+/// the utility methods like [`capture_message`](fn.capture_message.html) or
+/// other integration provided methods.
 ///
 /// The return value is the event ID, or `None` in case there is no active
 /// client, or the event has been discarded due to rate limiting or one of the
@@ -45,8 +45,9 @@ pub fn capture_message(msg: &str, level: Level) -> Option<Uuid> {
 ///
 /// The total number of breadcrumbs that can be recorded is limited by the
 /// configuration on the client. This function accepts any type that
-/// implements `IntoBreadcrumbs` which is implemented for a varienty of
-/// common types. For efficiency reasons you can also pass a closure returning
+/// implements [`IntoBreadcrumbs`](trait.IntoBreadcrumbs.html) which is
+/// implemented for a varienty of common types.
+/// For efficiency reasons you can also pass a closure returning
 /// a breadcrumb in which case the closure is only called if the client is
 /// enabled.
 ///
@@ -82,10 +83,11 @@ pub fn add_breadcrumb<B: IntoBreadcrumbs>(breadcrumbs: B) {
 
 /// Invokes a function that can modify the current scope.
 ///
-/// The function is passed a mutable reference to the `Scope` so that
-/// modifications can be performed. Because there might currently not be a
-/// scope or client active it's possible that the callback might not be called
-/// at all. As a result of this, the return value of this closure must have a
+/// The function is passed a mutable reference to the
+/// [`Scope`](struct.Scope.html) so that modifications can be performed.
+/// Because there might currently not be a scope or client active it's possible
+/// that the callback might not be called at all.
+/// As a result of this, the return value of this closure must have a
 /// default that is returned in such cases.
 ///
 /// # Example
@@ -147,7 +149,7 @@ where
 
 /// Returns the last event ID captured.
 ///
-/// Returns `None` if no even was previously captured, or all captured events
+/// Returns `None` if no event was previously captured, or all captured events
 /// have been discarded.
 ///
 /// # Example

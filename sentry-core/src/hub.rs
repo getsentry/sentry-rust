@@ -10,15 +10,11 @@ use crate::{Client, Event, IntoBreadcrumbs, Level, Scope, ScopeGuard, Uuid};
 /// [Unified API](https://docs.sentry.io/development/sdk-dev/unified-api/#hub)
 /// documentation for further details.
 ///
-/// In most situations developers do not need to interface with the Hub
-/// directly. Instead, toplevel convenience functions are exposed that will
-/// automatically dispatch to the thread local (`Hub::current`) Hub. In some
-/// situations this might not be possible, in which case it might become
-/// necessary to manually work with the Hub. This is for instance the case when
-/// working with async code.
-///
-/// Hubs that are wrapped in `Arc`s can be bound to the current thread with
-/// the `run` static method.
+/// Toplevel convenience functions are exposed that will
+/// automatically dispatch to the thread local Hub
+/// ([`Hub::current`](struct.Hub.html#method.current)).
+/// The thread local hub can be temporarily changed using
+/// [`run`](struct.Hub.html#method.run).
 #[derive(Clone)]
 pub struct Hub {}
 
