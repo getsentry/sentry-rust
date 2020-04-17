@@ -8,7 +8,7 @@
 # Sentry-Actix
 
 [![Build Status](https://travis-ci.org/getsentry/sentry-rust.svg?branch=master)](https://travis-ci.org/getsentry/sentry-rust)
-[![Crates.io](https://img.shields.io/crates/v/sentry.svg?style=flat)](https://crates.io/crates/sentry)
+[![Crates.io](https://img.shields.io/crates/v/sentry-actix.svg?style=flat)](https://crates.io/crates/sentry-actix)
 
 This is an actix-web integration for the Sentry crate.
 

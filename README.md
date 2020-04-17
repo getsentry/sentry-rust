@@ -17,6 +17,8 @@ and errors / panics to the [Sentry](https://sentry.io/) error logging service.
   want to log events to sentry.
 - [sentry-actix](./sentry-actix) An integration for the `actix-web (0.7)`
   framework.
+- [sentry-types](./sentry-types) Contains types for the Sentry v7 protocol as
+  well as other common types.
 
 **Note**: Until the _1.0_ release, the crates in this repository are considered work in
 progress and do not follow semver semantics. Between minor releases, we might
