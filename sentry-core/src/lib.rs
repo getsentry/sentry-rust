@@ -17,12 +17,14 @@
 mod api;
 mod breadcrumbs;
 mod client;
+mod eventprocessor;
 mod hub;
 mod scope;
 
 pub use api::*;
 pub use breadcrumbs::IntoBreadcrumbs;
 pub use client::Client;
+pub use eventprocessor::EventProcessor;
 pub use hub::Hub;
 pub use scope::{Scope, ScopeGuard};
 

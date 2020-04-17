@@ -14,3 +14,4 @@ edition = "2018"
 
 [dependencies]
 sentry-types = "0.15.0"
+im = "14.3.0"

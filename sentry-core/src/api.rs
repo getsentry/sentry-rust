@@ -92,7 +92,7 @@ pub fn add_breadcrumb<B: IntoBreadcrumbs>(breadcrumbs: B) {
 ///
 /// # Example
 ///
-/// ```compile_fail
+/// ```should_panic
 /// sentry_core::configure_scope(|scope| {
 ///     scope.set_user(Some(sentry_core::User {
 ///         username: Some("john_doe".into()),
@@ -129,11 +129,11 @@ where
 ///
 /// # Example
 ///
-/// ```compile_fail
+/// ```should_panic
 /// use sentry_core::Level;
 ///
 /// sentry_core::with_scope(
-///     |scope| scope.set_level(Level::Warning),
+///     |scope| scope.set_level(Some(Level::Warning)),
 ///     || sentry_core::capture_message("Foobar", Level::Info),
 /// );
 ///
