@@ -17,16 +17,19 @@
 mod api;
 mod breadcrumbs;
 mod client;
+mod clientoptions;
 mod eventprocessor;
 mod hub;
 mod scope;
+mod stack;
 
 pub use api::*;
 pub use breadcrumbs::IntoBreadcrumbs;
 pub use client::Client;
+pub use clientoptions::ClientOptions;
 pub use eventprocessor::EventProcessor;
-pub use hub::Hub;
-pub use scope::{Scope, ScopeGuard};
+pub use hub::{Hub, ScopeGuard};
+pub use scope::Scope;
 
 pub use sentry_types::protocol::v7 as protocol;
 pub use sentry_types::protocol::v7::{Breadcrumb, Event, Level, User};

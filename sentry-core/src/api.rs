@@ -12,7 +12,7 @@ use crate::{Event, Hub, IntoBreadcrumbs, Level, Scope, Uuid};
 ///
 /// # Example
 ///
-/// ```should_panic
+/// ```
 /// use sentry_core::{Event, Level, Uuid};
 ///
 /// let uuid = Uuid::new_v4();
@@ -26,8 +26,7 @@ use crate::{Event, Hub, IntoBreadcrumbs, Level, Scope, Uuid};
 /// assert_eq!(sentry_core::capture_event(event.clone()), None);
 ///
 /// // TODO: init sentry
-///
-/// assert_eq!(sentry_core::capture_event(event), Some(uuid));
+/// // assert_eq!(sentry_core::capture_event(event), Some(uuid));
 /// ```
 pub fn capture_event(event: Event<'static>) -> Option<Uuid> {
     Hub::with_active(|hub| hub.capture_event(event))
@@ -60,7 +59,7 @@ pub fn capture_message(msg: &str, level: Level) -> Option<Uuid> {
 ///
 /// # Example
 ///
-/// ```should_panic
+/// ```
 /// use sentry_core::protocol::{Breadcrumb, Map};
 ///
 /// sentry_core::add_breadcrumb(|| Breadcrumb {
@@ -92,7 +91,7 @@ pub fn add_breadcrumb<B: IntoBreadcrumbs>(breadcrumbs: B) {
 ///
 /// # Example
 ///
-/// ```should_panic
+/// ```
 /// sentry_core::configure_scope(|scope| {
 ///     scope.set_user(Some(sentry_core::User {
 ///         username: Some("john_doe".into()),
@@ -129,7 +128,7 @@ where
 ///
 /// # Example
 ///
-/// ```should_panic
+/// ```
 /// use sentry_core::Level;
 ///
 /// sentry_core::with_scope(
@@ -154,7 +153,7 @@ where
 ///
 /// # Example
 ///
-/// ```should_panic
+/// ```
 /// assert_eq!(sentry_core::last_event_id(), None);
 ///
 /// // TODO: init, capture and assert the ID

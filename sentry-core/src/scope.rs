@@ -3,9 +3,6 @@ use std::{borrow::Cow, fmt, sync::Arc};
 use crate::protocol::{Context, Value};
 use crate::{Breadcrumb, Event, EventProcessor, Level, User};
 
-/// TODO
-pub struct ScopeGuard {}
-
 /// Holds contextual data for the current scope.
 ///
 /// The scope is an object that can be cloned efficiently and stores data that
