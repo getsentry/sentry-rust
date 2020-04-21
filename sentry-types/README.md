@@ -5,12 +5,12 @@
   <br />
 </p>
 
-# Sentry-Actix
+# Sentry Types
 
-[![Build Status](https://travis-ci.org/getsentry/sentry-rust.svg?branch=master)](https://travis-ci.org/getsentry/sentry-rust)
-[![Crates.io](https://img.shields.io/crates/v/sentry-actix.svg?style=flat)](https://crates.io/crates/sentry-actix)
+[![Crates.io](https://img.shields.io/crates/v/sentry-types.svg?style=flat)](https://crates.io/crates/sentry-types)
 
-This is an actix-web integration for the Sentry crate.
+This library implements Rust types for the Sentry v7 protocol as well as some other
+common types that are useful when working with Sentry (like DSNs and so forth).
 
 ## Requirements
 
@@ -23,7 +23,7 @@ Additionally, the lowest Rust version we target is _1.40.0_.
 ## Resources
 
 - [crates.io](https://crates.io/crates/sentry-actix)
-- [Documentation](https://docs.rs/sentry)
+- [Documentation](https://docs.rs/sentry-actix)
 - [Bug Tracker](https://github.com/getsentry/sentry-rust/issues)
-- [IRC](irc://chat.freenode.net/sentry) (chat.freenode.net, #sentry)
+- [Discord](https://discord.gg/ez5KZN7) server for project discussions.
 - Follow [@getsentry](https://twitter.com/getsentry) on Twitter for updates
