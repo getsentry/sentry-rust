@@ -2,7 +2,7 @@
 use crate::hub::Hub;
 use crate::scope::Scope;
 
-use crate::hub::IntoBreadcrumbs;
+use crate::breadcrumbs::IntoBreadcrumbs;
 use crate::internals;
 use crate::protocol::{Event, Level};
 

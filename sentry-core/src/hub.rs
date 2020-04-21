@@ -7,6 +7,7 @@ use std::sync::{Arc, Mutex, PoisonError, RwLock, TryLockError};
 use std::thread;
 use std::time::Duration;
 
+use crate::breadcrumbs::IntoBreadcrumbs;
 use crate::internals::Uuid;
 use crate::protocol::{Breadcrumb, Event, Level};
 use crate::scope::{Scope, ScopeGuard};
@@ -27,47 +28,6 @@ thread_local! {
     static THREAD_HUB: UnsafeCell<Arc<Hub>> = UnsafeCell::new(
         Arc::new(Hub::new_from_top(&PROCESS_HUB.0)));
     static USE_PROCESS_HUB: Cell<bool> = Cell::new(PROCESS_HUB.1 == thread::current().id());
-}
-
-/// A helper trait that converts an object into a breadcrumb.
-pub trait IntoBreadcrumbs {
-    /// The iterator type for the breadcrumbs.
-    type Output: Iterator<Item = Breadcrumb>;
-
-    /// This converts the object into an optional breadcrumb.
-    fn into_breadcrumbs(self) -> Self::Output;
-}
-
-impl IntoBreadcrumbs for Breadcrumb {
-    type Output = std::iter::Once<Breadcrumb>;
-
-    fn into_breadcrumbs(self) -> Self::Output {
-        std::iter::once(self)
-    }
-}
-
-impl IntoBreadcrumbs for Vec<Breadcrumb> {
-    type Output = ::std::vec::IntoIter<Breadcrumb>;
-
-    fn into_breadcrumbs(self) -> Self::Output {
-        self.into_iter()
-    }
-}
-
-impl IntoBreadcrumbs for Option<Breadcrumb> {
-    type Output = ::std::option::IntoIter<Breadcrumb>;
-
-    fn into_breadcrumbs(self) -> Self::Output {
-        self.into_iter()
-    }
-}
-
-impl<F: FnOnce() -> I, I: IntoBreadcrumbs> IntoBreadcrumbs for F {
-    type Output = I::Output;
-
-    fn into_breadcrumbs(self) -> Self::Output {
-        self().into_breadcrumbs()
-    }
 }
 
 #[cfg(feature = "with_client_implementation")]

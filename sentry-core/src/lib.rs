@@ -116,6 +116,7 @@
 mod macros;
 
 mod api;
+mod breadcrumbs;
 mod hub;
 mod scope;
 
@@ -126,6 +127,8 @@ mod backtrace_support;
 
 #[cfg(feature = "with_client_implementation")]
 mod client;
+#[cfg(feature = "with_client_implementation")]
+mod clientoptions;
 #[cfg(feature = "with_client_implementation")]
 mod constants;
 #[cfg(feature = "with_client_implementation")]
@@ -142,7 +145,7 @@ pub mod test;
 /// have to directly interface with directly.  These are often returned
 /// from methods on other types.
 pub mod internals {
-    pub use crate::hub::IntoBreadcrumbs;
+    pub use crate::breadcrumbs::IntoBreadcrumbs;
     pub use crate::scope::ScopeGuard;
 
     #[cfg(feature = "with_client_implementation")]
