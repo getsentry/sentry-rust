@@ -3,6 +3,8 @@ use std::fmt;
 use backtrace::Backtrace;
 use regex::{Captures, Regex};
 
+#[cfg(feature = "with_client_implementation")]
+use crate::client::ClientOptions;
 use crate::protocol::{Frame, Stacktrace};
 
 lazy_static::lazy_static! {
@@ -71,6 +73,97 @@ pub static ref SECONDARY_BORDER_FRAMES: Vec<(&'static str, &'static str)> = {
              u7e|u20|u27|u5b|u5d|u7b|u7d|u3b|u2b|u22)
         \$
     "#).unwrap();
+
+    static ref CRATE_RE: Regex = Regex::new(r#"(?x)
+        ^
+        (?:_?<)?           # trait impl syntax
+        (?:\w+\ as \ )?    # anonymous implementor
+        ([a-zA-Z0-9_]+?)   # crate name
+        (?:\.\.|::)        # crate delimiter (.. or ::)
+    "#).unwrap();
+}
+
+/// Tries to parse the rust crate from a function name.
+#[cfg(any(test, feature = "with_client_implementation"))]
+fn parse_crate_name(func_name: &str) -> Option<String> {
+    CRATE_RE
+        .captures(func_name)
+        .and_then(|caps| caps.get(1))
+        .map(|cr| cr.as_str().into())
+}
+
+#[cfg(feature = "with_client_implementation")]
+pub fn process_event_stacktrace(stacktrace: &mut Stacktrace, options: &ClientOptions) {
+    // automatically trim backtraces
+    if options.trim_backtraces {
+        trim_stacktrace(stacktrace, |frame, _| {
+            if let Some(ref func) = frame.function {
+                options.extra_border_frames.contains(&func.as_str())
+            } else {
+                false
+            }
+        })
+    }
+
+    // automatically prime in_app and set package
+    let mut any_in_app = false;
+    for frame in &mut stacktrace.frames {
+        let func_name = match frame.function {
+            Some(ref func) => func,
+            None => continue,
+        };
+
+        // set package if missing to crate prefix
+        if frame.package.is_none() {
+            frame.package = parse_crate_name(func_name);
+        }
+
+        match frame.in_app {
+            Some(true) => {
+                any_in_app = true;
+                continue;
+            }
+            Some(false) => {
+                continue;
+            }
+            None => {}
+        }
+
+        for m in &options.in_app_exclude {
+            if function_starts_with(func_name, m) {
+                frame.in_app = Some(false);
+                break;
+            }
+        }
+
+        if frame.in_app.is_some() {
+            continue;
+        }
+
+        for m in &options.in_app_include {
+            if function_starts_with(func_name, m) {
+                frame.in_app = Some(true);
+                any_in_app = true;
+                break;
+            }
+        }
+
+        if frame.in_app.is_some() {
+            continue;
+        }
+
+        if is_sys_function(func_name) {
+            frame.in_app = Some(false);
+        }
+    }
+
+    if !any_in_app {
+        for frame in &mut stacktrace.frames {
+            if frame.in_app.is_none() {
+                frame.in_app = Some(true);
+            }
+        }
+    }
 }
 
 pub fn filename(s: &str) -> String {
@@ -338,5 +431,42 @@ mod tests {
             "futures::task_impl::std::set",
             "<futures::"
         ));
+    }
+
+    #[test]
+    fn test_parse_crate_name() {
+        assert_eq!(
+            parse_crate_name("futures::task_impl::std::set"),
+            Some("futures".into())
+        );
+    }
+
+    #[test]
+    fn test_parse_crate_name_impl() {
+        assert_eq!(
+            parse_crate_name("_<futures..task_impl..Spawn<T>>::enter::_{{closure}}"),
+            Some("futures".into())
+        );
+    }
+
+    #[test]
+    fn test_parse_crate_name_anonymous_impl() {
+        assert_eq!(
+            parse_crate_name("_<F as alloc..boxed..FnBox<A>>::call_box"),
+            Some("alloc".into())
+        );
+    }
+
+    #[test]
+    fn test_parse_crate_name_none() {
+        assert_eq!(parse_crate_name("main"), None);
+    }
+
+    #[test]
+    fn test_parse_crate_name_newstyle() {
+        assert_eq!(
+            parse_crate_name("<failure::error::Error as core::convert::From<F>>::from"),
+            Some("failure".into())
+        );
     }
 }
