@@ -39,39 +39,29 @@ pub trait Transport: Send + Sync + 'static {
     }
 }
 
-pub trait InternalTransportFactoryClone {
-    fn clone_factory(&self) -> Box<dyn TransportFactory>;
-}
-
-impl<T: 'static + TransportFactory + Clone> InternalTransportFactoryClone for T {
-    fn clone_factory(&self) -> Box<dyn TransportFactory> {
-        Box::new(self.clone())
-    }
-}
-
 /// A factory creating transport instances.
 ///
 /// Because options are potentially reused between different clients the
 /// options do not actually contain a transport but a factory object that
 /// can create transports instead.
 ///
-/// The factory has a single method that creates a new boxed transport.
+/// The factory has a single method that creates a new arced transport.
 /// Because transports can be wrapped in `Arc`s and those are clonable
 /// any `Arc<Transport>` is also a valid transport factory.  This for
 /// instance lets you put a `Arc<TestTransport>` directly into the options.
 ///
 /// This is automatically implemented for all closures optionally taking
 /// options and returning a boxed factory.
-pub trait TransportFactory: Send + Sync + InternalTransportFactoryClone {
+pub trait TransportFactory: Send + Sync {
     /// Given some options creates a transport.
-    fn create_transport(&self, options: &ClientOptions) -> Box<dyn Transport>;
+    fn create_transport(&self, options: &ClientOptions) -> Arc<dyn Transport>;
 }
 
 impl<F> TransportFactory for F
 where
-    F: Fn(&ClientOptions) -> Box<dyn Transport> + Clone + Send + Sync + 'static,
+    F: Fn(&ClientOptions) -> Arc<dyn Transport> + Clone + Send + Sync + 'static,
 {
-    fn create_transport(&self, options: &ClientOptions) -> Box<dyn Transport> {
+    fn create_transport(&self, options: &ClientOptions) -> Arc<dyn Transport> {
         (*self)(options)
     }
 }
@@ -87,9 +77,9 @@ impl<T: Transport> Transport for Arc<T> {
 }
 
 impl<T: Transport> TransportFactory for Arc<T> {
-    fn create_transport(&self, options: &ClientOptions) -> Box<dyn Transport> {
+    fn create_transport(&self, options: &ClientOptions) -> Arc<dyn Transport> {
         let _options = options;
-        Box::new(self.clone())
+        self.clone()
     }
 }
 
@@ -102,10 +92,10 @@ impl<T: Transport> TransportFactory for Arc<T> {
 pub struct DefaultTransportFactory;
 
 impl TransportFactory for DefaultTransportFactory {
-    fn create_transport(&self, options: &ClientOptions) -> Box<dyn Transport> {
+    fn create_transport(&self, options: &ClientOptions) -> Arc<dyn Transport> {
         #[cfg(any(feature = "with_reqwest_transport", feature = "with_curl_transport"))]
         {
-            Box::new(HttpTransport::new(options))
+            Arc::new(HttpTransport::new(options))
         }
         #[cfg(not(any(feature = "with_reqwest_transport", feature = "with_curl_transport")))]
         {

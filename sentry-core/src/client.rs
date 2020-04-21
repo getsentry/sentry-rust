@@ -23,7 +23,7 @@ impl<T: Into<ClientOptions>> From<T> for Client {
 /// The Sentry client object.
 pub struct Client {
     options: ClientOptions,
-    transport: RwLock<Option<Arc<Box<dyn Transport>>>>,
+    transport: RwLock<Option<Arc<dyn Transport>>>,
 }
 
 impl fmt::Debug for Client {
@@ -74,10 +74,13 @@ impl Client {
     /// If the DSN on the options is set to `None` the client will be entirely
     /// disabled.
     pub fn with_options(options: ClientOptions) -> Client {
-        let transport = RwLock::new(match options.dsn {
-            Some(_) => Some(Arc::new(options.transport.create_transport(&options))),
-            None => None,
-        });
+        let create_transport = || {
+            options.dsn.as_ref()?;
+            let factory = options.transport.as_ref()?;
+            Some(factory.create_transport(&options))
+        };
+        let transport = RwLock::new(create_transport());
+
         Client { options, transport }
     }
 

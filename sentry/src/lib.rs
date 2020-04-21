@@ -112,6 +112,8 @@
 #![warn(missing_docs)]
 
 #[cfg(feature = "with_client_implementation")]
+mod defaults;
+#[cfg(feature = "with_client_implementation")]
 mod init;
 
 #[doc(inline)]

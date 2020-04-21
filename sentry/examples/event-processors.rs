@@ -1,7 +1,5 @@
 fn main() {
-    let client =
-        sentry::Client::from_config("https://a94ae32be2584e0bbd7a4cbb95971fee@sentry.io/1041156");
-    let _sentry = sentry::init(client);
+    let _sentry = sentry::init("https://a94ae32be2584e0bbd7a4cbb95971fee@sentry.io/1041156");
 
     sentry::configure_scope(|scope| {
         scope.add_event_processor(Box::new(move |mut event| {

@@ -132,6 +132,8 @@ mod clientoptions;
 #[cfg(feature = "with_client_implementation")]
 mod constants;
 #[cfg(feature = "with_client_implementation")]
+mod intodsn;
+#[cfg(feature = "with_client_implementation")]
 mod transport;
 #[cfg(feature = "with_client_implementation")]
 pub mod utils;
@@ -149,10 +151,9 @@ pub mod internals {
     pub use crate::scope::ScopeGuard;
 
     #[cfg(feature = "with_client_implementation")]
-    pub use crate::{
-        clientoptions::IntoDsn,
-        transport::{Transport, TransportFactory},
-    };
+    pub use crate::intodsn::IntoDsn;
+    #[cfg(feature = "with_client_implementation")]
+    pub use crate::transport::{Transport, TransportFactory};
 
     pub use sentry_types::{
         Auth, ChronoParseError, DateTime, DebugId, Dsn, ParseDebugIdError, ParseDsnError,

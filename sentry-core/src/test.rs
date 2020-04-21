@@ -35,7 +35,7 @@ lazy_static::lazy_static! {
 ///
 /// Example usage:
 ///
-/// ```rust
+/// ```
 /// # use sentry_core as sentry;
 /// use std::sync::Arc;
 /// use sentry::{Hub, ClientOptions};
@@ -44,7 +44,7 @@ lazy_static::lazy_static! {
 /// let transport = TestTransport::new();
 /// let options = ClientOptions {
 ///     dsn: Some("https://public@example.com/1".parse().unwrap()),
-///     transport: Box::new(transport.clone()),
+///     transport: Some(Arc::new(transport.clone())),
 ///     ..ClientOptions::default()
 /// };
 /// Hub::current().bind_client(Some(Arc::new(options.into())));
@@ -98,7 +98,7 @@ pub fn with_captured_events_options<F: FnOnce(), O: Into<ClientOptions>>(
     let transport = TestTransport::new();
     let mut options = options.into();
     options.dsn = Some(options.dsn.unwrap_or_else(|| TEST_DSN.clone()));
-    options.transport = Box::new(transport.clone());
+    options.transport = Some(Arc::new(transport.clone()));
     Hub::run(
         Arc::new(Hub::new(
             Some(Arc::new(options.into())),
