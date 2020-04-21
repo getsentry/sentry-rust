@@ -141,8 +141,8 @@ pub mod test;
 
 /// Useful internals.
 ///
-/// This module contains types that users of the create typically do not
-/// have to directly interface with directly.  These are often returned
+/// This module contains types that users of the crate typically do not
+/// have to interface with directly.  These are often returned
 /// from methods on other types.
 pub mod internals {
     pub use crate::breadcrumbs::IntoBreadcrumbs;
@@ -150,7 +150,8 @@ pub mod internals {
 
     #[cfg(feature = "with_client_implementation")]
     pub use crate::{
-        client::{ClientInitGuard, IntoDsn},
+        client::ClientInitGuard,
+        clientoptions::IntoDsn,
         transport::{Transport, TransportFactory},
     };
 
