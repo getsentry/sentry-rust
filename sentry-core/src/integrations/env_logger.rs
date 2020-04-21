@@ -8,6 +8,7 @@
 //! from `env_logger` and pass `None` as logger:
 //!
 //! ```no_run
+//! # use sentry_core as sentry;
 //! sentry::integrations::env_logger::init(None, Default::default());
 //! ```
 //!
@@ -16,6 +17,7 @@
 //! accordingly:
 //!
 //! ```no_run
+//! # use sentry_core as sentry;
 //! let mut log_builder = pretty_env_logger::formatted_builder();
 //! log_builder.parse_filters("info,foo=debug");
 //! sentry::integrations::env_logger::init(Some(log_builder.build()), Default::default());

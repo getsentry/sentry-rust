@@ -8,6 +8,7 @@
 //! # Configuration
 //!
 //! ```no_run
+//! # use sentry_core as sentry;
 //! use sentry::integrations::panic::register_panic_handler;
 //! register_panic_handler();
 //! ```
@@ -78,6 +79,7 @@ pub fn panic_handler(info: &PanicInfo<'_>) {
 /// dispatches automatically to the one that was there before.
 ///
 /// ```
+/// # use sentry_core as sentry;
 /// use sentry::integrations::panic::register_panic_handler;
 /// register_panic_handler();
 /// ```

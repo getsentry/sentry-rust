@@ -616,20 +616,23 @@ impl Drop for ClientInitGuard {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
+/// # use sentry_core as sentry;
 /// let _sentry = sentry::init("https://key@sentry.io/1234");
 /// ```
 ///
 /// Or if draining on shutdown should be ignored:
 ///
-/// ```rust
+/// ```
+/// # use sentry_core as sentry;
 /// std::mem::forget(sentry::init("https://key@sentry.io/1234"));
 /// ```
 ///
 /// The guard returned can also be inspected to see if a client has been
 /// created to enable further configuration:
 ///
-/// ```rust
+/// ```
+/// # use sentry_core as sentry;
 /// use sentry::integrations::panic::register_panic_handler;
 ///
 /// let sentry = sentry::init(sentry::ClientOptions {

@@ -10,6 +10,7 @@
 //! ```no_run
 //! # #[macro_use] extern crate error_chain;
 //! # error_chain! {}
+//! # use sentry_core as sentry;
 //! use sentry::integrations::error_chain::capture_error_chain;
 //! # fn function_that_might_fail() -> Result<()> { Ok(()) }
 //! # fn test() -> Result<()> {
