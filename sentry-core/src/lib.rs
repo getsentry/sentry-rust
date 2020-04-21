@@ -22,6 +22,7 @@
 //! will not work.
 //!
 //! ```
+//! # use sentry_core as sentry;
 //! let _guard = sentry::init("https://key@sentry.io/42");
 //! sentry::capture_message("Hello World!", sentry::Level::Info);
 //! // when the guard goes out of scope here, the client will wait up to two
@@ -111,5 +112,75 @@
 //! * `with_test_support`: Enables the test support module.
 #![warn(missing_docs)]
 
-#[doc(inline)]
-pub use sentry_core::*;
+#[macro_use]
+mod macros;
+
+mod api;
+mod hub;
+mod scope;
+
+pub mod integrations;
+
+#[cfg(feature = "with_backtrace")]
+mod backtrace_support;
+
+#[cfg(feature = "with_client_implementation")]
+mod client;
+#[cfg(feature = "with_client_implementation")]
+mod constants;
+#[cfg(feature = "with_client_implementation")]
+mod transport;
+#[cfg(feature = "with_client_implementation")]
+pub mod utils;
+
+#[cfg(any(test, feature = "with_test_support"))]
+pub mod test;
+
+/// Useful internals.
+///
+/// This module contains types that users of the create typically do not
+/// have to directly interface with directly.  These are often returned
+/// from methods on other types.
+pub mod internals {
+    pub use crate::hub::IntoBreadcrumbs;
+    pub use crate::scope::ScopeGuard;
+
+    #[cfg(feature = "with_client_implementation")]
+    pub use crate::{
+        client::{ClientInitGuard, IntoDsn},
+        transport::{Transport, TransportFactory},
+    };
+
+    pub use sentry_types::{
+        Auth, ChronoParseError, DateTime, DebugId, Dsn, ParseDebugIdError, ParseDsnError,
+        ParseProjectIdError, ProjectId, Scheme, TimeZone, Utc, Uuid, UuidVariant, UuidVersion,
+    };
+}
+
+/// The provided transports.
+///
+/// This module exposes all transports that are compiled into the sentry
+/// library.  The `with_reqwest_transport` and `with_curl_transport` flags
+/// turn on these transports.
+pub mod transports {
+    #[cfg(any(feature = "with_reqwest_transport", feature = "with_curl_transport"))]
+    pub use crate::transport::{DefaultTransportFactory, HttpTransport};
+
+    #[cfg(feature = "with_reqwest_transport")]
+    pub use crate::transport::ReqwestHttpTransport;
+
+    #[cfg(feature = "with_curl_transport")]
+    pub use crate::transport::CurlHttpTransport;
+}
+
+// public api or exports from this crate
+pub use crate::api::*;
+pub use crate::hub::Hub;
+pub use crate::scope::Scope;
+
+#[cfg(feature = "with_client_implementation")]
+pub use crate::client::{init, Client, ClientOptions};
+
+// public api from other crates
+pub use sentry_types::protocol::v7 as protocol;
+pub use sentry_types::protocol::v7::{Breadcrumb, Level, User};

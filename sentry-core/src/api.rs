@@ -16,6 +16,7 @@ use crate::protocol::{Event, Level};
 /// # Example
 ///
 /// ```
+/// # use sentry_core as sentry;
 /// use sentry::protocol::{Event, Level};
 ///
 /// sentry::capture_event(Event {
@@ -62,6 +63,7 @@ pub fn capture_message(msg: &str, level: Level) -> internals::Uuid {
 /// # Example
 ///
 /// ```
+/// # use sentry_core as sentry;
 /// use sentry::protocol::{Breadcrumb, Map};
 ///
 /// sentry::add_breadcrumb(|| Breadcrumb {
@@ -95,7 +97,8 @@ pub fn add_breadcrumb<B: IntoBreadcrumbs>(breadcrumb: B) {
 ///
 /// # Example
 ///
-/// ```rust
+/// ```
+/// # use sentry_core as sentry;
 /// sentry::configure_scope(|scope| {
 ///     scope.set_user(Some(sentry::User {
 ///         username: Some("john_doe".into()),
@@ -132,7 +135,7 @@ where
 /// This is useful when extra data should be send with a single capture call
 /// for instance a different level or tags:
 ///
-/// ```rust,ignore
+/// ```ignore
 /// use sentry::{with_scope, Level};
 /// use sentry::integrations::failure::capture_error;
 ///

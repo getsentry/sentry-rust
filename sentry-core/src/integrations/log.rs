@@ -14,6 +14,7 @@
 //! env logger crate:
 //!
 //! ```no_run
+//! # use sentry_core as sentry;
 //! let mut log_builder = pretty_env_logger::formatted_builder();
 //! log_builder.parse_filters("info");  // or env::var("RUST_LOG")
 //! let logger = log_builder.build();

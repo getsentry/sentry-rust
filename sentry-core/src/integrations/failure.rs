@@ -10,6 +10,7 @@
 //! # Example
 //!
 //! ```no_run
+//! # use sentry_core as sentry;
 //! # fn function_that_might_fail() -> Result<(), failure::Error> { Ok(()) }
 //! use sentry::integrations::failure::capture_error;
 //! # fn test() -> Result<(), failure::Error> {
