@@ -21,7 +21,7 @@
 //! applications might slightly delay as a result of this.  Keep the guard around or sending events
 //! will not work.
 //!
-//! ```
+//! ```ignore
 //! # use sentry_core as sentry;
 //! let _guard = sentry::init("https://key@sentry.io/42");
 //! sentry::capture_message("Hello World!", sentry::Level::Info);
@@ -150,7 +150,6 @@ pub mod internals {
 
     #[cfg(feature = "with_client_implementation")]
     pub use crate::{
-        client::ClientInitGuard,
         clientoptions::IntoDsn,
         transport::{Transport, TransportFactory},
     };
@@ -183,7 +182,7 @@ pub use crate::hub::Hub;
 pub use crate::scope::Scope;
 
 #[cfg(feature = "with_client_implementation")]
-pub use crate::client::{init, Client, ClientOptions};
+pub use crate::client::{Client, ClientOptions};
 
 // public api from other crates
 pub use sentry_types::protocol::v7 as protocol;

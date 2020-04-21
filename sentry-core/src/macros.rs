@@ -33,6 +33,9 @@ macro_rules! sentry_crate_release {
     };
 }
 
+// TODO: temporarily hidden for use in `sentry` crate
+#[macro_export]
+#[doc(hidden)]
 macro_rules! with_client_impl {
     ($body:block) => {
         #[cfg(feature = "with_client_implementation")]
@@ -46,7 +49,9 @@ macro_rules! with_client_impl {
     };
 }
 
-#[allow(unused_macros)]
+// TODO: temporarily hidden for use in `sentry` crate
+#[macro_export]
+#[doc(hidden)]
 macro_rules! sentry_debug {
     ($($arg:tt)*) => {
         with_client_impl! {{
