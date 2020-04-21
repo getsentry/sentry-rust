@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::{Client, Hub};
+use sentry_core::sentry_debug;
 
 /// Helper struct that is returned from `init`.
 ///

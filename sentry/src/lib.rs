@@ -111,9 +111,6 @@
 //! * `with_test_support`: Enables the test support module.
 #![warn(missing_docs)]
 
-#[macro_use]
-extern crate sentry_core;
-
 #[cfg(feature = "with_client_implementation")]
 mod init;
 
