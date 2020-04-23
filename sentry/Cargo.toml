@@ -26,7 +26,7 @@ with_backtrace = ["sentry-core/with_backtrace"]
 with_panic = ["sentry-core/with_panic"]
 with_failure = ["sentry-core/with_failure"]
 with_log = ["sentry-core/with_log"]
-with_debug_to_log = ["sentry-core/with_debug_to_log"]
+with_debug_to_log = ["log", "sentry-core/with_debug_to_log"]
 with_env_logger = ["sentry-core/with_env_logger"]
 with_error_chain = ["sentry-core/with_error_chain"]
 with_device_info = ["sentry-core/with_device_info"]
@@ -38,12 +38,12 @@ with_native_tls = ["sentry-core/with_native_tls"]
 
 [dependencies]
 sentry-core = { version = "0.18.0", path = "../sentry-core", default-features = false }
+log = { version = "0.4.8", optional = true, features = ["std"] }
 
 [dev-dependencies]
 failure_derive = "0.1.6"
 actix-web = { version = "0.7.19", default-features = false }
 tokio = { version = "0.2", features = ["macros"] }
-log = { version = "0.4.8", features = ["std"] }
 failure = "0.1.6"
 pretty_env_logger = "0.4.0"
 error-chain = "0.12.1"

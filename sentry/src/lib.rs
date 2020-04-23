@@ -111,5 +111,23 @@
 //! * `with_test_support`: Enables the test support module.
 #![warn(missing_docs)]
 
+#[cfg(feature = "with_client_implementation")]
+mod init;
+
 #[doc(inline)]
 pub use sentry_core::*;
+
+/// Useful internals.
+///
+/// This module contains types that users of the crate typically do not
+/// have to interface with directly.  These are often returned
+/// from methods on other types.
+pub mod internals {
+    pub use sentry_core::internals::*;
+
+    #[cfg(feature = "with_client_implementation")]
+    pub use crate::init::ClientInitGuard;
+}
+
+#[cfg(feature = "with_client_implementation")]
+pub use crate::init::init;
