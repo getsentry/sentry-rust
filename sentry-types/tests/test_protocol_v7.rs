@@ -1,10 +1,3 @@
-#[macro_use]
-extern crate serde_json;
-
-use chrono;
-
-use uuid;
-
 use chrono::{DateTime, TimeZone, Utc};
 use std::borrow::Cow;
 use uuid::Uuid;
@@ -702,7 +695,7 @@ fn test_extra() {
             let mut m = v7::Map::new();
             m.insert(
                 "component_state".into(),
-                json!({
+                serde_json::json!({
                     "dirty": true,
                     "revision": 17
                 }),
