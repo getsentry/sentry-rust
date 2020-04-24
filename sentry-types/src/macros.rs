@@ -58,8 +58,6 @@ mod str_tests {
     use std::io::Cursor;
     use std::str::FromStr;
 
-    use serde_json;
-
     struct Test;
 
     impl FromStr for Test {
@@ -184,7 +182,6 @@ macro_rules! impl_hex_serde {
 
 #[cfg(test)]
 mod hex_tests {
-    use serde_json;
     use std::io::Cursor;
 
     #[derive(Debug, PartialEq)]

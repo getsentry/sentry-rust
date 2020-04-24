@@ -96,7 +96,6 @@ impl FromStr for ProjectId {
 #[cfg(test)]
 mod test {
     use super::*;
-    use serde_json;
 
     #[test]
     fn test_basic_api() {

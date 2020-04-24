@@ -200,9 +200,7 @@ impl_str_serde!(Dsn);
 
 #[cfg(test)]
 mod test {
-
     use super::*;
-    use serde_json;
 
     #[test]
     fn test_dsn_serialize_deserialize() {
