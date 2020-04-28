@@ -115,6 +115,8 @@
 mod defaults;
 #[cfg(feature = "with_client_implementation")]
 mod init;
+#[cfg(feature = "with_client_implementation")]
+mod transport;
 
 #[doc(inline)]
 pub use sentry_core::*;
@@ -132,6 +134,22 @@ pub mod internals {
 
     #[cfg(feature = "with_client_implementation")]
     pub use crate::defaults::apply_defaults;
+}
+
+/// The provided transports.
+///
+/// This module exposes all transports that are compiled into the sentry
+/// library.  The `with_reqwest_transport` and `with_curl_transport` flags
+/// turn on these transports.
+pub mod transports {
+    #[cfg(any(feature = "with_reqwest_transport", feature = "with_curl_transport"))]
+    pub use crate::transport::{DefaultTransportFactory, HttpTransport};
+
+    #[cfg(feature = "with_reqwest_transport")]
+    pub use crate::transport::ReqwestHttpTransport;
+
+    #[cfg(feature = "with_curl_transport")]
+    pub use crate::transport::CurlHttpTransport;
 }
 
 #[cfg(feature = "with_client_implementation")]
