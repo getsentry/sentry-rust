@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::fmt;
 
 use backtrace::Backtrace;
@@ -166,8 +167,8 @@ pub fn process_event_stacktrace(stacktrace: &mut Stacktrace, options: &ClientOpt
     }
 }
 
-pub fn filename(s: &str) -> String {
-    s.rsplitn(2, &['/', '\\'][..]).next().unwrap().to_string()
+pub fn filename(s: &str) -> &str {
+    s.rsplitn(2, &['/', '\\'][..]).next().unwrap()
 }
 
 pub fn strip_symbol(s: &str) -> &str {
@@ -179,28 +180,26 @@ pub fn strip_symbol(s: &str) -> &str {
 
 pub fn demangle_symbol(s: &str) -> String {
     COMMON_RUST_SYMBOL_ESCAPES_RE
-        .replace_all(s, |caps: &Captures<'_>| {
-            match &caps[1] {
-                "SP" => "@",
-                "BP" => "*",
-                "RF" => "&",
-                "LT" => "<",
-                "GT" => ">",
-                "LP" => "(",
-                "RP" => ")",
-                "C" => ",",
-                "u7e" => "~",
-                "u20" => " ",
-                "u27" => "'",
-                "u5b" => "[",
-                "u5d" => "]",
-                "u7b" => "{",
-                "u7d" => "}",
-                "u3b" => ";",
-                "u2b" => "+",
-                "u22" => "\"",
-                _ => unreachable!(),
-            }
+        .replace_all(s, |caps: &Captures<'_>| match &caps[1] {
+            "SP" => "@",
+            "BP" => "*",
+            "RF" => "&",
+            "LT" => "<",
+            "GT" => ">",
+            "LP" => "(",
+            "RP" => ")",
+            "C" => ",",
+            "u7e" => "~",
+            "u20" => " ",
+            "u27" => "'",
+            "u5b" => "[",
+            "u5d" => "]",
+            "u7b" => "{",
+            "u7d" => "}",
+            "u3b" => ";",
+            "u2b" => "+",
+            "u22" => "\"",
+            _ => unreachable!(),
         })
         .to_string()
 }
@@ -228,8 +227,10 @@ pub fn backtrace_to_stacktrace(bt: &Backtrace) -> Option<Stacktrace> {
                 .iter()
                 .map(move |sym| {
                     let abs_path = sym.filename().map(|m| m.to_string_lossy().to_string());
-                    let filename = abs_path.as_ref().map(|p| filename(p));
-                    let real_symbol = sym.name().map_or("<unknown>".into(), |n| n.to_string());
+                    let filename = abs_path.as_ref().map(|p| filename(p).to_string());
+                    let real_symbol = sym
+                        .name()
+                        .map_or(Cow::Borrowed("<unknown>"), |n| Cow::Owned(n.to_string()));
                     let symbol = strip_symbol(&real_symbol);
                     let function = demangle_symbol(symbol);
                     Frame {

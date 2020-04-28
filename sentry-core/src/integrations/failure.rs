@@ -70,7 +70,7 @@ fn parse_stacktrace(bt: &str) -> Option<Stacktrace> {
         .captures_iter(&bt)
         .map(|captures| {
             let abs_path = captures.name("path").map(|m| m.as_str().to_string());
-            let filename = abs_path.as_ref().map(|p| filename(p));
+            let filename = abs_path.as_ref().map(|p| filename(p).to_string());
             let real_symbol = captures["symbol"].to_string();
             let symbol = strip_symbol(&real_symbol);
             let function = demangle_symbol(symbol);
