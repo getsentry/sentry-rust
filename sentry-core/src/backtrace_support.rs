@@ -33,9 +33,6 @@ static ref WELL_KNOWN_SYS_MODULES: Vec<&'static str> = {
     #[cfg(feature = "with_failure")] {
         rv.push("failure::");
     }
-    #[cfg(feature = "with_log")] {
-        rv.push("log::");
-    }
     rv
 };
 
@@ -50,9 +47,6 @@ static ref WELL_KNOWN_BORDER_FRAMES: Vec<&'static str> = {
         rv.push("failure::backtrace::Backtrace::new");
         rv.push("failure::backtrace::internal::InternalBacktrace::new");
         rv.push("failure::Fail::context");
-    }
-    #[cfg(feature = "with_log")] {
-        rv.push("<sentry::integrations::log::Logger as log::Log>::log");
     }
     rv
 };

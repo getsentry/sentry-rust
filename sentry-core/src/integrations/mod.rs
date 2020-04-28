@@ -10,12 +10,6 @@ use crate::ClientOptions;
 #[cfg(feature = "with_failure")]
 pub mod failure;
 
-#[cfg(feature = "with_log")]
-pub mod log;
-
-#[cfg(feature = "with_env_logger")]
-pub mod env_logger;
-
 #[cfg(feature = "with_panic")]
 pub mod panic;
 

@@ -25,9 +25,7 @@ with_client_implementation = ["sentry-core/with_client_implementation"]
 with_backtrace = ["sentry-core/with_backtrace"]
 with_panic = ["sentry-core/with_panic"]
 with_failure = ["sentry-core/with_failure"]
-with_log = ["log", "sentry-core/with_log"]
 with_debug_to_log = ["log", "sentry-core/with_debug_to_log"]
-with_env_logger = ["with_log", "sentry-core/with_env_logger"]
 with_device_info = ["sentry-core/with_device_info"]
 with_rust_info = ["sentry-core/with_rust_info"]
 with_debug_meta = ["sentry-core/with_debug_meta"]
@@ -44,6 +42,8 @@ httpdate = { version = "0.3.2", optional = true }
 serde_json = { version = "1.0.48", optional = true }
 
 [dev-dependencies]
+sentry-log = { version = "0.18.0", path = "../sentry-log", features = ["env_logger"] }
+log = { version = "0.4.8", features = ["std"] }
 failure_derive = "0.1.6"
 actix-web = { version = "0.7.19", default-features = false }
 tokio = { version = "0.2", features = ["macros"] }
@@ -57,8 +57,6 @@ name = "error-chain-demo"
 
 [[example]]
 name = "log-demo"
-required-features = ["with_env_logger"]
 
 [[example]]
 name = "thread-demo"
-required-features = ["with_env_logger"]
