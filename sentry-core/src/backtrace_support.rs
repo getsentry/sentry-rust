@@ -201,7 +201,6 @@ pub fn demangle_symbol(s: &str) -> String {
                 "u22" => "\"",
                 _ => unreachable!(),
             }
-            .to_string()
         })
         .to_string()
 }
