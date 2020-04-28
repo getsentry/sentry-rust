@@ -1,10 +1,10 @@
 use std::borrow::Cow;
 use std::fmt;
-use std::panic::RefUnwindSafe;
 use std::sync::Arc;
 use std::time::Duration;
 
 use crate::constants::USER_AGENT;
+use crate::integrations::Integration;
 use crate::internals::Dsn;
 use crate::intodsn::IntoDsn;
 use crate::protocol::{Breadcrumb, Event};
@@ -46,7 +46,11 @@ pub struct ClientOptions {
     pub in_app_include: Vec<&'static str>,
     /// Module prefixes that are never "in_app".
     pub in_app_exclude: Vec<&'static str>,
-    // TODO: Integration options
+    // Integration options
+    /// A list of integrations to enable.
+    pub integrations: Vec<Arc<dyn Integration>>,
+    /// Whether to add default integrations.
+    pub default_integrations: bool,
     // Hooks
     /// Callback that is executed before event sending.
     pub before_send: Option<BeforeCallback<Event<'static>>>,
@@ -80,8 +84,13 @@ pub struct ClientOptions {
     pub user_agent: Cow<'static, str>,
 }
 
-// Make this unwind safe. It's not out of the box because of the contained `BeforeCallback`s.
-impl RefUnwindSafe for ClientOptions {}
+impl ClientOptions {
+    /// Adds a configured integration to the options.
+    pub fn add_integration<I: Integration>(mut self, integration: I) -> Self {
+        self.integrations.push(Arc::new(integration));
+        self
+    }
+}
 
 impl fmt::Debug for ClientOptions {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -93,6 +102,8 @@ impl fmt::Debug for ClientOptions {
         let before_breadcrumb = self.before_breadcrumb.as_ref().map(|_| BeforeBreadcrumb);
         #[derive(Debug)]
         struct TransportFactory;
+
+        let integrations: Vec<_> = self.integrations.iter().map(|i| i.name()).collect();
 
         f.debug_struct("ClientOptions")
             .field("dsn", &self.dsn)
@@ -106,6 +117,8 @@ impl fmt::Debug for ClientOptions {
             .field("server_name", &self.server_name)
             .field("in_app_include", &self.in_app_include)
             .field("in_app_exclude", &self.in_app_exclude)
+            .field("integrations", &integrations)
+            .field("default_integrations", &self.default_integrations)
             .field("before_send", &before_send)
             .field("before_breadcrumb", &before_breadcrumb)
             .field("transport", &TransportFactory)
@@ -133,6 +146,8 @@ impl Default for ClientOptions {
             server_name: None,
             in_app_include: vec![],
             in_app_exclude: vec![],
+            integrations: vec![],
+            default_integrations: true,
             before_send: None,
             before_breadcrumb: None,
             transport: None,

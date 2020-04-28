@@ -118,13 +118,10 @@ mod backtrace_support;
 
 #[cfg(feature = "with_client_implementation")]
 mod client;
-#[cfg(feature = "with_client_implementation")]
 mod clientoptions;
 #[cfg(feature = "with_client_implementation")]
 mod constants;
-#[cfg(feature = "with_client_implementation")]
 mod intodsn;
-#[cfg(feature = "with_client_implementation")]
 mod transport;
 #[cfg(feature = "with_client_implementation")]
 pub mod utils;
@@ -141,9 +138,7 @@ pub mod internals {
     pub use crate::breadcrumbs::IntoBreadcrumbs;
     pub use crate::scope::ScopeGuard;
 
-    #[cfg(feature = "with_client_implementation")]
     pub use crate::intodsn::IntoDsn;
-    #[cfg(feature = "with_client_implementation")]
     pub use crate::transport::{Transport, TransportFactory};
 
     pub use sentry_types::{
@@ -154,11 +149,13 @@ pub mod internals {
 
 // public api or exports from this crate
 pub use crate::api::*;
+pub use crate::clientoptions::ClientOptions;
 pub use crate::hub::Hub;
+pub use crate::integrations::Integration;
 pub use crate::scope::Scope;
 
 #[cfg(feature = "with_client_implementation")]
-pub use crate::client::{Client, ClientOptions};
+pub use crate::client::Client;
 
 // public api from other crates
 pub use sentry_types::protocol::v7 as protocol;

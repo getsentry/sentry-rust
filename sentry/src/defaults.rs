@@ -34,6 +34,13 @@ pub fn apply_defaults(mut opts: ClientOptions) -> ClientOptions {
     if opts.transport.is_none() {
         opts.transport = Some(Arc::new(DefaultTransportFactory));
     }
+    if opts.default_integrations {
+        // default integrations need to be ordered *before* custom integrations,
+        // since they also process events in order
+        let mut integrations = vec![];
+        integrations.extend(opts.integrations.into_iter());
+        opts.integrations = integrations;
+    }
     if opts.dsn.is_none() {
         opts.dsn = env::var("SENTRY_DSN")
             .ok()

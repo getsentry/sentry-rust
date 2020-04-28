@@ -4,7 +4,6 @@ use std::fmt;
 use backtrace::Backtrace;
 use regex::{Captures, Regex};
 
-#[cfg(feature = "with_client_implementation")]
 use crate::client::ClientOptions;
 use crate::protocol::{Frame, Stacktrace};
 

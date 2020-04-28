@@ -1,5 +1,7 @@
+use std::any::TypeId;
 use std::borrow::Cow;
 use std::fmt;
+use std::panic::RefUnwindSafe;
 use std::sync::Arc;
 use std::sync::RwLock;
 use std::time::Duration;
@@ -9,8 +11,9 @@ use rand::random;
 use crate::backtrace_support::process_event_stacktrace;
 pub use crate::clientoptions::ClientOptions;
 use crate::constants::SDK_INFO;
+use crate::integrations::Integration;
 use crate::internals::{Dsn, Uuid};
-use crate::protocol::{DebugMeta, Event};
+use crate::protocol::{ClientSdkInfo, DebugMeta, Event};
 use crate::scope::Scope;
 use crate::transport::Transport;
 use crate::utils;
@@ -20,10 +23,13 @@ impl<T: Into<ClientOptions>> From<T> for Client {
         Client::with_options(o.into())
     }
 }
+
 /// The Sentry client object.
 pub struct Client {
     options: ClientOptions,
     transport: RwLock<Option<Arc<dyn Transport>>>,
+    integrations: Vec<(TypeId, Arc<dyn Integration>)>,
+    sdk_info: ClientSdkInfo,
 }
 
 impl fmt::Debug for Client {
@@ -40,6 +46,8 @@ impl Clone for Client {
         Client {
             options: self.options.clone(),
             transport: RwLock::new(self.transport.read().unwrap().clone()),
+            integrations: self.integrations.clone(),
+            sdk_info: self.sdk_info.clone(),
         }
     }
 }
@@ -73,14 +81,45 @@ impl Client {
     ///
     /// If the DSN on the options is set to `None` the client will be entirely
     /// disabled.
-    pub fn with_options(options: ClientOptions) -> Client {
+    pub fn with_options(mut options: ClientOptions) -> Client {
         let create_transport = || {
             options.dsn.as_ref()?;
             let factory = options.transport.as_ref()?;
             Some(factory.create_transport(&options))
         };
+
         let transport = RwLock::new(create_transport());
-        Client { options, transport }
+
+        let mut sdk_info = SDK_INFO.clone();
+
+        // NOTE: We do not filter out duplicate integrations based on their
+        // TypeId.
+        let integrations: Vec<_> = options
+            .integrations
+            .iter()
+            .map(|integration| (integration.as_ref().type_id(), integration.clone()))
+            .collect();
+
+        for (_, integration) in integrations.iter() {
+            integration.setup(&mut options);
+            sdk_info.integrations.push(integration.name().to_string());
+        }
+
+        Client {
+            options,
+            transport,
+            integrations,
+            sdk_info,
+        }
+    }
+
+    pub(crate) fn get_integration<I>(&self) -> Option<&I>
+    where
+        I: Integration,
+    {
+        let id = TypeId::of::<I>();
+        let integration = &self.integrations.iter().find(|(iid, _)| *iid == id)?.1;
+        integration.as_ref().as_any().downcast_ref()
     }
 
     fn prepare_event(
@@ -94,17 +133,15 @@ impl Client {
                 ..Default::default()
             };
         }
-
-        // id, debug meta and sdk are set before the processors run so that the
+        // event_id and sdk_info are set before the processors run so that the
         // processors can poke around in that data.
         if event.event_id.is_nil() {
             event.event_id = Uuid::new_v4();
         }
-        if event.debug_meta.is_empty() {
-            event.debug_meta = Cow::Borrowed(&DEBUG_META);
-        }
+
         if event.sdk.is_none() {
-            event.sdk = Some(Cow::Borrowed(&SDK_INFO));
+            // NOTE: we need to clone here because `Event` must be `'static`
+            event.sdk = Some(Cow::Owned(self.sdk_info.clone()));
         }
 
         if let Some(scope) = scope {
@@ -112,6 +149,22 @@ impl Client {
                 Some(event) => event,
                 None => return None,
             };
+        }
+
+        // TODO: move this to an integration
+        if event.debug_meta.is_empty() {
+            event.debug_meta = Cow::Borrowed(&DEBUG_META);
+        }
+
+        for (_, integration) in self.integrations.iter() {
+            let id = event.event_id;
+            event = match integration.process_event(event) {
+                Some(event) => event,
+                None => {
+                    sentry_debug!("integration dropped event {:?}", id);
+                    return None;
+                }
+            }
         }
 
         if event.release.is_none() {
@@ -123,11 +176,11 @@ impl Client {
         if event.server_name.is_none() {
             event.server_name = self.options.server_name.clone();
         }
-
         if &event.platform == "other" {
             event.platform = "native".into();
         }
 
+        // TODO: move this to an integration
         for exc in &mut event.exception {
             if let Some(ref mut stacktrace) = exc.stacktrace {
                 process_event_stacktrace(stacktrace, &self.options);
@@ -201,3 +254,7 @@ impl Client {
         }
     }
 }
+
+// Make this unwind safe. It's not out of the box because of the
+// `BeforeCallback`s inside `ClientOptions`, and the contained Integrations
+impl RefUnwindSafe for Client {}
