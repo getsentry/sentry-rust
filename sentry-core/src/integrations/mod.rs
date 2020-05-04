@@ -32,7 +32,12 @@ pub trait Integration: Sync + Send + Any + AsAny {
     /// An integration can process, or even completely drop an `Event`.
     /// Examples include adding or processing a backtrace, obfuscate some
     /// personal information, or add additional information.
-    fn process_event(&self, event: Event<'static>) -> Option<Event<'static>> {
+    fn process_event(
+        &self,
+        event: Event<'static>,
+        options: &ClientOptions,
+    ) -> Option<Event<'static>> {
+        let _ = options;
         Some(event)
     }
 }

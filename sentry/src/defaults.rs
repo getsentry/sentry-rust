@@ -38,6 +38,13 @@ pub fn apply_defaults(mut opts: ClientOptions) -> ClientOptions {
         // default integrations need to be ordered *before* custom integrations,
         // since they also process events in order
         let mut integrations: Vec<Arc<dyn Integration>> = vec![];
+
+        #[cfg(feature = "with_backtrace")]
+        {
+            integrations.push(Arc::new(
+                sentry_backtrace::AttachStacktraceIntegration::default(),
+            ));
+        }
         #[cfg(feature = "with_failure")]
         {
             integrations.push(Arc::new(sentry_failure::FailureIntegration::default()));
@@ -51,6 +58,12 @@ pub fn apply_defaults(mut opts: ClientOptions) -> ClientOptions {
                 integration = integration.add_extractor(sentry_failure::panic_extractor);
             }
             integrations.push(Arc::new(integration));
+        }
+        #[cfg(feature = "with_backtrace")]
+        {
+            integrations.push(Arc::new(
+                sentry_backtrace::ProcessStacktraceIntegration::default(),
+            ));
         }
         integrations.extend(opts.integrations.into_iter());
         opts.integrations = integrations;

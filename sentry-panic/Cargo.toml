@@ -13,7 +13,8 @@ Sentry Integration for panics
 edition = "2018"
 
 [dependencies]
-sentry-core = { version = "0.18.0", path = "../sentry-core", features = ["with_backtrace"] }
+sentry-core = { version = "0.18.0", path = "../sentry-core" }
+sentry-backtrace = { version = "0.18.0", path = "../sentry-backtrace" }
 
 [dev-dependencies]
 sentry = { version = "0.18.0", path = "../sentry" }

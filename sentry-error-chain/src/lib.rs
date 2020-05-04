@@ -26,7 +26,7 @@ use std::fmt::{Debug, Display};
 
 use error_chain::ChainedError;
 
-use sentry_core::backtrace_support::{backtrace_to_stacktrace, error_typename};
+use sentry_backtrace::{backtrace_to_stacktrace, error_typename};
 use sentry_core::internals::Uuid;
 use sentry_core::protocol::{Event, Exception, Level};
 use sentry_core::{ClientOptions, Hub, Integration};

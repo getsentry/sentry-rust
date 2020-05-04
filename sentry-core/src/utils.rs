@@ -1,7 +1,5 @@
 //! Useful utilities for working with events.
-use std::thread;
-
-use crate::protocol::{Context, DebugImage, Stacktrace, Thread};
+use crate::protocol::{Context, DebugImage};
 
 #[cfg(all(feature = "with_device_info", target_os = "macos"))]
 mod model_support {
@@ -265,36 +263,4 @@ pub fn device_context() -> Option<Context> {
 /// Returns the loaded debug images.
 pub fn debug_images() -> Vec<DebugImage> {
     findshlibs_support::find_shlibs().unwrap_or_else(Vec::new)
-}
-
-/// Captures information about the current thread.
-///
-/// If `with_stack` is set to `true` the current stacktrace is
-/// attached.
-pub fn current_thread(with_stack: bool) -> Thread {
-    let thread_id: u64 = unsafe { std::mem::transmute(thread::current().id()) };
-    Thread {
-        id: Some(thread_id.to_string().into()),
-        name: thread::current().name().map(str::to_owned),
-        current: true,
-        stacktrace: if with_stack {
-            current_stacktrace()
-        } else {
-            None
-        },
-        ..Default::default()
-    }
-}
-
-/// Returns the current backtrace as sentry stacktrace.
-pub fn current_stacktrace() -> Option<Stacktrace> {
-    #[cfg(feature = "with_backtrace")]
-    {
-        use crate::backtrace_support::current_stacktrace;
-        current_stacktrace()
-    }
-    #[cfg(not(feature = "with_backtrace"))]
-    {
-        None
-    }
 }

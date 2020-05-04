@@ -8,7 +8,6 @@ use std::time::Duration;
 
 use rand::random;
 
-use crate::backtrace_support::process_event_stacktrace;
 pub use crate::clientoptions::ClientOptions;
 use crate::constants::SDK_INFO;
 use crate::integrations::Integration;
@@ -158,7 +157,7 @@ impl Client {
 
         for (_, integration) in self.integrations.iter() {
             let id = event.event_id;
-            event = match integration.process_event(event) {
+            event = match integration.process_event(event, &self.options) {
                 Some(event) => event,
                 None => {
                     sentry_debug!("integration dropped event {:?}", id);
@@ -178,13 +177,6 @@ impl Client {
         }
         if &event.platform == "other" {
             event.platform = "native".into();
-        }
-
-        // TODO: move this to an integration
-        for exc in &mut event.exception {
-            if let Some(ref mut stacktrace) = exc.stacktrace {
-                process_event_stacktrace(stacktrace, &self.options);
-            }
         }
 
         if let Some(ref func) = self.options.before_send {
