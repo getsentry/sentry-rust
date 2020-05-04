@@ -28,80 +28,13 @@
 use failure::{Error, Fail};
 use regex::Regex;
 
-use crate::backtrace_support::{demangle_symbol, error_typename, filename, strip_symbol};
+use crate::backtrace_support::{error_typename, parse_stacktrace};
 use crate::hub::Hub;
 use crate::internals::Uuid;
-use crate::protocol::{Event, Exception, Frame, Level, Stacktrace};
+use crate::protocol::{Event, Exception, Level};
 
 lazy_static::lazy_static! {
     static ref MODULE_SPLIT_RE: Regex = Regex::new(r"^(.*)::(.*?)$").unwrap();
-    static ref FRAME_RE: Regex = Regex::new(
-        r#"(?xm)
-        ^
-            \s*(?:\d+:)?\s*                      # frame number (missing for inline)
-
-            (?:
-                (?P<addr_old>0x[a-f0-9]+)        # old style address prefix
-                \s-\s
-            )?
-
-            (?P<symbol>[^\r\n\(]+)               # symbol name
-
-            (?:
-                \s\((?P<addr_new>0x[a-f0-9]+)\)  # new style address in parens
-            )?
-
-            (?:
-                \r?\n
-                \s+at\s                          # padded "at" in new line
-                (?P<path>[^\r\n]+?)              # path to source file
-                (?::(?P<lineno>\d+))?            # optional source line
-            )?
-        $
-    "#
-    )
-    .unwrap();
-}
-
-fn parse_stacktrace(bt: &str) -> Option<Stacktrace> {
-    let mut last_address = None;
-
-    let frames = FRAME_RE
-        .captures_iter(&bt)
-        .map(|captures| {
-            let abs_path = captures.name("path").map(|m| m.as_str().to_string());
-            let filename = abs_path.as_ref().map(|p| filename(p).to_string());
-            let real_symbol = captures["symbol"].to_string();
-            let symbol = strip_symbol(&real_symbol);
-            let function = demangle_symbol(symbol);
-
-            // Obtain the instruction address. A missing address usually indicates an inlined stack
-            // frame, in which case the previous address needs to be used.
-            last_address = captures
-                .name("addr_new")
-                .or_else(|| captures.name("addr_old"))
-                .and_then(|m| m.as_str().parse().ok())
-                .or(last_address);
-
-            Frame {
-                symbol: if symbol != function {
-                    Some(symbol.into())
-                } else {
-                    None
-                },
-                function: Some(function),
-                instruction_addr: last_address,
-                abs_path,
-                filename,
-                lineno: captures
-                    .name("lineno")
-                    .map(|x| x.as_str().parse::<u64>().unwrap()),
-                ..Default::default()
-            }
-        })
-        .collect();
-
-    Stacktrace::from_frames_reversed(frames)
 }
 
 fn fail_typename<F: Fail + ?Sized>(f: &F) -> (Option<String>, String) {
@@ -235,84 +168,4 @@ where
             }
         }
     }
-}
-
-#[test]
-fn test_parse_stacktrace() {
-    use crate::protocol::Addr;
-
-    let backtrace = r#"
-   2: <failure::error::error_impl::ErrorImpl as core::convert::From<F>>::from::h3bae66c036570137 (0x55a12174de62)
-             at /root/.cargo/registry/src/github.com-1ecc6299db9ec823/failure-0.1.5/src/error/error_impl.rs:19
-      <failure::error::Error as core::convert::From<F>>::from::hc7d0d62dae166cea
-             at /root/.cargo/registry/src/github.com-1ecc6299db9ec823/failure-0.1.5/src/error/mod.rs:36
-      failure::error_message::err_msg::he322d3ed9409189a
-             at /root/.cargo/registry/src/github.com-1ecc6299db9ec823/failure-0.1.5/src/error_message.rs:12
-      rust::inline2::h562e5687710b6a71
-             at src/main.rs:5
-      rust::not_inline::h16f5b6019e5f0815
-             at src/main.rs:10
-   7: main (0x55e3895a4dc7)
-"#;
-
-    let stacktrace = parse_stacktrace(backtrace).expect("stacktrace");
-    assert_eq!(stacktrace.frames.len(), 6);
-
-    assert_eq!(stacktrace.frames[0].function, Some("main".into()));
-    assert_eq!(
-        stacktrace.frames[0].instruction_addr,
-        Some(Addr(0x55e3_895a_4dc7))
-    );
-
-    // Inlined frame, inherits address from parent
-    assert_eq!(
-        stacktrace.frames[1].function,
-        Some("rust::not_inline".into())
-    );
-    assert_eq!(
-        stacktrace.frames[1].instruction_addr,
-        Some(Addr(0x55a1_2174_de62))
-    );
-}
-
-#[test]
-fn test_parse_stacktrace_alternate() {
-    use crate::protocol::Addr;
-
-    let backtrace = r#"
-   1:        0x104f87e23 - backtrace::backtrace::trace::he6b6038e0eef17f8
-                               at /root/.cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.44/src/backtrace/mod.rs:53
-   2:        0x104f7a6f7 - backtrace::capture::Backtrace::create::h10a127635da03d41
-                               at /root/.cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.44/src/capture.rs:164
-   3:        0x104fb9f4f - __rust_maybe_catch_panic
-                               at src/libpanic_unwind/lib.rs:78
-   4:        0x104fb784e - std::panicking::try::h989c79f60ffdf02a
-                               at src/libstd/panicking.rs:270
-                           std::panic::catch_unwind::hd3f56528916c87b0
-                               at src/libstd/panic.rs:394
-                           std::rt::lang_start_internal::h3d261fac4b6382f2
-                               at src/libstd/rt.rs:51
-   5:        0x1046a06a2 - std::rt::lang_start::h8baa07060377e0b8
-                               at /rustc/5e1a799842ba6ed4a57e91f7ab9435947482f7d8/src/libstd/rt.rs:67
-   6:        0x10469fb62 - main
-"#;
-
-    let stacktrace = parse_stacktrace(backtrace).expect("stacktrace");
-    assert_eq!(stacktrace.frames.len(), 8);
-
-    assert_eq!(stacktrace.frames[0].function, Some("main".into()));
-    assert_eq!(
-        stacktrace.frames[0].instruction_addr,
-        Some(Addr(0x1_0469_fb62))
-    );
-
-    // Inlined frame, inherits address from parent
-    assert_eq!(
-        stacktrace.frames[3].function,
-        Some("std::panic::catch_unwind".into())
-    );
-    assert_eq!(
-        stacktrace.frames[1].instruction_addr,
-        Some(Addr(0x1_046a_06a2))
-    );
 }
