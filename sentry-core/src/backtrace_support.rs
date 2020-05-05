@@ -108,6 +108,7 @@ static ref SECONDARY_BORDER_FRAMES: Vec<(&'static str, &'static str)> = {
     "#).unwrap();
 }
 
+#[allow(unused)]
 pub fn parse_stacktrace(bt: &str) -> Option<Stacktrace> {
     let mut last_address = None;
 
