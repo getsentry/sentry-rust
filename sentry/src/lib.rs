@@ -129,6 +129,9 @@ pub mod internals {
 
     #[cfg(feature = "with_client_implementation")]
     pub use crate::init::ClientInitGuard;
+
+    #[cfg(feature = "with_client_implementation")]
+    pub use crate::defaults::apply_defaults;
 }
 
 #[cfg(feature = "with_client_implementation")]

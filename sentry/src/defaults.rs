@@ -7,7 +7,30 @@ use crate::internals::Dsn;
 use crate::utils;
 use crate::ClientOptions;
 
+/// Apply default client options.
+///
+/// Extends the given `ClientOptions` with default options such as a default
+/// transport, a set of default integrations if not requested otherwise, and
+/// also sets the `dsn`, `release`, `environment`, and proxy settings based on
+/// environment variables.
+///
+/// # Examples
+/// ```
+/// std::env::set_var("SENTRY_RELEASE", "release-from-env");
+///
+/// let options = sentry::ClientOptions::default();
+/// assert_eq!(options.release, None);
+/// assert!(options.transport.is_none());
+///
+/// let options = sentry::internals::apply_defaults(options);
+/// assert_eq!(options.release, Some("release-from-env".into()));
+/// assert!(options.transport.is_some());
+/// ```
 pub fn apply_defaults(mut opts: ClientOptions) -> ClientOptions {
+    // TODO: move this to an integration
+    if opts.server_name.is_none() {
+        opts.server_name = utils::server_name().map(Cow::Owned);
+    }
     if opts.transport.is_none() {
         opts.transport = Some(Arc::new(DefaultTransportFactory));
     }
@@ -30,9 +53,6 @@ pub fn apply_defaults(mut opts: ClientOptions) -> ClientOptions {
                     "release"
                 }))
             });
-    }
-    if opts.server_name.is_none() {
-        opts.server_name = utils::server_name().map(Cow::Owned);
     }
     if opts.http_proxy.is_none() {
         opts.http_proxy = std::env::var("HTTP_PROXY")
