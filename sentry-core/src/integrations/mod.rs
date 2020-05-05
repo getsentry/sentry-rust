@@ -10,9 +10,6 @@ use crate::ClientOptions;
 #[cfg(feature = "with_failure")]
 pub mod failure;
 
-#[cfg(feature = "with_error_chain")]
-pub mod error_chain;
-
 #[cfg(feature = "with_log")]
 pub mod log;
 

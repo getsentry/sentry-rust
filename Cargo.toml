@@ -3,5 +3,6 @@ members = [
     "sentry",
     "sentry-actix",
     "sentry-core",
+    "sentry-error-chain",
     "sentry-types",
 ]

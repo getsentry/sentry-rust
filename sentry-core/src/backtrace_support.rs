@@ -1,3 +1,7 @@
+//! Backtrace utilities for sentry
+//!
+//! Exposes functions to capture, process and convert/parse stacktraces
+
 use std::borrow::Cow;
 use std::fmt;
 
@@ -32,9 +36,6 @@ static ref WELL_KNOWN_SYS_MODULES: Vec<&'static str> = {
     #[cfg(feature = "with_log")] {
         rv.push("log::");
     }
-    #[cfg(feature = "with_error_chain")] {
-        rv.push("error_chain::");
-    }
     rv
 };
 
@@ -53,19 +54,15 @@ static ref WELL_KNOWN_BORDER_FRAMES: Vec<&'static str> = {
     #[cfg(feature = "with_log")] {
         rv.push("<sentry::integrations::log::Logger as log::Log>::log");
     }
-    #[cfg(feature = "with_error_chain")] {
-        rv.push("error_chain::make_backtrace");
-    }
     rv
 };
 
 static ref SECONDARY_BORDER_FRAMES: Vec<(&'static str, &'static str)> = {
     #![allow(unused_mut)]
     let mut rv = Vec::new();
-    #[cfg(feature = "with_error_chain")] {
-        rv.push(("error_chain::make_backtrace", "<T as core::convert::Into<U>>::into"));
-    }
-    {rv}
+    // TODO: figure out how to expose these secondary frames to be configured
+    rv.push(("error_chain::make_backtrace", "<T as core::convert::Into<U>>::into"));
+    rv
 };
 
     static ref COMMON_RUST_SYMBOL_ESCAPES_RE: Regex = Regex::new(r#"(?x)
@@ -108,6 +105,7 @@ static ref SECONDARY_BORDER_FRAMES: Vec<(&'static str, &'static str)> = {
     "#).unwrap();
 }
 
+/// Parses a backtrace string into a Sentry `Stacktrace`.
 #[allow(unused)]
 pub fn parse_stacktrace(bt: &str) -> Option<Stacktrace> {
     let mut last_address = None;
@@ -159,6 +157,10 @@ fn parse_crate_name(func_name: &str) -> Option<String> {
         .map(|cr| cr.as_str().into())
 }
 
+/// Processes a `Stacktrace`.
+///
+/// Trims a `Stacktrace` and marks frames as in-app based on the provided
+/// `ClientOptions`.
 #[cfg(feature = "with_client_implementation")]
 pub fn process_event_stacktrace(stacktrace: &mut Stacktrace, options: &ClientOptions) {
     // automatically trim backtraces
@@ -270,6 +272,7 @@ fn demangle_symbol(s: &str) -> String {
         .to_string()
 }
 
+/// Returns the typename of a formatted Error
 // NOTE: This is currently used in failure and error-chain integration.
 #[allow(unused)]
 pub fn error_typename<D: fmt::Debug>(error: D) -> String {
@@ -281,6 +284,7 @@ pub fn error_typename<D: fmt::Debug>(error: D) -> String {
         .into()
 }
 
+/// Convert a `backtrace::Backtrace` into a Rust `Stacktrace`
 // NOTE: This is currently used in error-chain integration.
 #[allow(unused)]
 pub fn backtrace_to_stacktrace(bt: &Backtrace) -> Option<Stacktrace> {

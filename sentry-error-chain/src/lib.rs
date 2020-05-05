@@ -1,7 +1,5 @@
 //! Adds support for the error-chain crate.
 //!
-//! **Feature:** `with_error_chain` (disabled by default)
-//!
 //! Errors created by the `error-chain` crate can be logged with the
 //! `error_chain` integration.
 //!
@@ -10,10 +8,11 @@
 //! ```no_run
 //! # #[macro_use] extern crate error_chain;
 //! # error_chain! {}
-//! # use sentry_core as sentry;
-//! use sentry::integrations::error_chain::capture_error_chain;
+//! use sentry_error_chain::{capture_error_chain, ErrorChainIntegration};
 //! # fn function_that_might_fail() -> Result<()> { Ok(()) }
 //! # fn test() -> Result<()> {
+//! let _sentry = sentry::init(sentry::ClientOptions::default()
+//!     .add_integration(ErrorChainIntegration));
 //! let result = match function_that_might_fail() {
 //!     Ok(result) => result,
 //!     Err(err) => {
@@ -27,10 +26,10 @@ use std::fmt::{Debug, Display};
 
 use error_chain::ChainedError;
 
-use crate::backtrace_support::{backtrace_to_stacktrace, error_typename};
-use crate::hub::Hub;
-use crate::internals::Uuid;
-use crate::protocol::{Event, Exception, Level};
+use sentry_core::backtrace_support::{backtrace_to_stacktrace, error_typename};
+use sentry_core::internals::Uuid;
+use sentry_core::protocol::{Event, Exception, Level};
+use sentry_core::{ClientOptions, Hub, Integration};
 
 fn exceptions_from_error_chain<T>(error: &T) -> Vec<Exception>
 where
@@ -95,5 +94,18 @@ impl ErrorChainHubExt for Hub {
         T::ErrorKind: Debug + Display,
     {
         self.capture_event(event_from_error_chain(e))
+    }
+}
+
+pub struct ErrorChainIntegration;
+
+impl Integration for ErrorChainIntegration {
+    fn name(&self) -> &'static str {
+        "error-chain"
+    }
+
+    fn setup(&self, cfg: &mut ClientOptions) {
+        cfg.in_app_exclude.push("error_chain::");
+        cfg.extra_border_frames.push("error_chain::make_backtrace");
     }
 }

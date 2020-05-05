@@ -53,7 +53,7 @@ testall:
 checkfast: check-no-default-features check-default-features
 .PHONY: checkfast
 
-checkall: check-all-features check-no-default-features check-default-features check-failure check-log check-panic check-error-chain check-all-impls check-curl-transport check-actix
+checkall: check-all-features check-no-default-features check-default-features check-failure check-log check-panic check-all-impls check-curl-transport check-actix
 .PHONY: checkall
 
 check-all-features:
@@ -86,14 +86,9 @@ check-panic:
 	@cd sentry && RUSTFLAGS=-Dwarnings cargo check --no-default-features --features 'with_panic'
 .PHONY: check-panic
 
-check-error-chain:
-	@echo 'NO CLIENT + ERROR_CHAIN'
-	@cd sentry && RUSTFLAGS=-Dwarnings cargo check --no-default-features --features 'with_error_chain'
-.PHONY: check-error-chain
-
 check-all-impls:
 	@echo 'NO CLIENT + ALL IMPLS'
-	@cd sentry && RUSTFLAGS=-Dwarnings cargo check --no-default-features --features 'with_failure,with_log,with_panic,with_error_chain'
+	@cd sentry && RUSTFLAGS=-Dwarnings cargo check --no-default-features --features 'with_failure,with_log,with_panic'
 .PHONY: check-all-impls
 
 check-curl-transport:

@@ -28,7 +28,6 @@ with_failure = ["sentry-core/with_failure"]
 with_log = ["log", "sentry-core/with_log"]
 with_debug_to_log = ["log", "sentry-core/with_debug_to_log"]
 with_env_logger = ["with_log", "sentry-core/with_env_logger"]
-with_error_chain = ["sentry-core/with_error_chain"]
 with_device_info = ["sentry-core/with_device_info"]
 with_rust_info = ["sentry-core/with_rust_info"]
 with_debug_meta = ["sentry-core/with_debug_meta"]
@@ -51,10 +50,10 @@ tokio = { version = "0.2", features = ["macros"] }
 failure = "0.1.6"
 pretty_env_logger = "0.4.0"
 error-chain = "0.12.1"
+sentry-error-chain = { version = "0.1.0", path = "../sentry-error-chain" }
 
 [[example]]
 name = "error-chain-demo"
-required-features = ["with_error_chain"]
 
 [[example]]
 name = "log-demo"
