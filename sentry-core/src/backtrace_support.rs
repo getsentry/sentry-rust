@@ -4,9 +4,9 @@ use std::fmt;
 use backtrace::Backtrace;
 use regex::{Captures, Regex};
 
-#[cfg(feature = "with_client_implementation")]
-use crate::client::ClientOptions;
 use crate::protocol::{Frame, Stacktrace};
+#[cfg(feature = "with_client_implementation")]
+use crate::ClientOptions;
 
 lazy_static::lazy_static! {
     static ref HASH_FUNC_RE: Regex = Regex::new(r#"(?x)

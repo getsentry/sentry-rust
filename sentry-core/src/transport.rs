@@ -1,8 +1,8 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::client::ClientOptions;
 use crate::protocol::Event;
+use crate::ClientOptions;
 
 /// The trait for transports.
 ///

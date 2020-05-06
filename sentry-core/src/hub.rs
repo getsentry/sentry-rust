@@ -8,6 +8,7 @@ use std::thread;
 use std::time::Duration;
 
 use crate::breadcrumbs::IntoBreadcrumbs;
+use crate::integrations::Integration;
 use crate::internals::Uuid;
 use crate::protocol::{Breadcrumb, Event, Level};
 use crate::scope::{Scope, ScopeGuard};
@@ -220,6 +221,44 @@ impl Hub {
                 }
             }
         }
+    }
+
+    /// Looks up an integration on the hub.
+    ///
+    /// Calls the given function with the requested integration instance when it
+    /// is active on the currently active client.
+    ///
+    /// # Example
+    /// ```
+    /// # use std::sync::Arc;
+    /// use sentry_core::{Client, ClientOptions, Hub, Integration};
+    ///
+    /// #[derive(Debug)]
+    /// struct MyIntegration(usize);
+    /// impl Integration for MyIntegration {}
+    ///
+    /// let client = Arc::new(Client::from(ClientOptions::default()
+    ///     .add_integration(MyIntegration(10))));
+    /// let hub = Hub::with(|hub| Hub::new_from_top(hub));
+    /// hub.bind_client(Some(client));
+    ///
+    /// let value = hub.with_integration(|integration: &MyIntegration| integration.0);
+    /// assert_eq!(value, 10);
+    /// ```
+    pub fn with_integration<I, F, R>(&self, f: F) -> R
+    where
+        I: Integration,
+        F: FnOnce(&I) -> R,
+        R: Default,
+    {
+        with_client_impl! {{
+            if let Some(client) = self.client() {
+                if let Some(integration) = client.get_integration::<I>() {
+                    return f(integration);
+                }
+            }
+            Default::default()
+        }}
     }
 
     /// Returns the last event id.
