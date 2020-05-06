@@ -25,10 +25,6 @@ lazy_static::lazy_static! {
             {
                 rv.push("panic".to_string());
             }
-            #[cfg(feature = "with_log")]
-            {
-                rv.push("log".to_string());
-            }
             rv
         },
     };

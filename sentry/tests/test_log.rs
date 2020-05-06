@@ -1,18 +1,20 @@
 #![cfg(feature = "with_test_support")]
-#![cfg(feature = "with_log")]
 
 #[test]
 fn test_log() {
-    sentry::integrations::log::init(None, Default::default());
+    let log_integration = sentry_log::LogIntegration::default();
 
-    let events = sentry::test::with_captured_events(|| {
-        sentry::configure_scope(|scope| {
-            scope.set_tag("worker", "worker1");
-        });
+    let events = sentry::test::with_captured_events_options(
+        || {
+            sentry::configure_scope(|scope| {
+                scope.set_tag("worker", "worker1");
+            });
 
-        log::info!("Hello World!");
-        log::error!("Shit's on fire yo");
-    });
+            log::info!("Hello World!");
+            log::error!("Shit's on fire yo");
+        },
+        sentry::ClientOptions::default().add_integration(log_integration),
+    );
 
     assert_eq!(events.len(), 1);
     let event = events.into_iter().next().unwrap();

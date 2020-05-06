@@ -19,8 +19,6 @@ with_sentry_default = [
     "sentry/with_default_transport",
     "sentry/with_panic",
     "sentry/with_failure",
-    "sentry/with_log",
-    "sentry/with_env_logger",
     "sentry/with_device_info",
     "sentry/with_rust_info",
     "sentry/with_native_tls"

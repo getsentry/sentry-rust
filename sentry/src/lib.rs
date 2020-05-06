@@ -93,8 +93,6 @@
 //!
 //! Additional integrations:
 //!
-//! * `with_log`: Enables the `log` integration.
-//! * `with_env_logger`: Enables the `env_logger` integration.
 //! * `with_debug_to_log`: When enabled sentry will debug log to a debug log at all times.
 //!
 //! Additional transports:
