@@ -96,7 +96,6 @@
 //! * `with_log`: Enables the `log` integration.
 //! * `with_env_logger`: Enables the `env_logger` integration.
 //! * `with_debug_to_log`: When enabled sentry will debug log to a debug log at all times.
-//! * `with_error_chain`: Enables the error-chain integration.
 //!
 //! Testing:
 //!
@@ -113,8 +112,9 @@ mod scope;
 
 pub mod integrations;
 
+// NOTE: temporarily public, will move to `sentry-backtrace` soon
 #[cfg(feature = "with_backtrace")]
-mod backtrace_support;
+pub mod backtrace_support;
 
 #[cfg(feature = "with_client_implementation")]
 mod client;

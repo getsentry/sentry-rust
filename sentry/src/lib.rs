@@ -96,7 +96,6 @@
 //! * `with_log`: Enables the `log` integration.
 //! * `with_env_logger`: Enables the `env_logger` integration.
 //! * `with_debug_to_log`: When enabled sentry will debug log to a debug log at all times.
-//! * `with_error_chain`: Enables the error-chain integration.
 //!
 //! Additional transports:
 //! * `with_reqwest_transport`: Enables the reqwest transport explicitly.  This is currently the

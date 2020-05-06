@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate error_chain;
 
-use sentry::integrations::error_chain::capture_error_chain;
+use sentry_error_chain::{capture_error_chain, ErrorChainIntegration};
 
 error_chain! {
     errors {
@@ -17,15 +17,14 @@ fn execute() -> Result<()> {
 }
 
 fn main() {
-    let _sentry = sentry::init(sentry::ClientOptions {
-        dsn: Some(
-            "https://a94ae32be2584e0bbd7a4cbb95971fee@sentry.io/1041156"
-                .parse()
-                .unwrap(),
-        ),
-        release: sentry::release_name!(),
-        ..Default::default()
-    });
+    let _sentry = sentry::init((
+        "https://a94ae32be2584e0bbd7a4cbb95971fee@sentry.io/1041156",
+        sentry::ClientOptions {
+            release: sentry::release_name!(),
+            ..Default::default()
+        }
+        .add_integration(ErrorChainIntegration),
+    ));
 
     if let Err(err) = execute() {
         println!("error: {}", err);
