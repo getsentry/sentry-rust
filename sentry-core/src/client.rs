@@ -80,7 +80,6 @@ impl Client {
             Some(factory.create_transport(&options))
         };
         let transport = RwLock::new(create_transport());
-
         Client { options, transport }
     }
 

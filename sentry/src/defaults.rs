@@ -1,7 +1,7 @@
 use std::env;
 use std::{borrow::Cow, sync::Arc};
 
-use sentry_core::transports::DefaultTransportFactory;
+use crate::transports::DefaultTransportFactory;
 
 use crate::internals::Dsn;
 use crate::utils;

@@ -18,9 +18,9 @@ all-features = true
 
 [features]
 default = ["with_client_implementation", "with_default_transport", "with_panic", "with_failure", "with_device_info", "with_rust_info"]
-with_reqwest_transport = ["sentry-core/with_reqwest_transport"]
-with_curl_transport = ["sentry-core/with_curl_transport"]
-with_default_transport = ["sentry-core/with_default_transport"]
+with_reqwest_transport = ["reqwest", "httpdate", "with_client_implementation"]
+with_curl_transport = ["curl", "httpdate", "serde_json", "with_client_implementation"]
+with_default_transport = ["with_reqwest_transport", "with_native_tls"]
 with_client_implementation = ["sentry-core/with_client_implementation"]
 with_backtrace = ["sentry-core/with_backtrace"]
 with_panic = ["sentry-core/with_panic"]
@@ -33,12 +33,16 @@ with_device_info = ["sentry-core/with_device_info"]
 with_rust_info = ["sentry-core/with_rust_info"]
 with_debug_meta = ["sentry-core/with_debug_meta"]
 with_test_support = ["sentry-core/with_test_support"]
-with_rustls = ["sentry-core/with_rustls"]
-with_native_tls = ["sentry-core/with_native_tls"]
+with_rustls = ["reqwest/rustls-tls"]
+with_native_tls = ["reqwest/default-tls"]
 
 [dependencies]
 sentry-core = { version = "0.18.0", path = "../sentry-core", default-features = false }
 log = { version = "0.4.8", optional = true, features = ["std"] }
+reqwest = { version = "0.10.1", optional = true, features = ["blocking", "json"], default-features = false }
+curl = { version = "0.4.25", optional = true }
+httpdate = { version = "0.3.2", optional = true }
+serde_json = { version = "1.0.48", optional = true }
 
 [dev-dependencies]
 failure_derive = "0.1.6"

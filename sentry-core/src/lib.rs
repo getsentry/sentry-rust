@@ -80,7 +80,6 @@
 //! Default features:
 //!
 //! * `with_client_implementation`: Turns on the real client implementation.
-//! * `with_default_transport`: Compiles in the default HTTP transport (see below).
 //! * `with_backtrace`: Enables backtrace support (automatically turned on in a few cases).
 //! * `with_panic`: Enables the panic integration.
 //! * `with_failure`: Enables the `failure` integration.
@@ -98,14 +97,6 @@
 //! * `with_env_logger`: Enables the `env_logger` integration.
 //! * `with_debug_to_log`: When enabled sentry will debug log to a debug log at all times.
 //! * `with_error_chain`: Enables the error-chain integration.
-//!
-//! Additional transports:
-//! * `with_reqwest_transport`: Enables the reqwest transport explicitly.  This is currently the
-//!   default transport.
-//! * `with_curl_transport`: Enables the curl transport.
-//! * `with_rustls`: Enables the `rustls` TLS implementation.  This is currently the default when
-//!   using the `with_reqwest_transport` feature.
-//! * `with_native_tls`: Enables the `default-tls` feature of the `reqwest` library.
 //!
 //! Testing:
 //!
@@ -159,22 +150,6 @@ pub mod internals {
         Auth, ChronoParseError, DateTime, DebugId, Dsn, ParseDebugIdError, ParseDsnError,
         ParseProjectIdError, ProjectId, Scheme, TimeZone, Utc, Uuid, UuidVariant, UuidVersion,
     };
-}
-
-/// The provided transports.
-///
-/// This module exposes all transports that are compiled into the sentry
-/// library.  The `with_reqwest_transport` and `with_curl_transport` flags
-/// turn on these transports.
-pub mod transports {
-    #[cfg(any(feature = "with_reqwest_transport", feature = "with_curl_transport"))]
-    pub use crate::transport::{DefaultTransportFactory, HttpTransport};
-
-    #[cfg(feature = "with_reqwest_transport")]
-    pub use crate::transport::ReqwestHttpTransport;
-
-    #[cfg(feature = "with_curl_transport")]
-    pub use crate::transport::CurlHttpTransport;
 }
 
 // public api or exports from this crate
