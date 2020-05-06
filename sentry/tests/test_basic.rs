@@ -92,12 +92,12 @@ fn test_factory() {
     let events_for_options = events.clone();
     let options = sentry::ClientOptions {
         dsn: "http://foo@example.com/42".parse().ok(),
-        transport: Box::new(
-            move |opts: &sentry::ClientOptions| -> Box<dyn sentry::internals::Transport> {
+        transport: Some(Arc::new(
+            move |opts: &sentry::ClientOptions| -> Arc<dyn sentry::internals::Transport> {
                 assert_eq!(opts.dsn.as_ref().unwrap().host(), "example.com");
-                Box::new(TestTransport(events_for_options.clone()))
+                Arc::new(TestTransport(events_for_options.clone()))
             },
-        ),
+        )),
         ..Default::default()
     };
 

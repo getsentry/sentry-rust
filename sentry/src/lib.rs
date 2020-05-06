@@ -112,6 +112,8 @@
 #![warn(missing_docs)]
 
 #[cfg(feature = "with_client_implementation")]
+mod defaults;
+#[cfg(feature = "with_client_implementation")]
 mod init;
 
 #[doc(inline)]
@@ -127,6 +129,9 @@ pub mod internals {
 
     #[cfg(feature = "with_client_implementation")]
     pub use crate::init::ClientInitGuard;
+
+    #[cfg(feature = "with_client_implementation")]
+    pub use crate::defaults::apply_defaults;
 }
 
 #[cfg(feature = "with_client_implementation")]

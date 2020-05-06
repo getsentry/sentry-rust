@@ -38,7 +38,7 @@ fn test_unwind_safe() {
     let transport = sentry::test::TestTransport::new();
     let options = sentry::ClientOptions {
         dsn: Some("https://public@example.com/1".parse().unwrap()),
-        transport: Box::new(transport.clone()),
+        transport: Some(Arc::new(transport.clone())),
         ..sentry::ClientOptions::default()
     };
 
