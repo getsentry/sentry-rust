@@ -4,13 +4,8 @@ use crate::converters::{breadcrumb_from_record, event_from_record};
 use crate::integration::with_integration;
 
 /// Provides a dispatching logger.
+#[derive(Default)]
 pub struct Logger;
-
-impl Logger {
-    pub fn new() -> Self {
-        Self
-    }
-}
 
 impl log::Log for Logger {
     fn enabled(&self, md: &log::Metadata<'_>) -> bool {
