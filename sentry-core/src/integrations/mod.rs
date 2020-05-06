@@ -4,8 +4,8 @@
 
 use std::any::{type_name, Any};
 
-use crate::client::ClientOptions;
 use crate::protocol::Event;
+use crate::ClientOptions;
 
 #[cfg(feature = "with_failure")]
 pub mod failure;

@@ -238,7 +238,7 @@ impl Hub {
     /// impl Integration for MyIntegration {}
     ///
     /// let client = Arc::new(Client::from(ClientOptions::default()
-    ///     .add_integration(MyIntegration(10)));
+    ///     .add_integration(MyIntegration(10))));
     /// let hub = Hub::with(|hub| Hub::new_from_top(hub));
     /// hub.bind_client(Some(client));
     ///

@@ -119,7 +119,6 @@ mod backtrace_support;
 #[cfg(feature = "with_client_implementation")]
 mod client;
 mod clientoptions;
-#[cfg(feature = "with_client_implementation")]
 mod constants;
 mod intodsn;
 mod transport;
