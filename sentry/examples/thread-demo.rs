@@ -21,8 +21,6 @@ fn main() {
         .add_integration(log_integration),
     ));
 
-    sentry::integrations::panic::register_panic_handler();
-
     // the log integration sends to Hub::current()
     log::info!("Spawning thread");
 

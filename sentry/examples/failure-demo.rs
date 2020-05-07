@@ -1,5 +1,5 @@
 use failure::Fail;
-use sentry::integrations::failure::capture_error;
+use sentry_failure::capture_error;
 
 #[derive(Fail, Debug)]
 #[fail(display = "An error occurred with error code {}. ({})", code, message)]

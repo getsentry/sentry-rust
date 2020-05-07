@@ -1,6 +1,4 @@
-//! Adds support for the failure crate.
-//!
-//! **Feature:** `with_failure` (enabled by default)
+//! Adds support for capturing Sentry errors from `failure` types.
 //!
 //! Failure errors and `Fail` objects can be logged with the failure integration.
 //! This works really well if you use the `failure::Error` type or if you have
@@ -12,7 +10,7 @@
 //! ```no_run
 //! # use sentry_core as sentry;
 //! # fn function_that_might_fail() -> Result<(), failure::Error> { Ok(()) }
-//! use sentry::integrations::failure::capture_error;
+//! use sentry_failure::capture_error;
 //! # fn test() -> Result<(), failure::Error> {
 //! let result = match function_that_might_fail() {
 //!     Ok(result) => result,
@@ -25,13 +23,20 @@
 //! ```
 //!
 //! To capture fails and not errors use `capture_fail`.
+
+#![deny(missing_docs)]
+#![deny(unsafe_code)]
+#![warn(missing_doc_code_examples)]
+
+use std::panic::PanicInfo;
+
 use failure::{Error, Fail};
 use regex::Regex;
 
-use crate::backtrace_support::{error_typename, parse_stacktrace};
-use crate::hub::Hub;
-use crate::internals::Uuid;
-use crate::protocol::{Event, Exception, Level};
+use sentry_core::backtrace_support::{error_typename, parse_stacktrace};
+use sentry_core::internals::Uuid;
+use sentry_core::protocol::{Event, Exception, Level};
+use sentry_core::{ClientOptions, Hub, Integration};
 
 lazy_static::lazy_static! {
     static ref MODULE_SPLIT_RE: Regex = Regex::new(r"^(.*)::(.*?)$").unwrap();
@@ -47,6 +52,53 @@ fn fail_typename<F: Fail + ?Sized>(f: &F) -> (Option<String>, String) {
     } else {
         (None, error_typename(f))
     }
+}
+
+/// The Sentry Failure Integration.
+#[derive(Default)]
+pub struct FailureIntegration;
+
+impl FailureIntegration {
+    /// Creates a new Failure Integration.
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl Integration for FailureIntegration {
+    fn name(&self) -> &'static str {
+        "failure"
+    }
+
+    fn setup(&self, cfg: &mut ClientOptions) {
+        cfg.in_app_exclude.push("failure::");
+        cfg.extra_border_frames.extend_from_slice(&[
+            "failure::error_message::err_msg",
+            "failure::backtrace::Backtrace::new",
+            "failure::backtrace::internal::InternalBacktrace::new",
+            "failure::Fail::context",
+        ]);
+    }
+}
+
+/// Extracts a Sentry `Event` from a `PanicInfo`.
+///
+/// Creates a new Sentry `Event` when the panic has a `failure::Error` payload.
+/// This is for use with the `sentry-panic` integration, and is enabled by
+/// default in `sentry`.
+///
+/// # Examples
+///
+/// ```
+/// let panic_integration = sentry_panic::PanicIntegration::new()
+///     .add_extractor(sentry_failure::panic_extractor);
+/// ```
+pub fn panic_extractor(info: &PanicInfo<'_>) -> Option<Event<'static>> {
+    let error = info.payload().downcast_ref::<Error>()?;
+    Some(Event {
+        level: Level::Fatal,
+        ..event_from_error(error)
+    })
 }
 
 /// This converts a single fail instance into an exception.
@@ -75,18 +127,20 @@ pub fn exception_from_single_fail<F: Fail + ?Sized>(
 
 /// Helper function to create an event from a `failure::Error`.
 pub fn event_from_error(err: &failure::Error) -> Event<'static> {
-    let mut exceptions = vec![];
-
-    for (idx, cause) in err.iter_chain().enumerate() {
-        let bt = match cause.backtrace() {
-            Some(bt) => Some(bt),
-            None if idx == 0 => Some(err.backtrace()),
-            None => None,
-        };
-        exceptions.push(exception_from_single_fail(cause, bt));
-    }
-
+    let mut exceptions: Vec<_> = err
+        .iter_chain()
+        .enumerate()
+        .map(|(idx, cause)| {
+            let bt = match cause.backtrace() {
+                Some(bt) => Some(bt),
+                None if idx == 0 => Some(err.backtrace()),
+                None => None,
+            };
+            exception_from_single_fail(cause, bt)
+        })
+        .collect();
     exceptions.reverse();
+
     Event {
         exception: exceptions.into(),
         level: Level::Error,

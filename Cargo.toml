@@ -4,6 +4,8 @@ members = [
     "sentry-actix",
     "sentry-core",
     "sentry-error-chain",
+    "sentry-failure",
     "sentry-log",
+    "sentry-panic",
     "sentry-types",
 ]

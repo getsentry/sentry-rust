@@ -15,8 +15,6 @@ fn main() {
         .add_integration(log_integration),
     ));
 
-    sentry::integrations::panic::register_panic_handler();
-
     debug!("System is booting");
     info!("System is booting");
     warn!("System is warning");

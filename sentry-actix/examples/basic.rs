@@ -11,7 +11,6 @@ fn failing(_req: &HttpRequest) -> Result<String, Error> {
 fn main() {
     let _guard = sentry::init("https://a94ae32be2584e0bbd7a4cbb95971fee@sentry.io/1041156");
     env::set_var("RUST_BACKTRACE", "1");
-    sentry::integrations::panic::register_panic_handler();
 
     server::new(|| {
         App::new()

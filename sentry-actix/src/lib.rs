@@ -23,7 +23,6 @@
 //! fn main() {
 //!     let _guard = sentry::init("https://public@sentry.io/1234");
 //!     env::set_var("RUST_BACKTRACE", "1");
-//!     sentry::integrations::panic::register_panic_handler();
 //!
 //!     server::new(|| {
 //!         App::new()
@@ -71,10 +70,10 @@ use std::sync::{Arc, Mutex};
 use actix_web::middleware::{Finished, Middleware, Response, Started};
 use actix_web::{Error, HttpMessage, HttpRequest, HttpResponse};
 use failure::Fail;
-use sentry::integrations::failure::exception_from_single_fail;
 use sentry::internals::{ScopeGuard, Uuid};
 use sentry::protocol::{ClientSdkPackage, Event, Level};
 use sentry::Hub;
+use sentry_failure::exception_from_single_fail;
 
 /// A helper construct that can be used to reconfigure and build the middleware.
 pub struct SentryMiddlewareBuilder {

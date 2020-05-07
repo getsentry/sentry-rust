@@ -62,14 +62,12 @@ impl Drop for ClientInitGuard {
 /// created to enable further configuration:
 ///
 /// ```
-/// use sentry::integrations::panic::register_panic_handler;
-///
 /// let sentry = sentry::init(sentry::ClientOptions {
 ///     release: Some("foo-bar-baz@1.0.0".into()),
 ///     ..Default::default()
 /// });
 /// if sentry.is_enabled() {
-///     register_panic_handler();
+///     // some other initialization
 /// }
 /// ```
 ///

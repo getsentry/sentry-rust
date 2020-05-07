@@ -6,7 +6,6 @@ fn main() {
             ..Default::default()
         },
     ));
-    sentry::integrations::panic::register_panic_handler();
 
     {
         let _guard = sentry::Hub::current().push_scope();

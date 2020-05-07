@@ -1,8 +1,6 @@
 fn main() {
     let _sentry = sentry::init("https://a94ae32be2584e0bbd7a4cbb95971fee@sentry.io/1041156");
 
-    sentry::integrations::panic::register_panic_handler();
-
     sentry::with_scope(
         |scope| {
             scope.set_level(Some(sentry::Level::Warning));
