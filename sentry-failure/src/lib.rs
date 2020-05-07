@@ -84,7 +84,7 @@ impl Integration for FailureIntegration {
 /// Extracts a Sentry `Event` from a `PanicInfo`.
 ///
 /// Creates a new Sentry `Event` when the panic has a `failure::Error` payload.
-/// This is for use with the `sentry-panic` integration, and iss enabled by
+/// This is for use with the `sentry-panic` integration, and is enabled by
 /// default in `sentry`.
 ///
 /// # Examples

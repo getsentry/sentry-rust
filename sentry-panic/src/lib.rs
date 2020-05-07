@@ -1,6 +1,6 @@
 //! The Sentry Panic handler Integration.
 //!
-//! The `PanicIntegration`, which is enabled by default in `sentry` installs a
+//! The `PanicIntegration`, which is enabled by default in `sentry`, installs a
 //! panic handler that will automatically dispatch all errors to Sentry that
 //! are caused by a panic.
 //! Additionally, panics are forwarded to the previously registered panic hook.
