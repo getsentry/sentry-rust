@@ -20,3 +20,4 @@ failure = "0.1.6"
 
 [dev-dependencies]
 sentry = { version = "0.18.0", path = "../sentry" }
+sentry-panic = { version = "0.18.0", path = "../sentry-panic" }

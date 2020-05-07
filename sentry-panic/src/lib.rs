@@ -1,7 +1,9 @@
-//! Panic handler support.
+//! The Sentry Panic handler Integration.
 //!
-//! A panic handler can be installed that will automatically dispatch all errors
-//! to Sentry that are caused by a panic.
+//! The `PanicIntegration`, which is enabled by default in `sentry` installs a
+//! panic handler that will automatically dispatch all errors to Sentry that
+//! are caused by a panic.
+//! Additionally, panics are forwarded to the previously registered panic hook.
 //!
 //! # Configuration
 //!
@@ -12,8 +14,10 @@
 //! let integration = sentry_panic::PanicIntegration::default()
 //!     .add_extractor(|info| None);
 //! ```
-//!
-//! Additionally panics are forwarded to the previously registered panic hook.
+
+#![deny(missing_docs)]
+#![deny(unsafe_code)]
+#![warn(missing_doc_code_examples)]
 
 use std::panic::{self, PanicInfo};
 use std::sync::Once;
@@ -24,7 +28,7 @@ use sentry_core::{ClientOptions, Hub, Integration};
 
 /// A panic handler that sends to Sentry.
 ///
-/// This panic handler report panics to Sentry. It also attempts to prevent
+/// This panic handler reports panics to Sentry. It also attempts to prevent
 /// double faults in some cases where it's known to be unsafe to invoke the
 /// Sentry panic handler.
 pub fn panic_handler(info: &PanicInfo<'_>) {
@@ -35,8 +39,9 @@ pub fn panic_handler(info: &PanicInfo<'_>) {
     });
 }
 
-pub type PanicExtractor = dyn Fn(&PanicInfo<'_>) -> Option<Event<'static>> + Send + Sync;
+type PanicExtractor = dyn Fn(&PanicInfo<'_>) -> Option<Event<'static>> + Send + Sync;
 
+/// The Sentry Panic handler Integration.
 #[derive(Default)]
 pub struct PanicIntegration {
     extractors: Vec<Box<PanicExtractor>>,
@@ -72,6 +77,11 @@ pub fn message_from_panic_info<'a>(info: &'a PanicInfo<'_>) -> &'a str {
 }
 
 impl PanicIntegration {
+    /// Creates a new Panic Integration.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     /// Registers a new extractor.
     pub fn add_extractor<F>(mut self, f: F) -> Self
     where

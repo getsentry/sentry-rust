@@ -1,4 +1,4 @@
-//! Adds support for the failure crate.
+//! Adds support for capturing Sentry errors from `failure` types.
 //!
 //! Failure errors and `Fail` objects can be logged with the failure integration.
 //! This works really well if you use the `failure::Error` type or if you have
@@ -23,6 +23,10 @@
 //! ```
 //!
 //! To capture fails and not errors use `capture_fail`.
+
+#![deny(missing_docs)]
+#![deny(unsafe_code)]
+#![warn(missing_doc_code_examples)]
 
 use std::panic::PanicInfo;
 
@@ -50,8 +54,16 @@ fn fail_typename<F: Fail + ?Sized>(f: &F) -> (Option<String>, String) {
     }
 }
 
+/// The Sentry Failure Integration.
 #[derive(Default)]
 pub struct FailureIntegration;
+
+impl FailureIntegration {
+    /// Creates a new Failure Integration.
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
 
 impl Integration for FailureIntegration {
     fn name(&self) -> &'static str {
@@ -69,6 +81,18 @@ impl Integration for FailureIntegration {
     }
 }
 
+/// Extracts a Sentry `Event` from a `PanicInfo`.
+///
+/// Creates a new Sentry `Event` when the panic has a `failure::Error` payload.
+/// This is for use with the `sentry-panic` integration, and iss enabled by
+/// default in `sentry`.
+///
+/// # Examples
+///
+/// ```
+/// let panic_integration = sentry_panic::PanicIntegration::new()
+///     .add_extractor(sentry_failure::panic_extractor);
+/// ```
 pub fn panic_extractor(info: &PanicInfo<'_>) -> Option<Event<'static>> {
     let error = info.payload().downcast_ref::<Error>()?;
     Some(Event {
