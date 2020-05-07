@@ -23,8 +23,8 @@ with_curl_transport = ["curl", "httpdate", "serde_json", "with_client_implementa
 with_default_transport = ["with_reqwest_transport", "with_native_tls"]
 with_client_implementation = ["sentry-core/with_client_implementation"]
 with_backtrace = ["sentry-core/with_backtrace"]
-with_panic = ["sentry-core/with_panic"]
-with_failure = ["sentry-core/with_failure"]
+with_panic = ["sentry-panic"]
+with_failure = ["sentry-failure"]
 with_debug_to_log = ["log", "sentry-core/with_debug_to_log"]
 with_device_info = ["sentry-core/with_device_info"]
 with_rust_info = ["sentry-core/with_rust_info"]
@@ -35,6 +35,8 @@ with_native_tls = ["reqwest/default-tls"]
 
 [dependencies]
 sentry-core = { version = "0.18.0", path = "../sentry-core", default-features = false }
+sentry-failure = { version = "0.18.0", path = "../sentry-failure", optional = true }
+sentry-panic = { version = "0.18.0", path = "../sentry-panic", optional = true }
 log = { version = "0.4.8", optional = true, features = ["std"] }
 reqwest = { version = "0.10.1", optional = true, features = ["blocking", "json"], default-features = false }
 curl = { version = "0.4.25", optional = true }

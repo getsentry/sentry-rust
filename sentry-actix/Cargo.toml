@@ -18,14 +18,14 @@ with_sentry_default = [
     "sentry/with_client_implementation",
     "sentry/with_default_transport",
     "sentry/with_panic",
-    "sentry/with_failure",
     "sentry/with_device_info",
     "sentry/with_rust_info",
     "sentry/with_native_tls"
 ]
 
 [dependencies]
-actix-web = { version = "0.7", default-features = false }
 sentry = { version = "0.18.0", path = "../sentry", default-features = false }
+sentry-failure = { version = "0.18.0", path = "../sentry-failure" }
+actix-web = { version = "0.7", default-features = false }
 failure = "0.1.3"
 fragile = "0.3.0"

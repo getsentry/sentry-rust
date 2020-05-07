@@ -5,7 +5,7 @@ use crate::transports::DefaultTransportFactory;
 
 use crate::internals::Dsn;
 use crate::utils;
-use crate::ClientOptions;
+use crate::{ClientOptions, Integration};
 
 /// Apply default client options.
 ///
@@ -37,7 +37,20 @@ pub fn apply_defaults(mut opts: ClientOptions) -> ClientOptions {
     if opts.default_integrations {
         // default integrations need to be ordered *before* custom integrations,
         // since they also process events in order
-        let mut integrations = vec![];
+        let mut integrations: Vec<Arc<dyn Integration>> = vec![];
+        #[cfg(feature = "with_failure")]
+        {
+            integrations.push(Arc::new(sentry_failure::FailureIntegration::default()));
+        }
+        #[cfg(feature = "with_panic")]
+        {
+            let mut integration = sentry_panic::PanicIntegration::default();
+            #[cfg(feature = "with_failure")]
+            {
+                integration = integration.add_extractor(sentry_failure::panic_extractor);
+            }
+            integrations.push(Arc::new(integration));
+        }
         integrations.extend(opts.integrations.into_iter());
         opts.integrations = integrations;
     }

@@ -30,9 +30,6 @@ static ref WELL_KNOWN_SYS_MODULES: Vec<&'static str> = {
         "__rust_",
         "___rust_",
     ];
-    #[cfg(feature = "with_failure")] {
-        rv.push("failure::");
-    }
     rv
 };
 
@@ -42,12 +39,6 @@ static ref WELL_KNOWN_BORDER_FRAMES: Vec<&'static str> = {
         "std::panicking::begin_panic",
         "core::panicking::panic",
     ];
-    #[cfg(feature = "with_failure")] {
-        rv.push("failure::error_message::err_msg");
-        rv.push("failure::backtrace::Backtrace::new");
-        rv.push("failure::backtrace::internal::InternalBacktrace::new");
-        rv.push("failure::Fail::context");
-    }
     rv
 };
 

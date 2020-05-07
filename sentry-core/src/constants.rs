@@ -17,14 +17,6 @@ lazy_static::lazy_static! {
         integrations: {
             #[allow(unused_mut)]
             let mut rv = vec![];
-            #[cfg(feature = "with_failure")]
-            {
-                rv.push("failure".to_string());
-            }
-            #[cfg(feature = "with_panic")]
-            {
-                rv.push("panic".to_string());
-            }
             rv
         },
     };

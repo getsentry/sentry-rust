@@ -135,13 +135,13 @@ where
 /// This is useful when extra data should be send with a single capture call
 /// for instance a different level or tags:
 ///
-/// ```ignore
-/// use sentry::{with_scope, Level};
-/// use sentry::integrations::failure::capture_error;
+/// ```
+/// # use sentry_core as sentry;
+/// use sentry::{capture_message, with_scope, Level};
 ///
 /// with_scope(
-///     |scope| scope.set_level(Level::Warning),
-///     || capture_error(err)
+///     |scope| scope.set_level(Some(Level::Warning)),
+///     || capture_message("some error", Level::Info),
 /// );
 /// ```
 pub fn with_scope<C, F, R>(scope_config: C, callback: F) -> R

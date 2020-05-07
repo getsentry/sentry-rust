@@ -7,12 +7,6 @@ use std::any::{type_name, Any};
 use crate::protocol::Event;
 use crate::ClientOptions;
 
-#[cfg(feature = "with_failure")]
-pub mod failure;
-
-#[cfg(feature = "with_panic")]
-pub mod panic;
-
 /// Integration abstraction.
 ///
 /// An Integration in sentry has two primary purposes.
