@@ -44,6 +44,7 @@ pub fn apply_defaults(mut opts: ClientOptions) -> ClientOptions {
         }
         #[cfg(feature = "with_panic")]
         {
+            #[allow(unused_mut)]
             let mut integration = sentry_panic::PanicIntegration::default();
             #[cfg(feature = "with_failure")]
             {
