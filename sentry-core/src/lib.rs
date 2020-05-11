@@ -111,6 +111,7 @@ pub mod integrations;
 mod client;
 mod clientoptions;
 mod constants;
+mod error;
 mod intodsn;
 mod transport;
 #[cfg(feature = "with_client_implementation")]
@@ -140,6 +141,7 @@ pub mod internals {
 // public api or exports from this crate
 pub use crate::api::*;
 pub use crate::clientoptions::ClientOptions;
+pub use crate::error::event_from_error;
 pub use crate::hub::Hub;
 pub use crate::integrations::Integration;
 pub use crate::scope::Scope;

@@ -1,6 +1,7 @@
 #![allow(unused)]
 
 use std::cell::{Cell, UnsafeCell};
+use std::error::Error;
 use std::mem::drop;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError, RwLock, TryLockError};
@@ -8,11 +9,12 @@ use std::thread;
 use std::time::Duration;
 
 use crate::breadcrumbs::IntoBreadcrumbs;
+#[cfg(feature = "with_client_implementation")]
+use crate::error::event_from_error;
 use crate::integrations::Integration;
 use crate::internals::Uuid;
 use crate::protocol::{Breadcrumb, Event, Level};
 use crate::scope::{Scope, ScopeGuard};
-
 #[cfg(feature = "with_client_implementation")]
 use crate::{client::Client, scope::Stack, utils};
 
@@ -277,6 +279,21 @@ impl Hub {
                     let event_id = client.capture_event(event, Some(&top.scope));
                     *self.last_event_id.write().unwrap() = Some(event_id);
                     event_id
+                } else {
+                    Default::default()
+                }
+            })
+        }}
+    }
+
+    /// Capture any `std::error::Error`.
+    pub fn capture_error(&self, error: &dyn Error) -> Uuid {
+        with_client_impl! {{
+            self.inner.with(|stack| {
+                let top = stack.top();
+                if let Some(ref client) = top.client {
+                    let event = event_from_error(error);
+                    self.capture_event(event)
                 } else {
                     Default::default()
                 }

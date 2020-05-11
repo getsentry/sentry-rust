@@ -170,7 +170,7 @@ pub fn event_from_fail<F: Fail + ?Sized>(fail: &F) -> Event<'static> {
 ///
 /// This dispatches to the current hub.
 pub fn capture_error(err: &Error) -> Uuid {
-    Hub::with_active(|hub| hub.capture_error(err))
+    Hub::with_active(|hub| FailureHubExt::capture_error(hub.as_ref(), err))
 }
 
 /// Captures a `failure::Fail`.
