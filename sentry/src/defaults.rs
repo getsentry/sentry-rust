@@ -4,7 +4,6 @@ use std::{borrow::Cow, sync::Arc};
 use crate::transports::DefaultTransportFactory;
 
 use crate::internals::Dsn;
-use crate::utils;
 use crate::{ClientOptions, Integration};
 
 /// Apply default client options.
@@ -27,10 +26,6 @@ use crate::{ClientOptions, Integration};
 /// assert!(options.transport.is_some());
 /// ```
 pub fn apply_defaults(mut opts: ClientOptions) -> ClientOptions {
-    // TODO: move this to an integration
-    if opts.server_name.is_none() {
-        opts.server_name = utils::server_name().map(Cow::Owned);
-    }
     if opts.transport.is_none() {
         opts.transport = Some(Arc::new(DefaultTransportFactory));
     }
@@ -38,13 +33,13 @@ pub fn apply_defaults(mut opts: ClientOptions) -> ClientOptions {
         // default integrations need to be ordered *before* custom integrations,
         // since they also process events in order
         let mut integrations: Vec<Arc<dyn Integration>> = vec![];
-
         #[cfg(feature = "with_backtrace")]
         {
             integrations.push(Arc::new(
                 sentry_backtrace::AttachStacktraceIntegration::default(),
             ));
         }
+        integrations.push(Arc::new(sentry_contexts::ContextIntegration::default()));
         #[cfg(feature = "with_failure")]
         {
             integrations.push(Arc::new(sentry_failure::FailureIntegration::default()));
