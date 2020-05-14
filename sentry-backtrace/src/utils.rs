@@ -1,5 +1,3 @@
-use std::fmt;
-
 use regex::{Captures, Regex};
 
 lazy_static::lazy_static! {

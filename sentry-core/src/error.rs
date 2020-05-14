@@ -1,4 +1,3 @@
-use std::any::type_name;
 use std::error::Error;
 
 use crate::protocol::{Event, Exception, Level};
