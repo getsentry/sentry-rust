@@ -28,30 +28,25 @@
 #![deny(unsafe_code)]
 #![warn(missing_doc_code_examples)]
 
+use std::borrow::Cow;
 use std::panic::PanicInfo;
 
 use failure::{Error, Fail};
-use regex::Regex;
 
 use sentry_backtrace::{error_typename, parse_stacktrace};
 use sentry_core::internals::Uuid;
 use sentry_core::protocol::{Event, Exception, Level};
+use sentry_core::utils::parse_type_name;
 use sentry_core::{ClientOptions, Hub, Integration};
 
-lazy_static::lazy_static! {
-    static ref MODULE_SPLIT_RE: Regex = Regex::new(r"^(.*)::(.*?)$").unwrap();
-}
-
 fn fail_typename<F: Fail + ?Sized>(f: &F) -> (Option<String>, String) {
-    if let Some(name) = f.name() {
-        if let Some(caps) = MODULE_SPLIT_RE.captures(name) {
-            (Some(caps[1].to_string()), caps[2].to_string())
+    parse_type_name(
+        &(if let Some(name) = f.name() {
+            Cow::Borrowed(name)
         } else {
-            (None, name.to_string())
-        }
-    } else {
-        (None, error_typename(f))
-    }
+            Cow::Owned(error_typename(f))
+        }),
+    )
 }
 
 /// The Sentry Failure Integration.
