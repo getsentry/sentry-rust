@@ -3,24 +3,7 @@ use std::fmt;
 use std::sync::{Arc, PoisonError, RwLock};
 
 use crate::client::Client;
-use crate::protocol::map::Entry;
 use crate::protocol::{Breadcrumb, Context, Event, Level, User, Value};
-use crate::utils;
-
-lazy_static::lazy_static! {
-    static ref CONTEXT_DEFAULTS: ContextDefaults = ContextDefaults {
-        os: utils::os_context(),
-        rust: utils::rust_context(),
-        device: utils::device_context(),
-    };
-}
-
-#[derive(Debug)]
-struct ContextDefaults {
-    pub os: Option<Context>,
-    pub rust: Option<Context>,
-    pub device: Option<Context>,
-}
 
 #[derive(Debug)]
 pub struct Stack {
@@ -53,7 +36,7 @@ pub struct Scope {
     pub(crate) user: Option<Arc<User>>,
     pub(crate) extra: im::HashMap<String, Value>,
     pub(crate) tags: im::HashMap<String, String>,
-    pub(crate) contexts: im::HashMap<String, Option<Context>>,
+    pub(crate) contexts: im::HashMap<String, Context>,
     pub(crate) event_processors: im::Vector<Arc<EventProcessor>>,
 }
 
@@ -194,12 +177,12 @@ impl Scope {
 
     /// Sets a context for a key.
     pub fn set_context<C: Into<Context>>(&mut self, key: &str, value: C) {
-        self.contexts.insert(key.to_string(), Some(value.into()));
+        self.contexts.insert(key.to_string(), value.into());
     }
 
     /// Removes a context for a key.
     pub fn remove_context(&mut self, key: &str) {
-        self.contexts.insert(key.to_string(), None);
+        self.contexts.remove(key);
     }
 
     /// Sets a extra to a specific value.
@@ -223,19 +206,9 @@ impl Scope {
     /// Applies the contained scoped data to fill an event.
     #[allow(clippy::cognitive_complexity)]
     pub fn apply_to_event(&self, mut event: Event<'static>) -> Option<Event<'static>> {
-        let mut add_os = true;
-        let mut add_rust = true;
-        let mut add_device = true;
-
         // TODO: event really should have an optional level
         if self.level.is_some() {
             event.level = self.level.unwrap();
-        }
-
-        if !self.breadcrumbs.is_empty() {
-            event
-                .breadcrumbs
-                .extend(self.breadcrumbs.iter().map(|x| (*x).clone()));
         }
 
         if event.user.is_none() {
@@ -244,34 +217,10 @@ impl Scope {
             }
         }
 
-        if !self.extra.is_empty() {
-            event
-                .extra
-                .extend(self.extra.iter().map(|(k, v)| ((*k).clone(), (*v).clone())));
-        }
-
-        if !self.tags.is_empty() {
-            event
-                .tags
-                .extend(self.tags.iter().map(|(k, v)| ((*k).clone(), (*v).clone())));
-        }
-
-        for (key, value) in self.contexts.iter() {
-            match *value {
-                None => match key.as_str() {
-                    "os" => add_os = false,
-                    "rust" => add_rust = false,
-                    "device" => add_device = false,
-                    _ => {}
-                },
-                Some(ref value) => {
-                    event
-                        .contexts
-                        .entry((*key).clone())
-                        .or_insert_with(|| (*value).clone());
-                }
-            }
-        }
+        event.breadcrumbs.extend(self.breadcrumbs.iter().cloned());
+        event.extra.extend(self.extra.iter().cloned());
+        event.tags.extend(self.tags.iter().cloned());
+        event.contexts.extend(self.contexts.iter().cloned());
 
         if event.transaction.is_none() {
             if let Some(ref txn) = self.transaction {
@@ -284,30 +233,6 @@ impl Scope {
         {
             if let Some(ref fp) = self.fingerprint {
                 event.fingerprint = Cow::Owned((**fp).clone());
-            }
-        }
-
-        if add_os {
-            if let Entry::Vacant(entry) = event.contexts.entry("os".to_string()) {
-                if let Some(ref os) = CONTEXT_DEFAULTS.os {
-                    entry.insert(os.clone());
-                }
-            }
-        }
-
-        if add_rust {
-            if let Entry::Vacant(entry) = event.contexts.entry("rust".to_string()) {
-                if let Some(ref rust) = CONTEXT_DEFAULTS.rust {
-                    entry.insert(rust.clone());
-                }
-            }
-        }
-
-        if add_device {
-            if let Entry::Vacant(entry) = event.contexts.entry("device".to_string()) {
-                if let Some(ref device) = CONTEXT_DEFAULTS.device {
-                    entry.insert(device.clone());
-                }
             }
         }
 

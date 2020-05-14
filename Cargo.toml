@@ -3,6 +3,7 @@ members = [
     "sentry",
     "sentry-actix",
     "sentry-backtrace",
+    "sentry-contexts",
     "sentry-core",
     "sentry-error-chain",
     "sentry-failure",
