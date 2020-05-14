@@ -1,0 +1,18 @@
+[package]
+name = "sentry-anyhow"
+version = "0.18.0"
+authors = ["Sentry <hello@sentry.io>"]
+license = "Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/getsentry/sentry-rust"
+homepage = "https://github.com/getsentry/sentry-rust"
+documentation = "https://getsentry.github.io/sentry-rust"
+description = """
+Sentry Integration for any errors.
+"""
+edition = "2018"
+
+
+[dependencies]
+sentry-core = { version = "0.18.0", path = "../sentry-core" }
+anyhow = "1.0.30"

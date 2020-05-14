@@ -2,6 +2,7 @@
 members = [
     "sentry",
     "sentry-actix",
+    "sentry-anyhow",
     "sentry-backtrace",
     "sentry-contexts",
     "sentry-core",
