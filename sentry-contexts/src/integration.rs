@@ -46,7 +46,11 @@ impl Integration for ContextIntegration {
         }
     }
 
-    fn process_event(&self, mut event: Event<'static>) -> Option<Event<'static>> {
+    fn process_event(
+        &self,
+        mut event: Event<'static>,
+        _cfg: &ClientOptions,
+    ) -> Option<Event<'static>> {
         if self.add_os {
             if let Entry::Vacant(entry) = event.contexts.entry("os".to_string()) {
                 if let Some(os) = os_context() {

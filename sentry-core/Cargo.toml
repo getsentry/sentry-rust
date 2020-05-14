@@ -17,7 +17,7 @@ all-features = true
 
 [features]
 default = ["with_client_implementation"]
-with_client_implementation = ["im", "url", "with_backtrace", "rand"]
+with_client_implementation = ["im", "url", "rand"]
 with_debug_to_log = ["log"]
 with_debug_meta = ["findshlibs", "with_client_implementation"]
 with_test_support = []
