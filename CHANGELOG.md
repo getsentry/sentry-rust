@@ -1,8 +1,14 @@
 # Changelog
 
+## 0.18.1
+
+- Fix potential segfault with `with_debug_meta` (#211).
+- Fix panic when running inside of tokio (#186).
+
 ## 0.18.0
 
 - Upgrade most dependencies to their current versions (#183):
+
   - `env_logger 0.7`
   - `reqwest 0.10`
   - `error-chain 0.12`
