@@ -68,17 +68,6 @@ pub fn demangle_symbol(s: &str) -> String {
         .to_string()
 }
 
-/// Returns the typename of a formatted Error
-// NOTE: this is used by the error-chain and failure integrations
-pub fn error_typename<D: fmt::Debug>(error: D) -> String {
-    format!("{:?}", error)
-        .split(&[' ', '(', '{', '\r', '\n'][..])
-        .next()
-        .unwrap()
-        .trim()
-        .into()
-}
-
 /// Checks whether the function name starts with the given pattern.
 ///
 /// In trait implementations, the original type name is wrapped in "_< ... >" and colons are

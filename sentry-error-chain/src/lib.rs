@@ -27,10 +27,10 @@ use std::fmt::{Debug, Display};
 
 use error_chain::ChainedError;
 
-use sentry_backtrace::{backtrace_to_stacktrace, error_typename};
+use sentry_backtrace::backtrace_to_stacktrace;
 use sentry_core::internals::Uuid;
 use sentry_core::protocol::{Event, Exception, Level};
-use sentry_core::utils::parse_type_name;
+use sentry_core::utils::parse_type_name_from_debug;
 use sentry_core::{ClientOptions, Hub, Integration};
 
 fn exceptions_from_error_chain<T>(error: &T) -> Vec<Exception>
@@ -40,7 +40,7 @@ where
 {
     let mut rv = vec![];
 
-    let (module, ty) = parse_type_name(&error_typename(error.kind()));
+    let (module, ty) = parse_type_name_from_debug(&error.kind());
     rv.push(Exception {
         ty,
         module,
@@ -50,7 +50,7 @@ where
     });
 
     for error in error.iter().skip(1) {
-        let (module, ty) = parse_type_name(&error_typename(error));
+        let (module, ty) = parse_type_name_from_debug(&error);
         rv.push(Exception {
             ty,
             module,

@@ -77,6 +77,46 @@ fn test_parse_type_name() {
     );
 }
 
+/// Parse a typename from `Debug` output.
+///
+/// This function only exists as a workaround for lack of a stable
+/// `std::any::type_name_of_val`.
+///
+/// # Examples
+///
+/// ```
+/// use sentry_core::utils::parse_type_name_from_debug;
+///
+/// let parsed = parse_type_name_from_debug(&Some(1));
+/// assert_eq!(parsed, (None, "Some".into()));
+/// ```
+pub fn parse_type_name_from_debug<D: std::fmt::Debug + ?Sized>(d: &D) -> (Option<String>, String) {
+    let dbg = format!("{:#?}", d);
+    parse_type_name(
+        dbg.split(&['(', '{', '\r', '\n'][..])
+            .next()
+            .unwrap()
+            .trim(),
+    )
+}
+
+#[test]
+fn test_parse_type_name_from_debug() {
+    use parse_type_name_from_debug as parse;
+    #[derive(Debug)]
+    struct MyStruct;
+    assert_eq!(parse(&MyStruct), (None, "MyStruct".into()));
+
+    let err = "NaN".parse::<usize>().unwrap_err();
+    assert_eq!(parse(&err), (None, "ParseIntError".into()));
+
+    let err = anyhow::Error::from(err);
+    assert_eq!(parse(&err), (None, "ParseIntError".into()));
+
+    let err = sentry_types::ParseDsnError::from(sentry_types::ParseProjectIdError::EmptyValue);
+    assert_eq!(parse(&err), (None, "InvalidProjectId".into()));
+}
+
 #[cfg(feature = "with_debug_meta")]
 mod findshlibs_support {
     use super::*;

@@ -28,25 +28,21 @@
 #![deny(unsafe_code)]
 #![warn(missing_doc_code_examples)]
 
-use std::borrow::Cow;
 use std::panic::PanicInfo;
 
 use failure::{Error, Fail};
-
-use sentry_backtrace::{error_typename, parse_stacktrace};
+use sentry_backtrace::parse_stacktrace;
 use sentry_core::internals::Uuid;
 use sentry_core::protocol::{Event, Exception, Level};
-use sentry_core::utils::parse_type_name;
+use sentry_core::utils::{parse_type_name, parse_type_name_from_debug};
 use sentry_core::{ClientOptions, Hub, Integration};
 
 fn fail_typename<F: Fail + ?Sized>(f: &F) -> (Option<String>, String) {
-    parse_type_name(
-        &(if let Some(name) = f.name() {
-            Cow::Borrowed(name)
-        } else {
-            Cow::Owned(error_typename(f))
-        }),
-    )
+    if let Some(name) = f.name() {
+        parse_type_name(name)
+    } else {
+        parse_type_name_from_debug(f)
+    }
 }
 
 /// The Sentry Failure Integration.
