@@ -80,9 +80,6 @@
 //! Default features:
 //!
 //! * `with_client_implementation`: Turns on the real client implementation.
-//! * `with_device_info`: Enables the device info context.
-//! * `with_rust_info`: Enables the rust compiler info context instead of printing to stderr when
-//!   debug is enabled on the hub.
 //!
 //! Additional context:
 //!

@@ -83,9 +83,6 @@
 //! * `with_backtrace`: Enables backtrace support (automatically turned on in a few cases).
 //! * `with_panic`: Enables the panic integration.
 //! * `with_failure`: Enables the `failure` integration.
-//! * `with_device_info`: Enables the device info context.
-//! * `with_rust_info`: Enables the rust compiler info context instead of printing to stderr when
-//!   debug is enabled on the hub.
 //!
 //! Additional context:
 //!
