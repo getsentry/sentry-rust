@@ -22,7 +22,7 @@
 use std::panic::{self, PanicInfo};
 use std::sync::Once;
 
-use sentry_core::backtrace_support::current_stacktrace;
+use sentry_backtrace::current_stacktrace;
 use sentry_core::protocol::{Event, Exception, Level};
 use sentry_core::{ClientOptions, Hub, Integration};
 

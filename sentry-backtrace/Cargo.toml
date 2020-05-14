@@ -1,6 +1,6 @@
 [package]
-name = "sentry-error-chain"
-version = "0.1.0"
+name = "sentry-backtrace"
+version = "0.18.0"
 authors = ["Sentry <hello@sentry.io>"]
 license = "Apache-2.0"
 readme = "README.md"
@@ -8,14 +8,12 @@ repository = "https://github.com/getsentry/sentry-rust"
 homepage = "https://github.com/getsentry/sentry-rust"
 documentation = "https://getsentry.github.io/sentry-rust"
 description = """
-Sentry integration that allows capturing error-chain errors
+Sentry integration and utilities for dealing with stacktraces
 """
 edition = "2018"
 
 [dependencies]
 sentry-core = { version = "0.18.0", path = "../sentry-core" }
-sentry-backtrace = { version = "0.18.0", path = "../sentry-backtrace" }
-error-chain = "0.12.1"
-
-[dev-dependencies]
-sentry = { version = "0.18.0", path = "../sentry" }
+lazy_static = "1.4.0"
+backtrace = "0.3.44"
+regex = "1.3.4"

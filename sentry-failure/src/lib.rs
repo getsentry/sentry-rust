@@ -33,7 +33,7 @@ use std::panic::PanicInfo;
 use failure::{Error, Fail};
 use regex::Regex;
 
-use sentry_core::backtrace_support::{error_typename, parse_stacktrace};
+use sentry_backtrace::{error_typename, parse_stacktrace};
 use sentry_core::internals::Uuid;
 use sentry_core::protocol::{Event, Exception, Level};
 use sentry_core::{ClientOptions, Hub, Integration};

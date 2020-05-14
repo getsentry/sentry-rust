@@ -295,12 +295,6 @@ impl Hub {
                         level,
                         ..Default::default()
                     };
-                    if client.options().attach_stacktrace {
-                        let thread = utils::current_thread(true);
-                        if thread.stacktrace.is_some() {
-                            event.threads.values.push(thread);
-                        }
-                    }
                     self.capture_event(event)
                 } else {
                     Uuid::nil()
