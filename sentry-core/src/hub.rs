@@ -287,37 +287,19 @@ impl Hub {
     }
 
     /// Capture any `std::error::Error`.
-    pub fn capture_error(&self, error: &dyn Error) -> Uuid {
-        with_client_impl! {{
-            self.inner.with(|stack| {
-                let top = stack.top();
-                if let Some(ref client) = top.client {
-                    let event = event_from_error(error);
-                    self.capture_event(event)
-                } else {
-                    Default::default()
-                }
-            })
-        }}
+    pub fn capture_error<E: Error + ?Sized>(&self, error: &E) -> Uuid {
+        let event = event_from_error(error);
+        self.capture_event(event)
     }
 
     /// Captures an arbitrary message.
     pub fn capture_message(&self, msg: &str, level: Level) -> Uuid {
-        with_client_impl! {{
-            self.inner.with(|stack| {
-                let top = stack.top();
-                if let Some(ref client) = top.client {
-                    let mut event = Event {
-                        message: Some(msg.to_string()),
-                        level,
-                        ..Default::default()
-                    };
-                    self.capture_event(event)
-                } else {
-                    Uuid::nil()
-                }
-            })
-        }}
+        let mut event = Event {
+            message: Some(msg.to_string()),
+            level,
+            ..Default::default()
+        };
+        self.capture_event(event)
     }
 
     /// Returns the currently bound client.

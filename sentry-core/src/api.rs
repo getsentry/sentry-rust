@@ -46,7 +46,7 @@ pub fn capture_event(event: Event<'static>) -> internals::Uuid {
 /// sentry::capture_error(&std::io::Error::last_os_error());
 /// ```
 #[allow(unused_variables)]
-pub fn capture_error(error: &dyn Error) -> internals::Uuid {
+pub fn capture_error<E: Error + ?Sized>(error: &E) -> internals::Uuid {
     with_client_impl! {{
         Hub::with(|hub| hub.capture_error(error))
     }}

@@ -1,6 +1,81 @@
 //! Useful utilities for working with events.
 use crate::protocol::{Context, DebugImage};
 
+/// Split the str into a typename and optional module prefix.
+///
+/// # Examples
+///
+/// ```
+/// use sentry_core::utils::parse_type_name;
+///
+/// let parsed = parse_type_name(std::any::type_name::<Vec<Option<usize>>>());
+/// assert_eq!(parsed, (Some("alloc::vec".into()), "Vec<core::option::Option<usize>>".into()));
+/// ```
+pub fn parse_type_name(mut type_name: &str) -> (Option<String>, String) {
+    let is_dyn = type_name.starts_with("dyn ");
+    if is_dyn {
+        type_name = &type_name[4..];
+    }
+    let name = |ty| {
+        let mut name = if is_dyn {
+            String::from("dyn ")
+        } else {
+            String::new()
+        };
+        name.push_str(ty);
+        name
+    };
+
+    // The nesting level of `</>` brackets for type parameters.
+    let mut param_level = 0usize;
+    // If we have just seen a `:`.
+    let mut in_colon = false;
+    // We iterate back to front, looking for the first `::` module separator
+    // that is not inside a type parameter.
+    for (i, c) in type_name.chars().rev().enumerate() {
+        match c {
+            '>' => {
+                param_level += 1;
+                in_colon = false;
+            }
+            '<' => {
+                param_level = param_level.saturating_sub(1);
+                in_colon = false;
+            }
+            ':' if in_colon => {
+                let (module, ty) = type_name.split_at(type_name.len() - i - 1);
+                return (Some(module.into()), name(&ty[2..]));
+            }
+            ':' if param_level == 0 => in_colon = true,
+            _ => in_colon = false,
+        }
+    }
+
+    (None, name(type_name))
+}
+
+#[test]
+fn test_parse_type_name() {
+    assert_eq!(parse_type_name("JustName"), (None, "JustName".into()));
+    assert_eq!(
+        parse_type_name("With<Generics>"),
+        (None, "With<Generics>".into()),
+    );
+    assert_eq!(
+        parse_type_name("with::module::Path"),
+        (Some("with::module".into()), "Path".into()),
+    );
+    assert_eq!(
+        parse_type_name("with::module::Path<and::Generics>"),
+        (Some("with::module".into()), "Path<and::Generics>".into()),
+    );
+
+    assert_eq!(
+        parse_type_name("dyn std::error::Error"),
+        (Some("std::error".into()), "dyn Error".into()),
+    );
+}
+
 #[cfg(all(feature = "with_device_info", target_os = "macos"))]
 mod model_support {
     use libc::c_void;
