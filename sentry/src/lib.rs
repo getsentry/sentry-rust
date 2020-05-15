@@ -84,10 +84,6 @@
 //! * `with_panic`: Enables the panic integration.
 //! * `with_failure`: Enables the `failure` integration.
 //!
-//! Additional context:
-//!
-//! * `with_debug_meta`: Adds debug meta to reported events (permits server side symbolication).
-//!
 //! Additional integrations:
 //!
 //! * `with_debug_to_log`: When enabled sentry will debug log to a debug log at all times.
