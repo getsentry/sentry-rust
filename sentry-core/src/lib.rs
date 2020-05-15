@@ -79,15 +79,15 @@
 //!
 //! Default features:
 //!
-//! * `with_client_implementation`: Turns on the real client implementation.
+//! * `client`: Turns on the real client implementation.
 //!
 //! Additional integrations:
 //!
-//! * `with_debug_to_log`: When enabled sentry will debug log to a debug log at all times.
+//! * `log`: When enabled sentry will debug log to `log` at all times.
 //!
 //! Testing:
 //!
-//! * `with_test_support`: Enables the test support module.
+//! * `test`: Enables the test support module.
 #![warn(missing_docs)]
 
 #[macro_use]
@@ -101,7 +101,7 @@ mod scope;
 
 pub mod integrations;
 
-#[cfg(feature = "with_client_implementation")]
+#[cfg(feature = "client")]
 mod client;
 mod clientoptions;
 mod constants;
@@ -109,7 +109,7 @@ mod error;
 mod intodsn;
 mod transport;
 
-#[cfg(any(test, feature = "with_test_support"))]
+#[cfg(any(test, feature = "test"))]
 pub mod test;
 
 /// Useful internals.
@@ -139,7 +139,7 @@ pub use crate::hub::Hub;
 pub use crate::integrations::Integration;
 pub use crate::scope::Scope;
 
-#[cfg(feature = "with_client_implementation")]
+#[cfg(feature = "client")]
 pub use crate::client::Client;
 
 // public api from other crates

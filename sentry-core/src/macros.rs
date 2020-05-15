@@ -3,7 +3,6 @@
 /// This can be used with `ClientOptions` to set the release name.  It uses
 /// the information supplied by cargo to calculate a release.
 #[macro_export]
-#[cfg(feature = "with_client_implementation")]
 macro_rules! release_name {
     () => {{
         use std::sync::Once;
@@ -23,26 +22,16 @@ macro_rules! release_name {
     }};
 }
 
-#[macro_export]
-#[cfg(feature = "with_client_implementation")]
-#[deprecated(since = "0.13.0", note = "use sentry::release_name! instead")]
-#[doc(hidden)]
-macro_rules! sentry_crate_release {
-    () => {
-        ::sentry::release_name!()
-    };
-}
-
 // TODO: temporarily exported for use in `sentry` crate
 #[macro_export]
 #[doc(hidden)]
 macro_rules! with_client_impl {
     ($body:block) => {
-        #[cfg(feature = "with_client_implementation")]
+        #[cfg(feature = "client")]
         {
             $body
         }
-        #[cfg(not(feature = "with_client_implementation"))]
+        #[cfg(not(feature = "client"))]
         {
             Default::default()
         }
@@ -55,10 +44,10 @@ macro_rules! with_client_impl {
 macro_rules! sentry_debug {
     ($($arg:tt)*) => {
         $crate::with_client_impl! {{
-            #[cfg(feature = "with_debug_to_log")] {
+            #[cfg(feature = "log")] {
                 ::log::debug!(target: "sentry", $($arg)*);
             }
-            #[cfg(not(feature = "with_debug_to_log"))] {
+            #[cfg(not(feature = "log"))] {
                 $crate::Hub::with(|hub| {
                     if hub.client().map_or(false, |c| c.options().debug) {
                         eprint!("[sentry] ");

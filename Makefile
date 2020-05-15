@@ -90,7 +90,7 @@ check-curl-transport:
 	@echo 'CURL TRANSPORT'
 	@cd sentry && RUSTFLAGS=-Dwarnings cargo check --features with_curl_transport
 	@echo 'CURL TRANSPORT ONLY'
-	@cd sentry && RUSTFLAGS=-Dwarnings cargo check --no-default-features --features 'with_curl_transport,with_client_implementation,with_panic'
+	@cd sentry && RUSTFLAGS=-Dwarnings cargo check --no-default-features --features 'with_curl_transport,with_panic'
 .PHONY: check-curl-transport
 
 check-actix:

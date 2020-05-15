@@ -16,10 +16,10 @@ edition = "2018"
 all-features = true
 
 [features]
-default = ["with_client_implementation"]
-with_client_implementation = ["im", "url", "rand"]
-with_debug_to_log = ["log"]
-with_test_support = []
+default = []
+client = ["im", "url", "rand"]
+debug-to-log = ["log"]
+test = []
 
 [dependencies]
 url = { version = "2.1.1", optional = true }

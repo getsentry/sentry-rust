@@ -78,7 +78,6 @@
 //!
 //! Default features:
 //!
-//! * `with_client_implementation`: Turns on the real client implementation.
 //! * `with_default_transport`: Compiles in the default HTTP transport (see below).
 //! * `with_backtrace`: Enables backtrace support (automatically turned on in a few cases).
 //! * `with_panic`: Enables the panic integration.
@@ -101,11 +100,8 @@
 //! * `with_test_support`: Enables the test support module.
 #![warn(missing_docs)]
 
-#[cfg(feature = "with_client_implementation")]
 mod defaults;
-#[cfg(feature = "with_client_implementation")]
 mod init;
-#[cfg(feature = "with_client_implementation")]
 mod transport;
 
 #[doc(inline)]
@@ -117,13 +113,9 @@ pub use sentry_core::*;
 /// have to interface with directly.  These are often returned
 /// from methods on other types.
 pub mod internals {
-    pub use sentry_core::internals::*;
-
-    #[cfg(feature = "with_client_implementation")]
-    pub use crate::init::ClientInitGuard;
-
-    #[cfg(feature = "with_client_implementation")]
     pub use crate::defaults::apply_defaults;
+    pub use crate::init::ClientInitGuard;
+    pub use sentry_core::internals::*;
 }
 
 /// The provided transports.
@@ -142,5 +134,4 @@ pub mod transports {
     pub use crate::transport::CurlHttpTransport;
 }
 
-#[cfg(feature = "with_client_implementation")]
 pub use crate::init::init;
