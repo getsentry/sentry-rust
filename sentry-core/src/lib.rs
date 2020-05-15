@@ -99,6 +99,7 @@ mod macros;
 
 mod api;
 mod breadcrumbs;
+mod futures;
 mod hub;
 mod scope;
 
@@ -137,6 +138,7 @@ pub mod internals {
 // public api or exports from this crate
 pub use crate::api::*;
 pub use crate::clientoptions::ClientOptions;
+pub use crate::futures::{FutureExt, SentryFuture as Future};
 pub use crate::hub::Hub;
 pub use crate::integrations::Integration;
 pub use crate::scope::Scope;
