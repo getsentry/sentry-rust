@@ -1,12 +1,9 @@
-use std::error::Error;
-
+use crate::breadcrumbs::IntoBreadcrumbs;
 #[cfg(feature = "with_client_implementation")]
 use crate::hub::Hub;
-use crate::scope::Scope;
-
-use crate::breadcrumbs::IntoBreadcrumbs;
 use crate::internals;
 use crate::protocol::{Event, Level};
+use crate::scope::Scope;
 
 /// Captures an event on the currently active client if any.
 ///
@@ -31,24 +28,6 @@ use crate::protocol::{Event, Level};
 pub fn capture_event(event: Event<'static>) -> internals::Uuid {
     with_client_impl! {{
         Hub::with(|hub| hub.capture_event(event))
-    }}
-}
-
-/// Captures a `std::error::Error`.
-///
-/// Creates an event from the given error and sends it to the current hub.
-/// A chain of errors will be resolved as well, and sorted oldest to newest, as
-/// described on https://develop.sentry.dev/sdk/event-payloads/exception/.
-///
-/// # Examples
-/// ```
-/// # use sentry_core as sentry;
-/// sentry::capture_error(&std::io::Error::last_os_error());
-/// ```
-#[allow(unused_variables)]
-pub fn capture_error<E: Error + ?Sized>(error: &E) -> internals::Uuid {
-    with_client_impl! {{
-        Hub::with(|hub| hub.capture_error(error))
     }}
 }
 

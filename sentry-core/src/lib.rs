@@ -138,7 +138,7 @@ pub mod internals {
 // public api or exports from this crate
 pub use crate::api::*;
 pub use crate::clientoptions::ClientOptions;
-pub use crate::error::event_from_error;
+pub use crate::error::{capture_error, event_from_error};
 pub use crate::hub::Hub;
 pub use crate::integrations::Integration;
 pub use crate::scope::Scope;

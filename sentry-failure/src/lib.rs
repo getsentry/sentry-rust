@@ -34,16 +34,8 @@ use failure::{Error, Fail};
 use sentry_backtrace::parse_stacktrace;
 use sentry_core::internals::Uuid;
 use sentry_core::protocol::{Event, Exception, Level};
-use sentry_core::utils::{parse_type_name, parse_type_name_from_debug};
+use sentry_core::utils::parse_type_from_debug;
 use sentry_core::{ClientOptions, Hub, Integration};
-
-fn fail_typename<F: Fail + ?Sized>(f: &F) -> (Option<String>, String) {
-    if let Some(name) = f.name() {
-        parse_type_name(name)
-    } else {
-        parse_type_name_from_debug(f)
-    }
-}
 
 /// The Sentry Failure Integration.
 #[derive(Default)]
@@ -103,10 +95,8 @@ pub fn exception_from_single_fail<F: Fail + ?Sized>(
     f: &F,
     bt: Option<&failure::Backtrace>,
 ) -> Exception {
-    let (module, ty) = fail_typename(f);
     Exception {
-        ty,
-        module,
+        ty: parse_type_from_debug(f),
         value: Some(f.to_string()),
         stacktrace: bt
             // format the stack trace with alternate debug to get addresses

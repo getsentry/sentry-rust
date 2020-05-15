@@ -2,119 +2,41 @@
 
 use crate::protocol::DebugImage;
 
-/// Split the str into a typename and optional module prefix.
+/// Parse the types name from `Debug` output.
 ///
 /// # Examples
 ///
 /// ```
-/// use sentry_core::utils::parse_type_name;
+/// use sentry_core::utils::parse_type_from_debug;
 ///
-/// let parsed = parse_type_name(std::any::type_name::<Vec<Option<usize>>>());
-/// assert_eq!(parsed, (Some("alloc::vec".into()), "Vec<core::option::Option<usize>>".into()));
+/// let err = "NaN".parse::<usize>().unwrap_err();
+/// assert_eq!(&parse_type_from_debug(&err), "ParseIntError");
 /// ```
-pub fn parse_type_name(mut type_name: &str) -> (Option<String>, String) {
-    let is_dyn = type_name.starts_with("dyn ");
-    if is_dyn {
-        type_name = &type_name[4..];
-    }
-    let name = |ty| {
-        let mut name = if is_dyn {
-            String::from("dyn ")
-        } else {
-            String::new()
-        };
-        name.push_str(ty);
-        name
-    };
-
-    // The nesting level of `</>` brackets for type parameters.
-    let mut param_level = 0usize;
-    // If we have just seen a `:`.
-    let mut in_colon = false;
-    // We iterate back to front, looking for the first `::` module separator
-    // that is not inside a type parameter.
-    for (i, c) in type_name.chars().rev().enumerate() {
-        match c {
-            '>' => {
-                param_level += 1;
-                in_colon = false;
-            }
-            '<' => {
-                param_level = param_level.saturating_sub(1);
-                in_colon = false;
-            }
-            ':' if in_colon => {
-                let (module, ty) = type_name.split_at(type_name.len() - i - 1);
-                return (Some(module.into()), name(&ty[2..]));
-            }
-            ':' if param_level == 0 => in_colon = true,
-            _ => in_colon = false,
-        }
-    }
-
-    (None, name(type_name))
-}
-
-#[test]
-fn test_parse_type_name() {
-    assert_eq!(parse_type_name("JustName"), (None, "JustName".into()));
-    assert_eq!(
-        parse_type_name("With<Generics>"),
-        (None, "With<Generics>".into()),
-    );
-    assert_eq!(
-        parse_type_name("with::module::Path"),
-        (Some("with::module".into()), "Path".into()),
-    );
-    assert_eq!(
-        parse_type_name("with::module::Path<and::Generics>"),
-        (Some("with::module".into()), "Path<and::Generics>".into()),
-    );
-
-    assert_eq!(
-        parse_type_name("dyn std::error::Error"),
-        (Some("std::error".into()), "dyn Error".into()),
-    );
-}
-
-/// Parse a typename from `Debug` output.
-///
-/// This function only exists as a workaround for lack of a stable
-/// `std::any::type_name_of_val`.
-///
-/// # Examples
-///
-/// ```
-/// use sentry_core::utils::parse_type_name_from_debug;
-///
-/// let parsed = parse_type_name_from_debug(&Some(1));
-/// assert_eq!(parsed, (None, "Some".into()));
-/// ```
-pub fn parse_type_name_from_debug<D: std::fmt::Debug + ?Sized>(d: &D) -> (Option<String>, String) {
+pub fn parse_type_from_debug<D: std::fmt::Debug + ?Sized>(d: &D) -> String {
     let dbg = format!("{:#?}", d);
-    parse_type_name(
-        dbg.split(&['(', '{', '\r', '\n'][..])
-            .next()
-            .unwrap()
-            .trim(),
-    )
+
+    dbg.split(&[' ', '(', '{', '\r', '\n'][..])
+        .next()
+        .unwrap_or(&dbg)
+        .trim()
+        .to_owned()
 }
 
 #[test]
-fn test_parse_type_name_from_debug() {
-    use parse_type_name_from_debug as parse;
+fn test_parse_type_from_debug() {
+    use parse_type_from_debug as parse;
     #[derive(Debug)]
     struct MyStruct;
-    assert_eq!(parse(&MyStruct), (None, "MyStruct".into()));
+    assert_eq!(&parse(&MyStruct), "MyStruct");
 
     let err = "NaN".parse::<usize>().unwrap_err();
-    assert_eq!(parse(&err), (None, "ParseIntError".into()));
+    assert_eq!(&parse(&err), "ParseIntError");
 
     let err = anyhow::Error::from(err);
-    assert_eq!(parse(&err), (None, "ParseIntError".into()));
+    assert_eq!(&parse(&err), "ParseIntError");
 
     let err = sentry_types::ParseDsnError::from(sentry_types::ParseProjectIdError::EmptyValue);
-    assert_eq!(parse(&err), (None, "InvalidProjectId".into()));
+    assert_eq!(&parse(&err), "InvalidProjectId");
 }
 
 #[cfg(feature = "with_debug_meta")]

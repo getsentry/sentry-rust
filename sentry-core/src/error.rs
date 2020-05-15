@@ -1,7 +1,43 @@
 use std::error::Error;
 
+use sentry_types::Uuid;
+
 use crate::protocol::{Event, Exception, Level};
-use crate::utils::parse_type_name_from_debug;
+use crate::utils::parse_type_from_debug;
+use crate::Hub;
+
+impl Hub {
+    /// Capture any `std::error::Error`.
+    pub fn capture_error<E: Error + ?Sized>(&self, error: &E) -> sentry_types::Uuid {
+        with_client_impl! {{
+            self.inner.with(|stack| {
+                let top = stack.top();
+                if top.client.is_some() {
+                    let event = event_from_error(error);
+                    self.capture_event(event)
+                } else {
+                    Uuid::nil()
+                }
+            })
+        }}
+    }
+}
+
+/// Captures a `std::error::Error`.
+///
+/// Creates an event from the given error and sends it to the current hub.
+/// A chain of errors will be resolved as well, and sorted oldest to newest, as
+/// described on https://develop.sentry.dev/sdk/event-payloads/exception/.
+///
+/// # Examples
+/// ```
+/// # use sentry_core as sentry;
+/// sentry::capture_error(&std::io::Error::last_os_error());
+/// ```
+#[allow(unused_variables)]
+pub fn capture_error<E: Error + ?Sized>(error: &E) -> sentry_types::Uuid {
+    Hub::with_active(|hub| hub.capture_error(error))
+}
 
 /// Create a sentry `Event` from a `std::error::Error`.
 ///
@@ -47,14 +83,8 @@ pub fn event_from_error<E: Error + ?Sized>(err: &E) -> Event<'static> {
 }
 
 fn exception_from_error<E: Error + ?Sized>(err: &E) -> Exception {
-    // We would ideally want to use `type_name_of_val`, because right now we
-    // get `dyn Error` when just using `type_name`, but that is nightly only
-    // for now.
-    // See https://github.com/rust-lang/rust/issues/66359
-    let (module, ty) = parse_type_name_from_debug(err);
     Exception {
-        ty,
-        module,
+        ty: parse_type_from_debug(err),
         value: Some(err.to_string()),
         ..Default::default()
     }

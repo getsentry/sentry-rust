@@ -30,7 +30,7 @@ use error_chain::ChainedError;
 use sentry_backtrace::backtrace_to_stacktrace;
 use sentry_core::internals::Uuid;
 use sentry_core::protocol::{Event, Exception, Level};
-use sentry_core::utils::parse_type_name_from_debug;
+use sentry_core::utils::parse_type_from_debug;
 use sentry_core::{ClientOptions, Hub, Integration};
 
 fn exceptions_from_error_chain<T>(error: &T) -> Vec<Exception>
@@ -39,21 +39,16 @@ where
     T::ErrorKind: Debug + Display,
 {
     let mut rv = vec![];
-
-    let (module, ty) = parse_type_name_from_debug(&error.kind());
     rv.push(Exception {
-        ty,
-        module,
+        ty: parse_type_from_debug(&error.kind()),
         value: Some(error.kind().to_string()),
         stacktrace: error_chain::ChainedError::backtrace(error).and_then(backtrace_to_stacktrace),
         ..Default::default()
     });
 
     for error in error.iter().skip(1) {
-        let (module, ty) = parse_type_name_from_debug(&error);
         rv.push(Exception {
-            ty,
-            module,
+            ty: parse_type_from_debug(&error),
             value: Some(error.to_string()),
             ..Default::default()
         })

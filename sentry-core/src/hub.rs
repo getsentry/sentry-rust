@@ -35,13 +35,13 @@ thread_local! {
 
 #[cfg(feature = "with_client_implementation")]
 #[derive(Debug)]
-struct HubImpl {
+pub(crate) struct HubImpl {
     stack: Arc<RwLock<Stack>>,
 }
 
 #[cfg(feature = "with_client_implementation")]
 impl HubImpl {
-    fn with<F: FnOnce(&Stack) -> R, R>(&self, f: F) -> R {
+    pub(crate) fn with<F: FnOnce(&Stack) -> R, R>(&self, f: F) -> R {
         let guard = self.stack.read().unwrap_or_else(PoisonError::into_inner);
         f(&*guard)
     }
@@ -87,7 +87,7 @@ impl HubImpl {
 #[derive(Debug)]
 pub struct Hub {
     #[cfg(feature = "with_client_implementation")]
-    inner: HubImpl,
+    pub(crate) inner: HubImpl,
     last_event_id: RwLock<Option<Uuid>>,
 }
 
@@ -286,20 +286,23 @@ impl Hub {
         }}
     }
 
-    /// Capture any `std::error::Error`.
-    pub fn capture_error<E: Error + ?Sized>(&self, error: &E) -> Uuid {
-        let event = event_from_error(error);
-        self.capture_event(event)
-    }
-
     /// Captures an arbitrary message.
     pub fn capture_message(&self, msg: &str, level: Level) -> Uuid {
-        let mut event = Event {
-            message: Some(msg.to_string()),
-            level,
-            ..Default::default()
-        };
-        self.capture_event(event)
+        with_client_impl! {{
+            self.inner.with(|stack| {
+                let top = stack.top();
+                if let Some(ref client) = top.client {
+                    let mut event = Event {
+                        message: Some(msg.to_string()),
+                        level,
+                        ..Default::default()
+                    };
+                    self.capture_event(event)
+                } else {
+                    Uuid::nil()
+                }
+            })
+        }}
     }
 
     /// Returns the currently bound client.
