@@ -5,7 +5,7 @@ use std::task::{Context, Poll};
 
 use crate::Hub;
 
-/// A future that bind a `Hub` to its execution.
+/// A future that binds a `Hub` to its execution.
 ///
 /// This activates the given hub for the duration of the inner futures `poll`
 /// method.
