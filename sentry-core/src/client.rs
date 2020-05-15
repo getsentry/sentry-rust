@@ -12,10 +12,9 @@ pub use crate::clientoptions::ClientOptions;
 use crate::constants::SDK_INFO;
 use crate::integrations::Integration;
 use crate::internals::{Dsn, Uuid};
-use crate::protocol::{ClientSdkInfo, DebugMeta, Event};
+use crate::protocol::{ClientSdkInfo, Event};
 use crate::scope::Scope;
 use crate::transport::Transport;
-use crate::utils;
 
 impl<T: Into<ClientOptions>> From<T> for Client {
     fn from(o: T) -> Client {
@@ -126,12 +125,6 @@ impl Client {
         mut event: Event<'static>,
         scope: Option<&Scope>,
     ) -> Option<Event<'static>> {
-        lazy_static::lazy_static! {
-            static ref DEBUG_META: DebugMeta = DebugMeta {
-                images: utils::debug_images(),
-                ..Default::default()
-            };
-        }
         // event_id and sdk_info are set before the processors run so that the
         // processors can poke around in that data.
         if event.event_id.is_nil() {
@@ -148,11 +141,6 @@ impl Client {
                 Some(event) => event,
                 None => return None,
             };
-        }
-
-        // TODO: move this to an integration
-        if event.debug_meta.is_empty() {
-            event.debug_meta = Cow::Borrowed(&DEBUG_META);
         }
 
         for (_, integration) in self.integrations.iter() {
