@@ -3,8 +3,6 @@ use std::borrow::Cow;
 use sentry_core::protocol::{DebugMeta, Event};
 use sentry_core::{ClientOptions, Integration};
 
-use crate::debug_images;
-
 /// The Sentry Debug Images Integration.
 pub struct DebugImagesIntegration {
     /// A custom filter for which Events should get debug images.
@@ -38,7 +36,7 @@ impl Integration for DebugImagesIntegration {
     ) -> Option<Event<'static>> {
         lazy_static::lazy_static! {
             static ref DEBUG_META: DebugMeta = DebugMeta {
-                images: debug_images(),
+                images: crate::debug_images(),
                 ..Default::default()
             };
         }

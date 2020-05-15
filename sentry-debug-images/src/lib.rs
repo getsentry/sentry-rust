@@ -19,16 +19,14 @@
 #![deny(missing_docs)]
 #![deny(unsafe_code)]
 
-use sentry_core::protocol::DebugImage;
-
 #[cfg(unix)]
 mod unix;
 
 #[cfg(unix)]
-use unix::find_shlibs;
+use unix::debug_images;
 
 #[cfg(not(unix))]
-fn debug_images() -> Vec<DebugImage> {
+fn debug_images() -> Vec<sentry_core::protocol::DebugImage> {
     vec![]
 }
 
