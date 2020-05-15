@@ -33,8 +33,8 @@ use std::panic::PanicInfo;
 use failure::{Error, Fail};
 use sentry_backtrace::parse_stacktrace;
 use sentry_core::internals::Uuid;
+use sentry_core::parse_type_from_debug;
 use sentry_core::protocol::{Event, Exception, Level};
-use sentry_core::utils::parse_type_from_debug;
 use sentry_core::{ClientOptions, Hub, Integration};
 
 /// The Sentry Failure Integration.
@@ -95,8 +95,9 @@ pub fn exception_from_single_fail<F: Fail + ?Sized>(
     f: &F,
     bt: Option<&failure::Backtrace>,
 ) -> Exception {
+    let dbg = format!("{:?}", f);
     Exception {
-        ty: parse_type_from_debug(f),
+        ty: parse_type_from_debug(&dbg).to_owned(),
         value: Some(f.to_string()),
         stacktrace: bt
             // format the stack trace with alternate debug to get addresses

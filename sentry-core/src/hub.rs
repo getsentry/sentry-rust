@@ -16,7 +16,7 @@ use crate::internals::Uuid;
 use crate::protocol::{Breadcrumb, Event, Level};
 use crate::scope::{Scope, ScopeGuard};
 #[cfg(feature = "with_client_implementation")]
-use crate::{client::Client, scope::Stack, utils};
+use crate::{client::Client, scope::Stack};
 
 #[cfg(feature = "with_client_implementation")]
 lazy_static::lazy_static! {

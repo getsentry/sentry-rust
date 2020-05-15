@@ -34,4 +34,5 @@ rand = { version = "0.7.3", optional = true }
 pretty_env_logger = "0.4.0"
 thiserror = "1.0.15"
 anyhow = "1.0.30"
+failure = "0.1.8"
 sentry-failure = { version = "0.18.0", path = "../sentry-failure" }

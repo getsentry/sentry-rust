@@ -3,7 +3,6 @@ use std::error::Error;
 use sentry_types::Uuid;
 
 use crate::protocol::{Event, Exception, Level};
-use crate::utils::parse_type_from_debug;
 use crate::Hub;
 
 impl Hub {
@@ -83,9 +82,59 @@ pub fn event_from_error<E: Error + ?Sized>(err: &E) -> Event<'static> {
 }
 
 fn exception_from_error<E: Error + ?Sized>(err: &E) -> Exception {
+    let dbg = format!("{:?}", err);
     Exception {
-        ty: parse_type_from_debug(err),
+        ty: parse_type_from_debug(&dbg).to_owned(),
         value: Some(err.to_string()),
         ..Default::default()
     }
+}
+
+/// Parse the types name from `Debug` output.
+///
+/// # Examples
+///
+/// ```
+/// use sentry_core::parse_type_from_debug;
+///
+/// let err = format!("{:?}", "NaN".parse::<usize>().unwrap_err());
+/// assert_eq!(parse_type_from_debug(&err), "ParseIntError");
+/// ```
+pub fn parse_type_from_debug(d: &str) -> &str {
+    d.split(&[' ', '(', '{', '\r', '\n'][..])
+        .next()
+        .unwrap()
+        .trim()
+}
+
+#[test]
+fn test_parse_type_from_debug() {
+    use parse_type_from_debug as parse;
+    #[derive(Debug)]
+    struct MyStruct;
+    let err = format!("{:?}", MyStruct);
+    assert_eq!(parse(&err), "MyStruct");
+
+    let err = format!("{:?}", "NaN".parse::<usize>().unwrap_err());
+    assert_eq!(parse(&err), "ParseIntError");
+
+    let err = format!(
+        "{:?}",
+        sentry_types::ParseDsnError::from(sentry_types::ParseProjectIdError::EmptyValue)
+    );
+    assert_eq!(parse(&err), "InvalidProjectId");
+
+    // `anyhow` is using extended debug formatting
+    let err = format!(
+        "{:#?}",
+        anyhow::Error::from("NaN".parse::<usize>().unwrap_err())
+    );
+    assert_eq!(parse(&err), "ParseIntError");
+
+    // `failure` is using normal debug formatting
+    let err = format!(
+        "{:?}",
+        failure::Error::from("NaN".parse::<usize>().unwrap_err())
+    );
+    assert_eq!(parse(&err), "ParseIntError");
 }
