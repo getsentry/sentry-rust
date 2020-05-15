@@ -81,36 +81,30 @@
 //!
 //! * `client`: Turns on the real client implementation.
 //!
-//! Additional integrations:
+//! Additional features:
 //!
 //! * `log`: When enabled sentry will debug log to `log` at all times.
-//!
-//! Testing:
-//!
 //! * `test`: Enables the test support module.
+
 #![warn(missing_docs)]
 
 #[macro_use]
 mod macros;
-
 mod api;
 mod breadcrumbs;
-mod futures;
-mod hub;
-mod scope;
-
-pub mod integrations;
-
 #[cfg(feature = "client")]
 mod client;
 mod clientoptions;
 mod constants;
 mod error;
+mod futures;
+mod hub;
+mod integration;
 mod intodsn;
-mod transport;
-
+mod scope;
 #[cfg(any(test, feature = "test"))]
 pub mod test;
+mod transport;
 
 /// Useful internals.
 ///
@@ -132,15 +126,14 @@ pub mod internals {
 
 // public api or exports from this crate
 pub use crate::api::*;
+#[cfg(feature = "client")]
+pub use crate::client::Client;
 pub use crate::clientoptions::ClientOptions;
 pub use crate::error::{capture_error, event_from_error, parse_type_from_debug};
 pub use crate::futures::{FutureExt, SentryFuture as Future};
 pub use crate::hub::Hub;
-pub use crate::integrations::Integration;
+pub use crate::integration::Integration;
 pub use crate::scope::Scope;
-
-#[cfg(feature = "client")]
-pub use crate::client::Client;
 
 // public api from other crates
 pub use sentry_types::protocol::v7 as protocol;
