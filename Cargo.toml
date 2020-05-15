@@ -5,6 +5,7 @@ members = [
     "sentry-backtrace",
     "sentry-contexts",
     "sentry-core",
+    "sentry-debug-images",
     "sentry-error-chain",
     "sentry-failure",
     "sentry-log",
