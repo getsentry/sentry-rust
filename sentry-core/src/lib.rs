@@ -95,6 +95,7 @@ mod macros;
 
 mod api;
 mod breadcrumbs;
+mod futures;
 mod hub;
 mod scope;
 
@@ -133,6 +134,7 @@ pub mod internals {
 pub use crate::api::*;
 pub use crate::clientoptions::ClientOptions;
 pub use crate::error::{capture_error, event_from_error, parse_type_from_debug};
+pub use crate::futures::{FutureExt, SentryFuture as Future};
 pub use crate::hub::Hub;
 pub use crate::integrations::Integration;
 pub use crate::scope::Scope;
