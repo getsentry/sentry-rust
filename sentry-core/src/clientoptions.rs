@@ -4,11 +4,9 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use crate::constants::USER_AGENT;
-use crate::internals::Dsn;
-use crate::intodsn::IntoDsn;
 use crate::protocol::{Breadcrumb, Event};
-use crate::transport::TransportFactory;
-use crate::Integration;
+use crate::types::Dsn;
+use crate::{Integration, IntoDsn, TransportFactory};
 
 /// Type alias for before event/breadcrumb handlers.
 pub type BeforeCallback<T> = Arc<dyn Fn(T) -> Option<T> + Send + Sync>;

@@ -1,9 +1,9 @@
 use std::env;
 
 use findshlibs::{Segment, SharedLibrary, SharedLibraryId, TargetSharedLibrary, TARGET_SUPPORTED};
-use sentry_core::internals::Uuid;
 use sentry_core::protocol::debugid::DebugId;
 use sentry_core::protocol::{DebugImage, SymbolicDebugImage};
+use sentry_core::types::Uuid;
 
 pub fn debug_images() -> Vec<DebugImage> {
     let mut images = vec![];

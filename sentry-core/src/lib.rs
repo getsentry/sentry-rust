@@ -88,13 +88,12 @@
 
 #![warn(missing_docs)]
 
+// macros; these need to be first to be used by other modules
 #[macro_use]
 mod macros;
 
 mod api;
 mod breadcrumbs;
-#[cfg(feature = "client")]
-mod client;
 mod clientoptions;
 mod constants;
 mod error;
@@ -105,38 +104,29 @@ mod intodsn;
 mod scope;
 mod transport;
 
-#[cfg(any(test, feature = "test"))]
-pub mod test;
-
-/// Useful internals.
-///
-/// This module contains types that users of the crate typically do not
-/// have to interface with directly.  These are often returned
-/// from methods on other types.
-pub mod internals {
-    pub use crate::breadcrumbs::IntoBreadcrumbs;
-    pub use crate::scope::ScopeGuard;
-
-    pub use crate::intodsn::IntoDsn;
-    pub use crate::transport::{Transport, TransportFactory};
-
-    pub use sentry_types::{
-        Auth, ChronoParseError, DateTime, DebugId, Dsn, ParseDebugIdError, ParseDsnError,
-        ParseProjectIdError, ProjectId, Scheme, TimeZone, Utc, Uuid, UuidVariant, UuidVersion,
-    };
-}
-
 // public api or exports from this crate
 pub use crate::api::*;
-#[cfg(feature = "client")]
-pub use crate::client::Client;
+pub use crate::breadcrumbs::IntoBreadcrumbs;
 pub use crate::clientoptions::ClientOptions;
 pub use crate::error::{capture_error, event_from_error, parse_type_from_debug};
 pub use crate::futures::{FutureExt, SentryFuture as Future};
 pub use crate::hub::Hub;
 pub use crate::integration::Integration;
-pub use crate::scope::Scope;
+pub use crate::intodsn::IntoDsn;
+pub use crate::scope::{Scope, ScopeGuard};
+pub use crate::transport::{Transport, TransportFactory};
+
+// client feature
+#[cfg(feature = "client")]
+mod client;
+#[cfg(feature = "client")]
+pub use crate::client::Client;
+
+// test utilities
+#[cfg(feature = "test")]
+pub mod test;
 
 // public api from other crates
+pub use sentry_types as types;
 pub use sentry_types::protocol::v7 as protocol;
 pub use sentry_types::protocol::v7::{Breadcrumb, Level, User};

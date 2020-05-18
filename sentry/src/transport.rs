@@ -16,7 +16,7 @@ use httpdate::parse_http_date;
 #[cfg(feature = "with_curl_transport")]
 use std::io::Cursor;
 #[cfg(feature = "with_curl_transport")]
-use {crate::internals::Scheme, curl, std::io::Read};
+use {crate::types::Scheme, curl, std::io::Read};
 
 #[cfg(feature = "with_reqwest_transport")]
 use reqwest::{blocking::Client as ReqwestClient, header::RETRY_AFTER, Proxy};
@@ -30,9 +30,9 @@ use surf::Client as SurfClient;
 
 use sentry_core::sentry_debug;
 
-use crate::internals::{Transport, TransportFactory};
 use crate::protocol::Event;
-use crate::ClientOptions;
+use crate::{ClientOptions, Transport, TransportFactory};
+
 /// Creates the default HTTP transport.
 ///
 /// This is the default value for `transport` on the client options.  It

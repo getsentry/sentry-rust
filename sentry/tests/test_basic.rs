@@ -3,7 +3,7 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
-use sentry::internals::Uuid;
+use sentry::types::Uuid;
 
 #[test]
 fn test_basic_capture_message() {
@@ -80,7 +80,7 @@ fn test_breadcrumbs() {
 fn test_factory() {
     struct TestTransport(Arc<AtomicUsize>);
 
-    impl sentry::internals::Transport for TestTransport {
+    impl sentry::types::Transport for TestTransport {
         fn send_event(&self, event: sentry::protocol::Event<'static>) {
             assert_eq!(event.message.unwrap(), "test");
             self.0.fetch_add(1, Ordering::SeqCst);
@@ -93,7 +93,7 @@ fn test_factory() {
     let options = sentry::ClientOptions {
         dsn: "http://foo@example.com/42".parse().ok(),
         transport: Some(Arc::new(
-            move |opts: &sentry::ClientOptions| -> Arc<dyn sentry::internals::Transport> {
+            move |opts: &sentry::ClientOptions| -> Arc<dyn sentry::Transport> {
                 assert_eq!(opts.dsn.as_ref().unwrap().host(), "example.com");
                 Arc::new(TestTransport(events_for_options.clone()))
             },

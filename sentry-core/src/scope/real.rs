@@ -2,8 +2,8 @@ use std::borrow::Cow;
 use std::fmt;
 use std::sync::{Arc, PoisonError, RwLock};
 
-use crate::client::Client;
 use crate::protocol::{Breadcrumb, Context, Event, Level, User, Value};
+use crate::Client;
 
 #[derive(Debug)]
 pub struct Stack {

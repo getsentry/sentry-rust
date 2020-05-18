@@ -2,8 +2,7 @@ use std::env;
 use std::{borrow::Cow, sync::Arc};
 
 use crate::transports::DefaultTransportFactory;
-
-use crate::internals::Dsn;
+use crate::types::Dsn;
 use crate::{ClientOptions, Integration};
 
 /// Apply default client options.
@@ -21,7 +20,7 @@ use crate::{ClientOptions, Integration};
 /// assert_eq!(options.release, None);
 /// assert!(options.transport.is_none());
 ///
-/// let options = sentry::internals::apply_defaults(options);
+/// let options = sentry::apply_defaults(options);
 /// assert_eq!(options.release, Some("release-from-env".into()));
 /// assert!(options.transport.is_some());
 /// ```

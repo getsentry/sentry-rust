@@ -8,13 +8,10 @@ use std::time::Duration;
 
 use rand::random;
 
-pub use crate::clientoptions::ClientOptions;
 use crate::constants::SDK_INFO;
-use crate::internals::{Dsn, Uuid};
 use crate::protocol::{ClientSdkInfo, Event};
-use crate::scope::Scope;
-use crate::transport::Transport;
-use crate::Integration;
+use crate::types::{Dsn, Uuid};
+use crate::{ClientOptions, Integration, Scope, Transport};
 
 impl<T: Into<ClientOptions>> From<T> for Client {
     fn from(o: T) -> Client {

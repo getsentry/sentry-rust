@@ -1,13 +1,13 @@
 use std::error::Error;
 
-use sentry_types::Uuid;
-
 use crate::protocol::{Event, Exception, Level};
+use crate::types::Uuid;
 use crate::Hub;
 
 impl Hub {
     /// Capture any `std::error::Error`.
-    pub fn capture_error<E: Error + ?Sized>(&self, error: &E) -> sentry_types::Uuid {
+    #[allow(unused)]
+    pub fn capture_error<E: Error + ?Sized>(&self, error: &E) -> Uuid {
         with_client_impl! {{
             self.inner.with(|stack| {
                 let top = stack.top();
@@ -34,7 +34,7 @@ impl Hub {
 /// sentry::capture_error(&std::io::Error::last_os_error());
 /// ```
 #[allow(unused_variables)]
-pub fn capture_error<E: Error + ?Sized>(error: &E) -> sentry_types::Uuid {
+pub fn capture_error<E: Error + ?Sized>(error: &E) -> Uuid {
     Hub::with_active(|hub| hub.capture_error(error))
 }
 

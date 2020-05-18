@@ -32,9 +32,9 @@ use std::panic::PanicInfo;
 
 use failure::{Error, Fail};
 use sentry_backtrace::parse_stacktrace;
-use sentry_core::internals::Uuid;
 use sentry_core::parse_type_from_debug;
 use sentry_core::protocol::{Event, Exception, Level};
+use sentry_core::types::Uuid;
 use sentry_core::{ClientOptions, Hub, Integration};
 
 /// The Sentry Failure Integration.

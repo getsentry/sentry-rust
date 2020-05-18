@@ -21,7 +21,7 @@ client = ["im", "rand"]
 # I would love to just have a `log` feature, but this is used inside a macro,
 # and macros actually expand features (and extern crate) where they are used!
 debug-logs = ["log_"]
-test = []
+test = ["client"]
 
 [dependencies]
 sentry-types = { version = "0.15.0", path = "../sentry-types" }

@@ -32,7 +32,15 @@ where
         let hub = self.hub.clone();
         // https://doc.rust-lang.org/std/pin/index.html#pinning-is-structural-for-field
         let future = unsafe { self.map_unchecked_mut(|s| &mut s.future) };
-        Hub::run(hub, || future.poll(cx))
+        #[cfg(feature = "client")]
+        {
+            Hub::run(hub, || future.poll(cx))
+        }
+        #[cfg(not(feature = "client"))]
+        {
+            let _ = hub;
+            future.poll(cx)
+        }
     }
 }
 
@@ -54,7 +62,7 @@ pub trait FutureExt: Sized {
 
 impl<F> FutureExt for F where F: Future {}
 
-#[cfg(test)]
+#[cfg(all(test, feature = "test"))]
 mod tests {
     use crate::test::with_captured_events;
     use crate::{capture_message, configure_scope, FutureExt, Hub, Level};

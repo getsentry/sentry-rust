@@ -8,14 +8,11 @@ use std::sync::{Arc, Mutex, PoisonError, RwLock, TryLockError};
 use std::thread;
 use std::time::Duration;
 
-use crate::breadcrumbs::IntoBreadcrumbs;
-use crate::error::event_from_error;
-use crate::internals::Uuid;
 use crate::protocol::{Breadcrumb, Event, Level};
-use crate::scope::{Scope, ScopeGuard};
-use crate::Integration;
+use crate::types::Uuid;
+use crate::{event_from_error, Integration, IntoBreadcrumbs, Scope, ScopeGuard};
 #[cfg(feature = "client")]
-use crate::{client::Client, scope::Stack};
+use crate::{scope::Stack, Client};
 
 #[cfg(feature = "client")]
 lazy_static::lazy_static! {

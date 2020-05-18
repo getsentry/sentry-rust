@@ -19,13 +19,12 @@
 //! assert_eq!(events.len(), 1);
 //! assert_eq!(events[0].message.as_ref().unwrap(), "Hello World!");
 //! ```
+
 use std::sync::{Arc, Mutex};
 
-use crate::client::ClientOptions;
-use crate::hub::Hub;
-use crate::internals::Dsn;
 use crate::protocol::Event;
-use crate::transport::Transport;
+use crate::types::Dsn;
+use crate::{ClientOptions, Hub, Transport};
 
 lazy_static::lazy_static! {
     static ref TEST_DSN: Dsn = "https://public@sentry.invalid/1".parse().unwrap();

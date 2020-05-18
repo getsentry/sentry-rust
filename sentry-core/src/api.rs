@@ -1,8 +1,6 @@
-use crate::breadcrumbs::IntoBreadcrumbs;
-use crate::hub::Hub;
-use crate::internals;
 use crate::protocol::{Event, Level};
-use crate::scope::Scope;
+use crate::types::Uuid;
+use crate::{Hub, IntoBreadcrumbs, Scope};
 
 /// Captures an event on the currently active client if any.
 ///
@@ -23,14 +21,14 @@ use crate::scope::Scope;
 ///     ..Default::default()
 /// });
 /// ```
-pub fn capture_event(event: Event<'static>) -> internals::Uuid {
+pub fn capture_event(event: Event<'static>) -> Uuid {
     Hub::with_active(|hub| hub.capture_event(event))
 }
 
 /// Captures an arbitrary message.
 ///
 /// This creates an event from the given message and sends it to the current hub.
-pub fn capture_message(msg: &str, level: Level) -> internals::Uuid {
+pub fn capture_message(msg: &str, level: Level) -> Uuid {
     Hub::with_active(|hub| hub.capture_message(msg, level))
 }
 
@@ -149,7 +147,7 @@ where
 /// Returns the last event ID captured.
 ///
 /// This uses the current thread local hub.
-pub fn last_event_id() -> Option<internals::Uuid> {
+pub fn last_event_id() -> Option<Uuid> {
     with_client_impl! {{
         Hub::with(|hub| hub.last_event_id())
     }}
