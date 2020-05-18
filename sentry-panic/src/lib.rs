@@ -101,6 +101,10 @@ impl PanicIntegration {
             }
         }
 
+        // TODO: We would ideally want to downcast to `std::error:Error` here
+        // and use `event_from_error`, but that way we won‘t get meaningful
+        // backtraces yet.
+
         let msg = message_from_panic_info(info);
         Event {
             exception: vec![Exception {

@@ -31,28 +31,11 @@
 use std::panic::PanicInfo;
 
 use failure::{Error, Fail};
-use regex::Regex;
-
-use sentry_backtrace::{error_typename, parse_stacktrace};
+use sentry_backtrace::parse_stacktrace;
 use sentry_core::internals::Uuid;
+use sentry_core::parse_type_from_debug;
 use sentry_core::protocol::{Event, Exception, Level};
 use sentry_core::{ClientOptions, Hub, Integration};
-
-lazy_static::lazy_static! {
-    static ref MODULE_SPLIT_RE: Regex = Regex::new(r"^(.*)::(.*?)$").unwrap();
-}
-
-fn fail_typename<F: Fail + ?Sized>(f: &F) -> (Option<String>, String) {
-    if let Some(name) = f.name() {
-        if let Some(caps) = MODULE_SPLIT_RE.captures(name) {
-            (Some(caps[1].to_string()), caps[2].to_string())
-        } else {
-            (None, name.to_string())
-        }
-    } else {
-        (None, error_typename(f))
-    }
-}
 
 /// The Sentry Failure Integration.
 #[derive(Default)]
@@ -112,10 +95,9 @@ pub fn exception_from_single_fail<F: Fail + ?Sized>(
     f: &F,
     bt: Option<&failure::Backtrace>,
 ) -> Exception {
-    let (module, ty) = fail_typename(f);
+    let dbg = format!("{:?}", f);
     Exception {
-        ty,
-        module,
+        ty: parse_type_from_debug(&dbg).to_owned(),
         value: Some(f.to_string()),
         stacktrace: bt
             // format the stack trace with alternate debug to get addresses
@@ -170,7 +152,7 @@ pub fn event_from_fail<F: Fail + ?Sized>(fail: &F) -> Event<'static> {
 ///
 /// This dispatches to the current hub.
 pub fn capture_error(err: &Error) -> Uuid {
-    Hub::with_active(|hub| hub.capture_error(err))
+    Hub::with_active(|hub| FailureHubExt::capture_error(hub.as_ref(), err))
 }
 
 /// Captures a `failure::Fail`.

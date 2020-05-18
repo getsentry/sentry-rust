@@ -1,6 +1,7 @@
 #![allow(unused)]
 
 use std::cell::{Cell, UnsafeCell};
+use std::error::Error;
 use std::mem::drop;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError, RwLock, TryLockError};
@@ -8,13 +9,14 @@ use std::thread;
 use std::time::Duration;
 
 use crate::breadcrumbs::IntoBreadcrumbs;
+#[cfg(feature = "with_client_implementation")]
+use crate::error::event_from_error;
 use crate::integrations::Integration;
 use crate::internals::Uuid;
 use crate::protocol::{Breadcrumb, Event, Level};
 use crate::scope::{Scope, ScopeGuard};
-
 #[cfg(feature = "with_client_implementation")]
-use crate::{client::Client, scope::Stack, utils};
+use crate::{client::Client, scope::Stack};
 
 #[cfg(feature = "with_client_implementation")]
 lazy_static::lazy_static! {
@@ -33,13 +35,13 @@ thread_local! {
 
 #[cfg(feature = "with_client_implementation")]
 #[derive(Debug)]
-struct HubImpl {
+pub(crate) struct HubImpl {
     stack: Arc<RwLock<Stack>>,
 }
 
 #[cfg(feature = "with_client_implementation")]
 impl HubImpl {
-    fn with<F: FnOnce(&Stack) -> R, R>(&self, f: F) -> R {
+    pub(crate) fn with<F: FnOnce(&Stack) -> R, R>(&self, f: F) -> R {
         let guard = self.stack.read().unwrap_or_else(PoisonError::into_inner);
         f(&*guard)
     }
@@ -85,7 +87,7 @@ impl HubImpl {
 #[derive(Debug)]
 pub struct Hub {
     #[cfg(feature = "with_client_implementation")]
-    inner: HubImpl,
+    pub(crate) inner: HubImpl,
     last_event_id: RwLock<Option<Uuid>>,
 }
 

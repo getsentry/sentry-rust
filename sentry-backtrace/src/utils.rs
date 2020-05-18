@@ -1,5 +1,3 @@
-use std::fmt;
-
 use regex::{Captures, Regex};
 
 lazy_static::lazy_static! {
@@ -66,17 +64,6 @@ pub fn demangle_symbol(s: &str) -> String {
             _ => unreachable!(),
         })
         .to_string()
-}
-
-/// Returns the typename of a formatted Error
-// NOTE: this is used by the error-chain and failure integrations
-pub fn error_typename<D: fmt::Debug>(error: D) -> String {
-    format!("{:?}", error)
-        .split(&[' ', '(', '{', '\r', '\n'][..])
-        .next()
-        .unwrap()
-        .trim()
-        .into()
 }
 
 /// Checks whether the function name starts with the given pattern.

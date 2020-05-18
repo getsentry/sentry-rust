@@ -22,12 +22,14 @@
 //! };
 //! # Ok(()) }
 //! ```
+
 use std::fmt::{Debug, Display};
 
 use error_chain::ChainedError;
 
-use sentry_backtrace::{backtrace_to_stacktrace, error_typename};
+use sentry_backtrace::backtrace_to_stacktrace;
 use sentry_core::internals::Uuid;
+use sentry_core::parse_type_from_debug;
 use sentry_core::protocol::{Event, Exception, Level};
 use sentry_core::{ClientOptions, Hub, Integration};
 
@@ -36,18 +38,19 @@ where
     T: ChainedError,
     T::ErrorKind: Debug + Display,
 {
+    let dbg = format!("{:?}", error.kind());
     let mut rv = vec![];
-
     rv.push(Exception {
-        ty: error_typename(error.kind()),
+        ty: parse_type_from_debug(&dbg).to_owned(),
         value: Some(error.kind().to_string()),
         stacktrace: error_chain::ChainedError::backtrace(error).and_then(backtrace_to_stacktrace),
         ..Default::default()
     });
 
     for error in error.iter().skip(1) {
+        let dbg = format!("{:?}", error);
         rv.push(Exception {
-            ty: error_typename(error),
+            ty: parse_type_from_debug(&dbg).to_owned(),
             value: Some(error.to_string()),
             ..Default::default()
         })

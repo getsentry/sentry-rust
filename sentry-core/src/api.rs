@@ -1,10 +1,9 @@
+use crate::breadcrumbs::IntoBreadcrumbs;
 #[cfg(feature = "with_client_implementation")]
 use crate::hub::Hub;
-use crate::scope::Scope;
-
-use crate::breadcrumbs::IntoBreadcrumbs;
 use crate::internals;
 use crate::protocol::{Event, Level};
+use crate::scope::Scope;
 
 /// Captures an event on the currently active client if any.
 ///
