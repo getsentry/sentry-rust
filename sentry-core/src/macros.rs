@@ -43,7 +43,7 @@ macro_rules! with_client_impl {
 #[doc(hidden)]
 macro_rules! sentry_debug {
     ($($arg:tt)*) => {
-        $crate::with_client_impl! {{
+        #[cfg(feature = "client")] {
             #[cfg(feature = "debug-logs")] {
                 ::log_::debug!(target: "sentry", $($arg)*);
             }
@@ -55,7 +55,10 @@ macro_rules! sentry_debug {
                     }
                 });
             }
-        }}
+        }
+        #[cfg(not(feature = "client"))] {
+            let _ = ($($arg)*);
+        }
     }
 }
 

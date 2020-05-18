@@ -1,3 +1,5 @@
+#![allow(unused_imports)]
+
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 use std::sync::{Arc, Condvar, Mutex};
@@ -36,6 +38,7 @@ impl TransportFactory for DefaultTransportFactory {
         }
         #[cfg(not(any(feature = "with_reqwest_transport", feature = "with_curl_transport")))]
         {
+            let _ = options;
             panic!("sentry crate was compiled without transport")
         }
     }
@@ -52,6 +55,7 @@ fn parse_retry_after(s: &str) -> Option<SystemTime> {
     }
 }
 
+#[allow(unused)]
 macro_rules! implement_http_transport {
     (
         $(#[$attr:meta])*

@@ -144,14 +144,16 @@ pub mod internals {
 /// library.  The `with_reqwest_transport` and `with_curl_transport` flags
 /// turn on these transports.
 pub mod transports {
-    #[cfg(any(feature = "with_reqwest_transport", feature = "with_curl_transport"))]
-    pub use crate::transport::{DefaultTransportFactory, HttpTransport};
+    pub use crate::transport::DefaultTransportFactory;
 
     #[cfg(feature = "with_reqwest_transport")]
     pub use crate::transport::ReqwestHttpTransport;
 
     #[cfg(feature = "with_curl_transport")]
     pub use crate::transport::CurlHttpTransport;
+
+    #[cfg(any(feature = "with_reqwest_transport", feature = "with_curl_transport"))]
+    pub use crate::transport::HttpTransport;
 }
 
 pub use crate::init::init;
