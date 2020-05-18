@@ -9,12 +9,11 @@ use std::thread;
 use std::time::Duration;
 
 use crate::breadcrumbs::IntoBreadcrumbs;
-#[cfg(feature = "client")]
 use crate::error::event_from_error;
-use crate::integrations::Integration;
 use crate::internals::Uuid;
 use crate::protocol::{Breadcrumb, Event, Level};
 use crate::scope::{Scope, ScopeGuard};
+use crate::Integration;
 #[cfg(feature = "client")]
 use crate::{client::Client, scope::Stack};
 

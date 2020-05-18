@@ -44,10 +44,10 @@ macro_rules! with_client_impl {
 macro_rules! sentry_debug {
     ($($arg:tt)*) => {
         $crate::with_client_impl! {{
-            #[cfg(feature = "log")] {
+            #[cfg(feature = "debug-logs")] {
                 ::log::debug!(target: "sentry", $($arg)*);
             }
-            #[cfg(not(feature = "log"))] {
+            #[cfg(not(feature = "debug-logs"))] {
                 $crate::Hub::with(|hub| {
                     if hub.client().map_or(false, |c| c.options().debug) {
                         eprint!("[sentry] ");

@@ -147,6 +147,10 @@ where
 }
 
 /// Returns the last event ID captured.
+///
+/// This uses the current thread local hub.
 pub fn last_event_id() -> Option<internals::Uuid> {
-    Hub::with_active(|hub| hub.last_event_id())
+    with_client_impl! {{
+        Hub::with(|hub| hub.last_event_id())
+    }}
 }

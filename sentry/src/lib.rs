@@ -107,6 +107,26 @@ mod transport;
 #[doc(inline)]
 pub use sentry_core::*;
 
+/// Available Sentry Integrations.
+pub mod integrations {
+    #[cfg(feature = "anyhow")]
+    pub use sentry_anyhow as anyhow;
+    #[cfg(feature = "backtrace")]
+    pub use sentry_backtrace as backtrace;
+    #[cfg(feature = "contexts")]
+    pub use sentry_contexts as contexts;
+    #[cfg(feature = "debug-images")]
+    pub use sentry_debug_images as debug_images;
+    #[cfg(feature = "error-chain")]
+    pub use sentry_error_chain as error_chain;
+    #[cfg(feature = "failure")]
+    pub use sentry_failure as failure;
+    #[cfg(feature = "log")]
+    pub use sentry_log as log;
+    #[cfg(feature = "panic")]
+    pub use sentry_panic as panic;
+}
+
 /// Useful internals.
 ///
 /// This module contains types that users of the crate typically do not

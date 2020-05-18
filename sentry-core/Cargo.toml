@@ -18,7 +18,9 @@ all-features = true
 [features]
 default = []
 client = ["im", "rand"]
-debug-to-log = ["log"]
+# I would love to just have a `log` feature, but this is used inside a macro,
+# and macros actually expand features where they are used!
+debug-logs = ["log"]
 test = []
 
 [dependencies]

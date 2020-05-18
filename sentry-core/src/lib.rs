@@ -90,6 +90,7 @@
 
 #[macro_use]
 mod macros;
+
 mod api;
 mod breadcrumbs;
 #[cfg(feature = "client")]
@@ -102,9 +103,10 @@ mod hub;
 mod integration;
 mod intodsn;
 mod scope;
+mod transport;
+
 #[cfg(any(test, feature = "test"))]
 pub mod test;
-mod transport;
 
 /// Useful internals.
 ///

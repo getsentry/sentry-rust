@@ -1,3 +1,4 @@
+use log_ as log;
 use std::sync::Arc;
 use std::thread;
 

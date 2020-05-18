@@ -45,7 +45,7 @@ pub fn apply_defaults(mut opts: ClientOptions) -> ClientOptions {
                 sentry_debug_images::DebugImagesIntegration::default(),
             ))
         }
-        #[cfg(feature = "sentry-error-chain")]
+        #[cfg(feature = "error-chain")]
         {
             integrations.push(Arc::new(
                 sentry_error_chain::ErrorChainIntegration::default(),
@@ -55,7 +55,7 @@ pub fn apply_defaults(mut opts: ClientOptions) -> ClientOptions {
         {
             integrations.push(Arc::new(sentry_contexts::ContextIntegration::default()));
         }
-        #[cfg(feature = "with_failure")]
+        #[cfg(feature = "failure")]
         {
             integrations.push(Arc::new(sentry_failure::FailureIntegration::default()));
         }
@@ -63,7 +63,7 @@ pub fn apply_defaults(mut opts: ClientOptions) -> ClientOptions {
         {
             #[allow(unused_mut)]
             let mut integration = sentry_panic::PanicIntegration::default();
-            #[cfg(feature = "with_failure")]
+            #[cfg(feature = "failure")]
             {
                 integration = integration.add_extractor(sentry_failure::panic_extractor);
             }

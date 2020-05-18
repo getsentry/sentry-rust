@@ -10,11 +10,11 @@ use rand::random;
 
 pub use crate::clientoptions::ClientOptions;
 use crate::constants::SDK_INFO;
-use crate::integrations::Integration;
 use crate::internals::{Dsn, Uuid};
 use crate::protocol::{ClientSdkInfo, Event};
 use crate::scope::Scope;
 use crate::transport::Transport;
+use crate::Integration;
 
 impl<T: Into<ClientOptions>> From<T> for Client {
     fn from(o: T) -> Client {
