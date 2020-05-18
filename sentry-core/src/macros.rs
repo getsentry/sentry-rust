@@ -45,7 +45,7 @@ macro_rules! sentry_debug {
     ($($arg:tt)*) => {
         $crate::with_client_impl! {{
             #[cfg(feature = "debug-logs")] {
-                ::log::debug!(target: "sentry", $($arg)*);
+                ::log_::debug!(target: "sentry", $($arg)*);
             }
             #[cfg(not(feature = "debug-logs"))] {
                 $crate::Hub::with(|hub| {

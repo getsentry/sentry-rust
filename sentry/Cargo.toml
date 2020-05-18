@@ -21,7 +21,7 @@ default = ["client", "backtrace", "contexts", "failure", "panic", "transport"]
 
 # we still need a "client" feature, here, because `sentry_debug!` tests for that
 client = []
-debug-logs = ["log", "sentry-core/debug-logs"]
+debug-logs = ["log_", "sentry-core/debug-logs"]
 
 # default integrations
 backtrace = ["sentry-backtrace"]

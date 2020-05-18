@@ -23,10 +23,12 @@
 //! # Ok(()) }
 //! ```
 
+#![deny(missing_docs)]
+#![deny(unsafe_code)]
+
 use std::fmt::{Debug, Display};
 
 use error_chain::ChainedError;
-
 use sentry_backtrace::backtrace_to_stacktrace;
 use sentry_core::internals::Uuid;
 use sentry_core::parse_type_from_debug;
@@ -100,7 +102,16 @@ impl ErrorChainHubExt for Hub {
     }
 }
 
+/// The Sentry `error-chain` Integration.
+#[derive(Default)]
 pub struct ErrorChainIntegration;
+
+impl ErrorChainIntegration {
+    /// Creates a new `error-chain` Integration.
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
 
 impl Integration for ErrorChainIntegration {
     fn name(&self) -> &'static str {

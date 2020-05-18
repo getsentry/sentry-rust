@@ -1,5 +1,7 @@
 #![cfg(feature = "test")]
 
+use log_ as log;
+
 #[test]
 fn test_log() {
     let log_integration = sentry_log::LogIntegration::default();
