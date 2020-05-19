@@ -9,7 +9,6 @@
 //! # Example usage
 //!
 //! ```
-//! # use sentry_core as sentry;
 //! use sentry::{capture_message, Level};
 //! use sentry::test::with_captured_events;
 //!
@@ -32,10 +31,9 @@ lazy_static::lazy_static! {
 
 /// Collects events instead of sending them.
 ///
-/// Example usage:
+/// # Examples
 ///
 /// ```
-/// # use sentry_core as sentry;
 /// use std::sync::Arc;
 /// use sentry::{Hub, ClientOptions};
 /// use sentry::test::TestTransport;

@@ -61,11 +61,13 @@ impl HubImpl {
 ///
 /// This can be used to capture events and manage the scope.  This object is
 /// internally synchronized so it can be used from multiple threads if needed.
-/// The default hub that is available automatically is thread local.
 ///
-/// In most situations developers do not need to interface the hub.  Instead
-/// toplevel convenience functions are expose tht will automatically dispatch
-/// to global (`Hub::current`) hub.  In some situations this might not be
+/// Each thread has its own thread-local (`Hub::current()`) hub, which is
+/// automatically derived from the main hub (`Hub::main()`).
+///
+/// In most situations developers do not need to interface with the hub directly.  Instead
+/// toplevel convenience functions are expose that will automatically dispatch
+/// to the thread-local (`Hub::current`) hub.  In some situations this might not be
 /// possible in which case it might become necessary to manually work with the
 /// hub.  This is for instance the case when working with async code.
 ///

@@ -29,9 +29,17 @@ impl Hub {
 /// described on https://develop.sentry.dev/sdk/event-payloads/exception/.
 ///
 /// # Examples
+///
 /// ```
-/// # use sentry_core as sentry;
-/// sentry::capture_error(&std::io::Error::last_os_error());
+/// let err = "NaN".parse::<usize>().unwrap_err();
+///
+/// # let events = sentry::test::with_captured_events(|| {
+/// sentry::capture_error(&err);
+/// # });
+/// # let captured_event = events.into_iter().next().unwrap();
+///
+/// assert_eq!(captured_event.exception.len(), 1);
+/// assert_eq!(&captured_event.exception[0].ty, "ParseIntError");
 /// ```
 #[allow(unused_variables)]
 pub fn capture_error<E: Error + ?Sized>(error: &E) -> Uuid {
@@ -56,8 +64,8 @@ pub fn capture_error<E: Error + ?Sized>(error: &E) -> Uuid {
 /// #[error("outer")]
 /// struct OuterError(#[from] InnerError);
 ///
-/// let event = sentry_core::event_from_error(&OuterError(InnerError));
-/// assert_eq!(event.level, sentry_core::protocol::Level::Error);
+/// let event = sentry::event_from_error(&OuterError(InnerError));
+/// assert_eq!(event.level, sentry::protocol::Level::Error);
 /// assert_eq!(event.exception.len(), 2);
 /// assert_eq!(&event.exception[0].ty, "InnerError");
 /// assert_eq!(event.exception[0].value, Some("inner".into()));
@@ -95,7 +103,7 @@ fn exception_from_error<E: Error + ?Sized>(err: &E) -> Exception {
 /// # Examples
 ///
 /// ```
-/// use sentry_core::parse_type_from_debug;
+/// use sentry::parse_type_from_debug;
 ///
 /// let err = format!("{:?}", "NaN".parse::<usize>().unwrap_err());
 /// assert_eq!(parse_type_from_debug(&err), "ParseIntError");

@@ -31,6 +31,10 @@ rand = { version = "0.7.3", optional = true }
 log_ = { package = "log", version = "0.4.8", optional = true, features = ["std"] }
 
 [dev-dependencies]
+# Because we re-export all the public API in `sentry`, we actually run all the
+# doctests using the `sentry` crate. This also takes care of the doctest
+# limitation documented in https://github.com/rust-lang/rust/issues/45599.
+sentry = { version = "0.18.0", path = "../sentry", default-features = false, features = ["test"] }
 thiserror = "1.0.15"
 anyhow = "1.0.30"
 failure = "0.1.8"

@@ -14,19 +14,22 @@ pub type EventProcessor = Box<dyn Fn(Event<'static>) -> Option<Event<'static>> +
 
 /// Holds contextual data for the current scope.
 ///
-/// The scope is an object that can cloned efficiently and stores data that
+/// The scope is an object that can be cloned efficiently and stores data that
 /// is locally relevant to an event.  For instance the scope will hold recorded
 /// breadcrumbs and similar information.
 ///
 /// The scope can be interacted with in two ways:
 ///
 /// 1. the scope is routinely updated with information by functions such as
-///    `add_breadcrumb` which will modify the currently top-most scope.
-/// 2. the topmost scope can also be configured through the `configure_scope`
+///    [`add_breadcrumb`] which will modify the currently top-most scope.
+/// 2. the topmost scope can also be configured through the [`configure_scope`]
 ///    method.
 ///
 /// Note that the scope can only be modified but not inspected.  Only the
 /// client can use the scope to extract information currently.
+///
+/// [`add_breadcrumb`]: fn.add_breadcrumb.html
+/// [`configure_scope`]: fn.configure_scope.html
 #[derive(Clone)]
 pub struct Scope {
     pub(crate) level: Option<Level>,

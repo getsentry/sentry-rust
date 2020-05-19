@@ -1,5 +1,9 @@
 use crate::protocol::Breadcrumb;
-/// A helper trait that converts self into an Iterator of Breadcrumbs
+/// A helper trait that converts self into an Iterator of Breadcrumbs.
+///
+/// This is used for the [`add_breadcrumb`] function.
+///
+/// [`add_breadcrumb`]: fn.add_breadcrumb.html
 pub trait IntoBreadcrumbs {
     /// The iterator type for the breadcrumbs.
     type Output: Iterator<Item = Breadcrumb>;

@@ -4,30 +4,45 @@ use crate::{Hub, IntoBreadcrumbs, Scope};
 
 /// Captures an event on the currently active client if any.
 ///
-/// The event must already be assembled.  Typically code would instead use
-/// the utility methods like `capture_exception`.  The return value is the
-/// event ID.  In case Sentry is disabled the return value will be the nil
-/// UUID (`Uuid::nil`).
+/// The event must already be assembled. Typically code would instead use
+/// the utility methods like [`capture_message`], [`capture_error`], or an
+/// integration specific function.
 ///
-/// # Example
+/// The return value is the event ID. If the event was discarded for any reason,
+/// return value will be the nil UUID (`Uuid::nil`).
+///
+/// # Examples
 ///
 /// ```
-/// # use sentry_core as sentry;
+/// use sentry::types::Uuid;
 /// use sentry::protocol::{Event, Level};
 ///
-/// sentry::capture_event(Event {
+/// let uuid = Uuid::new_v4();
+/// let event = Event {
+///     event_id: uuid,
 ///     message: Some("Hello World!".into()),
 ///     level: Level::Info,
 ///     ..Default::default()
+/// };
+///
+/// assert_eq!(sentry::capture_event(event.clone()), Uuid::nil());
+///
+/// let events = sentry::test::with_captured_events(|| {
+/// assert_eq!(sentry::capture_event(event), uuid);
 /// });
+/// assert_eq!(events.len(), 1);
 /// ```
+///
+/// [`capture_message`]: fn.capture_message.html
+/// [`capture_error`]: fn.capture_error.html
 pub fn capture_event(event: Event<'static>) -> Uuid {
     Hub::with_active(|hub| hub.capture_event(event))
 }
 
 /// Captures an arbitrary message.
 ///
-/// This creates an event from the given message and sends it to the current hub.
+/// This creates an event from the given message and sends it via
+/// [`capture_event`](fn.capture_event.html).
 pub fn capture_message(msg: &str, level: Level) -> Uuid {
     Hub::with_active(|hub| hub.capture_message(msg, level))
 }
@@ -36,7 +51,7 @@ pub fn capture_message(msg: &str, level: Level) -> Uuid {
 ///
 /// The total number of breadcrumbs that can be recorded are limited by the
 /// configuration on the client.  This function accepts any object that
-/// implements `IntoBreadcrumbs` which is implemented for a varienty of
+/// implements [`IntoBreadcrumbs`], which is implemented for a varienty of
 /// common types.  For efficiency reasons you can also pass a closure returning
 /// a breadcrumb in which case the closure is only called if the client is
 /// enabled.
@@ -48,13 +63,12 @@ pub fn capture_message(msg: &str, level: Level) -> Uuid {
 /// * `Option<Breadcrumb>`: to record a breadcrumb or not
 /// * additionally all of these can also be returned from an `FnOnce()`
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
-/// # use sentry_core as sentry;
-/// use sentry::protocol::{Breadcrumb, Map};
+/// use sentry::protocol::{Breadcrumb, Map, Level};
 ///
-/// sentry::add_breadcrumb(|| Breadcrumb {
+/// let breadcrumb = Breadcrumb {
 ///     ty: "http".into(),
 ///     category: Some("request".into()),
 ///     data: {
@@ -64,30 +78,51 @@ pub fn capture_message(msg: &str, level: Level) -> Uuid {
 ///         map
 ///     },
 ///     ..Default::default()
-/// });
+/// };
+///
+/// # let events = sentry::test::with_captured_events(|| {
+/// sentry::add_breadcrumb(breadcrumb.clone());
+///
+/// sentry::capture_message("some message", Level::Info);
+/// # });
+/// # let captured_event = events.into_iter().next().unwrap();
+///
+/// assert_eq!(captured_event.breadcrumbs.values, vec![breadcrumb]);
 /// ```
+///
+/// [`IntoBreadcrumbs`]: trait.IntoBreadcrumbs.html
 pub fn add_breadcrumb<B: IntoBreadcrumbs>(breadcrumb: B) {
     Hub::with_active(|hub| hub.add_breadcrumb(breadcrumb))
 }
 
 /// Invokes a function that can modify the current scope.
 ///
-/// The function is passed a mutable reference to the `Scope` so that modifications
+/// The function is passed a mutable reference to the [`Scope`] so that modifications
 /// can be performed.  Because there might currently not be a scope or client active
 /// it's possible that the callback might not be called at all.  As a result of this
 /// the return value of this closure must have a default that is returned in such
 /// cases.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
-/// # use sentry_core as sentry;
-/// sentry::configure_scope(|scope| {
-///     scope.set_user(Some(sentry::User {
+/// use sentry::protocol::{User, Level};
+///
+/// let user = Some(User {
 ///         username: Some("john_doe".into()),
 ///         ..Default::default()
-///     }));
+///     });
+///
+/// # let events = sentry::test::with_captured_events(|| {
+/// sentry::configure_scope(|scope| {
+///     scope.set_user(user.clone());
 /// });
+///
+/// sentry::capture_message("some message", Level::Info);
+/// # });
+/// # let captured_event = events.into_iter().next().unwrap();
+///
+/// assert_eq!(captured_event.user, user);
 /// ```
 ///
 /// # Panics
@@ -96,6 +131,8 @@ pub fn add_breadcrumb<B: IntoBreadcrumbs>(breadcrumb: B) {
 /// not permitted.  In this case a wide range of panics will be raised.  It's
 /// unsafe to call into `sentry::bind_client` or similar functions from within
 /// the callback as a result of this.
+///
+/// [`Scope`]: struct.Scope.html
 pub fn configure_scope<F, R>(f: F) -> R
 where
     R: Default,
@@ -113,14 +150,20 @@ where
 /// This is useful when extra data should be send with a single capture call
 /// for instance a different level or tags:
 ///
-/// ```
-/// # use sentry_core as sentry;
-/// use sentry::{capture_message, with_scope, Level};
+/// # Examples
 ///
-/// with_scope(
+/// ```
+/// use sentry::protocol::{Level};
+///
+/// # let events = sentry::test::with_captured_events(|| {
+/// sentry::with_scope(
 ///     |scope| scope.set_level(Some(Level::Warning)),
-///     || capture_message("some error", Level::Info),
+///     || sentry::capture_message("some message", Level::Info),
 /// );
+/// # });
+/// # let captured_event = events.into_iter().next().unwrap();
+///
+/// assert_eq!(captured_event.level, Level::Warning);
 /// ```
 pub fn with_scope<C, F, R>(scope_config: C, callback: F) -> R
 where
@@ -146,7 +189,25 @@ where
 
 /// Returns the last event ID captured.
 ///
-/// This uses the current thread local hub.
+/// This uses the current thread local [`Hub`], and will return `None` if no
+/// event has been captured yet on this [`Hub`].
+///
+/// # Examples
+///
+/// ```
+/// use sentry::types::Uuid;
+/// use sentry::protocol::Level;
+///
+/// # sentry::test::with_captured_events(|| {
+/// assert_eq!(sentry::last_event_id(), None);
+///
+/// sentry::capture_message("some message", Level::Info);
+///
+/// assert!(sentry::last_event_id().is_some());
+/// # });
+/// ```
+///
+/// [`Hub`]: struct.Hub.html
 pub fn last_event_id() -> Option<Uuid> {
     with_client_impl! {{
         Hub::with(|hub| hub.last_event_id())

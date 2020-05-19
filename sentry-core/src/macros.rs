@@ -2,6 +2,18 @@
 ///
 /// This can be used with `ClientOptions` to set the release name.  It uses
 /// the information supplied by cargo to calculate a release.
+///
+/// # Examples
+///
+/// ```
+/// # #[macro_use] extern crate sentry;
+/// # fn main() {
+/// let _sentry = sentry::init(sentry::ClientOptions {
+///            release: sentry::release_name!(),
+///            ..Default::default()
+///        });
+/// # }
+/// ```
 #[macro_export]
 macro_rules! release_name {
     () => {{

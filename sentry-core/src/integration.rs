@@ -9,6 +9,46 @@ use crate::ClientOptions;
 /// It can act as an *Event Source*, which will capture new events;
 /// or as an *Event Processor*, which can modify every `Event` flowing through
 /// the pipeline.
+///
+/// # Examples
+///
+/// ```
+/// use sentry::ClientOptions;
+/// use sentry::protocol::{Event,Level};
+///
+/// struct MyProcessorIntegration {
+/// override_environment: &'static str,
+/// override_level: Level,
+/// }
+///
+/// impl sentry::Integration for MyProcessorIntegration {
+/// fn setup(&self, options: &mut ClientOptions) {
+/// options.environment = Some(self.override_environment.into());
+/// }
+/// fn process_event(
+/// &self,
+/// mut event: Event<'static>,
+/// _options: &ClientOptions,
+/// ) -> Option<Event<'static>> {
+/// event.level = self.override_level;
+/// Some(event)
+/// }
+/// }
+///
+/// let options = ClientOptions::new().add_integration(MyProcessorIntegration {
+/// override_environment: "my_env",
+/// override_level: Level::Error,
+/// });
+///
+/// let events = sentry::test::with_captured_events_options(||{
+/// sentry::capture_message("some message", Level::Info);
+/// }, options);
+/// let captured_event = events.into_iter().next().unwrap();
+///
+/// assert_eq!(captured_event.level, Level::Error);
+/// assert_eq!(captured_event.environment, Some("my_env".into()));
+/// ```
+///
 // NOTE: we need `Any` here so that the `TypeId` machinery works correctly.
 pub trait Integration: Sync + Send + Any + AsAny {
     /// Name of this integration.
