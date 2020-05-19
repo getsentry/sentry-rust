@@ -92,6 +92,7 @@ pub use crate::client::Client;
 pub mod test;
 
 // public api from other crates
+#[doc(inline)]
 pub use sentry_types as types;
 pub use sentry_types::protocol::v7 as protocol;
 pub use sentry_types::protocol::v7::{Breadcrumb, Level, User};
