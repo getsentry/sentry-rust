@@ -22,10 +22,10 @@ impl<T: Into<ClientOptions>> From<T> for Client {
 /// The Sentry Client.
 ///
 /// The Client is responsible for event processing and sending events to the
-/// sentry server via the configured [`Transport`].
-/// See the [Unified API] document for more details.
+/// sentry server via the configured [`Transport`]. It can be created from a
+/// [`ClientOptions`].
 ///
-/// A Client can be created from a [`ClientOptions`].
+/// See the [Unified API] document for more details.
 ///
 /// # Examples
 ///
@@ -33,6 +33,7 @@ impl<T: Into<ClientOptions>> From<T> for Client {
 /// sentry::Client::from(sentry::ClientOptions::default());
 /// ```
 ///
+/// [`ClientOptions`]: struct.ClientOptions.html
 /// [`Transport`]: trait.Transport.html
 /// [Unified API]: https://develop.sentry.dev/sdk/unified-api/
 pub struct Client {

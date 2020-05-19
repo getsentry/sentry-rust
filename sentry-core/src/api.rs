@@ -43,6 +43,19 @@ pub fn capture_event(event: Event<'static>) -> Uuid {
 ///
 /// This creates an event from the given message and sends it via
 /// [`capture_event`](fn.capture_event.html).
+///
+/// # Examples
+///
+/// ```
+/// use sentry::protocol::Level;
+///
+/// # let events = sentry::test::with_captured_events(|| {
+/// sentry::capture_message("some message", Level::Info);
+/// # });
+/// # let captured_event = events.into_iter().next().unwrap();
+///
+/// assert_eq!(captured_event.message.as_deref(), Some("some message"));
+/// ```
 pub fn capture_message(msg: &str, level: Level) -> Uuid {
     Hub::with_active(|hub| hub.capture_message(msg, level))
 }

@@ -17,10 +17,9 @@
 //! # Core Concepts
 //!
 //! This crate follows the [Unified API] guidelines and is centered around
-//! the concepts of [`Client`], [`Hub`] and [`Scope`]. See the corresponding
-//! type for more documentation, as well as the [Unified API] specification.
-//! See the [`Integration`] trait for documentation on how to write
-//! integrations, and the [`Transport`] trait on how to write transports.
+//! the concepts of [`Client`], [`Hub`] and [`Scope`], as well as the extension
+//! points via the [`Integration`], [`Transport`] and [`TransportFactory`] traits.
+//!
 //!
 //! # Minimal API
 //!
@@ -50,6 +49,7 @@
 //! [`Scope`]: struct.Scope.html
 //! [`Integration`]: trait.Integration.html
 //! [`Transport`]: trait.Transport.html
+//! [`TransportFactory`]: trait.TransportFactory.html
 
 #![warn(missing_docs)]
 

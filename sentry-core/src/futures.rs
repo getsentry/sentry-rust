@@ -8,7 +8,10 @@ use crate::Hub;
 /// A future that binds a `Hub` to its execution.
 ///
 /// This activates the given hub for the duration of the inner futures `poll`
-/// method.
+/// method. Users usually do not need to construct this type manually, but
+/// rather use the [`FutureExt::bind_hub`] method instead.
+///
+/// [`FutureExt::bind_hub`]: trait.FutureExt.html#method.bind_hub
 #[derive(Debug)]
 pub struct SentryFuture<F> {
     hub: Arc<Hub>,

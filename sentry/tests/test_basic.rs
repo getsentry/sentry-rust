@@ -80,7 +80,7 @@ fn test_breadcrumbs() {
 fn test_factory() {
     struct TestTransport(Arc<AtomicUsize>);
 
-    impl sentry::types::Transport for TestTransport {
+    impl sentry::Transport for TestTransport {
         fn send_event(&self, event: sentry::protocol::Event<'static>) {
             assert_eq!(event.message.unwrap(), "test");
             self.0.fetch_add(1, Ordering::SeqCst);

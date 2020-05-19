@@ -115,6 +115,11 @@ impl Stack {
 }
 
 /// A scope guard.
+///
+/// This is returned from [`Hub::push_scope`] and will automatically pop the
+/// scope on drop.
+///
+/// [`Hub::push_scope`]: struct.Hub.html#method.with_scope
 #[derive(Default)]
 pub struct ScopeGuard(pub(crate) Option<(Arc<RwLock<Stack>>, usize)>);
 

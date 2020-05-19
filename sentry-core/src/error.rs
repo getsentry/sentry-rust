@@ -6,6 +6,9 @@ use crate::Hub;
 
 impl Hub {
     /// Capture any `std::error::Error`.
+    ///
+    /// See the global [`capture_error`](fn.capture_error.html)
+    /// for more documentation.
     #[allow(unused)]
     pub fn capture_error<E: Error + ?Sized>(&self, error: &E) -> Uuid {
         with_client_impl! {{
@@ -26,7 +29,7 @@ impl Hub {
 ///
 /// Creates an event from the given error and sends it to the current hub.
 /// A chain of errors will be resolved as well, and sorted oldest to newest, as
-/// described on https://develop.sentry.dev/sdk/event-payloads/exception/.
+/// described in the [sentry event payloads].
 ///
 /// # Examples
 ///
@@ -41,6 +44,8 @@ impl Hub {
 /// assert_eq!(captured_event.exception.len(), 1);
 /// assert_eq!(&captured_event.exception[0].ty, "ParseIntError");
 /// ```
+///
+/// [sentry event payloads]: https://develop.sentry.dev/sdk/event-payloads/exception/
 #[allow(unused_variables)]
 pub fn capture_error<E: Error + ?Sized>(error: &E) -> Uuid {
     Hub::with_active(|hub| hub.capture_error(error))
@@ -49,7 +54,7 @@ pub fn capture_error<E: Error + ?Sized>(error: &E) -> Uuid {
 /// Create a sentry `Event` from a `std::error::Error`.
 ///
 /// A chain of errors will be resolved as well, and sorted oldest to newest, as
-/// described on https://develop.sentry.dev/sdk/event-payloads/exception/.
+/// described in the [sentry event payloads].
 ///
 /// # Examples
 ///
@@ -72,6 +77,8 @@ pub fn capture_error<E: Error + ?Sized>(error: &E) -> Uuid {
 /// assert_eq!(&event.exception[1].ty, "OuterError");
 /// assert_eq!(event.exception[1].value, Some("outer".into()));
 /// ```
+///
+/// [sentry event payloads]: https://develop.sentry.dev/sdk/event-payloads/exception/
 pub fn event_from_error<E: Error + ?Sized>(err: &E) -> Event<'static> {
     let mut exceptions = vec![exception_from_error(err)];
 

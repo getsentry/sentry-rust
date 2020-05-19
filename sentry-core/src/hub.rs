@@ -67,7 +67,7 @@ impl HubImpl {
 ///
 /// In most situations developers do not need to interface with the hub directly.  Instead
 /// toplevel convenience functions are expose that will automatically dispatch
-/// to the thread-local (`Hub::current`) hub.  In some situations this might not be
+/// to the thread-local (`Hub::current()`) hub.  In some situations this might not be
 /// possible in which case it might become necessary to manually work with the
 /// hub.  This is for instance the case when working with async code.
 ///
@@ -269,6 +269,9 @@ impl Hub {
     /// Sends the event to the current client with the current scope.
     ///
     /// In case no client is bound this does nothing instead.
+    ///
+    /// See the global [`capture_event`](fn.capture_event.html)
+    /// for more documentation.
     pub fn capture_event(&self, event: Event<'static>) -> Uuid {
         with_client_impl! {{
             self.inner.with(|stack| {
@@ -285,6 +288,9 @@ impl Hub {
     }
 
     /// Captures an arbitrary message.
+    ///
+    /// See the global [`capture_message`](fn.capture_message.html)
+    /// for more documentation.
     pub fn capture_message(&self, msg: &str, level: Level) -> Uuid {
         with_client_impl! {{
             self.inner.with(|stack| {
@@ -331,7 +337,8 @@ impl Hub {
 
     /// Temporarily pushes a scope for a single call optionally reconfiguring it.
     ///
-    /// This works the same as the global `with_scope` function.
+    /// See the global [`with_scope`](fn.with_scope.html)
+    /// for more documentation.
     pub fn with_scope<C, F, R>(&self, scope_config: C, callback: F) -> R
     where
         C: FnOnce(&mut Scope),
@@ -352,7 +359,8 @@ impl Hub {
 
     /// Invokes a function that can modify the current scope.
     ///
-    /// This works the same as the global `configure_scope` function.
+    /// See the global [`configure_scope`](fn.configure_scope.html)
+    /// for more documentation.
     pub fn configure_scope<F, R>(&self, f: F) -> R
     where
         R: Default,
@@ -371,8 +379,8 @@ impl Hub {
 
     /// Adds a new breadcrumb to the current scope.
     ///
-    /// This is equivalent to the global [`sentry::add_breadcrumb`](fn.add_breadcrumb.html) but
-    /// sends the breadcrumb into the hub instead.
+    /// See the global [`add_breadcrumb`](fn.add_breadcrumb.html)
+    /// for more documentation.
     pub fn add_breadcrumb<B: IntoBreadcrumbs>(&self, breadcrumb: B) {
         with_client_impl! {{
             self.inner.with_mut(|stack| {
