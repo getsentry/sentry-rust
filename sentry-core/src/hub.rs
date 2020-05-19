@@ -236,8 +236,9 @@ impl Hub {
     /// struct MyIntegration(usize);
     /// impl Integration for MyIntegration {}
     ///
-    /// let client = Arc::new(Client::from(ClientOptions::default()
-    ///     .add_integration(MyIntegration(10))));
+    /// let client = Arc::new(Client::from(
+    ///     ClientOptions::default().add_integration(MyIntegration(10)),
+    /// ));
     /// let hub = Hub::with(|hub| Hub::new_from_top(hub));
     /// hub.bind_client(Some(client));
     ///

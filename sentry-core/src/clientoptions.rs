@@ -20,8 +20,8 @@ pub type BeforeCallback<T> = Arc<dyn Fn(T) -> Option<T> + Send + Sync>;
 ///
 /// ```
 /// let _options = sentry::ClientOptions {
-/// debug: true,
-/// ..Default::default()
+///     debug: true,
+///     ..Default::default()
 /// };
 /// ```
 #[derive(Clone)]

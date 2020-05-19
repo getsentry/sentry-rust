@@ -9,9 +9,9 @@
 /// # #[macro_use] extern crate sentry;
 /// # fn main() {
 /// let _sentry = sentry::init(sentry::ClientOptions {
-///            release: sentry::release_name!(),
-///            ..Default::default()
-///        });
+///     release: sentry::release_name!(),
+///     ..Default::default()
+/// });
 /// # }
 /// ```
 #[macro_export]

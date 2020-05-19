@@ -215,9 +215,13 @@ impl Client {
     ///
     /// let dsn = "https://public@example.com/1";
     /// let transport = sentry::test::TestTransport::new();
-    /// let client = sentry::Client::from((dsn, sentry::ClientOptions {
-    /// transport: Some(Arc::new(transport)),
-    /// ..Default::default()}));
+    /// let client = sentry::Client::from((
+    ///     dsn,
+    ///     sentry::ClientOptions {
+    ///         transport: Some(Arc::new(transport)),
+    ///         ..Default::default()
+    ///     },
+    /// ));
     /// assert!(client.is_enabled());
     /// ```
     pub fn is_enabled(&self) -> bool {

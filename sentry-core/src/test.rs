@@ -9,8 +9,8 @@
 //! # Example usage
 //!
 //! ```
-//! use sentry::{capture_message, Level};
 //! use sentry::test::with_captured_events;
+//! use sentry::{capture_message, Level};
 //!
 //! let events = with_captured_events(|| {
 //!     capture_message("Hello World!", Level::Warning);
@@ -34,9 +34,9 @@ lazy_static::lazy_static! {
 /// # Examples
 ///
 /// ```
-/// use std::sync::Arc;
-/// use sentry::{Hub, ClientOptions};
 /// use sentry::test::TestTransport;
+/// use sentry::{ClientOptions, Hub};
+/// use std::sync::Arc;
 ///
 /// let transport = TestTransport::new();
 /// let options = ClientOptions {

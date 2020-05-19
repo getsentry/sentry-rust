@@ -14,8 +14,8 @@ use crate::{Hub, IntoBreadcrumbs, Scope};
 /// # Examples
 ///
 /// ```
-/// use sentry::types::Uuid;
 /// use sentry::protocol::{Event, Level};
+/// use sentry::types::Uuid;
 ///
 /// let uuid = Uuid::new_v4();
 /// let event = Event {
@@ -28,7 +28,7 @@ use crate::{Hub, IntoBreadcrumbs, Scope};
 /// assert_eq!(sentry::capture_event(event.clone()), Uuid::nil());
 ///
 /// let events = sentry::test::with_captured_events(|| {
-/// assert_eq!(sentry::capture_event(event), uuid);
+///     assert_eq!(sentry::capture_event(event), uuid);
 /// });
 /// assert_eq!(events.len(), 1);
 /// ```
@@ -66,7 +66,7 @@ pub fn capture_message(msg: &str, level: Level) -> Uuid {
 /// # Examples
 ///
 /// ```
-/// use sentry::protocol::{Breadcrumb, Map, Level};
+/// use sentry::protocol::{Breadcrumb, Level, Map};
 ///
 /// let breadcrumb = Breadcrumb {
 ///     ty: "http".into(),
@@ -106,12 +106,12 @@ pub fn add_breadcrumb<B: IntoBreadcrumbs>(breadcrumb: B) {
 /// # Examples
 ///
 /// ```
-/// use sentry::protocol::{User, Level};
+/// use sentry::protocol::{Level, User};
 ///
 /// let user = Some(User {
-///         username: Some("john_doe".into()),
-///         ..Default::default()
-///     });
+///     username: Some("john_doe".into()),
+///     ..Default::default()
+/// });
 ///
 /// # let events = sentry::test::with_captured_events(|| {
 /// sentry::configure_scope(|scope| {
@@ -153,7 +153,7 @@ where
 /// # Examples
 ///
 /// ```
-/// use sentry::protocol::{Level};
+/// use sentry::protocol::Level;
 ///
 /// # let events = sentry::test::with_captured_events(|| {
 /// sentry::with_scope(
@@ -195,8 +195,8 @@ where
 /// # Examples
 ///
 /// ```
-/// use sentry::types::Uuid;
 /// use sentry::protocol::Level;
+/// use sentry::types::Uuid;
 ///
 /// # sentry::test::with_captured_events(|| {
 /// assert_eq!(sentry::last_event_id(), None);
