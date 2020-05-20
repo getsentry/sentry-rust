@@ -11,5 +11,6 @@ members = [
     "sentry-failure",
     "sentry-log",
     "sentry-panic",
+    "sentry-slog",
     "sentry-types",
 ]
