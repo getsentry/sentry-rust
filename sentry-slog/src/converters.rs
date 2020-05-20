@@ -12,7 +12,7 @@ pub fn convert_log_level(level: slog::Level) -> Level {
 }
 
 /// Adds the data from a `slog::KV` into a sentry `Map`.
-pub fn add_kv_to_map(map: &mut Map<String, Value>, kv: &impl KV) {
+fn add_kv_to_map(map: &mut Map<String, Value>, kv: &impl KV) {
     let _ = (map, kv);
     // TODO: actually implement this ;-)
 }

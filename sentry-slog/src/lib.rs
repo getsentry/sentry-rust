@@ -5,6 +5,9 @@
 //! `slog::Record`s, and the [`SentryDrain`], which can be used to create a
 //! `slog::Logger`.
 //!
+//! *NOTE*: This integration currently does not process any `slog::KV` pairs,
+//! but support for this will be added in the future.
+//!
 //! # Examples
 //!
 //! ```
