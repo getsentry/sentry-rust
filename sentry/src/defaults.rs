@@ -33,28 +33,43 @@ pub fn apply_defaults(mut opts: ClientOptions) -> ClientOptions {
         // default integrations need to be ordered *before* custom integrations,
         // since they also process events in order
         let mut integrations: Vec<Arc<dyn Integration>> = vec![];
-        #[cfg(feature = "with_backtrace")]
+        #[cfg(feature = "backtrace")]
         {
             integrations.push(Arc::new(
                 sentry_backtrace::AttachStacktraceIntegration::default(),
             ));
         }
-        integrations.push(Arc::new(sentry_contexts::ContextIntegration::default()));
-        #[cfg(feature = "with_failure")]
+        #[cfg(feature = "debug-images")]
+        {
+            integrations.push(Arc::new(
+                sentry_debug_images::DebugImagesIntegration::default(),
+            ))
+        }
+        #[cfg(feature = "error-chain")]
+        {
+            integrations.push(Arc::new(
+                sentry_error_chain::ErrorChainIntegration::default(),
+            ))
+        }
+        #[cfg(feature = "contexts")]
+        {
+            integrations.push(Arc::new(sentry_contexts::ContextIntegration::default()));
+        }
+        #[cfg(feature = "failure")]
         {
             integrations.push(Arc::new(sentry_failure::FailureIntegration::default()));
         }
-        #[cfg(feature = "with_panic")]
+        #[cfg(feature = "panic")]
         {
             #[allow(unused_mut)]
             let mut integration = sentry_panic::PanicIntegration::default();
-            #[cfg(feature = "with_failure")]
+            #[cfg(feature = "failure")]
             {
                 integration = integration.add_extractor(sentry_failure::panic_extractor);
             }
             integrations.push(Arc::new(integration));
         }
-        #[cfg(feature = "with_backtrace")]
+        #[cfg(feature = "backtrace")]
         {
             integrations.push(Arc::new(
                 sentry_backtrace::ProcessStacktraceIntegration::default(),

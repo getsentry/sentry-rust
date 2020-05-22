@@ -1,6 +1,6 @@
 //! This provides testing functionality for building tests.
 //!
-//! **Feature:** `with_test_support` (*disabled by default*)
+//! **Feature:** `test` (*disabled by default*)
 //!
 //! If the sentry crate has been compiled with the test support feature this
 //! module becomes available and provides functionality to capture events

@@ -1,11 +1,11 @@
-#[cfg(feature = "with_client_implementation")]
+#[cfg(feature = "client")]
 mod real;
 
-#[cfg(not(feature = "with_client_implementation"))]
+#[cfg(not(feature = "client"))]
 pub(crate) mod noop;
 
-#[cfg(feature = "with_client_implementation")]
+#[cfg(feature = "client")]
 pub use self::real::*;
 
-#[cfg(not(feature = "with_client_implementation"))]
+#[cfg(not(feature = "client"))]
 pub use self::noop::*;

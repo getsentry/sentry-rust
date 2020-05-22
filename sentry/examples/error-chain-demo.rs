@@ -1,5 +1,5 @@
 #[macro_use]
-extern crate error_chain;
+extern crate error_chain_;
 
 use sentry_error_chain::{capture_error_chain, ErrorChainIntegration};
 

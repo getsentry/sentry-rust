@@ -78,7 +78,6 @@
 //!
 //! Default features:
 //!
-//! * `with_client_implementation`: Turns on the real client implementation.
 //! * `with_default_transport`: Compiles in the default HTTP transport (see below).
 //! * `with_backtrace`: Enables backtrace support (automatically turned on in a few cases).
 //! * `with_panic`: Enables the panic integration.
@@ -102,15 +101,43 @@
 //! * `with_test_support`: Enables the test support module.
 #![warn(missing_docs)]
 
-#[cfg(feature = "with_client_implementation")]
 mod defaults;
-#[cfg(feature = "with_client_implementation")]
 mod init;
-#[cfg(feature = "with_client_implementation")]
 mod transport;
 
 #[doc(inline)]
 pub use sentry_core::*;
+
+/// Available Sentry Integrations.
+pub mod integrations {
+    #[cfg(feature = "anyhow")]
+    #[doc(inline)]
+    pub use sentry_anyhow as anyhow;
+    #[cfg(feature = "backtrace")]
+    #[doc(inline)]
+    pub use sentry_backtrace as backtrace;
+    #[cfg(feature = "contexts")]
+    #[doc(inline)]
+    pub use sentry_contexts as contexts;
+    #[cfg(feature = "debug-images")]
+    #[doc(inline)]
+    pub use sentry_debug_images as debug_images;
+    #[cfg(feature = "error-chain")]
+    #[doc(inline)]
+    pub use sentry_error_chain as error_chain;
+    #[cfg(feature = "failure")]
+    #[doc(inline)]
+    pub use sentry_failure as failure;
+    #[cfg(feature = "log")]
+    #[doc(inline)]
+    pub use sentry_log as log;
+    #[cfg(feature = "panic")]
+    #[doc(inline)]
+    pub use sentry_panic as panic;
+    #[cfg(feature = "slog")]
+    #[doc(inline)]
+    pub use sentry_slog as slog;
+}
 
 /// Useful internals.
 ///
@@ -118,13 +145,9 @@ pub use sentry_core::*;
 /// have to interface with directly.  These are often returned
 /// from methods on other types.
 pub mod internals {
-    pub use sentry_core::internals::*;
-
-    #[cfg(feature = "with_client_implementation")]
-    pub use crate::init::ClientInitGuard;
-
-    #[cfg(feature = "with_client_implementation")]
     pub use crate::defaults::apply_defaults;
+    pub use crate::init::ClientInitGuard;
+    pub use sentry_core::internals::*;
 }
 
 /// The provided transports.
@@ -133,12 +156,7 @@ pub mod internals {
 /// library.  The `with_reqwest_transport`, `with_curl_transport` and `with_surf_transport` flags
 /// turn on these transports.
 pub mod transports {
-    #[cfg(any(
-        feature = "with_reqwest_transport",
-        feature = "with_curl_transport",
-        feature = "with_surf_transport"
-    ))]
-    pub use crate::transport::{DefaultTransportFactory, HttpTransport};
+    pub use crate::transport::DefaultTransportFactory;
 
     #[cfg(feature = "with_reqwest_transport")]
     pub use crate::transport::ReqwestHttpTransport;
@@ -148,7 +166,13 @@ pub mod transports {
 
     #[cfg(feature = "with_surf_transport")]
     pub use crate::transport::SurfHttpTransport;
+
+    #[cfg(any(
+        feature = "with_reqwest_transport",
+        feature = "with_curl_transport",
+        feature = "with_surf_transport"
+    ))]
+    pub use crate::transport::HttpTransport;
 }
 
-#[cfg(feature = "with_client_implementation")]
 pub use crate::init::init;

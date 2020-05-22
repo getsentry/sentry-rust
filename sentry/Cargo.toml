@@ -17,27 +17,61 @@ autoexamples = true
 all-features = true
 
 [features]
-default = ["with_client_implementation", "with_default_transport", "with_panic", "with_failure"]
+default = ["client", "backtrace", "contexts", "failure", "panic", "transport"]
+
+# we still need a "client" feature, here, because `sentry_debug!` tests for that
+client = []
+debug-logs = ["log_", "sentry-core/debug-logs"]
+
+# default integrations
+backtrace = ["sentry-backtrace"]
+contexts = ["sentry-contexts"]
+failure = ["sentry-failure"]
+panic = ["sentry-panic"]
+# other integrations
+anyhow = ["sentry-anyhow"]
+debug-images = ["sentry-debug-images"]
+error-chain = ["sentry-error-chain"]
+log = ["sentry-log"]
+slog = ["sentry-slog"]
+
+# other features
+test = ["sentry-core/test"]
+transport = ["with_default_transport"]
+
+# deprecated feature flags, here for backwards compatibility, will be removed
+# at some point
+with_client_implementation = ["client"]
+with_backtrace = ["backtrace"]
+with_failure = ["failure"]
+with_panic = ["panic"]
+with_error_chain = ["error-chain"]
+with_debug_to_log = ["debug-logs"]
+with_test_support = ["test"]
+with_debug_meta = ["debug-images"]
+with_device_info = ["contexts"]
+with_rust_info = ["contexts"]
+
+# transport related features, should be cleaned up further in the future
+with_default_transport = ["with_reqwest_transport", "with_native_tls"]
 with_reqwest_transport = ["reqwest", "httpdate", "with_client_implementation"]
 with_curl_transport = ["curl", "httpdate", "serde_json", "with_client_implementation"]
 with_surf_transport = ["surf", "httpdate", "http-client", "futures", "with_client_implementation"]
-with_default_transport = ["with_reqwest_transport", "with_native_tls"]
-with_client_implementation = ["sentry-core/with_client_implementation"]
-with_backtrace = ["sentry-backtrace"]
-with_panic = ["sentry-panic"]
-with_failure = ["sentry-failure"]
-with_debug_to_log = ["log", "sentry-core/with_debug_to_log"]
-with_test_support = ["sentry-core/with_test_support"]
 with_rustls = ["reqwest/rustls-tls"]
 with_native_tls = ["reqwest/default-tls"]
 
 [dependencies]
-sentry-core = { version = "0.18.0", path = "../sentry-core", default-features = false }
+sentry-core = { version = "0.18.0", path = "../sentry-core", features = ["client"] }
+sentry-anyhow = { version = "0.18.0", path = "../sentry-anyhow", optional = true }
 sentry-backtrace = { version = "0.18.0", path = "../sentry-backtrace", optional = true }
+sentry-contexts = { version = "0.18.0", path = "../sentry-contexts", optional = true }
+sentry-debug-images = { version = "0.18.0", path = "../sentry-debug-images", optional = true }
+sentry-error-chain = { version = "0.1.0", path = "../sentry-error-chain", optional = true }
 sentry-failure = { version = "0.18.0", path = "../sentry-failure", optional = true }
+sentry-log = { version = "0.18.0", path = "../sentry-log", optional = true }
 sentry-panic = { version = "0.18.0", path = "../sentry-panic", optional = true }
-sentry-contexts = { version = "0.18.0", path = "../sentry-contexts" }
-log = { version = "0.4.8", optional = true, features = ["std"] }
+sentry-slog = { version = "0.18.0", path = "../sentry-slog", optional = true }
+log_ = { package = "log", version = "0.4.8", optional = true, features = ["std"] }
 reqwest = { version = "0.10.1", optional = true, features = ["blocking", "json"], default-features = false }
 curl = { version = "0.4.25", optional = true }
 surf = { version = "2.0.0-alpha.2", optional = true }
@@ -48,13 +82,13 @@ serde_json = { version = "1.0.48", optional = true }
 
 [dev-dependencies]
 sentry-log = { version = "0.18.0", path = "../sentry-log", features = ["env_logger"] }
-log = { version = "0.4.8", features = ["std"] }
+log_ = { package = "log", version = "0.4.8", features = ["std"] }
 failure_derive = "0.1.6"
 actix-web = { version = "0.7.19", default-features = false }
 tokio = { version = "0.2", features = ["macros"] }
-failure = "0.1.6"
+failure_ = { package = "failure", version = "0.1.6" }
 pretty_env_logger = "0.4.0"
-error-chain = "0.12.1"
+error-chain_ = { package = "error-chain", version = "0.12.1" }
 sentry-error-chain = { version = "0.1.0", path = "../sentry-error-chain" }
 sentry-anyhow = { version = "0.18.0", path = "../sentry-anyhow" }
-anyhow = "1.0.30"
+anyhow_ = { package = "anyhow", version = "1.0.30" }

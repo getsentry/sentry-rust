@@ -1,4 +1,4 @@
-use log::{debug, error, info, warn};
+use log_::{debug, error, info, warn};
 
 fn main() {
     let mut log_builder = pretty_env_logger::formatted_builder();

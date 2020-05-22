@@ -1,4 +1,6 @@
-#![cfg(feature = "with_test_support")]
+#![cfg(feature = "test")]
+
+use log_ as log;
 
 #[test]
 fn test_log() {

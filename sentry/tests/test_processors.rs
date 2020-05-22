@@ -1,4 +1,4 @@
-#![cfg(feature = "with_test_support")]
+#![cfg(feature = "test")]
 
 use std::sync::Arc;
 

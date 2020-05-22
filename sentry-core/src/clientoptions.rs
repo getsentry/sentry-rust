@@ -4,11 +4,11 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use crate::constants::USER_AGENT;
-use crate::integrations::Integration;
 use crate::internals::Dsn;
 use crate::intodsn::IntoDsn;
 use crate::protocol::{Breadcrumb, Event};
 use crate::transport::TransportFactory;
+use crate::Integration;
 
 /// Type alias for before event/breadcrumb handlers.
 pub type BeforeCallback<T> = Arc<dyn Fn(T) -> Option<T> + Send + Sync>;
@@ -25,7 +25,7 @@ pub struct ClientOptions {
     /// Enables debug mode.
     ///
     /// In debug mode debug information is printed to stderr to help you understand what
-    /// sentry is doing.  When the `with_debug_to_log` flag is enabled Sentry will instead
+    /// sentry is doing.  When the `log` feature is enabled, Sentry will instead
     /// log to the `sentry` logger independently of this flag with the `Debug` level.
     pub debug: bool,
     /// The release to be sent with events.

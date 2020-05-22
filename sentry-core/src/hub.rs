@@ -9,16 +9,15 @@ use std::thread;
 use std::time::Duration;
 
 use crate::breadcrumbs::IntoBreadcrumbs;
-#[cfg(feature = "with_client_implementation")]
 use crate::error::event_from_error;
-use crate::integrations::Integration;
 use crate::internals::Uuid;
 use crate::protocol::{Breadcrumb, Event, Level};
 use crate::scope::{Scope, ScopeGuard};
-#[cfg(feature = "with_client_implementation")]
+use crate::Integration;
+#[cfg(feature = "client")]
 use crate::{client::Client, scope::Stack};
 
-#[cfg(feature = "with_client_implementation")]
+#[cfg(feature = "client")]
 lazy_static::lazy_static! {
     static ref PROCESS_HUB: (Arc<Hub>, thread::ThreadId) = (
         Arc::new(Hub::new(None, Arc::new(Default::default()))),
@@ -26,20 +25,20 @@ lazy_static::lazy_static! {
     );
 }
 
-#[cfg(feature = "with_client_implementation")]
+#[cfg(feature = "client")]
 thread_local! {
     static THREAD_HUB: UnsafeCell<Arc<Hub>> = UnsafeCell::new(
         Arc::new(Hub::new_from_top(&PROCESS_HUB.0)));
     static USE_PROCESS_HUB: Cell<bool> = Cell::new(PROCESS_HUB.1 == thread::current().id());
 }
 
-#[cfg(feature = "with_client_implementation")]
+#[cfg(feature = "client")]
 #[derive(Debug)]
 pub(crate) struct HubImpl {
     stack: Arc<RwLock<Stack>>,
 }
 
-#[cfg(feature = "with_client_implementation")]
+#[cfg(feature = "client")]
 impl HubImpl {
     pub(crate) fn with<F: FnOnce(&Stack) -> R, R>(&self, f: F) -> R {
         let guard = self.stack.read().unwrap_or_else(PoisonError::into_inner);
@@ -86,14 +85,14 @@ impl HubImpl {
 /// * `Hub::new_from_top`: creates a new hub with just the top scope of another hub.
 #[derive(Debug)]
 pub struct Hub {
-    #[cfg(feature = "with_client_implementation")]
+    #[cfg(feature = "client")]
     pub(crate) inner: HubImpl,
     last_event_id: RwLock<Option<Uuid>>,
 }
 
 impl Hub {
     /// Creates a new hub from the given client and scope.
-    #[cfg(feature = "with_client_implementation")]
+    #[cfg(feature = "client")]
     pub fn new(client: Option<Arc<Client>>, scope: Arc<Scope>) -> Hub {
         Hub {
             inner: HubImpl {
@@ -104,7 +103,7 @@ impl Hub {
     }
 
     /// Creates a new hub based on the top scope of the given hub.
-    #[cfg(feature = "with_client_implementation")]
+    #[cfg(feature = "client")]
     pub fn new_from_top<H: AsRef<Hub>>(other: H) -> Hub {
         let hub = other.as_ref();
         hub.inner.with(|stack| {
@@ -121,7 +120,7 @@ impl Hub {
     ///
     /// This method is unavailable if the client implementation is disabled.
     /// When using the minimal API set use `Hub::with_active` instead.
-    #[cfg(feature = "with_client_implementation")]
+    #[cfg(feature = "client")]
     pub fn current() -> Arc<Hub> {
         Hub::with(Arc::clone)
     }
@@ -130,7 +129,7 @@ impl Hub {
     ///
     /// This is similar to `current` but instead of picking the current
     /// thread's hub it returns the main thread's hub instead.
-    #[cfg(feature = "with_client_implementation")]
+    #[cfg(feature = "client")]
     pub fn main() -> Arc<Hub> {
         PROCESS_HUB.0.clone()
     }
@@ -139,7 +138,7 @@ impl Hub {
     ///
     /// This is a slightly more efficient version than `Hub::current()` and
     /// also unavailable in minimal mode.
-    #[cfg(feature = "with_client_implementation")]
+    #[cfg(feature = "client")]
     pub fn with<F, R>(f: F) -> R
     where
         F: FnOnce(&Arc<Hub>) -> R,
@@ -179,8 +178,7 @@ impl Hub {
     }
 
     /// Binds a hub to the current thread for the duration of the call.
-    #[cfg(feature = "with_client_implementation")]
-    #[allow(clippy::needless_pass_by_value)]
+    #[cfg(feature = "client")]
     pub fn run<F: FnOnce() -> R, R>(hub: Arc<Hub>, f: F) -> R {
         let mut restore_process_hub = false;
         let did_switch = THREAD_HUB.with(|ctx| unsafe {
@@ -306,23 +304,17 @@ impl Hub {
     }
 
     /// Returns the currently bound client.
-    #[cfg(feature = "with_client_implementation")]
+    #[cfg(feature = "client")]
     pub fn client(&self) -> Option<Arc<Client>> {
-        with_client_impl! {{
-            self.inner.with(|stack| {
-                stack.top().client.clone()
-            })
-        }}
+        self.inner.with(|stack| stack.top().client.clone())
     }
 
     /// Binds a new client to the hub.
-    #[cfg(feature = "with_client_implementation")]
+    #[cfg(feature = "client")]
     pub fn bind_client(&self, client: Option<Arc<Client>>) {
-        with_client_impl! {{
-            self.inner.with_mut(|stack| {
-                stack.top_mut().client = client;
-            })
-        }}
+        self.inner.with_mut(|stack| {
+            stack.top_mut().client = client;
+        })
     }
 
     /// Pushes a new scope.
@@ -345,13 +337,13 @@ impl Hub {
         C: FnOnce(&mut Scope),
         F: FnOnce() -> R,
     {
-        #[cfg(feature = "with_client_implementation")]
+        #[cfg(feature = "client")]
         {
             let _guard = self.push_scope();
             self.configure_scope(scope_config);
             callback()
         }
-        #[cfg(not(feature = "with_client_implementation"))]
+        #[cfg(not(feature = "client"))]
         {
             let _scope_config = scope_config;
             callback()
@@ -405,17 +397,17 @@ impl Hub {
         }}
     }
 
-    #[cfg(feature = "with_client_implementation")]
+    #[cfg(feature = "client")]
     pub(crate) fn is_active_and_usage_safe(&self) -> bool {
         self.inner.is_active_and_usage_safe()
     }
 
-    #[cfg(feature = "with_client_implementation")]
+    #[cfg(feature = "client")]
     pub(crate) fn with_current_scope<F: FnOnce(&Arc<Scope>) -> R, R>(&self, f: F) -> R {
         self.inner.with(|stack| f(&stack.top().scope))
     }
 
-    #[cfg(feature = "with_client_implementation")]
+    #[cfg(feature = "client")]
     pub(crate) fn with_current_scope_mut<F: FnOnce(&mut Scope) -> R, R>(&self, f: F) -> R {
         self.inner
             .with_mut(|stack| f(Arc::make_mut(&mut stack.top_mut().scope)))

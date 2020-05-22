@@ -15,7 +15,6 @@ edition = "2018"
 [features]
 default = ["with_sentry_default"]
 with_sentry_default = [
-    "sentry/with_client_implementation",
     "sentry/with_default_transport",
     "sentry/with_panic",
     "sentry/with_native_tls"

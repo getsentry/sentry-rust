@@ -1,4 +1,5 @@
 use failure::Fail;
+use failure_ as failure;
 use sentry_failure::capture_error;
 
 #[derive(Fail, Debug)]

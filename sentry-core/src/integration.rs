@@ -1,7 +1,3 @@
-//! This module provides support for various integrations.
-//!
-//! Which integerations are available depends on the features that were compiled in.
-
 use std::any::{type_name, Any};
 
 use crate::protocol::Event;

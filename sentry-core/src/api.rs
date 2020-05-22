@@ -1,5 +1,4 @@
 use crate::breadcrumbs::IntoBreadcrumbs;
-#[cfg(feature = "with_client_implementation")]
 use crate::hub::Hub;
 use crate::internals;
 use crate::protocol::{Event, Level};
@@ -24,23 +23,15 @@ use crate::scope::Scope;
 ///     ..Default::default()
 /// });
 /// ```
-#[allow(unused_variables)]
 pub fn capture_event(event: Event<'static>) -> internals::Uuid {
-    with_client_impl! {{
-        Hub::with(|hub| hub.capture_event(event))
-    }}
+    Hub::with_active(|hub| hub.capture_event(event))
 }
 
 /// Captures an arbitrary message.
 ///
 /// This creates an event from the given message and sends it to the current hub.
-#[allow(unused_variables)]
 pub fn capture_message(msg: &str, level: Level) -> internals::Uuid {
-    with_client_impl! {{
-        Hub::with_active(|hub| {
-            hub.capture_message(msg, level)
-        })
-    }}
+    Hub::with_active(|hub| hub.capture_message(msg, level))
 }
 
 /// Records a breadcrumb by calling a function.
@@ -77,13 +68,8 @@ pub fn capture_message(msg: &str, level: Level) -> internals::Uuid {
 ///     ..Default::default()
 /// });
 /// ```
-#[allow(unused_variables)]
 pub fn add_breadcrumb<B: IntoBreadcrumbs>(breadcrumb: B) {
-    with_client_impl! {{
-        Hub::with_active(|hub| {
-            hub.add_breadcrumb(breadcrumb)
-        })
-    }}
+    Hub::with_active(|hub| hub.add_breadcrumb(breadcrumb))
 }
 
 /// Invokes a function that can modify the current scope.
@@ -112,17 +98,12 @@ pub fn add_breadcrumb<B: IntoBreadcrumbs>(breadcrumb: B) {
 /// not permitted.  In this case a wide range of panics will be raised.  It's
 /// unsafe to call into `sentry::bind_client` or similar functions from within
 /// the callback as a result of this.
-#[allow(unused_variables)]
 pub fn configure_scope<F, R>(f: F) -> R
 where
     R: Default,
     F: FnOnce(&mut Scope) -> R,
 {
-    with_client_impl! {{
-        Hub::with_active(|hub| {
-            hub.configure_scope(f)
-        })
-    }}
+    Hub::with_active(|hub| hub.configure_scope(f))
 }
 
 /// Temporarily pushes a scope for a single call optionally reconfiguring it.
@@ -148,7 +129,7 @@ where
     C: FnOnce(&mut Scope),
     F: FnOnce() -> R,
 {
-    #[cfg(feature = "with_client_implementation")]
+    #[cfg(feature = "client")]
     {
         Hub::with(|hub| {
             if hub.is_active_and_usage_safe() {
@@ -158,7 +139,7 @@ where
             }
         })
     }
-    #[cfg(not(feature = "with_client_implementation"))]
+    #[cfg(not(feature = "client"))]
     {
         let _scope_config = scope_config;
         callback()
@@ -166,10 +147,10 @@ where
 }
 
 /// Returns the last event ID captured.
+///
+/// This uses the current thread local hub.
 pub fn last_event_id() -> Option<internals::Uuid> {
     with_client_impl! {{
-        Hub::with_active(|hub| {
-            hub.last_event_id()
-        })
+        Hub::with(|hub| hub.last_event_id())
     }}
 }
