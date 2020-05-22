@@ -111,21 +111,32 @@ pub use sentry_core::*;
 /// Available Sentry Integrations.
 pub mod integrations {
     #[cfg(feature = "anyhow")]
+    #[doc(inline)]
     pub use sentry_anyhow as anyhow;
     #[cfg(feature = "backtrace")]
+    #[doc(inline)]
     pub use sentry_backtrace as backtrace;
     #[cfg(feature = "contexts")]
+    #[doc(inline)]
     pub use sentry_contexts as contexts;
     #[cfg(feature = "debug-images")]
+    #[doc(inline)]
     pub use sentry_debug_images as debug_images;
     #[cfg(feature = "error-chain")]
+    #[doc(inline)]
     pub use sentry_error_chain as error_chain;
     #[cfg(feature = "failure")]
+    #[doc(inline)]
     pub use sentry_failure as failure;
     #[cfg(feature = "log")]
+    #[doc(inline)]
     pub use sentry_log as log;
     #[cfg(feature = "panic")]
+    #[doc(inline)]
     pub use sentry_panic as panic;
+    #[cfg(feature = "slog")]
+    #[doc(inline)]
+    pub use sentry_slog as slog;
 }
 
 /// Useful internals.

@@ -33,6 +33,7 @@ anyhow = ["sentry-anyhow"]
 debug-images = ["sentry-debug-images"]
 error-chain = ["sentry-error-chain"]
 log = ["sentry-log"]
+slog = ["sentry-slog"]
 
 # other features
 test = ["sentry-core/test"]
@@ -69,6 +70,7 @@ sentry-error-chain = { version = "0.1.0", path = "../sentry-error-chain", option
 sentry-failure = { version = "0.18.0", path = "../sentry-failure", optional = true }
 sentry-log = { version = "0.18.0", path = "../sentry-log", optional = true }
 sentry-panic = { version = "0.18.0", path = "../sentry-panic", optional = true }
+sentry-slog = { version = "0.18.0", path = "../sentry-slog", optional = true }
 log_ = { package = "log", version = "0.4.8", optional = true, features = ["std"] }
 reqwest = { version = "0.10.1", optional = true, features = ["blocking", "json"], default-features = false }
 curl = { version = "0.4.25", optional = true }
