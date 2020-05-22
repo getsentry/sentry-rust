@@ -92,6 +92,7 @@
 //! * `with_reqwest_transport`: Enables the reqwest transport explicitly.  This is currently the
 //!   default transport.
 //! * `with_curl_transport`: Enables the curl transport.
+//! * `with_surf_transport`: Enables the surf transport.
 //! * `with_rustls`: Enables the `rustls` TLS implementation.  This is currently the default when
 //!   using the `with_reqwest_transport` feature.
 //! * `with_native_tls`: Enables the `default-tls` feature of the `reqwest` library.
@@ -129,10 +130,14 @@ pub mod internals {
 /// The provided transports.
 ///
 /// This module exposes all transports that are compiled into the sentry
-/// library.  The `with_reqwest_transport` and `with_curl_transport` flags
+/// library.  The `with_reqwest_transport`, `with_curl_transport` and `with_surf_transport` flags
 /// turn on these transports.
 pub mod transports {
-    #[cfg(any(feature = "with_reqwest_transport", feature = "with_curl_transport"))]
+    #[cfg(any(
+        feature = "with_reqwest_transport",
+        feature = "with_curl_transport",
+        feature = "with_surf_transport"
+    ))]
     pub use crate::transport::{DefaultTransportFactory, HttpTransport};
 
     #[cfg(feature = "with_reqwest_transport")]
@@ -140,6 +145,9 @@ pub mod transports {
 
     #[cfg(feature = "with_curl_transport")]
     pub use crate::transport::CurlHttpTransport;
+
+    #[cfg(feature = "with_surf_transport")]
+    pub use crate::transport::SurfHttpTransport;
 }
 
 #[cfg(feature = "with_client_implementation")]
