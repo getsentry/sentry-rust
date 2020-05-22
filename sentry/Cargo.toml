@@ -55,6 +55,7 @@ with_rust_info = ["contexts"]
 with_default_transport = ["with_reqwest_transport", "with_native_tls"]
 with_reqwest_transport = ["reqwest", "httpdate", "with_client_implementation"]
 with_curl_transport = ["curl", "httpdate", "serde_json", "with_client_implementation"]
+with_surf_transport = ["surf", "httpdate", "http-client", "futures", "with_client_implementation"]
 with_rustls = ["reqwest/rustls-tls"]
 with_native_tls = ["reqwest/default-tls"]
 
@@ -71,6 +72,9 @@ sentry-panic = { version = "0.18.0", path = "../sentry-panic", optional = true }
 log_ = { package = "log", version = "0.4.8", optional = true, features = ["std"] }
 reqwest = { version = "0.10.1", optional = true, features = ["blocking", "json"], default-features = false }
 curl = { version = "0.4.25", optional = true }
+surf = { version = "2.0.0-alpha.2", optional = true }
+http-client = { version = "2.0", optional = true }
+futures = { version = "0.3", optional = true }
 httpdate = { version = "0.3.2", optional = true }
 serde_json = { version = "1.0.48", optional = true }
 
