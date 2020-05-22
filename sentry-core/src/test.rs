@@ -9,9 +9,8 @@
 //! # Example usage
 //!
 //! ```
-//! # use sentry_core as sentry;
-//! use sentry::{capture_message, Level};
 //! use sentry::test::with_captured_events;
+//! use sentry::{capture_message, Level};
 //!
 //! let events = with_captured_events(|| {
 //!     capture_message("Hello World!", Level::Warning);
@@ -19,13 +18,12 @@
 //! assert_eq!(events.len(), 1);
 //! assert_eq!(events[0].message.as_ref().unwrap(), "Hello World!");
 //! ```
+
 use std::sync::{Arc, Mutex};
 
-use crate::client::ClientOptions;
-use crate::hub::Hub;
-use crate::internals::Dsn;
 use crate::protocol::Event;
-use crate::transport::Transport;
+use crate::types::Dsn;
+use crate::{ClientOptions, Hub, Transport};
 
 lazy_static::lazy_static! {
     static ref TEST_DSN: Dsn = "https://public@sentry.invalid/1".parse().unwrap();
@@ -33,13 +31,12 @@ lazy_static::lazy_static! {
 
 /// Collects events instead of sending them.
 ///
-/// Example usage:
+/// # Examples
 ///
 /// ```
-/// # use sentry_core as sentry;
-/// use std::sync::Arc;
-/// use sentry::{Hub, ClientOptions};
 /// use sentry::test::TestTransport;
+/// use sentry::{ClientOptions, Hub};
+/// use std::sync::Arc;
 ///
 /// let transport = TestTransport::new();
 /// let options = ClientOptions {

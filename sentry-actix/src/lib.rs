@@ -70,9 +70,9 @@ use std::sync::{Arc, Mutex};
 use actix_web::middleware::{Finished, Middleware, Response, Started};
 use actix_web::{Error, HttpMessage, HttpRequest, HttpResponse};
 use failure::Fail;
-use sentry::internals::{ScopeGuard, Uuid};
 use sentry::protocol::{ClientSdkPackage, Event, Level};
-use sentry::Hub;
+use sentry::types::Uuid;
+use sentry::{Hub, ScopeGuard};
 use sentry_failure::exception_from_single_fail;
 
 /// A helper construct that can be used to reconfigure and build the middleware.

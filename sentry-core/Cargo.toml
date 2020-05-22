@@ -21,7 +21,7 @@ client = ["im", "rand"]
 # I would love to just have a `log` feature, but this is used inside a macro,
 # and macros actually expand features (and extern crate) where they are used!
 debug-logs = ["log_"]
-test = []
+test = ["client"]
 
 [dependencies]
 sentry-types = { version = "0.15.0", path = "../sentry-types" }
@@ -31,6 +31,10 @@ rand = { version = "0.7.3", optional = true }
 log_ = { package = "log", version = "0.4.8", optional = true, features = ["std"] }
 
 [dev-dependencies]
+# Because we re-export all the public API in `sentry`, we actually run all the
+# doctests using the `sentry` crate. This also takes care of the doctest
+# limitation documented in https://github.com/rust-lang/rust/issues/45599.
+sentry = { version = "0.18.0", path = "../sentry", default-features = false, features = ["test"] }
 thiserror = "1.0.15"
 anyhow = "1.0.30"
 failure = "0.1.8"

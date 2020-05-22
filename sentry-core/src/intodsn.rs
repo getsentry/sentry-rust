@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::ffi::{OsStr, OsString};
 
-use sentry_types::{Dsn, ParseDsnError};
+use crate::types::{Dsn, ParseDsnError};
 
 /// Helper trait to convert a string into an `Option<Dsn>`.
 ///

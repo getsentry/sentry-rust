@@ -22,7 +22,7 @@
 use std::error::Error;
 use std::fmt;
 
-use sentry_core::internals::Uuid;
+use sentry_core::types::Uuid;
 use sentry_core::Hub;
 
 /// Captures an `anyhow::Error`.

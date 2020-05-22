@@ -4,11 +4,9 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use crate::constants::USER_AGENT;
-use crate::internals::Dsn;
-use crate::intodsn::IntoDsn;
 use crate::protocol::{Breadcrumb, Event};
-use crate::transport::TransportFactory;
-use crate::Integration;
+use crate::types::Dsn;
+use crate::{Integration, IntoDsn, TransportFactory};
 
 /// Type alias for before event/breadcrumb handlers.
 pub type BeforeCallback<T> = Arc<dyn Fn(T) -> Option<T> + Send + Sync>;
@@ -17,6 +15,15 @@ pub type BeforeCallback<T> = Arc<dyn Fn(T) -> Option<T> + Send + Sync>;
 ///
 /// These options are explained in more detail in the general
 /// [sentry documentation](https://docs.sentry.io/error-reporting/configuration/?platform=rust).
+///
+/// # Examples
+///
+/// ```
+/// let _options = sentry::ClientOptions {
+///     debug: true,
+///     ..Default::default()
+/// };
+/// ```
 #[derive(Clone)]
 pub struct ClientOptions {
     // Common options
@@ -85,7 +92,22 @@ pub struct ClientOptions {
 }
 
 impl ClientOptions {
+    /// Creates new Options.
+    pub fn new() -> Self {
+        Self::default()
+    }
     /// Adds a configured integration to the options.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// struct MyIntegration;
+    ///
+    /// impl sentry::Integration for MyIntegration {}
+    ///
+    /// let options = sentry::ClientOptions::new().add_integration(MyIntegration);
+    /// assert_eq!(options.integrations.len(), 1);
+    /// ```
     pub fn add_integration<I: Integration>(mut self, integration: I) -> Self {
         self.integrations.push(Arc::new(integration));
         self

@@ -2,8 +2,8 @@ use std::borrow::Cow;
 use std::fmt;
 use std::sync::{Arc, PoisonError, RwLock};
 
-use crate::client::Client;
 use crate::protocol::{Breadcrumb, Context, Event, Level, User, Value};
+use crate::Client;
 
 #[derive(Debug)]
 pub struct Stack {
@@ -14,19 +14,22 @@ pub type EventProcessor = Box<dyn Fn(Event<'static>) -> Option<Event<'static>> +
 
 /// Holds contextual data for the current scope.
 ///
-/// The scope is an object that can cloned efficiently and stores data that
+/// The scope is an object that can be cloned efficiently and stores data that
 /// is locally relevant to an event.  For instance the scope will hold recorded
 /// breadcrumbs and similar information.
 ///
 /// The scope can be interacted with in two ways:
 ///
 /// 1. the scope is routinely updated with information by functions such as
-///    `add_breadcrumb` which will modify the currently top-most scope.
-/// 2. the topmost scope can also be configured through the `configure_scope`
+///    [`add_breadcrumb`] which will modify the currently top-most scope.
+/// 2. the topmost scope can also be configured through the [`configure_scope`]
 ///    method.
 ///
 /// Note that the scope can only be modified but not inspected.  Only the
 /// client can use the scope to extract information currently.
+///
+/// [`add_breadcrumb`]: fn.add_breadcrumb.html
+/// [`configure_scope`]: fn.configure_scope.html
 #[derive(Clone)]
 pub struct Scope {
     pub(crate) level: Option<Level>,
@@ -112,6 +115,11 @@ impl Stack {
 }
 
 /// A scope guard.
+///
+/// This is returned from [`Hub::push_scope`] and will automatically pop the
+/// scope on drop.
+///
+/// [`Hub::push_scope`]: struct.Hub.html#method.with_scope
 #[derive(Default)]
 pub struct ScopeGuard(pub(crate) Option<(Arc<RwLock<Stack>>, usize)>);
 

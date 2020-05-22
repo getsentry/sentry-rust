@@ -8,14 +8,11 @@ use std::sync::{Arc, Mutex, PoisonError, RwLock, TryLockError};
 use std::thread;
 use std::time::Duration;
 
-use crate::breadcrumbs::IntoBreadcrumbs;
-use crate::error::event_from_error;
-use crate::internals::Uuid;
 use crate::protocol::{Breadcrumb, Event, Level};
-use crate::scope::{Scope, ScopeGuard};
-use crate::Integration;
+use crate::types::Uuid;
+use crate::{event_from_error, Integration, IntoBreadcrumbs, Scope, ScopeGuard};
 #[cfg(feature = "client")]
-use crate::{client::Client, scope::Stack};
+use crate::{scope::Stack, Client};
 
 #[cfg(feature = "client")]
 lazy_static::lazy_static! {
@@ -64,11 +61,13 @@ impl HubImpl {
 ///
 /// This can be used to capture events and manage the scope.  This object is
 /// internally synchronized so it can be used from multiple threads if needed.
-/// The default hub that is available automatically is thread local.
 ///
-/// In most situations developers do not need to interface the hub.  Instead
-/// toplevel convenience functions are expose tht will automatically dispatch
-/// to global (`Hub::current`) hub.  In some situations this might not be
+/// Each thread has its own thread-local (`Hub::current()`) hub, which is
+/// automatically derived from the main hub (`Hub::main()`).
+///
+/// In most situations developers do not need to interface with the hub directly.  Instead
+/// toplevel convenience functions are expose that will automatically dispatch
+/// to the thread-local (`Hub::current()`) hub.  In some situations this might not be
 /// possible in which case it might become necessary to manually work with the
 /// hub.  This is for instance the case when working with async code.
 ///
@@ -237,8 +236,9 @@ impl Hub {
     /// struct MyIntegration(usize);
     /// impl Integration for MyIntegration {}
     ///
-    /// let client = Arc::new(Client::from(ClientOptions::default()
-    ///     .add_integration(MyIntegration(10))));
+    /// let client = Arc::new(Client::from(
+    ///     ClientOptions::default().add_integration(MyIntegration(10)),
+    /// ));
     /// let hub = Hub::with(|hub| Hub::new_from_top(hub));
     /// hub.bind_client(Some(client));
     ///
@@ -269,6 +269,9 @@ impl Hub {
     /// Sends the event to the current client with the current scope.
     ///
     /// In case no client is bound this does nothing instead.
+    ///
+    /// See the global [`capture_event`](fn.capture_event.html)
+    /// for more documentation.
     pub fn capture_event(&self, event: Event<'static>) -> Uuid {
         with_client_impl! {{
             self.inner.with(|stack| {
@@ -285,6 +288,9 @@ impl Hub {
     }
 
     /// Captures an arbitrary message.
+    ///
+    /// See the global [`capture_message`](fn.capture_message.html)
+    /// for more documentation.
     pub fn capture_message(&self, msg: &str, level: Level) -> Uuid {
         with_client_impl! {{
             self.inner.with(|stack| {
@@ -331,7 +337,8 @@ impl Hub {
 
     /// Temporarily pushes a scope for a single call optionally reconfiguring it.
     ///
-    /// This works the same as the global `with_scope` function.
+    /// See the global [`with_scope`](fn.with_scope.html)
+    /// for more documentation.
     pub fn with_scope<C, F, R>(&self, scope_config: C, callback: F) -> R
     where
         C: FnOnce(&mut Scope),
@@ -352,7 +359,8 @@ impl Hub {
 
     /// Invokes a function that can modify the current scope.
     ///
-    /// This works the same as the global `configure_scope` function.
+    /// See the global [`configure_scope`](fn.configure_scope.html)
+    /// for more documentation.
     pub fn configure_scope<F, R>(&self, f: F) -> R
     where
         R: Default,
@@ -371,8 +379,8 @@ impl Hub {
 
     /// Adds a new breadcrumb to the current scope.
     ///
-    /// This is equivalent to the global [`sentry::add_breadcrumb`](fn.add_breadcrumb.html) but
-    /// sends the breadcrumb into the hub instead.
+    /// See the global [`add_breadcrumb`](fn.add_breadcrumb.html)
+    /// for more documentation.
     pub fn add_breadcrumb<B: IntoBreadcrumbs>(&self, breadcrumb: B) {
         with_client_impl! {{
             self.inner.with_mut(|stack| {

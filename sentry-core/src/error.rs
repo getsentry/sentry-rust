@@ -1,13 +1,16 @@
 use std::error::Error;
 
-use sentry_types::Uuid;
-
 use crate::protocol::{Event, Exception, Level};
+use crate::types::Uuid;
 use crate::Hub;
 
 impl Hub {
     /// Capture any `std::error::Error`.
-    pub fn capture_error<E: Error + ?Sized>(&self, error: &E) -> sentry_types::Uuid {
+    ///
+    /// See the global [`capture_error`](fn.capture_error.html)
+    /// for more documentation.
+    #[allow(unused)]
+    pub fn capture_error<E: Error + ?Sized>(&self, error: &E) -> Uuid {
         with_client_impl! {{
             self.inner.with(|stack| {
                 let top = stack.top();
@@ -26,22 +29,32 @@ impl Hub {
 ///
 /// Creates an event from the given error and sends it to the current hub.
 /// A chain of errors will be resolved as well, and sorted oldest to newest, as
-/// described on https://develop.sentry.dev/sdk/event-payloads/exception/.
+/// described in the [sentry event payloads].
 ///
 /// # Examples
+///
 /// ```
-/// # use sentry_core as sentry;
-/// sentry::capture_error(&std::io::Error::last_os_error());
+/// let err = "NaN".parse::<usize>().unwrap_err();
+///
+/// # let events = sentry::test::with_captured_events(|| {
+/// sentry::capture_error(&err);
+/// # });
+/// # let captured_event = events.into_iter().next().unwrap();
+///
+/// assert_eq!(captured_event.exception.len(), 1);
+/// assert_eq!(&captured_event.exception[0].ty, "ParseIntError");
 /// ```
+///
+/// [sentry event payloads]: https://develop.sentry.dev/sdk/event-payloads/exception/
 #[allow(unused_variables)]
-pub fn capture_error<E: Error + ?Sized>(error: &E) -> sentry_types::Uuid {
+pub fn capture_error<E: Error + ?Sized>(error: &E) -> Uuid {
     Hub::with_active(|hub| hub.capture_error(error))
 }
 
 /// Create a sentry `Event` from a `std::error::Error`.
 ///
 /// A chain of errors will be resolved as well, and sorted oldest to newest, as
-/// described on https://develop.sentry.dev/sdk/event-payloads/exception/.
+/// described in the [sentry event payloads].
 ///
 /// # Examples
 ///
@@ -56,14 +69,16 @@ pub fn capture_error<E: Error + ?Sized>(error: &E) -> sentry_types::Uuid {
 /// #[error("outer")]
 /// struct OuterError(#[from] InnerError);
 ///
-/// let event = sentry_core::event_from_error(&OuterError(InnerError));
-/// assert_eq!(event.level, sentry_core::protocol::Level::Error);
+/// let event = sentry::event_from_error(&OuterError(InnerError));
+/// assert_eq!(event.level, sentry::protocol::Level::Error);
 /// assert_eq!(event.exception.len(), 2);
 /// assert_eq!(&event.exception[0].ty, "InnerError");
 /// assert_eq!(event.exception[0].value, Some("inner".into()));
 /// assert_eq!(&event.exception[1].ty, "OuterError");
 /// assert_eq!(event.exception[1].value, Some("outer".into()));
 /// ```
+///
+/// [sentry event payloads]: https://develop.sentry.dev/sdk/event-payloads/exception/
 pub fn event_from_error<E: Error + ?Sized>(err: &E) -> Event<'static> {
     let mut exceptions = vec![exception_from_error(err)];
 
@@ -95,7 +110,7 @@ fn exception_from_error<E: Error + ?Sized>(err: &E) -> Exception {
 /// # Examples
 ///
 /// ```
-/// use sentry_core::parse_type_from_debug;
+/// use sentry::parse_type_from_debug;
 ///
 /// let err = format!("{:?}", "NaN".parse::<usize>().unwrap_err());
 /// assert_eq!(parse_type_from_debug(&err), "ParseIntError");

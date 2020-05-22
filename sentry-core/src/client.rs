@@ -8,13 +8,10 @@ use std::time::Duration;
 
 use rand::random;
 
-pub use crate::clientoptions::ClientOptions;
 use crate::constants::SDK_INFO;
-use crate::internals::{Dsn, Uuid};
 use crate::protocol::{ClientSdkInfo, Event};
-use crate::scope::Scope;
-use crate::transport::Transport;
-use crate::Integration;
+use crate::types::{Dsn, Uuid};
+use crate::{ClientOptions, Integration, Scope, Transport};
 
 impl<T: Into<ClientOptions>> From<T> for Client {
     fn from(o: T) -> Client {
@@ -22,7 +19,23 @@ impl<T: Into<ClientOptions>> From<T> for Client {
     }
 }
 
-/// The Sentry client object.
+/// The Sentry Client.
+///
+/// The Client is responsible for event processing and sending events to the
+/// sentry server via the configured [`Transport`]. It can be created from a
+/// [`ClientOptions`].
+///
+/// See the [Unified API] document for more details.
+///
+/// # Examples
+///
+/// ```
+/// sentry::Client::from(sentry::ClientOptions::default());
+/// ```
+///
+/// [`ClientOptions`]: struct.ClientOptions.html
+/// [`Transport`]: trait.Transport.html
+/// [Unified API]: https://develop.sentry.dev/sdk/unified-api/
 pub struct Client {
     options: ClientOptions,
     transport: RwLock<Option<Arc<dyn Transport>>>,
@@ -190,6 +203,28 @@ impl Client {
     }
 
     /// Quick check to see if the client is enabled.
+    ///
+    /// The Client is enabled if it has a valid DSN and Transport configured.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::Arc;
+    ///
+    /// let client = sentry::Client::from(sentry::ClientOptions::default());
+    /// assert!(!client.is_enabled());
+    ///
+    /// let dsn = "https://public@example.com/1";
+    /// let transport = sentry::test::TestTransport::new();
+    /// let client = sentry::Client::from((
+    ///     dsn,
+    ///     sentry::ClientOptions {
+    ///         transport: Some(Arc::new(transport)),
+    ///         ..Default::default()
+    ///     },
+    /// ));
+    /// assert!(client.is_enabled());
+    /// ```
     pub fn is_enabled(&self) -> bool {
         self.options.dsn.is_some() && self.transport.read().unwrap().is_some()
     }
