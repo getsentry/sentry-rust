@@ -5,7 +5,6 @@
   <br />
 </p>
 
-# Sentry Types
+# Sentry SDK contexts integration
 
-This library implements Rust types for the Sentry v7 protocol as well as some other common types that are useful when
-working with Sentry (like DSNs and so forth).
+Sentry integration for os, device, and rust contexts.

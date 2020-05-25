@@ -5,7 +5,7 @@
   <br />
 </p>
 
-# Sentry Rust
+# Sentry SDK for Rust
 
 [![Build Status](https://travis-ci.com/getsentry/sentry-rust.svg?branch=master)](https://travis-ci.com/getsentry/sentry-rust)
 

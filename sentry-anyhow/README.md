@@ -5,7 +5,6 @@
   <br />
 </p>
 
-# Sentry Types
+# Sentry SDK Integration for anyhow
 
-This library implements Rust types for the Sentry v7 protocol as well as some other common types that are useful when
-working with Sentry (like DSNs and so forth).
+This is a Sentry integration for the `anyhow` crate.

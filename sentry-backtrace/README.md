@@ -5,7 +5,6 @@
   <br />
 </p>
 
-# Sentry Types
+# Sentry SDK backtrace integration and utilities
 
-This library implements Rust types for the Sentry v7 protocol as well as some other common types that are useful when
-working with Sentry (like DSNs and so forth).
+Sentry integration and utilities for dealing with stacktraces.
