@@ -1,16 +1,18 @@
 [package]
 name = "sentry-error-chain"
-version = "0.1.0"
+version = "0.18.0"
 authors = ["Sentry <hello@sentry.io>"]
 license = "Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/getsentry/sentry-rust"
-homepage = "https://github.com/getsentry/sentry-rust"
-documentation = "https://getsentry.github.io/sentry-rust"
+homepage = "https://sentry.io/welcome/"
 description = """
-Sentry integration that allows capturing error-chain errors
+Sentry integration that allows capturing error-chain errors.
 """
 edition = "2018"
+
+[package.metadata.docs.rs]
+all-features = true
 
 [dependencies]
 sentry-core = { version = "0.18.0", path = "../sentry-core" }

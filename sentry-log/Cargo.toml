@@ -5,12 +5,14 @@ authors = ["Sentry <hello@sentry.io>"]
 license = "Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/getsentry/sentry-rust"
-homepage = "https://github.com/getsentry/sentry-rust"
-documentation = "https://getsentry.github.io/sentry-rust"
+homepage = "https://sentry.io/welcome/"
 description = """
-Sentry Integration for log and env_logger crates
+Sentry Integration for log and env_logger crates.
 """
 edition = "2018"
+
+[package.metadata.docs.rs]
+all-features = true
 
 [dependencies]
 sentry-core = { version = "0.18.0", path = "../sentry-core" }

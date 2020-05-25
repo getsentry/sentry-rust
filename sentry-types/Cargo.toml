@@ -1,26 +1,26 @@
 [package]
 name = "sentry-types"
-version = "0.15.0"
-license = "Apache-2.0"
-description = "Common reusable types for implementing the sentry.io protocol."
-homepage = "https://sentry.io/"
-repository = "https://github.com/getsentry/sentry-rust"
-documentation = "https://docs.rs/sentry-types"
-keywords = ["sentry", "protocol"]
-readme = "README.md"
+version = "0.18.0"
 authors = ["Sentry <hello@sentry.io>"]
-exclude = [
-    ".vscode/**/*",
-    "scripts/**/*"
-]
+license = "Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/getsentry/sentry-rust"
+homepage = "https://sentry.io/welcome/"
+description = """
+Common reusable types for implementing the sentry.io protocol.
+"""
+keywords = ["sentry", "protocol"]
 edition = "2018"
 
-[features]
-default = ["with_protocol"]
-with_protocol = []
+[package.metadata.docs.rs]
+all-features = true
 
-[badges]
-travis-ci = { repository = "getsentry/sentry-rust" }
+[features]
+default = ["protocol"]
+protocol = []
+# for backwards compatibility:
+with_protocol = ["protocol"]
+
 
 [dependencies]
 thiserror = "1.0.15"

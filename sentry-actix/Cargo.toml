@@ -5,12 +5,14 @@ authors = ["Sentry <hello@sentry.io>"]
 license = "Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/getsentry/sentry-rust"
-homepage = "https://github.com/getsentry/sentry-rust"
-documentation = "https://docs.rs/sentry-actix"
+homepage = "https://sentry.io/welcome/"
 description = """
-Sentry client extension for actix-web
+Sentry client extension for actix-web 0.7.
 """
 edition = "2018"
+
+[package.metadata.docs.rs]
+all-features = true
 
 [features]
 default = ["with_sentry_default"]

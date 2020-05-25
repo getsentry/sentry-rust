@@ -1,4 +1,4 @@
-#![cfg_attr(not(feature = "with_protocol"), allow(unused))]
+#![cfg_attr(not(feature = "protocol"), allow(unused))]
 
 /// Helper macro to implement string based serialization.
 ///
