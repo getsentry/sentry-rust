@@ -21,7 +21,6 @@ protocol = []
 # for backwards compatibility:
 with_protocol = ["protocol"]
 
-
 [dependencies]
 thiserror = "1.0.15"
 serde = { version = "1.0.104", features = ["derive"] }

@@ -19,4 +19,4 @@ sentry-core = { version = "0.18.0", path = "../sentry-core" }
 sentry-backtrace = { version = "0.18.0", path = "../sentry-backtrace" }
 
 [dev-dependencies]
-sentry = { version = "0.18.0", path = "../sentry" }
+sentry = { version = "0.18.0", path = "../sentry", default-features = false, features = ["test"] }

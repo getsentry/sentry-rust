@@ -29,4 +29,4 @@ uname = "0.1.1"
 rustc_version = "0.2.3"
 
 [dev-dependencies]
-sentry = { version = "0.18.0", path = "../sentry" }
+sentry = { version = "0.18.0", path = "../sentry", default-features = false, features = ["test"] }
