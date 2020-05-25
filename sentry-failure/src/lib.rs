@@ -73,8 +73,8 @@ impl Integration for FailureIntegration {
 /// # Examples
 ///
 /// ```
-/// let panic_integration = sentry_panic::PanicIntegration::new()
-///     .add_extractor(sentry_failure::panic_extractor);
+/// let panic_integration =
+///     sentry_panic::PanicIntegration::new().add_extractor(sentry_failure::panic_extractor);
 /// ```
 pub fn panic_extractor(info: &PanicInfo<'_>) -> Option<Event<'static>> {
     let error = info.payload().downcast_ref::<Error>()?;

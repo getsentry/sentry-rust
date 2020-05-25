@@ -11,8 +11,7 @@
 //! might optionally create a sentry `Event` out of a `PanicInfo`.
 //!
 //! ```
-//! let integration = sentry_panic::PanicIntegration::default()
-//!     .add_extractor(|info| None);
+//! let integration = sentry_panic::PanicIntegration::default().add_extractor(|info| None);
 //! ```
 
 #![deny(missing_docs)]

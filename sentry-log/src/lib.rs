@@ -9,8 +9,7 @@
 //!
 //! ```
 //! let log_integration = sentry_log::LogIntegration::default();
-//! let _setry = sentry::init(sentry::ClientOptions::default()
-//!     .add_integration(log_integration));
+//! let _setry = sentry::init(sentry::ClientOptions::default().add_integration(log_integration));
 //!
 //! log::info!("Generates a breadcrumb");
 //! ```
@@ -20,10 +19,9 @@
 //! ```
 //! let mut log_builder = pretty_env_logger::formatted_builder();
 //! log_builder.parse_filters("info");
-//! let log_integration = sentry_log::LogIntegration::default()
-//!     .with_env_logger_dest(Some(log_builder.build()));
-//! let _setry = sentry::init(sentry::ClientOptions::default()
-//!     .add_integration(log_integration));
+//! let log_integration =
+//!     sentry_log::LogIntegration::default().with_env_logger_dest(Some(log_builder.build()));
+//! let _setry = sentry::init(sentry::ClientOptions::default().add_integration(log_integration));
 //!
 //! log::error!("Generates an event");
 //! ```

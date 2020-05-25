@@ -11,8 +11,8 @@
 //! use sentry_error_chain::{capture_error_chain, ErrorChainIntegration};
 //! # fn function_that_might_fail() -> Result<()> { Ok(()) }
 //! # fn test() -> Result<()> {
-//! let _sentry = sentry::init(sentry::ClientOptions::default()
-//!     .add_integration(ErrorChainIntegration));
+//! let _sentry =
+//!     sentry::init(sentry::ClientOptions::default().add_integration(ErrorChainIntegration));
 //! let result = match function_that_might_fail() {
 //!     Ok(result) => result,
 //!     Err(err) => {
