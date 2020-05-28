@@ -4,7 +4,7 @@ use sentry_core::protocol::debugid::DebugId;
 use sentry_core::protocol::{DebugImage, SymbolicDebugImage};
 use sentry_core::types::Uuid;
 
-use findshlibs::{Segment, SharedLibrary, SharedLibraryId, TargetSharedLibrary, TARGET_SUPPORTED};
+use findshlibs::{SharedLibrary, SharedLibraryId, TargetSharedLibrary, TARGET_SUPPORTED};
 
 const UUID_SIZE: usize = 16;
 
@@ -33,18 +33,6 @@ fn debug_id_from_build_id(build_id: &[u8]) -> Option<DebugId> {
     Uuid::from_slice(&data).map(DebugId::from_uuid).ok()
 }
 
-/// Filters for PT_LOAD segments.
-#[cfg(target_os = "linux")]
-fn filter_seg(lib: &findshlibs::linux::Segment) -> bool {
-    lib.is_load()
-}
-
-/// Filters for __TEXT segments.
-#[cfg(target_os = "macos")]
-fn filter_seg(lib: &findshlibs::macos::Segment) -> bool {
-    lib.is_code()
-}
-
 pub fn debug_images() -> Vec<DebugImage> {
     let mut images = vec![];
     if !TARGET_SUPPORTED {
@@ -62,21 +50,8 @@ pub fn debug_images() -> Vec<DebugImage> {
             None => return,
         };
 
-        let mut lowest_addr = !0;
-        let mut lowest_vmaddr = !0;
-        let mut highest_addr = 0;
-
-        for seg in shlib.segments().filter(filter_seg) {
-            let avma = seg.actual_virtual_memory_address(shlib).0 as u64;
-            lowest_addr = lowest_addr.min(avma);
-            highest_addr = highest_addr.max(avma);
-
-            let svma = seg.stated_virtual_memory_address().0 as u64;
-            lowest_vmaddr = lowest_vmaddr.min(svma);
-        }
-
         let mut name = shlib.name().to_string_lossy().to_string();
-        if name == "" {
+        if name.is_empty() {
             name = env::current_exe()
                 .map(|x| x.display().to_string())
                 .unwrap_or_else(|_| "<main>".to_string());
@@ -86,9 +61,9 @@ pub fn debug_images() -> Vec<DebugImage> {
             SymbolicDebugImage {
                 name,
                 arch: None,
-                image_addr: lowest_addr.into(),
-                image_size: highest_addr - lowest_addr,
-                image_vmaddr: lowest_vmaddr.into(),
+                image_addr: shlib.actual_load_addr().0.into(),
+                image_size: shlib.len() as u64,
+                image_vmaddr: shlib.stated_load_addr().0.into(),
                 id: debug_id,
             }
             .into(),
