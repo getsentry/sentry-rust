@@ -33,6 +33,18 @@ fn debug_id_from_build_id(build_id: &[u8]) -> Option<DebugId> {
     Uuid::from_slice(&data).map(DebugId::from_uuid).ok()
 }
 
+/// Filters for PT_LOAD segments.
+#[cfg(target_os = "linux")]
+fn filter_seg(lib: &findshlibs::linux::Segment) -> bool {
+    lib.is_load()
+}
+
+/// Filters for __TEXT segments.
+#[cfg(target_os = "macos")]
+fn filter_seg(lib: &findshlibs::macos::Segment) -> bool {
+    lib.is_code()
+}
+
 pub fn debug_images() -> Vec<DebugImage> {
     let mut images = vec![];
     if !TARGET_SUPPORTED {
@@ -54,21 +66,13 @@ pub fn debug_images() -> Vec<DebugImage> {
         let mut lowest_vmaddr = !0;
         let mut highest_addr = 0;
 
-        for seg in shlib.segments() {
-            if !seg.is_code() {
-                continue;
-            }
-            let svma: u64 = seg.stated_virtual_memory_address().0 as u64;
-            let avma: u64 = seg.actual_virtual_memory_address(shlib).0 as u64;
-            if lowest_addr > avma {
-                lowest_addr = avma;
-            }
-            if highest_addr < avma {
-                highest_addr = avma;
-            }
-            if lowest_vmaddr > svma {
-                lowest_vmaddr = svma;
-            }
+        for seg in shlib.segments().filter(filter_seg) {
+            let avma = seg.actual_virtual_memory_address(shlib).0 as u64;
+            lowest_addr = lowest_addr.min(avma);
+            highest_addr = highest_addr.max(avma);
+
+            let svma = seg.stated_virtual_memory_address().0 as u64;
+            lowest_vmaddr = lowest_vmaddr.min(svma);
         }
 
         let mut name = shlib.name().to_string_lossy().to_string();
