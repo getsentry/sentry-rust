@@ -1,6 +1,6 @@
 use crate::protocol::{Event, Level};
 use crate::types::Uuid;
-use crate::{Hub, IntoBreadcrumbs, Scope};
+use crate::{Hub, Integration, IntoBreadcrumbs, Scope};
 
 /// Captures an event on the currently active client if any.
 ///
@@ -198,6 +198,38 @@ where
         let _scope_config = scope_config;
         callback()
     }
+}
+
+/// Looks up an integration on the current Hub.
+///
+/// Calls the given function with the requested integration instance when it
+/// is active on the currently active client.
+///
+/// # Examples
+///
+/// ```
+/// use sentry::{ClientOptions, Integration};
+///
+/// struct MyIntegration(usize);
+/// impl Integration for MyIntegration {}
+///
+/// let options = ClientOptions::default().add_integration(MyIntegration(10));
+/// # let _options = options.clone();
+///
+/// let _sentry = sentry::init(options);
+///
+/// # sentry::test::with_captured_events_options(|| {
+/// let value = sentry::with_integration(|integration: &MyIntegration, _| integration.0);
+/// assert_eq!(value, 10);
+/// # }, _options);
+/// ```
+pub fn with_integration<I, F, R>(f: F) -> R
+where
+    I: Integration,
+    F: FnOnce(&I, &Hub) -> R,
+    R: Default,
+{
+    Hub::with_active(|hub| hub.with_integration(|i| f(i, hub)))
 }
 
 /// Returns the last event ID captured.
