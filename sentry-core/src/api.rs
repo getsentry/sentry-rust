@@ -203,7 +203,8 @@ where
 /// Looks up an integration on the current Hub.
 ///
 /// Calls the given function with the requested integration instance when it
-/// is active on the currently active client.
+/// is active on the currently active client. When multiple instances of the
+/// same integration are added, the function will be called with the first one.
 ///
 /// # Examples
 ///
@@ -213,7 +214,9 @@ where
 /// struct MyIntegration(usize);
 /// impl Integration for MyIntegration {}
 ///
-/// let options = ClientOptions::default().add_integration(MyIntegration(10));
+/// let options = ClientOptions::default()
+///     .add_integration(MyIntegration(10))
+///     .add_integration(MyIntegration(20));
 /// # let _options = options.clone();
 ///
 /// let _sentry = sentry::init(options);

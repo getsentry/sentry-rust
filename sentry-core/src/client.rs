@@ -103,18 +103,13 @@ impl Client {
 
         let mut sdk_info = SDK_INFO.clone();
 
-        let mut integrations = vec![];
-        for integration in &options.integrations {
-            let id = integration.as_ref().type_id();
-            match integrations.iter().position(|(iid, _)| *iid == id) {
-                Some(idx) => {
-                    integrations[idx].1 = integration.clone();
-                }
-                None => {
-                    integrations.push((id, integration.clone()));
-                }
-            }
-        }
+        // NOTE: We do not filter out duplicate integrations based on their
+        // TypeId.
+        let integrations: Vec<_> = options
+            .integrations
+            .iter()
+            .map(|integration| (integration.as_ref().type_id(), integration.clone()))
+            .collect();
 
         for (_, integration) in integrations.iter() {
             integration.setup(&mut options);
@@ -278,67 +273,3 @@ impl Client {
 // Make this unwind safe. It's not out of the box because of the
 // `BeforeCallback`s inside `ClientOptions`, and the contained Integrations
 impl RefUnwindSafe for Client {}
-
-#[test]
-fn test_duplicate_integration() {
-    use crate::test::with_captured_events_options;
-    use crate::Integration;
-    use std::sync::atomic::{AtomicBool, Ordering};
-
-    #[derive(Debug)]
-    struct DupIntegration {
-        num: usize,
-        called: AtomicBool,
-    };
-    impl Integration for DupIntegration {
-        fn name(&self) -> &'static str {
-            "dup"
-        }
-        fn setup(&self, _: &mut ClientOptions) {
-            self.called.store(true, Ordering::Relaxed);
-        }
-    }
-
-    #[derive(Debug)]
-    struct MiddleIntegration;
-    impl Integration for MiddleIntegration {
-        fn name(&self) -> &'static str {
-            "middle"
-        }
-    }
-
-    let first = Arc::new(DupIntegration {
-        num: 1,
-        called: AtomicBool::new(false),
-    });
-    let second = Arc::new(DupIntegration {
-        num: 2,
-        called: AtomicBool::new(false),
-    });
-    let integrations: Vec<Arc<dyn Integration>> =
-        vec![first.clone(), Arc::new(MiddleIntegration), second.clone()];
-
-    let events = with_captured_events_options(
-        || {
-            // we should get the second integration
-            crate::with_integration(|i: &DupIntegration, _| {
-                assert_eq!(i.num, 2);
-            });
-            crate::capture_message("foo", crate::protocol::Level::Debug);
-        },
-        ClientOptions {
-            integrations,
-            ..Default::default()
-        },
-    );
-
-    // `setup` is only called for the second one
-    assert_eq!(first.called.load(Ordering::Relaxed), false);
-    assert_eq!(second.called.load(Ordering::Relaxed), true);
-
-    // the first one is actually replaced by the second one
-    assert_eq!(
-        events[0].sdk.as_ref().unwrap().integrations,
-        vec!["dup", "middle"]
-    );
-}
