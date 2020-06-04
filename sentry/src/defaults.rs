@@ -12,6 +12,22 @@ use crate::{ClientOptions, Integration};
 /// also sets the `dsn`, `release`, `environment`, and proxy settings based on
 /// environment variables.
 ///
+/// When the `default_integrations` option is set to `true` (by default), the
+/// following integrations will be added *before* any manually defined
+/// integrations, depending on enabled feature flags:
+///
+/// 1. [`AttachStacktraceIntegration`] (`feature = "backtrace"`)
+/// 2. [`DebugImagesIntegration`] (`feature = "debug-images"`)
+/// 3. [`ErrorChainIntegration`] (`feature = "error-chain"`)
+/// 4. [`ContextIntegration`] (`feature = "contexts"`)
+/// 5. [`FailureIntegration`] (`feature = "failure"`)
+/// 6. [`PanicIntegration`] (`feature = "panic"`)
+/// 7. [`ProcessStacktraceIntegration`] (`feature = "backtrace"`)
+///
+/// Some integrations can be used multiple times, however, the
+/// [`PanicIntegration`] can not, and it will not pick up custom panic
+/// extractors when it is defined multiple times.
+///
 /// # Examples
 /// ```
 /// std::env::set_var("SENTRY_RELEASE", "release-from-env");
@@ -24,6 +40,14 @@ use crate::{ClientOptions, Integration};
 /// assert_eq!(options.release, Some("release-from-env".into()));
 /// assert!(options.transport.is_some());
 /// ```
+///
+/// [`AttachStacktraceIntegration`]: integrations/backtrace/struct.AttachStacktraceIntegration.html
+/// [`DebugImagesIntegration`]: integrations/debug_images/struct.DebugImagesIntegration.html
+/// [`ErrorChainIntegration`]: integrations/error_chain/struct.ErrorChainIntegration.html
+/// [`ContextIntegration`]: integrations/contexts/struct.ContextIntegration.html
+/// [`FailureIntegration`]: integrations/failure/struct.FailureIntegration.html
+/// [`PanicIntegration`]: integrations/panic/struct.PanicIntegration.html
+/// [`ProcessStacktraceIntegration`]: integrations/backtrace/struct.ProcessStacktraceIntegration.html
 pub fn apply_defaults(mut opts: ClientOptions) -> ClientOptions {
     if opts.transport.is_none() {
         opts.transport = Some(Arc::new(DefaultTransportFactory));

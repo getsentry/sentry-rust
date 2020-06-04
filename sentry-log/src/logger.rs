@@ -1,7 +1,5 @@
-use sentry_core::{add_breadcrumb, Hub};
-
 use crate::converters::{breadcrumb_from_record, event_from_record};
-use crate::integration::with_integration;
+use crate::LogIntegration;
 
 /// Provides a dispatching logger.
 #[derive(Default)]
@@ -9,7 +7,7 @@ pub struct Logger;
 
 impl log::Log for Logger {
     fn enabled(&self, md: &log::Metadata<'_>) -> bool {
-        with_integration(|integration| {
+        sentry_core::with_integration(|integration: &LogIntegration, _| {
             if let Some(global_filter) = integration.global_filter {
                 if md.level() > global_filter {
                     return false;
@@ -24,14 +22,12 @@ impl log::Log for Logger {
     }
 
     fn log(&self, record: &log::Record<'_>) {
-        with_integration(|integration| {
+        sentry_core::with_integration(|integration: &LogIntegration, hub| {
             if integration.create_issue_for_record(record) {
-                Hub::with_active(|hub| {
-                    hub.capture_event(event_from_record(record, integration.attach_stacktraces))
-                });
+                hub.capture_event(event_from_record(record, integration.attach_stacktraces));
             }
             if integration.emit_breadcrumbs && record.level() <= integration.filter {
-                add_breadcrumb(|| breadcrumb_from_record(record))
+                sentry_core::add_breadcrumb(|| breadcrumb_from_record(record));
             }
             if let Some(ref log) = integration.dest_log {
                 if log.enabled(record.metadata()) {
@@ -42,7 +38,7 @@ impl log::Log for Logger {
     }
 
     fn flush(&self) {
-        with_integration(|integration| {
+        sentry_core::with_integration(|integration: &LogIntegration, _| {
             if let Some(ref log) = integration.dest_log {
                 log.flush();
             }

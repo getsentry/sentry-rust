@@ -12,10 +12,6 @@ lazy_static::lazy_static! {
             name: "cargo:sentry".into(),
             version: VERSION.into(),
         }],
-        integrations: {
-            #[allow(unused_mut)]
-            let mut rv = vec![];
-            rv
-        },
+        integrations: vec![],
     };
 }

@@ -115,6 +115,11 @@ pub use crate::defaults::apply_defaults;
 pub use crate::init::{init, ClientInitGuard};
 
 /// Available Sentry Integrations.
+///
+/// See the [`defaults`] function for more information on which integrations are
+/// used by default.
+///
+/// [`defaults`]: fn.defaults.html
 pub mod integrations {
     #[cfg(feature = "anyhow")]
     #[doc(inline)]
