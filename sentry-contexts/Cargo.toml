@@ -5,13 +5,15 @@ authors = ["Sentry <hello@sentry.io>"]
 license = "Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/getsentry/sentry-rust"
-homepage = "https://github.com/getsentry/sentry-rust"
-documentation = "https://getsentry.github.io/sentry-rust"
+homepage = "https://sentry.io/welcome/"
 description = """
-Sentry integration for rust and device contexts
+Sentry integration for os, device, and rust contexts.
 """
 build = "build.rs"
 edition = "2018"
+
+[package.metadata.docs.rs]
+all-features = true
 
 [dependencies]
 sentry-core = { version = "0.18.0", path = "../sentry-core" }
@@ -27,4 +29,4 @@ uname = "0.1.1"
 rustc_version = "0.2.3"
 
 [dev-dependencies]
-sentry = { version = "0.18.0", path = "../sentry" }
+sentry = { version = "0.18.0", path = "../sentry", default-features = false, features = ["test"] }

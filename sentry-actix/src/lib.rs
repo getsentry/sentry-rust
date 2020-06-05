@@ -28,9 +28,10 @@
 //!         App::new()
 //!             .middleware(SentryMiddleware::new())
 //!             .resource("/", |r| r.f(failing))
-//!     }).bind("127.0.0.1:3001")
-//!         .unwrap()
-//!         .run();
+//!     })
+//!     .bind("127.0.0.1:3001")
+//!     .unwrap()
+//!     .run();
 //! }
 //! ```
 //!

@@ -1,4 +1,4 @@
-#![cfg_attr(not(feature = "with_protocol"), allow(unused))]
+#![cfg_attr(not(feature = "protocol"), allow(unused))]
 use chrono::{DateTime, LocalResult, TimeZone, Utc};
 
 /// Converts a datetime object into a float timestamp.

@@ -13,14 +13,13 @@ fn main() {
     // this initializes sentry.  It also gives the thread that calls this some
     // special behavior in that all other threads spawned will get a hub based on
     // the hub from here.
-    let _sentry = sentry::init((
-        "https://a94ae32be2584e0bbd7a4cbb95971fee@sentry.io/1041156",
+    let _sentry = sentry::init(
         sentry::ClientOptions {
             release: sentry::release_name!(),
             ..Default::default()
         }
         .add_integration(log_integration),
-    ));
+    );
 
     // the log integration sends to Hub::current()
     log::info!("Spawning thread");

@@ -5,16 +5,18 @@ authors = ["Sentry <hello@sentry.io>"]
 license = "Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/getsentry/sentry-rust"
-homepage = "https://github.com/getsentry/sentry-rust"
-documentation = "https://getsentry.github.io/sentry-rust"
+homepage = "https://sentry.io/welcome/"
 description = """
-Sentry Integration for panics
+Sentry integration for capturing panics.
 """
 edition = "2018"
+
+[package.metadata.docs.rs]
+all-features = true
 
 [dependencies]
 sentry-core = { version = "0.18.0", path = "../sentry-core" }
 sentry-backtrace = { version = "0.18.0", path = "../sentry-backtrace" }
 
 [dev-dependencies]
-sentry = { version = "0.18.0", path = "../sentry" }
+sentry = { version = "0.18.0", path = "../sentry", default-features = false, features = ["test"] }

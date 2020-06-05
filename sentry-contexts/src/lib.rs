@@ -13,8 +13,7 @@
 //!     add_os: false,
 //!     ..Default::default()
 //! };
-//! let _sentry = sentry::init(sentry::ClientOptions::default()
-//!     .add_integration(integration));
+//! let _sentry = sentry::init(sentry::ClientOptions::default().add_integration(integration));
 //! ```
 
 #![deny(missing_docs)]

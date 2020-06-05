@@ -5,8 +5,7 @@ authors = ["Sentry <hello@sentry.io>"]
 license = "Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/getsentry/sentry-rust"
-homepage = "https://github.com/getsentry/sentry-rust"
-documentation = "https://getsentry.github.io/sentry-rust"
+homepage = "https://sentry.io/welcome/"
 description = """
 Sentry (getsentry.com) client for rust ;)
 """
@@ -66,7 +65,7 @@ sentry-anyhow = { version = "0.18.0", path = "../sentry-anyhow", optional = true
 sentry-backtrace = { version = "0.18.0", path = "../sentry-backtrace", optional = true }
 sentry-contexts = { version = "0.18.0", path = "../sentry-contexts", optional = true }
 sentry-debug-images = { version = "0.18.0", path = "../sentry-debug-images", optional = true }
-sentry-error-chain = { version = "0.1.0", path = "../sentry-error-chain", optional = true }
+sentry-error-chain = { version = "0.18.0", path = "../sentry-error-chain", optional = true }
 sentry-failure = { version = "0.18.0", path = "../sentry-failure", optional = true }
 sentry-log = { version = "0.18.0", path = "../sentry-log", optional = true }
 sentry-panic = { version = "0.18.0", path = "../sentry-panic", optional = true }
@@ -81,6 +80,8 @@ httpdate = { version = "0.3.2", optional = true }
 serde_json = { version = "1.0.48", optional = true }
 
 [dev-dependencies]
+sentry-anyhow = { version = "0.18.0", path = "../sentry-anyhow" }
+sentry-error-chain = { version = "0.18.0", path = "../sentry-error-chain" }
 sentry-log = { version = "0.18.0", path = "../sentry-log", features = ["env_logger"] }
 log_ = { package = "log", version = "0.4.8", features = ["std"] }
 failure_derive = "0.1.6"
@@ -89,6 +90,4 @@ tokio = { version = "0.2", features = ["macros"] }
 failure_ = { package = "failure", version = "0.1.6" }
 pretty_env_logger = "0.4.0"
 error-chain_ = { package = "error-chain", version = "0.12.1" }
-sentry-error-chain = { version = "0.1.0", path = "../sentry-error-chain" }
-sentry-anyhow = { version = "0.18.0", path = "../sentry-anyhow" }
 anyhow_ = { package = "anyhow", version = "1.0.30" }

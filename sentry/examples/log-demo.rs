@@ -6,14 +6,13 @@ fn main() {
     let log_integration =
         sentry_log::LogIntegration::default().with_env_logger_dest(Some(log_builder.build()));
 
-    let _sentry = sentry::init((
-        "https://a94ae32be2584e0bbd7a4cbb95971fee@sentry.io/1041156",
+    let _sentry = sentry::init(
         sentry::ClientOptions {
             release: sentry::release_name!(),
             ..Default::default()
         }
         .add_integration(log_integration),
-    ));
+    );
 
     debug!("System is booting");
     info!("System is booting");
