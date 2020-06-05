@@ -227,24 +227,8 @@ impl Hub {
     /// Calls the given function with the requested integration instance when it
     /// is active on the currently active client.
     ///
-    /// # Example
-    /// ```
-    /// # use std::sync::Arc;
-    /// use sentry_core::{Client, ClientOptions, Hub, Integration};
-    ///
-    /// #[derive(Debug)]
-    /// struct MyIntegration(usize);
-    /// impl Integration for MyIntegration {}
-    ///
-    /// let client = Arc::new(Client::from(
-    ///     ClientOptions::default().add_integration(MyIntegration(10)),
-    /// ));
-    /// let hub = Hub::with(|hub| Hub::new_from_top(hub));
-    /// hub.bind_client(Some(client));
-    ///
-    /// let value = hub.with_integration(|integration: &MyIntegration| integration.0);
-    /// assert_eq!(value, 10);
-    /// ```
+    /// See the global [`capture_event`](fn.capture_event.html)
+    /// for more documentation.
     pub fn with_integration<I, F, R>(&self, f: F) -> R
     where
         I: Integration,

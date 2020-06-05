@@ -457,7 +457,7 @@ implement_http_transport! {
                     let req_result = http_client
                         .post(url.as_str())
                         .set_header(
-                            "X-Sentry-Auth".parse().unwrap(),
+                            "X-Sentry-Auth",
                             dsn.to_auth(Some(&user_agent)).to_string()
                         )
                         .body_json(&event);
@@ -478,8 +478,8 @@ implement_http_transport! {
                         Ok(resp) => {
                             if resp.status() == 429 {
                                 if let Some(retry_after) = resp
-                                    .header(&"Retry-After".parse().unwrap())
-                                    .and_then(|x| x.first())
+                                    .header("Retry-After")
+                                    .and_then(|x| x.iter().next())
                                     .map(|x| x.as_str())
                                     .and_then(parse_retry_after)
                                 {

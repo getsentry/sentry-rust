@@ -1,7 +1,7 @@
 use std::sync::Once;
 
 use log::{Level, LevelFilter, Record};
-use sentry_core::{ClientOptions, Hub, Integration};
+use sentry_core::{ClientOptions, Integration};
 
 use crate::logger::Logger;
 
@@ -115,14 +115,6 @@ impl LogIntegration {
             _ => false,
         }
     }
-}
-
-pub fn with_integration<F, R>(f: F) -> R
-where
-    F: FnOnce(&LogIntegration) -> R,
-    R: Default,
-{
-    Hub::with_active(|hub| hub.with_integration(f))
 }
 
 #[test]

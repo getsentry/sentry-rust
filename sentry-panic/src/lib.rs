@@ -23,7 +23,7 @@ use std::sync::Once;
 
 use sentry_backtrace::current_stacktrace;
 use sentry_core::protocol::{Event, Exception, Level};
-use sentry_core::{ClientOptions, Hub, Integration};
+use sentry_core::{ClientOptions, Integration};
 
 /// A panic handler that sends to Sentry.
 ///
@@ -31,10 +31,8 @@ use sentry_core::{ClientOptions, Hub, Integration};
 /// double faults in some cases where it's known to be unsafe to invoke the
 /// Sentry panic handler.
 pub fn panic_handler(info: &PanicInfo<'_>) {
-    Hub::with_active(|hub| {
-        hub.with_integration(|integration: &PanicIntegration| {
-            hub.capture_event(integration.event_from_panic_info(info))
-        })
+    sentry_core::with_integration(|integration: &PanicIntegration, hub| {
+        hub.capture_event(integration.event_from_panic_info(info))
     });
 }
 
