@@ -6,28 +6,24 @@ use std::sync::{Arc, Condvar, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, SystemTime};
 
-#[cfg(any(
-    feature = "with_reqwest_transport",
-    feature = "with_curl_transport",
-    feature = "with_surf_transport"
-))]
+#[cfg(any(feature = "reqwest", feature = "curl", feature = "surf"))]
 use httpdate::parse_http_date;
 
-#[cfg(feature = "with_reqwest_transport")]
+#[cfg(feature = "reqwest")]
 use reqwest_::{blocking::Client as ReqwestClient, header::RETRY_AFTER, Proxy};
 
-#[cfg(feature = "with_curl_transport")]
+#[cfg(feature = "curl")]
 use crate::types::Scheme;
-#[cfg(feature = "with_curl_transport")]
+#[cfg(feature = "curl")]
 use curl_ as curl;
-#[cfg(feature = "with_curl_transport")]
+#[cfg(feature = "curl")]
 use std::io::{Cursor, Read};
 
-#[cfg(feature = "with_surf_transport")]
+#[cfg(feature = "surf")]
 use futures::executor;
-#[cfg(feature = "with_surf_transport")]
+#[cfg(feature = "surf")]
 use http_client::native::NativeClient;
-#[cfg(feature = "with_surf_transport")]
+#[cfg(feature = "surf")]
 use surf_::Client as SurfClient;
 
 use sentry_core::sentry_debug;
@@ -45,19 +41,11 @@ pub struct DefaultTransportFactory;
 
 impl TransportFactory for DefaultTransportFactory {
     fn create_transport(&self, options: &ClientOptions) -> Arc<dyn Transport> {
-        #[cfg(any(
-            feature = "with_reqwest_transport",
-            feature = "with_curl_transport",
-            feature = "with_surf_transport"
-        ))]
+        #[cfg(any(feature = "reqwest", feature = "curl", feature = "surf"))]
         {
             Arc::new(HttpTransport::new(options))
         }
-        #[cfg(not(any(
-            feature = "with_reqwest_transport",
-            feature = "with_curl_transport",
-            feature = "with_surf_transport"
-        )))]
+        #[cfg(not(any(feature = "reqwest", feature = "curl", feature = "surf")))]
         {
             let _ = options;
             panic!("sentry crate was compiled without transport")
@@ -65,11 +53,7 @@ impl TransportFactory for DefaultTransportFactory {
     }
 }
 
-#[cfg(any(
-    feature = "with_reqwest_transport",
-    feature = "with_curl_transport",
-    feature = "with_surf_transport"
-))]
+#[cfg(any(feature = "reqwest", feature = "curl", feature = "surf"))]
 fn parse_retry_after(s: &str) -> Option<SystemTime> {
     if let Ok(value) = s.parse::<f64>() {
         Some(SystemTime::now() + Duration::from_secs(value.ceil() as u64))
@@ -175,13 +159,13 @@ macro_rules! implement_http_transport {
     }
 }
 
-#[cfg(feature = "with_reqwest_transport")]
+#[cfg(feature = "reqwest")]
 implement_http_transport! {
     /// A transport can send events via HTTP to sentry via `reqwest`.
     ///
-    /// When the `with_default_transport` feature is enabled this will currently
+    /// When the `transport` feature is enabled this will currently
     /// be the default transport.  This is separately enabled by the
-    /// `with_reqwest_transport` flag.
+    /// `reqwest` flag.
     pub struct ReqwestHttpTransport;
 
     fn spawn(
@@ -278,11 +262,11 @@ implement_http_transport! {
     }
 }
 
-#[cfg(feature = "with_curl_transport")]
+#[cfg(feature = "curl")]
 implement_http_transport! {
     /// A transport can send events via HTTP to sentry via `curl`.
     ///
-    /// This is enabled by the `with_curl_transport` flag.
+    /// This is enabled by the `curl` flag.
     pub struct CurlHttpTransport;
 
     fn spawn(
@@ -408,11 +392,11 @@ implement_http_transport! {
     }
 }
 
-#[cfg(feature = "with_surf_transport")]
+#[cfg(feature = "surf")]
 implement_http_transport! {
     /// A transport can send events via HTTP to sentry via `surf`.
     ///
-    /// This is enabled by the `with_surf_transport` flag.
+    /// This is enabled by the `surf` flag.
     pub struct SurfHttpTransport;
 
     fn spawn(
@@ -511,27 +495,15 @@ implement_http_transport! {
     }
 }
 
-#[cfg(feature = "with_reqwest_transport")]
+#[cfg(feature = "reqwest")]
 type DefaultTransport = ReqwestHttpTransport;
 
-#[cfg(all(
-    feature = "with_curl_transport",
-    not(feature = "with_reqwest_transport"),
-    not(feature = "with_surf_transport")
-))]
+#[cfg(all(feature = "curl", not(feature = "reqwest"), not(feature = "surf")))]
 type DefaultTransport = CurlHttpTransport;
 
-#[cfg(all(
-    feature = "with_surf_transport",
-    not(feature = "with_reqwest_transport"),
-    not(feature = "with_curl_transport")
-))]
+#[cfg(all(feature = "surf", not(feature = "reqwest"), not(feature = "curl")))]
 type DefaultTransport = SurfHttpTransport;
 
 /// The default http transport.
-#[cfg(any(
-    feature = "with_reqwest_transport",
-    feature = "with_curl_transport",
-    feature = "with_surf_transport"
-))]
+#[cfg(any(feature = "reqwest", feature = "curl", feature = "surf"))]
 pub type HttpTransport = DefaultTransport;

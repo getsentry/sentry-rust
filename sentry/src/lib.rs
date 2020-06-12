@@ -148,19 +148,15 @@ pub use sentry_core::types::protocol::latest as protocol;
 pub mod transports {
     pub use crate::transport::DefaultTransportFactory;
 
-    #[cfg(feature = "with_reqwest_transport")]
+    #[cfg(feature = "reqwest")]
     pub use crate::transport::ReqwestHttpTransport;
 
-    #[cfg(feature = "with_curl_transport")]
+    #[cfg(feature = "curl")]
     pub use crate::transport::CurlHttpTransport;
 
-    #[cfg(feature = "with_surf_transport")]
+    #[cfg(feature = "surf")]
     pub use crate::transport::SurfHttpTransport;
 
-    #[cfg(any(
-        feature = "with_reqwest_transport",
-        feature = "with_curl_transport",
-        feature = "with_surf_transport"
-    ))]
+    #[cfg(any(feature = "reqwest", feature = "curl", feature = "surf"))]
     pub use crate::transport::HttpTransport;
 }
