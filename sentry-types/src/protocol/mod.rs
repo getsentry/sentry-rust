@@ -6,8 +6,5 @@ pub mod v7;
 /// The latest version of the protocol.
 pub const LATEST: u16 = 7;
 
-/// The always latest sentry protocol version.
 #[cfg(feature = "protocol")]
-pub mod latest {
-    pub use super::v7::*;
-}
+pub use v7 as latest;

@@ -1,8 +1,43 @@
 # Changelog
 
+## Unreleased
+
+**Highlights**:
+
+The `sentry` crate has been split up into a `sentry-core`, and many smaller per-integration crates. Application users should continue using the `sentry` crate, but library users and integration/transport authors are encouraged to use the `sentry-core` crate instead.
+
+Additionally, sentry can now be extended via `Integration`s.
+
+**Breaking Changes**:
+
+- The `utils` module has been removed, and most utils have been moved into integrations.
+- The `integrations` module was completely rewritten.
+- When constructing a `Client` using a `ClientOptions` struct manually, it does not have any default integrations, and it does not resolve default options from environment variables any more. Please use the explicit `apply_defaults` function instead. The `init` function will automatically call `apply_defaults`.
+- The `init` function can’t be called with a `Client` anymore.
+
+**Features**:
+
+- Sentry can now capture `std::error::Error` types, using the `capture_error` and `Hub::capture_error` functions, and an additional `event_from_error` utility function.
+- Sentry now has built-in support to bind a `Hub` to a `Future`.
+- Sentry can now be extended with `Integration`s.
+- The `ClientInitGuard`, `Future` and `ScopeGuard` structs and `apply_defaults`, `capture_error`, `event_from_error`, `with_integration` and `parse_type_from_debug` functions have been added to the root exports.
+- The `FutureExt`, `Integration`, `IntoBreadcrumbs`, `IntoDsn`, `Transport` and `TransportFactory` traits are now exported.
+- The `types` module now re-exports `sentry-types`.
+
+**Deprecations**:
+
+- The `internals` module is deprecated. Please `use` items from the crate root or the `types` module instead.
+- All the feature flags have been renamed, the old names are still available but
+
+## 0.18.1
+
+- Fix potential segfault with `with_debug_meta` (#211).
+- Fix panic when running inside of tokio (#186).
+
 ## 0.18.0
 
 - Upgrade most dependencies to their current versions (#183):
+
   - `env_logger 0.7`
   - `reqwest 0.10`
   - `error-chain 0.12`

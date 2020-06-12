@@ -4,7 +4,7 @@
 //! and `rust` contexts to Events, as well as sets a `server_name` if not
 //! already defined.
 //!
-//! See https://develop.sentry.dev/sdk/event-payloads/contexts/
+//! See the [Contexts Interface] documentation for more info.
 //!
 //! # Examples
 //!
@@ -15,6 +15,8 @@
 //! };
 //! let _sentry = sentry::init(sentry::ClientOptions::default().add_integration(integration));
 //! ```
+//!
+//! [Contexts Interface]: https://develop.sentry.dev/sdk/event-payloads/contexts/
 
 #![deny(missing_docs)]
 

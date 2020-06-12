@@ -13,20 +13,22 @@ use std::time::{Duration, SystemTime};
 ))]
 use httpdate::parse_http_date;
 
-#[cfg(feature = "with_curl_transport")]
-use std::io::Cursor;
-#[cfg(feature = "with_curl_transport")]
-use {crate::types::Scheme, curl, std::io::Read};
-
 #[cfg(feature = "with_reqwest_transport")]
-use reqwest::{blocking::Client as ReqwestClient, header::RETRY_AFTER, Proxy};
+use reqwest_::{blocking::Client as ReqwestClient, header::RETRY_AFTER, Proxy};
+
+#[cfg(feature = "with_curl_transport")]
+use crate::types::Scheme;
+#[cfg(feature = "with_curl_transport")]
+use curl_ as curl;
+#[cfg(feature = "with_curl_transport")]
+use std::io::{Cursor, Read};
 
 #[cfg(feature = "with_surf_transport")]
 use futures::executor;
 #[cfg(feature = "with_surf_transport")]
 use http_client::native::NativeClient;
 #[cfg(feature = "with_surf_transport")]
-use surf::Client as SurfClient;
+use surf_::Client as SurfClient;
 
 use sentry_core::sentry_debug;
 

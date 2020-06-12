@@ -10,13 +10,11 @@
 //!
 //! # Quickstart
 //!
-//! To use the crate you need to create a client first.  When a client is created it's typically
-//! bound to the current thread by calling `bind_client`.  By default this happens by using the
-//! `sentry::init` convenience function.  When the client is bound to the main thread it also
-//! becomes the default client for future threads created but it is always possible to override the
-//! client for a thread later by explicitly binding it.
+//! The most convenient way to use this library is the [`sentry::init`] function,
+//! which starts a sentry client with a default set of integrations, and binds
+//! it to the current [`Hub`].
 //!
-//! The `sentry::init` function returns a guard that when dropped will flush Events that were not
+//! The [`sentry::init`] function returns a guard that when dropped will flush Events that were not
 //! yet sent to the sentry service.  It has a two second deadline for this so shutdown of
 //! applications might slightly delay as a result of this.  Keep the guard around or sending events
 //! will not work.
@@ -28,48 +26,25 @@
 //! // seconds to send remaining events to the service.
 //! ```
 //!
+//! [`sentry::init`]: fn.init.html
+//! [`Hub`]: struct.Hub.html
+//!
 //! # Integrations
 //!
 //! What makes this crate useful are the various integrations that exist.  Some of them are enabled
 //! by default, some uncommon ones or for deprecated parts of the ecosystem a feature flag needs to
 //! be enabled.  For the available integrations and how to use them see
-//! [integrations](integrations/index.html).
-//!
-//! # Scopes, Threads and Hubs
-//!
-//! Data is typically bound to a [`Scope`](struct.Scope.html).  Scopes are stored in a hidden stack
-//! on a [`Hub`](struct.Hub.html).  Once the library has been initialized a hub is automatically
-//! available.  In the default config a new hub is created for each thread and they act
-//! independently.
-//!
-//! The thread that calls `sentry::init` initializes the first hub which then automatically becomes
-//! the base of new hubs (You can get that hub by calling `Hub::main()`).  If a new thread is
-//! spawned it gets a new hub based on that one (the thread calls `Hub::new_from_top(Hub::main())`).
-//! The current thread's hub is returned from `Hub::current()`.  Any hub that is wrapped in an `Arc`
-//! can be temporarily bound to a thread with `Hub::run`.  For more information see
-//! [`Hub`](struct.Hub.html).
-//!
-//! Users are expected to reconfigure the scope with [`configure_scope`](fn.configure_scope.html).
-//! For more elaborate scope management the hub needs to be interfaced with directly.
-//!
-//! In some situations (particularly in async code) it's often not possible to use the thread local
-//! hub.  In that case a hub can be explicitly created and passed around.  However due to the nature
-//! of some integrations some functionality like automatic breadcrumb recording depends on the
-//! thread local hub being correctly configured.
+//! [integrations](integrations/index.html) and [apply_defaults](fn.apply_defaults.html).
 //!
 //! # Minimal API
 //!
-//! This crate can also be used in "minimal" mode.  This is enabled by disabling all default
-//! features of the crate.  In that mode a minimal API set is retained that can be used to
-//! instrument code for Sentry without actually using Sentry.  The minimal API is a small set of
-//! APIs that dispatch to the underlying implementations on the configured Sentry client.  If the
-//! client is not there the minimal API will blackhole a lot of operations.
+//! This crate comes fully featured. If the goal is to instrument libraries for usage
+//! with sentry, or to extend sentry with a custom [`Integration`] or a [`Transport`],
+//! one should use the [`sentry-core`] crate instead.
 //!
-//! Only if a user then also uses and configures Sentry this code becomes used.
-//!
-//! In minimal mode some types are restricted in functionality.  For instance the `Client` is not
-//! available and the `Hub` does not retain all API functionality. To see what the APIs in mnimal
-//! mode look like you can build the docs for this crate without any features enabled.
+//! [`Integration`]: trait.Integration.html
+//! [`Transport`]: trait.Transport.html
+//! [`sentry-core`]: https://crates.io/crates/sentry-core
 //!
 //! # Features
 //!
@@ -78,27 +53,27 @@
 //!
 //! Default features:
 //!
-//! * `with_default_transport`: Compiles in the default HTTP transport (see below).
-//! * `with_backtrace`: Enables backtrace support (automatically turned on in a few cases).
-//! * `with_panic`: Enables the panic integration.
-//! * `with_failure`: Enables the `failure` integration.
+//! * `backtrace`: Enables backtrace support.
+//! * `contexts`: Enables capturing device, os, and rust contexts.
+//! * `failure`: Enables support for the `failure` crate.
+//! * `panic`: Enables support for capturing panics.
+//! * `transport`: Enables the default transport, which is currently `reqwest` with `native-tls`.
 //!
-//! Additional integrations:
+//! Additional features:
 //!
-//! * `with_debug_to_log`: When enabled sentry will debug log to a debug log at all times.
-//!
-//! Additional transports:
-//! * `with_reqwest_transport`: Enables the reqwest transport explicitly.  This is currently the
-//!   default transport.
-//! * `with_curl_transport`: Enables the curl transport.
-//! * `with_surf_transport`: Enables the surf transport.
-//! * `with_rustls`: Enables the `rustls` TLS implementation.  This is currently the default when
-//!   using the `with_reqwest_transport` feature.
-//! * `with_native_tls`: Enables the `default-tls` feature of the `reqwest` library.
-//!
-//! Testing:
-//!
-//! * `with_test_support`: Enables the test support module.
+//! * `anyhow`: Enables support for the `anyhow` crate.
+//! * `debug-images`: Attaches a list of loaded libraries to events (currently only supported on unix).
+//! * `error-chain`: Enables support for the `error-chain` crate.
+//! * `log`: Enables support for the `log` crate.
+//! * `slog`: Enables support for the `slog` crate.
+//! * `test`: Enables testing support.
+//! * `debug-logs`: Uses the `log` crate for internal logging.
+//! * `reqwest`: Enables the `reqwest` transport, which is currently the default.
+//! * `curl`: Enables the curl transport.
+//! * `surf`: Enables the surf transport.
+//! * `native-tls`: Uses the `native-tls` crate, which is currently the default.
+//!   This only has an effect on the `reqwest` transport.
+//! * `rustls`: Enables the `rustls` support of the `reqwest` transport.
 
 #![warn(missing_docs)]
 
@@ -116,10 +91,10 @@ pub use crate::init::{init, ClientInitGuard};
 
 /// Available Sentry Integrations.
 ///
-/// See the [`defaults`] function for more information on which integrations are
+/// See the [`apply_defaults`] function for more information on which integrations are
 /// used by default.
 ///
-/// [`defaults`]: fn.defaults.html
+/// [`apply_defaults`]: ../fn.apply_defaults.html
 pub mod integrations {
     #[cfg(feature = "anyhow")]
     #[doc(inline)]
@@ -157,16 +132,19 @@ pub mod integrations {
 /// from methods on other types.
 #[deprecated = "These exports have been moved to the root or the `types` mod."]
 pub mod internals {
-    pub use crate::defaults::apply_defaults;
-    pub use crate::init::ClientInitGuard;
+    pub use crate::{
+        apply_defaults, ClientInitGuard, IntoBreadcrumbs, IntoDsn, Transport, TransportFactory,
+    };
     pub use sentry_core::types::*;
 }
+
+#[doc(inline)]
+pub use sentry_core::types::protocol::latest as protocol;
 
 /// The provided transports.
 ///
 /// This module exposes all transports that are compiled into the sentry
-/// library.  The `with_reqwest_transport`, `with_curl_transport` and `with_surf_transport` flags
-/// turn on these transports.
+/// library.  The `reqwest`, `curl` and `surf` features turn on these transports.
 pub mod transports {
     pub use crate::transport::DefaultTransportFactory;
 
