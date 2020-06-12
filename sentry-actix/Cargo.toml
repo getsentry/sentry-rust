@@ -17,9 +17,8 @@ all-features = true
 [features]
 default = ["with_sentry_default"]
 with_sentry_default = [
-    "sentry/with_default_transport",
-    "sentry/with_panic",
-    "sentry/with_native_tls"
+    "sentry/transport",
+    "sentry/panic",
 ]
 
 [dependencies]

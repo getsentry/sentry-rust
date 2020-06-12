@@ -40,7 +40,7 @@ test: checkall testall
 
 testfast:
 	@echo 'TESTSUITE'
-	cd sentry && cargo test --features=with_test_support
+	cd sentry && cargo test --features=test
 .PHONY: testfast
 
 testall:
@@ -73,24 +73,24 @@ check-no-default-features:
 
 check-failure:
 	@echo 'NO CLIENT + FAILURE'
-	@cd sentry && RUSTFLAGS=-Dwarnings cargo check --no-default-features --features 'with_failure'
+	@cd sentry && RUSTFLAGS=-Dwarnings cargo check --no-default-features --features 'failure'
 .PHONY: check-failure
 
 check-panic:
 	@echo 'NO CLIENT + PANIC'
-	@cd sentry && RUSTFLAGS=-Dwarnings cargo check --no-default-features --features 'with_panic'
+	@cd sentry && RUSTFLAGS=-Dwarnings cargo check --no-default-features --features 'panic'
 .PHONY: check-panic
 
 check-all-impls:
 	@echo 'NO CLIENT + ALL IMPLS'
-	@cd sentry && RUSTFLAGS=-Dwarnings cargo check --no-default-features --features 'with_failure,with_panic'
+	@cd sentry && RUSTFLAGS=-Dwarnings cargo check --no-default-features --features 'failure,panic'
 .PHONY: check-all-impls
 
 check-curl-transport:
 	@echo 'CURL TRANSPORT'
-	@cd sentry && RUSTFLAGS=-Dwarnings cargo check --features with_curl_transport
+	@cd sentry && RUSTFLAGS=-Dwarnings cargo check --features curl
 	@echo 'CURL TRANSPORT ONLY'
-	@cd sentry && RUSTFLAGS=-Dwarnings cargo check --no-default-features --features 'with_curl_transport,with_panic'
+	@cd sentry && RUSTFLAGS=-Dwarnings cargo check --no-default-features --features 'curl,panic'
 .PHONY: check-curl-transport
 
 check-actix:

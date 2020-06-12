@@ -20,7 +20,6 @@
 //! the concepts of [`Client`], [`Hub`] and [`Scope`], as well as the extension
 //! points via the [`Integration`], [`Transport`] and [`TransportFactory`] traits.
 //!
-//!
 //! # Minimal API
 //!
 //! By default, this crate comes with a so-called "minimal" mode. This mode will
