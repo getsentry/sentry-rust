@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["sentry_types"] = [{"text":"impl&lt;T&gt; <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/convert/trait.AsMut.html\" title=\"trait core::convert::AsMut\">AsMut</a>&lt;<a class=\"struct\" href=\"https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html\" title=\"struct alloc::vec::Vec\">Vec</a>&lt;T&gt;&gt; for <a class=\"struct\" href=\"sentry_types/protocol/v7/struct.Values.html\" title=\"struct sentry_types::protocol::v7::Values\">Values</a>&lt;T&gt;","synthetic":false,"types":["sentry_types::protocol::v7::Values"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

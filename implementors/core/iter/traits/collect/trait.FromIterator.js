@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["sentry_types"] = [{"text":"impl&lt;T&gt; <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.FromIterator.html\" title=\"trait core::iter::traits::collect::FromIterator\">FromIterator</a>&lt;T&gt; for <a class=\"struct\" href=\"sentry_types/protocol/v7/struct.Values.html\" title=\"struct sentry_types::protocol::v7::Values\">Values</a>&lt;T&gt;","synthetic":false,"types":["sentry_types::protocol::v7::Values"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

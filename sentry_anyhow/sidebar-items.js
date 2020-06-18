@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["capture_anyhow","Captures an `anyhow::Error`."]],"trait":[["AnyhowHubExt","Hub extension methods for working with `anyhow`."]]});

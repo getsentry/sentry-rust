@@ -1,3 +1,3 @@
 (function() {var implementors = {};
-implementors["sentry"] = [];
+implementors["sentry"] = [{"text":"impl <a class=\"trait\" href=\"sentry/internals/trait.TransportFactory.html\" title=\"trait sentry::internals::TransportFactory\">TransportFactory</a> for <a class=\"struct\" href=\"sentry/transports/struct.DefaultTransportFactory.html\" title=\"struct sentry::transports::DefaultTransportFactory\">DefaultTransportFactory</a>","synthetic":false,"types":["sentry::transport::DefaultTransportFactory"]}];
 if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

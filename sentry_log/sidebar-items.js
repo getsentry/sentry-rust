@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["breadcrumb_from_record","Creates a breadcrumb from a given log record."],["event_from_record","Creates an event from a given log record."]],"struct":[["LogIntegration","Logger specific options."],["Logger","Provides a dispatching logger."]]});

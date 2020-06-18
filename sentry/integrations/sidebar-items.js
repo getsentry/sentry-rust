@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["failure","Adds support for the failure crate."],["panic","Panic handler support."]]});
+initSidebarItems({"mod":[["backtrace","Backtrace Integration and utilities for sentry."],["contexts","Adds Contexts to Sentry Events"],["failure","Adds support for capturing Sentry errors from `failure` types."],["panic","The Sentry Panic handler Integration."]]});

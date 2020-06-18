@@ -1,3 +1,15 @@
 var N = null;var sourcesIndex = {};
-sourcesIndex["sentry"] = {"name":"","dirs":[{"name":"integrations","files":["failure.rs","mod.rs","panic.rs"]},{"name":"scope","files":["mod.rs","real.rs"]}],"files":["api.rs","backtrace_support.rs","client.rs","constants.rs","hub.rs","lib.rs","macros.rs","transport.rs","utils.rs"]};
+sourcesIndex["sentry"] = {"name":"","files":["defaults.rs","init.rs","lib.rs","transport.rs"]};
+sourcesIndex["sentry_actix"] = {"name":"","files":["lib.rs"]};
+sourcesIndex["sentry_anyhow"] = {"name":"","files":["lib.rs"]};
+sourcesIndex["sentry_backtrace"] = {"name":"","files":["integration.rs","lib.rs","parse.rs","process.rs","trim.rs","utils.rs"]};
+sourcesIndex["sentry_contexts"] = {"name":"","files":["integration.rs","lib.rs","utils.rs"]};
+sourcesIndex["sentry_core"] = {"name":"","dirs":[{"name":"scope","files":["mod.rs","real.rs"]}],"files":["api.rs","breadcrumbs.rs","client.rs","clientoptions.rs","constants.rs","error.rs","futures.rs","hub.rs","integration.rs","intodsn.rs","lib.rs","macros.rs","test.rs","transport.rs"]};
+sourcesIndex["sentry_debug_images"] = {"name":"","files":["integration.rs","lib.rs","unix.rs"]};
+sourcesIndex["sentry_error_chain"] = {"name":"","files":["lib.rs"]};
+sourcesIndex["sentry_failure"] = {"name":"","files":["lib.rs"]};
+sourcesIndex["sentry_log"] = {"name":"","files":["converters.rs","integration.rs","lib.rs","logger.rs"]};
+sourcesIndex["sentry_panic"] = {"name":"","files":["lib.rs"]};
+sourcesIndex["sentry_slog"] = {"name":"","files":["converters.rs","drain.rs","integration.rs","lib.rs"]};
+sourcesIndex["sentry_types"] = {"name":"","dirs":[{"name":"protocol","files":["mod.rs","v7.rs"]}],"files":["auth.rs","dsn.rs","lib.rs","macros.rs","project_id.rs","utils.rs"]};
 createSourceSidebar();

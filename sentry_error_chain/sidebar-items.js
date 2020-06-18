@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["capture_error_chain","Captures an error chain."],["event_from_error_chain","Creates an event from an error chain."]],"struct":[["ErrorChainIntegration","The Sentry `error-chain` Integration."]],"trait":[["ErrorChainHubExt","Hub extension methods for working with error chain"]]});

@@ -1,0 +1,72 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `sentry_core` crate."><meta name="keywords" content="rust, rustlang, rust-lang, sentry_core"><title>sentry_core - Rust</title><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../dark.css"><link rel="stylesheet" type="text/css" href="../light.css" id="themeStyle"><script src="../storage.js"></script><noscript><link rel="stylesheet" href="../noscript.css"></noscript><link rel="shortcut icon" href="../favicon.ico"><style type="text/css">#crate-search{background-image:url("../down-arrow.svg");}</style></head><body class="rustdoc mod"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../sentry_core/index.html'><div class='logo-container'><img src='../rust-logo.png' alt='logo'></div></a><p class='location'>Crate sentry_core</p><div class="sidebar-elems"><a id='all-types' href='all.html'><p>See all sentry_core's items</p></a><div class="block items"><ul><li><a href="#modules">Modules</a></li><li><a href="#macros">Macros</a></li><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#traits">Traits</a></li><li><a href="#functions">Functions</a></li></ul></div><p class='location'></p><script>window.sidebarCurrent = {name: 'sentry_core', ty: 'mod', relpath: '../'};</script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><a id="settings-menu" href="../settings.html"><img src="../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><h1 class='fqn'><span class='out-of-band'><span id='render-detail'><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class='inner'>&#x2212;</span>]</a></span><a class='srclink' href='../src/sentry_core/lib.rs.html#1-97' title='goto source code'>[src]</a></span><span class='in-band'>Crate <a class="mod" href=''>sentry_core</a></span></h1><div class='docblock'><p style="margin: -10px 0 0 15px; padding: 0; float: right;">
+  <a href="https://sentry.io/"><img
+    src="https://sentry-brand.storage.googleapis.com/sentry-logo-black.png"
+    style="width: 260px"></a>
+</p>
+<p>This crate provides the core of the <a href="https://sentry.io/">Sentry</a> SDK, which
+can be used to log events and errors.</p>
+<p>This crate is meant for integration authors and third party library authors
+that want to instrument their code for sentry.</p>
+<p>Regular users who wish to integrate sentry into their applications should
+rather use the <a href="https://crates.io/crates/sentry"><code>sentry</code></a> crate, which comes with a default transport, and
+a large set of integrations for various third-party libraries.</p>
+<h1 id="core-concepts" class="section-header"><a href="#core-concepts">Core Concepts</a></h1>
+<p>This crate follows the <a href="https://develop.sentry.dev/sdk/unified-api/">Unified API</a> guidelines and is centered around
+the concepts of <a href="struct.Client.html"><code>Client</code></a>, <a href="struct.Hub.html"><code>Hub</code></a> and <a href="struct.Scope.html"><code>Scope</code></a>, as well as the extension
+points via the <a href="trait.Integration.html"><code>Integration</code></a>, <a href="trait.Transport.html"><code>Transport</code></a> and <a href="trait.TransportFactory.html"><code>TransportFactory</code></a> traits.</p>
+<h1 id="minimal-api" class="section-header"><a href="#minimal-api">Minimal API</a></h1>
+<p>By default, this crate comes with a so-called &quot;minimal&quot; mode. This mode will
+provide all the APIs needed to instrument code with sentry, and to write
+sentry integrations, but it will blackhole a lot of operations.</p>
+<p>In minimal mode some types are restricted in functionality. For instance
+the <a href="struct.Client.html"><code>Client</code></a> is not available and the <a href="struct.Hub.html"><code>Hub</code></a> does not retain all API
+functionality.</p>
+<h1 id="features" class="section-header"><a href="#features">Features</a></h1>
+<ul>
+<li><code>feature = &quot;client&quot;</code>: Activates the <a href="struct.Client.html"><code>Client</code></a> type and certain
+<a href="struct.Hub.html"><code>Hub</code></a> functionality.</li>
+<li><code>feature = &quot;test&quot;</code>: Activates the [<code>test</code>] module, which can be used to
+write integration tests. It comes with a test transport which can capture
+all sent events for inspection.</li>
+<li><code>feature = &quot;debug-logs&quot;</code>: Uses the <code>log</code> crate for debug output, instead
+of printing to <code>stderr</code>. This feature is <strong>deprecated</strong> and will be
+replaced by a dedicated log callback in the future.</li>
+</ul>
+</div><h2 id='modules' class='section-header'><a href="#modules">Modules</a></h2>
+<table><tr class='module-item'><td><a class="mod" href="protocol/index.html" title='sentry_core::protocol mod'>protocol</a></td><td class='docblock-short'><p>The current latest sentry protocol version.</p>
+</td></tr><tr class='module-item'><td><a class="mod" href="test/index.html" title='sentry_core::test mod'>test</a></td><td class='docblock-short'><p>This provides testing functionality for building tests.</p>
+</td></tr><tr class='module-item'><td><a class="mod" href="types/index.html" title='sentry_core::types mod'>types</a></td><td class='docblock-short'><p>This crate provides common types for working with the Sentry protocol or the
+Sentry server.  It's used by the Sentry Relay infrastructure as well as the
+rust Sentry client.</p>
+</td></tr></table><h2 id='macros' class='section-header'><a href="#macros">Macros</a></h2>
+<table><tr class='module-item'><td><a class="macro" href="macro.release_name.html" title='sentry_core::release_name macro'>release_name</a></td><td class='docblock-short'><p>Returns the intended release for Sentry as an <code>Option&lt;Cow&lt;'static, str&gt;&gt;</code>.</p>
+</td></tr></table><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
+<table><tr class='module-item'><td><a class="struct" href="struct.Breadcrumb.html" title='sentry_core::Breadcrumb struct'>Breadcrumb</a></td><td class='docblock-short'><p>Represents a single breadcrumb.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.Client.html" title='sentry_core::Client struct'>Client</a></td><td class='docblock-short'><p>The Sentry Client.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.ClientOptions.html" title='sentry_core::ClientOptions struct'>ClientOptions</a></td><td class='docblock-short'><p>Configuration settings for the client.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.Future.html" title='sentry_core::Future struct'>Future</a></td><td class='docblock-short'><p>A future that binds a <code>Hub</code> to its execution.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.Hub.html" title='sentry_core::Hub struct'>Hub</a></td><td class='docblock-short'><p>The central object that can manages scopes and clients.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.Scope.html" title='sentry_core::Scope struct'>Scope</a></td><td class='docblock-short'><p>Holds contextual data for the current scope.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.ScopeGuard.html" title='sentry_core::ScopeGuard struct'>ScopeGuard</a></td><td class='docblock-short'><p>A scope guard.</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.User.html" title='sentry_core::User struct'>User</a></td><td class='docblock-short'><p>Represents user info.</p>
+</td></tr></table><h2 id='enums' class='section-header'><a href="#enums">Enums</a></h2>
+<table><tr class='module-item'><td><a class="enum" href="enum.Level.html" title='sentry_core::Level enum'>Level</a></td><td class='docblock-short'><p>Represents the level of severity of an event or breadcrumb.</p>
+</td></tr></table><h2 id='traits' class='section-header'><a href="#traits">Traits</a></h2>
+<table><tr class='module-item'><td><a class="trait" href="trait.FutureExt.html" title='sentry_core::FutureExt trait'>FutureExt</a></td><td class='docblock-short'><p>Future extensions for Sentry.</p>
+</td></tr><tr class='module-item'><td><a class="trait" href="trait.Integration.html" title='sentry_core::Integration trait'>Integration</a></td><td class='docblock-short'><p>Integration abstraction.</p>
+</td></tr><tr class='module-item'><td><a class="trait" href="trait.IntoBreadcrumbs.html" title='sentry_core::IntoBreadcrumbs trait'>IntoBreadcrumbs</a></td><td class='docblock-short'><p>A helper trait that converts self into an Iterator of Breadcrumbs.</p>
+</td></tr><tr class='module-item'><td><a class="trait" href="trait.IntoDsn.html" title='sentry_core::IntoDsn trait'>IntoDsn</a></td><td class='docblock-short'><p>Helper trait to convert a string into an <code>Option&lt;Dsn&gt;</code>.</p>
+</td></tr><tr class='module-item'><td><a class="trait" href="trait.Transport.html" title='sentry_core::Transport trait'>Transport</a></td><td class='docblock-short'><p>The trait for transports.</p>
+</td></tr><tr class='module-item'><td><a class="trait" href="trait.TransportFactory.html" title='sentry_core::TransportFactory trait'>TransportFactory</a></td><td class='docblock-short'><p>A factory creating transport instances.</p>
+</td></tr></table><h2 id='functions' class='section-header'><a href="#functions">Functions</a></h2>
+<table><tr class='module-item'><td><a class="fn" href="fn.add_breadcrumb.html" title='sentry_core::add_breadcrumb fn'>add_breadcrumb</a></td><td class='docblock-short'><p>Records a breadcrumb by calling a function.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.capture_error.html" title='sentry_core::capture_error fn'>capture_error</a></td><td class='docblock-short'><p>Captures a <code>std::error::Error</code>.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.capture_event.html" title='sentry_core::capture_event fn'>capture_event</a></td><td class='docblock-short'><p>Captures an event on the currently active client if any.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.capture_message.html" title='sentry_core::capture_message fn'>capture_message</a></td><td class='docblock-short'><p>Captures an arbitrary message.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.configure_scope.html" title='sentry_core::configure_scope fn'>configure_scope</a></td><td class='docblock-short'><p>Invokes a function that can modify the current scope.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.event_from_error.html" title='sentry_core::event_from_error fn'>event_from_error</a></td><td class='docblock-short'><p>Create a sentry <code>Event</code> from a <code>std::error::Error</code>.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.last_event_id.html" title='sentry_core::last_event_id fn'>last_event_id</a></td><td class='docblock-short'><p>Returns the last event ID captured.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.parse_type_from_debug.html" title='sentry_core::parse_type_from_debug fn'>parse_type_from_debug</a></td><td class='docblock-short'><p>Parse the types name from <code>Debug</code> output.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.with_integration.html" title='sentry_core::with_integration fn'>with_integration</a></td><td class='docblock-short'><p>Looks up an integration on the current Hub.</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.with_scope.html" title='sentry_core::with_scope fn'>with_scope</a></td><td class='docblock-short'><p>Temporarily pushes a scope for a single call optionally reconfiguring it.</p>
+</td></tr></table></section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../";window.currentCrate = "sentry_core";</script><script src="../aliases.js"></script><script src="../main.js"></script><script defer src="../search-index.js"></script></body></html>

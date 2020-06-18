@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["sentry_slog"] = [{"text":"impl&lt;D:&nbsp;Drain&gt; Drain for <a class=\"struct\" href=\"sentry_slog/struct.SentryDrain.html\" title=\"struct sentry_slog::SentryDrain\">SentryDrain</a>&lt;D&gt;","synthetic":false,"types":["sentry_slog::drain::SentryDrain"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

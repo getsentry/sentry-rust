@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["sentry_actix"] = [{"text":"impl&lt;S:&nbsp;'static&gt; Middleware&lt;S&gt; for <a class=\"struct\" href=\"sentry_actix/struct.SentryMiddleware.html\" title=\"struct sentry_actix::SentryMiddleware\">SentryMiddleware</a>","synthetic":false,"types":["sentry_actix::SentryMiddleware"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
