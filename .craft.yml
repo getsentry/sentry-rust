@@ -1,4 +1,4 @@
-minVersion: "0.10.0"
+minVersion: "0.10.1"
 github:
   owner: getsentry
   repo: sentry-rust
@@ -6,6 +6,7 @@ changelogPolicy: auto
 
 targets:
   - name: crates
+    noDevDeps: true
   - name: gh-pages
   - name: github
   - name: registry
