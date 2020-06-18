@@ -10,5 +10,5 @@ NEW_VERSION="${2}"
 echo "Current version: ${OLD_VERSION}"
 echo "Bumping version: ${NEW_VERSION}"
 
-perl -pi -e "s/^version = \".*?\"/version = \"$NEW_VERSION\"/" sentry/Cargo.toml
-perl -pi -e "s/^(sentry.*)?version = \".*?\"/\$1version = \"$NEW_VERSION\"/" sentry-actix/Cargo.toml
+find . -name Cargo.toml -type f -exec sed -i '' -e "s/^version.*/version = \"$NEW_VERSION\"/" {} \;
+find . -name Cargo.toml -type f -exec sed -i '' -e "s/^\(sentry.*version = \)\"[^\"]*\"/\\1\"$NEW_VERSION\"/" {} \;

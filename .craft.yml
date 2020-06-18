@@ -1,10 +1,14 @@
----
-# Configuration for sentry-craft (https://github.com/getsentry/craft)
+minVersion: "0.10.0"
 github:
   owner: getsentry
   repo: sentry-rust
+changelogPolicy: auto
+
 targets:
   - name: crates
   - name: gh-pages
   - name: github
-changelogPolicy: simple
+  - name: registry
+    type: sdk
+    config:
+      canonical: "cargo:sentry"
