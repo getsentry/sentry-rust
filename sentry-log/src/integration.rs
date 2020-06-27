@@ -62,7 +62,6 @@ impl Default for LogIntegration {
 
 impl LogIntegration {
     /// Initializes an env logger as destination target.
-    #[cfg(feature = "env_logger")]
     pub fn with_env_logger_dest(mut self, logger: Option<env_logger::Logger>) -> Self {
         let logger = logger
             .unwrap_or_else(|| env_logger::Builder::from_env(env_logger::Env::default()).build());
