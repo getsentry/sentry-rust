@@ -28,6 +28,7 @@ anyhow = ["sentry-anyhow"]
 debug-images = ["sentry-debug-images"]
 error-chain = ["sentry-error-chain"]
 log = ["sentry-log"]
+env_logger = ["sentry-log", "sentry-log/env_logger"]
 slog = ["sentry-slog"]
 # other features
 test = ["sentry-core/test"]
