@@ -73,12 +73,18 @@ pub use crate::api::*;
 pub use crate::breadcrumbs::IntoBreadcrumbs;
 pub use crate::clientoptions::ClientOptions;
 pub use crate::error::{capture_error, event_from_error, parse_type_from_debug};
-pub use crate::futures::{FutureExt, SentryFuture as Future};
+pub use crate::futures::{SentryFuture, SentryFutureExt};
 pub use crate::hub::Hub;
 pub use crate::integration::Integration;
 pub use crate::intodsn::IntoDsn;
 pub use crate::scope::{Scope, ScopeGuard};
 pub use crate::transport::{Transport, TransportFactory};
+
+// deprecated exports
+#[deprecated = "The export was renamed to `SentryFuture`"]
+pub use crate::futures::SentryFuture as Future;
+#[deprecated = "The export was renamed to `SentryFutureExt`"]
+pub use crate::futures::SentryFutureExt as FutureExt;
 
 // client feature
 #[cfg(feature = "client")]

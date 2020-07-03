@@ -65,6 +65,7 @@
 //! * `debug-images`: Attaches a list of loaded libraries to events (currently only supported on unix).
 //! * `error-chain`: Enables support for the `error-chain` crate.
 //! * `log`: Enables support for the `log` crate.
+//! * `env_logger`: Enables support for the `log` crate with additional `env_logger` support.
 //! * `slog`: Enables support for the `slog` crate.
 //! * `test`: Enables testing support.
 //! * `debug-logs`: Uses the `log` crate for internal logging.
@@ -74,6 +75,8 @@
 //! * `native-tls`: Uses the `native-tls` crate, which is currently the default.
 //!   This only has an effect on the `reqwest` transport.
 //! * `rustls`: Enables the `rustls` support of the `reqwest` transport.
+//!   Please note that `native-tls` is a default feature, and one needs to use
+//!   `default-features = false` to completely disable building `native-tls` dependencies.
 
 #![warn(missing_docs)]
 

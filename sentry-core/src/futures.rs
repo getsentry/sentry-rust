@@ -48,7 +48,7 @@ where
 }
 
 /// Future extensions for Sentry.
-pub trait FutureExt: Sized {
+pub trait SentryFutureExt: Sized {
     /// Binds a hub to the execution of this future.
     ///
     /// This ensures that the future is polled within the given hub.
@@ -63,12 +63,12 @@ pub trait FutureExt: Sized {
     }
 }
 
-impl<F> FutureExt for F where F: Future {}
+impl<F> SentryFutureExt for F where F: Future {}
 
 #[cfg(all(test, feature = "test"))]
 mod tests {
     use crate::test::with_captured_events;
-    use crate::{capture_message, configure_scope, FutureExt, Hub, Level};
+    use crate::{capture_message, configure_scope, Hub, Level, SentryFutureExt};
     use tokio::runtime::Runtime;
 
     #[test]
