@@ -1,10 +1,21 @@
-<p align="center">
-  <a href="https://sentry.io" target="_blank" align="center">
-    <img src="https://sentry-brand.storage.googleapis.com/sentry-logo-black.png" width="280">
-  </a>
-  <br />
-</p>
+# sentry-debug-images
 
-# Sentry SDK debug-images integration
+The Sentry Debug Images Integration.
 
-Sentry integration that adds the list of loaded libraries to events.
+The `DebugImagesIntegration` adds metadata about the loaded shared libraries
+to Sentry `Event`s.
+
+## Configuration
+
+The integration by default attaches this information to all Events, but a
+custom filter can be defined as well.
+
+```rust
+use sentry_core::Level;
+let integration = sentry_debug_images::DebugImagesIntegration {
+    filter: Box::new(|event| event.level >= Level::Warning),
+    ..Default::default()
+};
+```
+
+License: Apache-2.0

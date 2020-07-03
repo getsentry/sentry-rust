@@ -1,10 +1,18 @@
-<p align="center">
-  <a href="https://sentry.io" target="_blank" align="center">
-    <img src="https://sentry-brand.storage.googleapis.com/sentry-logo-black.png" width="280">
-  </a>
-  <br />
-</p>
+# sentry-anyhow
 
-# Sentry SDK Integration for anyhow
+Adds support for capturing Sentry errors from `anyhow::Error`.
 
-This is a Sentry integration for the `anyhow` crate.
+## Example
+
+```rust
+use sentry_anyhow::capture_anyhow;
+let result = match function_that_might_fail() {
+    Ok(result) => result,
+    Err(err) => {
+        capture_anyhow(&err);
+        return Err(err);
+    }
+};
+```
+
+License: Apache-2.0

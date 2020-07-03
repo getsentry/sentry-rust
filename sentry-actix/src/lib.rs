@@ -8,7 +8,6 @@
 //!
 //! # Example
 //!
-#![allow(clippy::needless_doctest_main)]
 //! ```no_run
 //! use std::env;
 //! use std::io;
@@ -63,6 +62,8 @@
 //! });
 //! # }
 //! ```
+
+#![allow(clippy::needless_doctest_main)]
 
 use std::borrow::Cow;
 use std::cell::RefCell;

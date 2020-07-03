@@ -1,10 +1,8 @@
-<p align="center">
-  <a href="https://sentry.io" target="_blank" align="center">
-    <img src="https://sentry-brand.storage.googleapis.com/sentry-logo-black.png" width="280">
-  </a>
-  <br />
-</p>
+# sentry-backtrace
 
-# Sentry SDK backtrace integration and utilities
+Backtrace Integration and utilities for sentry.
 
-Sentry integration and utilities for dealing with stacktraces.
+Exposes functions to capture, process and convert/parse stacktraces, as well
+as integrations to process event stacktraces.
+
+License: Apache-2.0

@@ -1,11 +1,55 @@
-<p align="center">
-  <a href="https://sentry.io" target="_blank" align="center">
-    <img src="https://sentry-brand.storage.googleapis.com/sentry-logo-black.png" width="280">
-  </a>
-  <br />
+# sentry-core
+
+<p style="margin: -10px 0 0 15px; padding: 0; float: right;">
+  <a href="https://sentry.io/"><img
+    src="https://sentry-brand.storage.googleapis.com/sentry-logo-black.png"
+    style="width: 260px"></a>
 </p>
 
-# Sentry SDK Core
+This crate provides the core of the [Sentry](https://sentry.io/) SDK, which
+can be used to log events and errors.
 
-The core of `sentry`, which can be used to instrument code, and to write integrations that generate events or hook into
-event processing.
+This crate is meant for integration authors and third party library authors
+that want to instrument their code for sentry.
+
+Regular users who wish to integrate sentry into their applications should
+rather use the [`sentry`] crate, which comes with a default transport, and
+a large set of integrations for various third-party libraries.
+
+## Core Concepts
+
+This crate follows the [Unified API] guidelines and is centered around
+the concepts of [`Client`], [`Hub`] and [`Scope`], as well as the extension
+points via the [`Integration`], [`Transport`] and [`TransportFactory`] traits.
+
+## Minimal API
+
+By default, this crate comes with a so-called "minimal" mode. This mode will
+provide all the APIs needed to instrument code with sentry, and to write
+sentry integrations, but it will blackhole a lot of operations.
+
+In minimal mode some types are restricted in functionality. For instance
+the [`Client`] is not available and the [`Hub`] does not retain all API
+functionality.
+
+## Features
+
+* `feature = "client"`: Activates the [`Client`] type and certain
+  [`Hub`] functionality.
+* `feature = "test"`: Activates the [`test`] module, which can be used to
+  write integration tests. It comes with a test transport which can capture
+  all sent events for inspection.
+* `feature = "debug-logs"`: Uses the `log` crate for debug output, instead
+  of printing to `stderr`. This feature is **deprecated** and will be
+  replaced by a dedicated log callback in the future.
+
+[`sentry`]: https://crates.io/crates/sentry
+[Unified API]: https://develop.sentry.dev/sdk/unified-api/
+[`Client`]: struct.Client.html
+[`Hub`]: struct.Hub.html
+[`Scope`]: struct.Scope.html
+[`Integration`]: trait.Integration.html
+[`Transport`]: trait.Transport.html
+[`TransportFactory`]: trait.TransportFactory.html
+
+License: Apache-2.0

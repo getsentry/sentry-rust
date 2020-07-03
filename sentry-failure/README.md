@@ -1,10 +1,25 @@
-<p align="center">
-  <a href="https://sentry.io" target="_blank" align="center">
-    <img src="https://sentry-brand.storage.googleapis.com/sentry-logo-black.png" width="280">
-  </a>
-  <br />
-</p>
+# sentry-failure
 
-# Sentry SDK failure integration
+Adds support for capturing Sentry errors from `failure` types.
 
-Sentry integration that allows capturing `failure` errors.
+Failure errors and `Fail` objects can be logged with the failure integration.
+This works really well if you use the `failure::Error` type or if you have
+`failure::Fail` objects that use the failure context internally to gain a
+backtrace.
+
+## Example
+
+```rust
+use sentry_failure::capture_error;
+let result = match function_that_might_fail() {
+    Ok(result) => result,
+    Err(err) => {
+        capture_error(&err);
+        return Err(err);
+    }
+};
+```
+
+To capture fails and not errors use `capture_fail`.
+
+License: Apache-2.0
