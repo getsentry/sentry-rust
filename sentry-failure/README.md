@@ -22,4 +22,9 @@ let result = match function_that_might_fail() {
 
 To capture fails and not errors use `capture_fail`.
 
+## Resources
+
 License: Apache-2.0
+
+- [Discord](https://discord.gg/ez5KZN7) server for project discussions.
+- Follow [@getsentry](https://twitter.com/getsentry) on Twitter for updates

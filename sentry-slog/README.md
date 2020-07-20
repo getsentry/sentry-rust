@@ -56,7 +56,12 @@ let integration = SlogIntegration::default()
 Please not that the `mapper` can override any classification from the
 previous `filter`.
 
-[`SlogIntegration`]: struct.SlogIntegration.html
-[`SentryDrain`]: struct.SentryDrain.html
+[`SlogIntegration`]: https://docs.rs/sentry-slog/0.19.0/sentry_slog/struct.SlogIntegration.html
+[`SentryDrain`]: https://docs.rs/sentry-slog/0.19.0/sentry_slog/struct.SentryDrain.html
+
+## Resources
 
 License: Apache-2.0
+
+- [Discord](https://discord.gg/ez5KZN7) server for project discussions.
+- Follow [@getsentry](https://twitter.com/getsentry) on Twitter for updates

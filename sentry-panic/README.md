@@ -16,4 +16,9 @@ might optionally create a sentry `Event` out of a `PanicInfo`.
 let integration = sentry_panic::PanicIntegration::default().add_extractor(|info| None);
 ```
 
+## Resources
+
 License: Apache-2.0
+
+- [Discord](https://discord.gg/ez5KZN7) server for project discussions.
+- Follow [@getsentry](https://twitter.com/getsentry) on Twitter for updates
