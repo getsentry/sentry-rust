@@ -235,7 +235,7 @@ impl Client {
             if self.sample_should_send() {
                 if let Some(event) = self.prepare_event(event, scope) {
                     let event_id = event.event_id;
-                    transport.send_event(event);
+                    transport.send_envelope(event.into());
                     return event_id;
                 }
             }
