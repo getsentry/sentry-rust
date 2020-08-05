@@ -36,6 +36,7 @@ Additionally, sentry can now be extended via `Integration`s.
 
 ## 0.18.0
 
+- Bump the minimum required Rust version to **1.40.0**.
 - Upgrade most dependencies to their current versions (#183):
 
   - `env_logger 0.7`
