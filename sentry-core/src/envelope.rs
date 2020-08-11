@@ -3,7 +3,7 @@ use std::io::Write;
 use crate::protocol::Event;
 use crate::types::Uuid;
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 #[non_exhaustive]
 enum EnvelopeItem {
     Event(Event<'static>),
@@ -27,7 +27,7 @@ impl From<Event<'static>> for EnvelopeItem {
 ///
 /// See the [documentation on Envelopes](https://develop.sentry.dev/sdk/envelopes/)
 /// for more details.
-#[derive(Default, Debug, PartialEq)]
+#[derive(Clone, Default, Debug, PartialEq)]
 pub struct Envelope {
     event_id: Option<Uuid>,
     items: Vec<EnvelopeItem>,
@@ -113,15 +113,15 @@ impl From<Event<'static>> for Envelope {
 #[cfg(test)]
 mod test {
     use super::*;
-    fn to_buf(envelope: Envelope) -> std::io::Result<Vec<u8>> {
-        let mut vec = vec![];
-        envelope.to_writer(&mut vec)?;
-        Ok(vec)
+    fn to_buf(envelope: Envelope) -> Vec<u8> {
+        let mut vec = Vec::new();
+        envelope.to_writer(&mut vec).unwrap();
+        vec
     }
 
     #[test]
     fn test_empty() {
-        assert_eq!(to_buf(Envelope::new()).unwrap(), b"{}\n");
+        assert_eq!(to_buf(Envelope::new()), b"{}\n");
     }
 
     #[test]
@@ -137,7 +137,7 @@ mod test {
         };
         let envelope = event.into();
         assert_eq!(
-            to_buf(envelope).unwrap(),
+            to_buf(envelope),
             br#"{"event_id":"22d00b3f-d1b1-4b5d-8d20-49d138cd8a9c"}
 {"type":"event","length":74}
 {"event_id":"22d00b3fd1b14b5d8d2049d138cd8a9c","timestamp":1595256674.296}

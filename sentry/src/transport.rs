@@ -222,7 +222,7 @@ implement_http_transport! {
                         }
                     }
 
-                    let mut body = vec![];
+                    let mut body = Vec::new();
                     envelope.to_writer(&mut body).unwrap();
 
                     match http_client
@@ -328,7 +328,7 @@ implement_http_transport! {
                     _ => {}
                 }
 
-                let mut body = vec![];
+                let mut body = Vec::new();
                 envelope.to_writer(&mut body).unwrap();
                 let mut body = Cursor::new(body);
 
@@ -446,7 +446,7 @@ implement_http_transport! {
                         }
                     }
 
-                    let mut body = vec![];
+                    let mut body = Vec::new();
                     envelope.to_writer(&mut body).unwrap();
 
                     let fut = http_client
