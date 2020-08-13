@@ -24,6 +24,7 @@
 //!
 //! To capture fails and not errors use `capture_fail`.
 
+#![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
 #![deny(missing_docs)]
 #![deny(unsafe_code)]
 #![warn(missing_doc_code_examples)]

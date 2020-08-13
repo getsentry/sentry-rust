@@ -8,7 +8,6 @@
 //!
 //! # Example
 //!
-#![allow(clippy::needless_doctest_main)]
 //! ```no_run
 //! use std::env;
 //! use std::io;
@@ -63,6 +62,10 @@
 //! });
 //! # }
 //! ```
+
+#![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
+#![deny(missing_docs)]
+#![allow(clippy::needless_doctest_main)]
 
 use std::borrow::Cow;
 use std::cell::RefCell;

@@ -1,9 +1,3 @@
-//! <p style="margin: -10px 0 0 15px; padding: 0; float: right;">
-//!   <a href="https://sentry.io/"><img
-//!     src="https://sentry-brand.storage.googleapis.com/sentry-logo-black.png"
-//!     style="width: 260px"></a>
-//! </p>
-//!
 //! This crate provides support for logging events and errors / panics to the
 //! [Sentry](https://sentry.io/) error logging service.  It integrates with the standard panic
 //! system in Rust as well as a few popular error handling setups.
@@ -78,7 +72,8 @@
 //!   Please note that `native-tls` is a default feature, and one needs to use
 //!   `default-features = false` to completely disable building `native-tls` dependencies.
 
-#![warn(missing_docs)]
+#![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
+#![deny(missing_docs)]
 
 mod defaults;
 mod init;

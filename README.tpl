@@ -4,26 +4,13 @@
     </a>
 </p>
 
-# Sentry Rust SDK: sentry-anyhow
+# Sentry Rust SDK: {{crate}}
 
-Adds support for capturing Sentry errors from `anyhow::Error`.
-
-## Example
-
-```rust
-use sentry_anyhow::capture_anyhow;
-let result = match function_that_might_fail() {
-    Ok(result) => result,
-    Err(err) => {
-        capture_anyhow(&err);
-        return Err(err);
-    }
-};
-```
+{{readme}}
 
 ## Resources
 
-License: Apache-2.0
+License: {{license}}
 
 - [Discord](https://discord.gg/ez5KZN7) server for project discussions.
 - Follow [@getsentry](https://twitter.com/getsentry) on Twitter for updates
