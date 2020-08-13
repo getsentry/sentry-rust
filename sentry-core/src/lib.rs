@@ -1,9 +1,3 @@
-//! <p style="margin: -10px 0 0 15px; padding: 0; float: right;">
-//!   <a href="https://sentry.io/"><img
-//!     src="https://sentry-brand.storage.googleapis.com/sentry-logo-black.png"
-//!     style="width: 260px"></a>
-//! </p>
-//!
 //! This crate provides the core of the [Sentry](https://sentry.io/) SDK, which
 //! can be used to log events and errors.
 //!
@@ -50,7 +44,8 @@
 //! [`Transport`]: trait.Transport.html
 //! [`TransportFactory`]: trait.TransportFactory.html
 
-#![warn(missing_docs)]
+#![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
+#![deny(missing_docs)]
 
 // macros; these need to be first to be used by other modules
 #[macro_use]

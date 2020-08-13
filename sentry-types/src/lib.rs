@@ -31,7 +31,9 @@
 //!     ..Default::default()
 //! };
 //! ```
-#![warn(missing_docs)]
+
+#![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
+#![deny(missing_docs)]
 
 #[macro_use]
 mod macros;

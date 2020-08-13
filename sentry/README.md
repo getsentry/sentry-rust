@@ -1,10 +1,10 @@
-# sentry
-
-<p style="margin: -10px 0 0 15px; padding: 0; float: right;">
-  <a href="https://sentry.io/"><img
-    src="https://sentry-brand.storage.googleapis.com/sentry-logo-black.png"
-    style="width: 260px"></a>
+<p align="center">
+    <a href="https://sentry.io" target="_blank" align="center">
+        <img src="https://sentry-brand.storage.googleapis.com/sentry-logo-black.png" width="280">
+    </a>
 </p>
+
+# Sentry Rust SDK: sentry
 
 This crate provides support for logging events and errors / panics to the
 [Sentry](https://sentry.io/) error logging service.  It integrates with the standard panic

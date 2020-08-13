@@ -14,6 +14,7 @@
 //! let integration = sentry_panic::PanicIntegration::default().add_extractor(|info| None);
 //! ```
 
+#![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
 #![deny(missing_docs)]
 #![deny(unsafe_code)]
 #![warn(missing_doc_code_examples)]

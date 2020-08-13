@@ -1,10 +1,10 @@
-# sentry-core
-
-<p style="margin: -10px 0 0 15px; padding: 0; float: right;">
-  <a href="https://sentry.io/"><img
-    src="https://sentry-brand.storage.googleapis.com/sentry-logo-black.png"
-    style="width: 260px"></a>
+<p align="center">
+    <a href="https://sentry.io" target="_blank" align="center">
+        <img src="https://sentry-brand.storage.googleapis.com/sentry-logo-black.png" width="280">
+    </a>
 </p>
+
+# Sentry Rust SDK: sentry-core
 
 This crate provides the core of the [Sentry](https://sentry.io/) SDK, which
 can be used to log events and errors.

@@ -1,4 +1,10 @@
-# sentry-types
+<p align="center">
+    <a href="https://sentry.io" target="_blank" align="center">
+        <img src="https://sentry-brand.storage.googleapis.com/sentry-logo-black.png" width="280">
+    </a>
+</p>
+
+# Sentry Rust SDK: sentry-types
 
 This crate provides common types for working with the Sentry protocol or the
 Sentry server.  It's used by the Sentry Relay infrastructure as well as the
