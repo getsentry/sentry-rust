@@ -225,6 +225,7 @@ implement_http_transport! {
                     let mut body = Vec::new();
                     envelope.to_writer(&mut body).unwrap();
 
+                    sentry_debug!("sending to \"{}\"", url);
                     match http_client
                         .post(url.as_str())
                         .body(body)
@@ -232,6 +233,7 @@ implement_http_transport! {
                         .send()
                     {
                         Ok(resp) => {
+                            sentry_debug!("got response {} {:#?}", resp.status(), resp.headers());
                             if resp.status() == 429 {
                                 if let Some(retry_after) = resp
                                     .headers()
@@ -242,6 +244,7 @@ implement_http_transport! {
                                     disabled = Some(retry_after);
                                 }
                             }
+                            sentry_debug!("{}", resp.text().unwrap());
                         }
                         Err(err) => {
                             sentry_debug!("Failed to send event: {}", err);

@@ -1,9 +1,10 @@
 use std::borrow::Cow;
 use std::fmt;
-use std::sync::{Arc, PoisonError, RwLock};
+use std::sync::{Arc, Mutex, PoisonError, RwLock};
 
 use crate::protocol::{Breadcrumb, Context, Event, Level, User, Value};
-use crate::Client;
+use crate::session::{Session, SessionUpdate};
+use crate::{Client, Envelope};
 
 #[derive(Debug)]
 pub struct Stack {
@@ -41,6 +42,7 @@ pub struct Scope {
     pub(crate) tags: im::HashMap<String, String>,
     pub(crate) contexts: im::HashMap<String, Context>,
     pub(crate) event_processors: im::Vector<Arc<EventProcessor>>,
+    pub(crate) session: Option<Arc<Mutex<Session>>>,
 }
 
 impl fmt::Debug for Scope {
@@ -55,6 +57,7 @@ impl fmt::Debug for Scope {
             .field("tags", &self.tags)
             .field("contexts", &self.contexts)
             .field("event_processors", &self.event_processors.len())
+            .field("session", &self.session)
             .finish()
     }
 }
@@ -71,6 +74,7 @@ impl Default for Scope {
             tags: Default::default(),
             contexts: Default::default(),
             event_processors: Default::default(),
+            session: None,
         }
     }
 }
@@ -89,15 +93,19 @@ impl Stack {
     }
 
     pub fn push(&mut self) {
-        let scope = self.layers[self.layers.len() - 1].clone();
-        self.layers.push(scope);
+        let mut layer = self.layers[self.layers.len() - 1].clone();
+        // don’t clone the session itself, it should only be on one layer, so
+        // that `end`-ing it works correctly.
+        let mut scope = Arc::make_mut(&mut layer.scope);
+        scope.session = None;
+        self.layers.push(layer);
     }
 
-    pub fn pop(&mut self) {
+    pub fn pop(&mut self) -> Option<StackLayer> {
         if self.layers.len() <= 1 {
             panic!("Pop from empty stack");
         }
-        self.layers.pop().unwrap();
+        self.layers.pop()
     }
 
     pub fn top(&self) -> &StackLayer {
@@ -136,7 +144,21 @@ impl Drop for ScopeGuard {
             if stack.depth() != depth {
                 panic!("Tried to pop guards out of order");
             }
-            stack.pop();
+            let mut layer = stack.pop().unwrap();
+            (|| {
+                let scope = Arc::make_mut(&mut layer.scope);
+                let mut session = Arc::try_unwrap(scope.session.take()?)
+                    .ok()?
+                    .into_inner()
+                    .ok()?;
+                let client = layer.client.as_ref()?;
+
+                session.close();
+                let mut envelope = Envelope::new();
+                envelope.add(session.into());
+                client.capture_envelope(envelope);
+                None::<()>
+            })();
         }
     }
 }
@@ -256,5 +278,13 @@ impl Scope {
         }
 
         Some(event)
+    }
+
+    pub(crate) fn update_session_from_event(&self, event: &Event<'static>) -> SessionUpdate {
+        if let Some(session) = &self.session {
+            session.lock().unwrap().update_from_event(event)
+        } else {
+            SessionUpdate::Unchanged
+        }
     }
 }

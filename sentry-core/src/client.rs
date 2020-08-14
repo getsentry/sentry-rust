@@ -10,8 +10,9 @@ use rand::random;
 
 use crate::constants::SDK_INFO;
 use crate::protocol::{ClientSdkInfo, Event};
+use crate::session::SessionUpdate;
 use crate::types::{Dsn, Uuid};
-use crate::{ClientOptions, Hub, Integration, Scope, Transport};
+use crate::{ClientOptions, Envelope, Hub, Integration, Scope, Transport};
 
 impl<T: Into<ClientOptions>> From<T> for Client {
     fn from(o: T) -> Client {
@@ -239,12 +240,32 @@ impl Client {
             if self.sample_should_send() {
                 if let Some(event) = self.prepare_event(event, scope) {
                     let event_id = event.event_id;
-                    transport.send_envelope(event.into());
+                    let session = scope.and_then(|scope| {
+                        if let SessionUpdate::NeedsFlushing(session) =
+                            scope.update_session_from_event(&event)
+                        {
+                            Some(session)
+                        } else {
+                            None
+                        }
+                    });
+                    let mut envelope: Envelope = event.into();
+                    if let Some(session) = session {
+                        envelope.add(session.into());
+                    }
+                    //sentry_debug!("sending envelope {:#?}", envelope);
+                    transport.send_envelope(envelope);
                     return event_id;
                 }
             }
         }
         Default::default()
+    }
+
+    pub(crate) fn capture_envelope(&self, envelope: Envelope) {
+        if let Some(ref transport) = *self.transport.read().unwrap() {
+            transport.send_envelope(envelope);
+        }
     }
 
     /// Drains all pending events and shuts down the transport behind the

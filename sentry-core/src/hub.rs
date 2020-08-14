@@ -9,10 +9,11 @@ use std::thread;
 use std::time::Duration;
 
 use crate::protocol::{Breadcrumb, Event, Level};
+use crate::session::{Session, SessionStatus};
 use crate::types::Uuid;
 use crate::{event_from_error, Integration, IntoBreadcrumbs, Scope, ScopeGuard};
 #[cfg(feature = "client")]
-use crate::{scope::Stack, Client};
+use crate::{scope::Stack, Client, Envelope};
 
 #[cfg(feature = "client")]
 lazy_static::lazy_static! {
@@ -309,6 +310,47 @@ impl Hub {
         self.inner.with_mut(|stack| {
             stack.top_mut().client = client;
         })
+    }
+
+    /// Start a new session for Release Health.
+    ///
+    /// This implicitly closes any previous session and starts recording a new
+    /// session.
+    ///
+    /// See the global [`start_session`](fn.start_session.html)
+    /// for more documentation.
+    pub fn start_session(&self) {
+        self.end_session();
+        // in theory, this could race and we should really do the end/start in a
+        // single locked section.
+        with_client_impl! {{
+            self.inner.with_mut(|stack| {
+                if let Some(session) = Session::from_stack(stack.top()) {
+                    let mut scope = Arc::make_mut(&mut stack.top_mut().scope);
+                    scope.session = Some(Arc::new(Mutex::new(session)));
+                }
+            });
+        }}
+    }
+
+    /// Stop the current Release Health session.
+    ///
+    /// See the global [`end_session`](fn.end_session.html)
+    /// for more documentation.
+    pub fn end_session(&self) {
+        with_client_impl! {{
+            let _ = self.inner.with_mut(|stack| {
+                let mut scope = Arc::make_mut(&mut stack.top_mut().scope);
+                let mut session = Arc::try_unwrap(scope.session.take()?).ok()?.into_inner().ok()?;
+                let client = stack.top().client.as_ref()?;
+
+                session.close();
+                let mut envelope = Envelope::new();
+                envelope.add(session.into());
+                client.capture_envelope(envelope);
+                None::<()>
+            });
+        }}
     }
 
     /// Pushes a new scope.

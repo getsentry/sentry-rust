@@ -261,3 +261,18 @@ pub fn last_event_id() -> Option<Uuid> {
         Hub::with(|hub| hub.last_event_id())
     }}
 }
+
+/// Start a new session for Release Health.
+///
+/// This implicitly closes any previous session and starts recording a new
+/// session.
+pub fn start_session() {
+    Hub::with_active(|hub| hub.start_session())
+}
+
+/// Stop the current Release Health session.
+///
+/// See [`start_session`](fn.start_session.html) for examples.
+pub fn end_session() {
+    Hub::with_active(|hub| hub.end_session())
+}

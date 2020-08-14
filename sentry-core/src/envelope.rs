@@ -1,14 +1,15 @@
 use std::io::Write;
 
 use crate::protocol::Event;
+use crate::session::Session;
 use crate::types::Uuid;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 #[non_exhaustive]
-enum EnvelopeItem {
+pub(crate) enum EnvelopeItem {
     Event(Event<'static>),
+    Session(Session),
     // TODO:
-    // * Session,
     // * Attachment,
     // etc…
 }
@@ -16,6 +17,12 @@ enum EnvelopeItem {
 impl From<Event<'static>> for EnvelopeItem {
     fn from(event: Event<'static>) -> Self {
         EnvelopeItem::Event(event)
+    }
+}
+
+impl From<Session> for EnvelopeItem {
+    fn from(session: Session) -> Self {
+        EnvelopeItem::Session(session)
     }
 }
 
@@ -27,7 +34,7 @@ impl From<Event<'static>> for EnvelopeItem {
 ///
 /// See the [documentation on Envelopes](https://develop.sentry.dev/sdk/envelopes/)
 /// for more details.
-#[derive(Clone, Default, Debug, PartialEq)]
+#[derive(Clone, Default, Debug)]
 pub struct Envelope {
     event_id: Option<Uuid>,
     items: Vec<EnvelopeItem>,
@@ -39,6 +46,10 @@ impl Envelope {
         Default::default()
     }
 
+    pub(crate) fn add(&mut self, item: EnvelopeItem) {
+        self.items.push(item);
+    }
+
     /// Returns the Envelopes Uuid, if any.
     pub fn uuid(&self) -> Option<&Uuid> {
         self.event_id.as_ref()
@@ -48,12 +59,11 @@ impl Envelope {
     ///
     /// [`Event`]: protocol/struct.Event.html
     pub fn event(&self) -> Option<&Event<'static>> {
-        // until we actually add more items:
-        #[allow(clippy::unnecessary_filter_map)]
         self.items
             .iter()
             .filter_map(|item| match item {
                 EnvelopeItem::Event(event) => Some(event),
+                _ => None,
             })
             .next()
     }
@@ -77,14 +87,13 @@ impl Envelope {
         // write each item:
         for item in &self.items {
             // we write them to a temporary buffer first, since we need their length
-            serde_json::to_writer(
-                &mut item_buf,
-                match item {
-                    EnvelopeItem::Event(event) => event,
-                },
-            )?;
+            match item {
+                EnvelopeItem::Event(event) => serde_json::to_writer(&mut item_buf, event)?,
+                EnvelopeItem::Session(session) => serde_json::to_writer(&mut item_buf, session)?,
+            }
             let item_type = match item {
                 EnvelopeItem::Event(_) => "event",
+                EnvelopeItem::Session(_) => "session",
             };
             writeln!(
                 writer,
@@ -113,6 +122,7 @@ impl From<Event<'static>> for Envelope {
 #[cfg(test)]
 mod test {
     use super::*;
+
     fn to_buf(envelope: Envelope) -> Vec<u8> {
         let mut vec = Vec::new();
         envelope.to_writer(&mut vec).unwrap();
