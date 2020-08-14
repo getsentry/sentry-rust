@@ -29,7 +29,7 @@ use surf_::Client as SurfClient;
 use sentry_core::sentry_debug;
 
 use crate::protocol::Event;
-use crate::{ClientOptions, Transport, TransportFactory};
+use crate::{ClientOptions, Envelope, Transport, TransportFactory};
 
 /// Creates the default HTTP transport.
 ///
@@ -74,7 +74,7 @@ macro_rules! implement_http_transport {
     ) => {
         $(#[$attr])*
         pub struct $typename {
-            sender: Mutex<SyncSender<Option<Event<'static>>>>,
+            sender: Mutex<SyncSender<Option<Envelope>>>,
             shutdown_signal: Arc<Condvar>,
             shutdown_immediately: Arc<AtomicBool>,
             queue_size: Arc<Mutex<usize>>,
@@ -123,12 +123,12 @@ macro_rules! implement_http_transport {
         }
 
         impl Transport for $typename {
-            fn send_event(&self, event: Event<'static>) {
+            fn send_envelope(&self, envelope: Envelope) {
                 // we count up before we put the item on the queue and in case the
                 // queue is filled with too many items or we shut down, we decrement
                 // the count again as there is nobody that can pick it up.
                 *self.queue_size.lock().unwrap() += 1;
-                if self.sender.lock().unwrap().try_send(Some(event)).is_err() {
+                if self.sender.lock().unwrap().try_send(Some(envelope)).is_err() {
                     *self.queue_size.lock().unwrap() -= 1;
                 }
             }
@@ -170,7 +170,7 @@ implement_http_transport! {
 
     fn spawn(
         options: &ClientOptions,
-        receiver: Receiver<Option<Event<'static>>>,
+        receiver: Receiver<Option<Envelope>>,
         signal: Arc<Condvar>,
         shutdown_immediately: Arc<AtomicBool>,
         queue_size: Arc<Mutex<usize>>,
@@ -200,7 +200,7 @@ implement_http_transport! {
 
                 let url = dsn.store_api_url().to_string();
 
-                while let Some(event) = receiver.recv().unwrap_or(None) {
+                while let Some(envelope) = receiver.recv().unwrap_or(None) {
                     // on drop we want to not continue processing the queue.
                     if shutdown_immediately.load(Ordering::SeqCst) {
                         let mut size = queue_size.lock().unwrap();
@@ -222,9 +222,12 @@ implement_http_transport! {
                         }
                     }
 
+                    let mut body = Vec::new();
+                    envelope.to_writer(&mut body).unwrap();
+
                     match http_client
                         .post(url.as_str())
-                        .json(&event)
+                        .body(body)
                         .header("X-Sentry-Auth", dsn.to_auth(Some(&user_agent)).to_string())
                         .send()
                     {
@@ -271,7 +274,7 @@ implement_http_transport! {
 
     fn spawn(
         options: &ClientOptions,
-        receiver: Receiver<Option<Event<'static>>>,
+        receiver: Receiver<Option<Envelope>>,
         signal: Arc<Condvar>,
         shutdown_immediately: Arc<AtomicBool>,
         queue_size: Arc<Mutex<usize>>,
@@ -289,7 +292,7 @@ implement_http_transport! {
             sentry_debug!("spawning curl transport");
             let url = dsn.store_api_url().to_string();
 
-            while let Some(event) = receiver.recv().unwrap_or(None) {
+            while let Some(envelope) = receiver.recv().unwrap_or(None) {
                 // on drop we want to not continue processing the queue.
                 if shutdown_immediately.load(Ordering::SeqCst) {
                     let mut size = queue_size.lock().unwrap();
@@ -325,7 +328,10 @@ implement_http_transport! {
                     _ => {}
                 }
 
-                let mut body = Cursor::new(serde_json::to_vec(&event).unwrap());
+                let mut body = Vec::new();
+                envelope.to_writer(&mut body).unwrap();
+                let mut body = Cursor::new(body);
+
                 let mut retry_after = None;
                 let mut headers = curl::easy::List::new();
                 headers.append(&format!("X-Sentry-Auth: {}", dsn.to_auth(Some(&user_agent)))).unwrap();
@@ -401,7 +407,7 @@ implement_http_transport! {
 
     fn spawn(
         options: &ClientOptions,
-        receiver: Receiver<Option<Event<'static>>>,
+        receiver: Receiver<Option<Envelope>>,
         signal: Arc<Condvar>,
         shutdown_immediately: Arc<AtomicBool>,
         queue_size: Arc<Mutex<usize>>,
@@ -418,7 +424,7 @@ implement_http_transport! {
                 let http_client = http_client;
                 let url = dsn.store_api_url().to_string();
 
-                while let Some(event) = receiver.recv().unwrap_or(None) {
+                while let Some(envelope) = receiver.recv().unwrap_or(None) {
                     // on drop we want to not continue processing the queue.
                     if shutdown_immediately.load(Ordering::SeqCst) {
                         let mut size = queue_size.lock().unwrap();
@@ -440,25 +446,16 @@ implement_http_transport! {
                         }
                     }
 
-                    let req_result = http_client
+                    let mut body = Vec::new();
+                    envelope.to_writer(&mut body).unwrap();
+
+                    let fut = http_client
                         .post(url.as_str())
                         .set_header(
                             "X-Sentry-Auth",
                             dsn.to_auth(Some(&user_agent)).to_string()
                         )
-                        .body_json(&event);
-
-                    let fut = match req_result {
-                        Ok(fut) => fut,
-                        Err(err) => {
-                            sentry_debug!(
-                                "Skipping event send because JSON serialization failed: {}",
-                                err
-                            );
-
-                            continue;
-                        }
-                    };
+                        .body_bytes(body);
 
                     match executor::block_on(fut) {
                         Ok(resp) => {

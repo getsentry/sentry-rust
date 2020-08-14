@@ -81,8 +81,9 @@ fn test_factory() {
     struct TestTransport(Arc<AtomicUsize>);
 
     impl sentry::Transport for TestTransport {
-        fn send_event(&self, event: sentry::protocol::Event<'static>) {
-            assert_eq!(event.message.unwrap(), "test");
+        fn send_envelope(&self, envelope: sentry::Envelope) {
+            let event = envelope.event().unwrap();
+            assert_eq!(event.message.as_ref().unwrap(), "test");
             self.0.fetch_add(1, Ordering::SeqCst);
         }
     }

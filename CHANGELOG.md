@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Breaking Changes**:
+
+- The `Transport` was changed to work on `Envelope`s instead of `Event`s. The `send_event` trait function was removed in favor of `send_envelope`.
+
 ## 0.19.0
 
 **Highlights**:

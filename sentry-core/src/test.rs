@@ -23,7 +23,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::protocol::Event;
 use crate::types::Dsn;
-use crate::{ClientOptions, Hub, Transport};
+use crate::{ClientOptions, Envelope, Hub, Transport};
 
 lazy_static::lazy_static! {
     static ref TEST_DSN: Dsn = "https://public@sentry.invalid/1".parse().unwrap();
@@ -47,7 +47,7 @@ lazy_static::lazy_static! {
 /// Hub::current().bind_client(Some(Arc::new(options.into())));
 /// ```
 pub struct TestTransport {
-    collected: Mutex<Vec<Event<'static>>>,
+    collected: Mutex<Vec<Envelope>>,
 }
 
 impl TestTransport {
@@ -62,13 +62,16 @@ impl TestTransport {
     /// Fetches and clears the contained events.
     pub fn fetch_and_clear_events(&self) -> Vec<Event<'static>> {
         let mut guard = self.collected.lock().unwrap();
-        std::mem::replace(&mut *guard, vec![])
+        guard
+            .drain(..)
+            .filter_map(|envelope| envelope.event().cloned())
+            .collect()
     }
 }
 
 impl Transport for TestTransport {
-    fn send_event(&self, event: Event<'static>) {
-        self.collected.lock().unwrap().push(event);
+    fn send_envelope(&self, envelope: Envelope) {
+        self.collected.lock().unwrap().push(envelope);
     }
 }
 

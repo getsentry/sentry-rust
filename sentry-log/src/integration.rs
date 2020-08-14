@@ -42,7 +42,10 @@ impl Integration for LogIntegration {
             log::set_max_level(filter);
         }
 
-        INIT.call_once(|| log::set_boxed_logger(Box::new(Logger::default())).unwrap());
+        INIT.call_once(|| {
+            // silently ignore errors here, as running tests will hit this condition for some reason.
+            log::set_boxed_logger(Box::new(Logger::default())).ok();
+        });
     }
 }
 
