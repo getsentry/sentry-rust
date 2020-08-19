@@ -63,8 +63,9 @@
 //! # }
 //! ```
 
+#![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
 #![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
-#![deny(missing_docs)]
+#![warn(missing_docs)]
 #![allow(clippy::needless_doctest_main)]
 
 use std::borrow::Cow;

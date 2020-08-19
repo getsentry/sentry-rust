@@ -43,9 +43,11 @@
 //! [`Integration`]: trait.Integration.html
 //! [`Transport`]: trait.Transport.html
 //! [`TransportFactory`]: trait.TransportFactory.html
+//! [`test`]: test/index.html
 
+#![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
 #![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
-#![deny(missing_docs)]
+#![warn(missing_docs)]
 
 // macros; these need to be first to be used by other modules
 #[macro_use]
