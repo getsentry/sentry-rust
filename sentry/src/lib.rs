@@ -72,8 +72,9 @@
 //!   Please note that `native-tls` is a default feature, and one needs to use
 //!   `default-features = false` to completely disable building `native-tls` dependencies.
 
+#![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
 #![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
-#![deny(missing_docs)]
+#![warn(missing_docs)]
 
 mod defaults;
 mod init;
