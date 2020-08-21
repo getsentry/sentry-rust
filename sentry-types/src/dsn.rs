@@ -82,15 +82,31 @@ impl Dsn {
         auth_from_dsn_and_client(self, client_agent)
     }
 
-    /// Returns the submission API URL.
-    pub fn store_api_url(&self) -> Url {
+    fn api_url(&self, endpoint: &str) -> Url {
         use std::fmt::Write;
         let mut buf = format!("{}://{}", self.scheme(), self.host());
         if self.port() != self.scheme.default_port() {
             write!(&mut buf, ":{}", self.port()).unwrap();
         }
-        write!(&mut buf, "{}api/{}/store/", self.path, self.project_id()).unwrap();
+        write!(
+            &mut buf,
+            "{}api/{}/{}/",
+            self.path,
+            self.project_id(),
+            endpoint
+        )
+        .unwrap();
         Url::parse(&buf).unwrap()
+    }
+
+    /// Returns the submission API URL.
+    pub fn store_api_url(&self) -> Url {
+        self.api_url("store")
+    }
+
+    /// Returns the API URL for Envelope submission.
+    pub fn envelope_api_url(&self) -> Url {
+        self.api_url("envelope")
     }
 
     /// Returns the scheme
@@ -235,6 +251,10 @@ mod test {
             dsn.store_api_url().to_string(),
             "https://domain/api/42/store/"
         );
+        assert_eq!(
+            dsn.envelope_api_url().to_string(),
+            "https://domain/api/42/envelope/"
+        );
     }
 
     #[test]
@@ -247,6 +267,10 @@ mod test {
             dsn.store_api_url().to_string(),
             "http://domain/api/42/store/"
         );
+        assert_eq!(
+            dsn.envelope_api_url().to_string(),
+            "http://domain/api/42/envelope/"
+        );
     }
 
     #[test]
@@ -257,6 +281,10 @@ mod test {
         assert_eq!(
             dsn.store_api_url().to_string(),
             "https://domain:8888/api/42/store/"
+        );
+        assert_eq!(
+            dsn.envelope_api_url().to_string(),
+            "https://domain:8888/api/42/envelope/"
         );
     }
 
