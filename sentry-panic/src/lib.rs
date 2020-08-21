@@ -24,7 +24,7 @@ use std::panic::{self, PanicInfo};
 use std::sync::Once;
 
 use sentry_backtrace::current_stacktrace;
-use sentry_core::protocol::{Event, Exception, Level};
+use sentry_core::protocol::{Event, Exception, Level, Mechanism};
 use sentry_core::{ClientOptions, Integration};
 
 /// A panic handler that sends to Sentry.
@@ -108,6 +108,11 @@ impl PanicIntegration {
         Event {
             exception: vec![Exception {
                 ty: "panic".into(),
+                mechanism: Some(Mechanism {
+                    ty: "panic".into(),
+                    handled: Some(false),
+                    ..Default::default()
+                }),
                 value: Some(msg.to_string()),
                 stacktrace: current_stacktrace(),
                 ..Default::default()
