@@ -52,10 +52,12 @@ impl HubImpl {
             Err(err) => err.into_inner(),
             Ok(guard) => guard,
         };
-        if let Some(client) = guard.top().client.as_ref() {
-            return client.is_enabled();
-        }
-        false
+
+        guard
+            .top()
+            .client
+            .as_ref()
+            .map_or(false, |c| c.is_enabled())
     }
 }
 
