@@ -48,12 +48,14 @@ impl HubImpl {
     }
 
     fn is_active_and_usage_safe(&self) -> bool {
-        let guard = match self.stack.try_read() {
-            Err(TryLockError::Poisoned(err)) => err.into_inner(),
-            Err(TryLockError::WouldBlock) => return false,
+        let guard = match self.stack.read() {
+            Err(err) => err.into_inner(),
             Ok(guard) => guard,
         };
-        guard.top().client.is_some()
+        if let Some(client) = guard.top().client.as_ref() {
+            return client.is_enabled();
+        }
+        false
     }
 }
 
