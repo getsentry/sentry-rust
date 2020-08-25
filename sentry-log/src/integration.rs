@@ -43,7 +43,6 @@ impl Integration for LogIntegration {
         }
 
         INIT.call_once(|| {
-            // silently ignore errors here, as running tests will hit this condition for some reason.
             log::set_boxed_logger(Box::new(Logger::default())).ok();
         });
     }

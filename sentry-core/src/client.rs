@@ -11,7 +11,7 @@ use rand::random;
 use crate::constants::SDK_INFO;
 use crate::protocol::{ClientSdkInfo, Event};
 use crate::types::{Dsn, Uuid};
-use crate::{ClientOptions, Integration, Scope, Transport};
+use crate::{ClientOptions, Hub, Integration, Scope, Transport};
 
 impl<T: Into<ClientOptions>> From<T> for Client {
     fn from(o: T) -> Client {
@@ -93,6 +93,10 @@ impl Client {
     /// If the DSN on the options is set to `None` the client will be entirely
     /// disabled.
     pub fn with_options(mut options: ClientOptions) -> Client {
+        // Create the main hub eagerly to avoid problems with the background thread
+        // See https://github.com/getsentry/sentry-rust/issues/237
+        Hub::with(|_| {});
+
         let create_transport = || {
             options.dsn.as_ref()?;
             let factory = options.transport.as_ref()?;
