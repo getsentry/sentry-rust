@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**:
+
+- Better deal with concurrent Hub access.
+
 ## 0.19.0
 
 **Highlights**:
