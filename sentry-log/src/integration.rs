@@ -43,7 +43,7 @@ impl Integration for LogIntegration {
         }
 
         INIT.call_once(|| {
-            log::set_boxed_logger(Box::new(Logger::default())).unwrap();
+            log::set_boxed_logger(Box::new(Logger::default())).ok();
         });
     }
 }
