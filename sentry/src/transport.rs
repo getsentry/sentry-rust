@@ -198,7 +198,7 @@ implement_http_transport! {
                     builder.build().unwrap()
                 });
 
-                let url = dsn.store_api_url().to_string();
+                let url = dsn.envelope_api_url().to_string();
 
                 while let Some(envelope) = receiver.recv().unwrap_or(None) {
                     // on drop we want to not continue processing the queue.
@@ -290,7 +290,7 @@ implement_http_transport! {
 
         thread::spawn(move || {
             sentry_debug!("spawning curl transport");
-            let url = dsn.store_api_url().to_string();
+            let url = dsn.envelope_api_url().to_string();
 
             while let Some(envelope) = receiver.recv().unwrap_or(None) {
                 // on drop we want to not continue processing the queue.
@@ -422,7 +422,7 @@ implement_http_transport! {
             .spawn(move || {
                 sentry_debug!("spawning surf transport");
                 let http_client = http_client;
-                let url = dsn.store_api_url().to_string();
+                let url = dsn.envelope_api_url().to_string();
 
                 while let Some(envelope) = receiver.recv().unwrap_or(None) {
                     // on drop we want to not continue processing the queue.
