@@ -1,6 +1,6 @@
 [package]
 name = "sentry-failure"
-version = "0.19.0"
+version = "0.19.1"
 authors = ["Sentry <hello@sentry.io>"]
 license = "Apache-2.0"
 readme = "README.md"
@@ -15,10 +15,10 @@ edition = "2018"
 all-features = true
 
 [dependencies]
-sentry-core = { version = "0.19.0", path = "../sentry-core" }
-sentry-backtrace = { version = "0.19.0", path = "../sentry-backtrace" }
+sentry-core = { version = "0.19.1", path = "../sentry-core" }
+sentry-backtrace = { version = "0.19.1", path = "../sentry-backtrace" }
 failure = "0.1.6"
 
 [dev-dependencies]
-sentry = { version = "0.19.0", path = "../sentry", default-features = false, features = ["test"] }
-sentry-panic = { version = "0.19.0", path = "../sentry-panic" }
+sentry = { version = "0.19.1", path = "../sentry", default-features = false, features = ["test"] }
+sentry-panic = { version = "0.19.1", path = "../sentry-panic" }

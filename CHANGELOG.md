@@ -6,6 +6,12 @@
 
 - The `Transport` was changed to work on `Envelope`s instead of `Event`s. The `send_event` trait function was removed in favor of `send_envelope`.
 
+## 0.19.1
+
+**Fixes**:
+
+- Better deal with concurrent Hub access.
+
 ## 0.19.0
 
 **Highlights**:
