@@ -151,6 +151,8 @@
 <span id="151">151</span>
 <span id="152">152</span>
 <span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Once</span>;
 
@@ -196,7 +198,9 @@
             <span class="ident">log</span>::<span class="ident">set_max_level</span>(<span class="ident">filter</span>);
         }
 
-        <span class="ident">INIT</span>.<span class="ident">call_once</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">log</span>::<span class="ident">set_boxed_logger</span>(<span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">Logger</span>::<span class="ident">default</span>())).<span class="ident">unwrap</span>());
+        <span class="ident">INIT</span>.<span class="ident">call_once</span>(<span class="op">|</span><span class="op">|</span> {
+            <span class="ident">log</span>::<span class="ident">set_boxed_logger</span>(<span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">Logger</span>::<span class="ident">default</span>())).<span class="ident">ok</span>();
+        });
     }
 }
 
@@ -306,4 +310,4 @@
     <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">opt_weird</span>.<span class="ident">effective_global_filter</span>(), <span class="ident">LevelFilter</span>::<span class="ident">Warn</span>);
 }
 </pre></div>
-</section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../";window.currentCrate = "sentry_log";</script><script src="../../aliases.js"></script><script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script><script defer src="../../search-index.js"></script></body></html>
+</section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../";window.currentCrate = "sentry_log";</script><script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script><script defer src="../../search-index.js"></script></body></html>

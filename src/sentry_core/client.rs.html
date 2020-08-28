@@ -273,6 +273,10 @@
 <span id="273">273</span>
 <span id="274">274</span>
 <span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">any</span>::<span class="ident">TypeId</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">borrow</span>::<span class="ident">Cow</span>;
@@ -287,7 +291,7 @@
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">constants</span>::<span class="ident">SDK_INFO</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">protocol</span>::{<span class="ident">ClientSdkInfo</span>, <span class="ident">Event</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">types</span>::{<span class="ident">Dsn</span>, <span class="ident">Uuid</span>};
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">ClientOptions</span>, <span class="ident">Integration</span>, <span class="ident">Scope</span>, <span class="ident">Transport</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">ClientOptions</span>, <span class="ident">Hub</span>, <span class="ident">Integration</span>, <span class="ident">Scope</span>, <span class="ident">Transport</span>};
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">ClientOptions</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Client</span> {
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">o</span>: <span class="ident">T</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Client</span> {
@@ -369,6 +373,10 @@
     <span class="doccomment">/// If the DSN on the options is set to `None` the client will be entirely</span>
     <span class="doccomment">/// disabled.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_options</span>(<span class="kw-2">mut</span> <span class="ident">options</span>: <span class="ident">ClientOptions</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Client</span> {
+        <span class="comment">// Create the main hub eagerly to avoid problems with the background thread</span>
+        <span class="comment">// See https://github.com/getsentry/sentry-rust/issues/237</span>
+        <span class="ident">Hub</span>::<span class="ident">with</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {});
+
         <span class="kw">let</span> <span class="ident">create_transport</span> <span class="op">=</span> <span class="op">|</span><span class="op">|</span> {
             <span class="ident">options</span>.<span class="ident">dsn</span>.<span class="ident">as_ref</span>()<span class="question-mark">?</span>;
             <span class="kw">let</span> <span class="ident">factory</span> <span class="op">=</span> <span class="ident">options</span>.<span class="ident">transport</span>.<span class="ident">as_ref</span>()<span class="question-mark">?</span>;
@@ -550,4 +558,4 @@
 <span class="comment">// `BeforeCallback`s inside `ClientOptions`, and the contained Integrations</span>
 <span class="kw">impl</span> <span class="ident">RefUnwindSafe</span> <span class="kw">for</span> <span class="ident">Client</span> {}
 </pre></div>
-</section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../";window.currentCrate = "sentry_core";</script><script src="../../aliases.js"></script><script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script><script defer src="../../search-index.js"></script></body></html>
+</section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../";window.currentCrate = "sentry_core";</script><script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script><script defer src="../../search-index.js"></script></body></html>
