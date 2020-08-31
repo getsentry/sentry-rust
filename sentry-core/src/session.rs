@@ -2,15 +2,13 @@
 //!
 //! https://develop.sentry.dev/sdk/sessions/
 
-use std::fmt;
-use std::{borrow::Cow, sync::Arc, time::Instant};
+use std::borrow::Cow;
+use std::sync::Arc;
+use std::time::Instant;
 
-use crate::protocol::{Event, Level};
-use crate::{
-    scope::StackLayer,
-    types::{DateTime, Utc, Uuid},
-};
-use sentry_types::protocol::v7::User;
+use crate::protocol::{Event, Level, User};
+use crate::scope::StackLayer;
+use crate::types::{DateTime, Utc, Uuid};
 
 /// Represents the status of a session.
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -66,7 +64,7 @@ impl Session {
         for exc in &event.exception.values {
             has_error = true;
             if let Some(mechanism) = &exc.mechanism {
-                if matches!(mechanism.handled, Some(false)) {
+                if let Some(false) = mechanism.handled {
                     is_crash = true;
                     break;
                 }
