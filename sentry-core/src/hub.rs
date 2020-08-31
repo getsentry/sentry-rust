@@ -321,13 +321,14 @@ impl Hub {
     /// for more documentation.
     pub fn start_session(&self) {
         self.end_session();
-        // in theory, this could race and we should really do the end/start in a
-        // single locked section.
         with_client_impl! {{
             self.inner.with_mut(|stack| {
-                if let Some(session) = Session::from_stack(stack.top()) {
-                    let mut scope = Arc::make_mut(&mut stack.top_mut().scope);
-                    scope.session = Some(Arc::new(Mutex::new(session)));
+                let top = stack.top_mut();
+                if let Some(session) = Session::from_stack(top) {
+                    // When creating a *new* session, we make sure it is unique,
+                    // as to no inherit *backwards* to any parents.
+                    let mut scope = Arc::make_mut(&mut top.scope);
+                    scope.session = Arc::new(Mutex::new(Some(session)));
                 }
             });
         }}
@@ -339,10 +340,10 @@ impl Hub {
     /// for more documentation.
     pub fn end_session(&self) {
         with_client_impl! {{
-            let _ = self.inner.with_mut(|stack| {
-                let mut scope = Arc::make_mut(&mut stack.top_mut().scope);
-                let mut session = Arc::try_unwrap(scope.session.take()?).ok()?.into_inner().ok()?;
-                let client = stack.top().client.as_ref()?;
+            let _ = self.inner.with(|stack| {
+                let top = stack.top();
+                let mut session = top.scope.session.lock().unwrap().take()?;
+                let client = top.client.as_ref()?;
 
                 session.close();
                 let mut envelope = Envelope::new();

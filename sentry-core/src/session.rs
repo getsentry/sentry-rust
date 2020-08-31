@@ -163,8 +163,7 @@ impl serde::Serialize for Session {
 #[cfg(all(test, feature = "test"))]
 mod tests {
     use crate as sentry;
-    use crate::test::with_captured_envelopes_options;
-    use crate::{ClientOptions, Envelope};
+    use crate::Envelope;
 
     fn to_buf(envelope: &Envelope) -> Vec<u8> {
         let mut vec = Vec::new();
@@ -174,20 +173,26 @@ mod tests {
     fn to_str(envelope: &Envelope) -> String {
         String::from_utf8(to_buf(envelope)).unwrap()
     }
-
-    #[test]
-    fn test_session_startstop() {
-        let envelopes = with_captured_envelopes_options(
-            || {
-                sentry::start_session();
-                std::thread::sleep(std::time::Duration::from_millis(10));
-                sentry::end_session();
-            },
-            ClientOptions {
+    fn capture_envelopes<F>(f: F) -> Vec<Envelope>
+    where
+        F: FnOnce(),
+    {
+        crate::test::with_captured_envelopes_options(
+            f,
+            crate::ClientOptions {
                 release: Some("some-release".into()),
                 ..Default::default()
             },
-        );
+        )
+    }
+
+    #[test]
+    fn test_session_startstop() {
+        let envelopes = capture_envelopes(|| {
+            sentry::start_session();
+            std::thread::sleep(std::time::Duration::from_millis(10));
+            sentry::end_session();
+        });
         assert_eq!(envelopes.len(), 1);
 
         let body = to_str(&envelopes[0]);
@@ -199,31 +204,105 @@ mod tests {
 
     #[test]
     fn test_session_error() {
-        let envelopes = with_captured_envelopes_options(
-            || {
-                sentry::start_session();
+        let envelopes = capture_envelopes(|| {
+            sentry::start_session();
 
-                let err = "NaN".parse::<usize>().unwrap_err();
-                sentry::capture_error(&err);
+            let err = "NaN".parse::<usize>().unwrap_err();
+            sentry::capture_error(&err);
 
-                sentry::end_session();
-            },
-            ClientOptions {
-                release: Some("some-release".into()),
-                ..Default::default()
-            },
-        );
+            sentry::end_session();
+        });
         assert_eq!(envelopes.len(), 2);
 
         let body = to_str(&envelopes[0]);
-        assert!(body.contains("{\"type\":\"session\","));
+        assert!(body.contains(r#"{"type":"session","#));
         assert!(body.contains(r#""attrs":{"release":"some-release"}"#));
         assert!(body.contains(r#""status":"ok","errors":1"#));
         assert!(body.contains(r#""init":true"#));
 
         let body = to_str(&envelopes[1]);
-        assert!(body.contains("{\"type\":\"session\","));
+        assert!(body.contains(r#"{"type":"session","#));
         assert!(body.contains(r#""status":"exited","errors":1"#));
         assert!(!body.contains(r#""init":true"#));
+    }
+
+    /// For _user-mode_ sessions, we want to inherit the session for any _new_
+    /// Hub that is spawned from the main thread Hub which already has a session
+    /// attached
+    #[test]
+    fn test_inherit_session_from_top() {
+        let envelopes = capture_envelopes(|| {
+            sentry::start_session();
+
+            let err = "NaN".parse::<usize>().unwrap_err();
+            sentry::capture_error(&err);
+
+            // create a new Hub which should have the same session
+            let hub = std::sync::Arc::new(sentry::Hub::new_from_top(sentry::Hub::current()));
+
+            sentry::Hub::run(hub, || {
+                let err = "NaN".parse::<usize>().unwrap_err();
+                sentry::capture_error(&err);
+
+                sentry::with_scope(
+                    |_| {},
+                    || {
+                        let err = "NaN".parse::<usize>().unwrap_err();
+                        sentry::capture_error(&err);
+                    },
+                );
+            });
+
+            sentry::end_session();
+        });
+
+        assert_eq!(envelopes.len(), 4); // 3 errors and one session end
+
+        let body = to_str(&envelopes[3]);
+        assert!(body.contains(r#"{"type":"session","#));
+        assert!(body.contains(r#""status":"exited","errors":3"#));
+        assert!(!body.contains(r#""init":true"#));
+    }
+
+    /// We want to forward-inherit sessions as the previous test asserted, but
+    /// not *backwards*. So any new session created in a derived Hub and scope
+    /// will only get updates from that particular scope.
+    #[test]
+    fn test_dont_inherit_session_backwards() {
+        let envelopes = capture_envelopes(|| {
+            let hub = std::sync::Arc::new(sentry::Hub::new_from_top(sentry::Hub::current()));
+
+            sentry::Hub::run(hub, || {
+                sentry::with_scope(
+                    |_| {},
+                    || {
+                        sentry::start_session();
+
+                        let err = "NaN".parse::<usize>().unwrap_err();
+                        sentry::capture_error(&err);
+                    },
+                );
+
+                let err = "NaN".parse::<usize>().unwrap_err();
+                sentry::capture_error(&err);
+            });
+
+            let err = "NaN".parse::<usize>().unwrap_err();
+            sentry::capture_error(&err);
+        });
+
+        assert_eq!(envelopes.len(), 3); // 3 errors, but no session end
+
+        let body = to_str(&envelopes[0]);
+        assert!(body.contains(r#"{"type":"session","#));
+        assert!(body.contains(r#""attrs":{"release":"some-release"}"#));
+        assert!(body.contains(r#""status":"ok","errors":1"#));
+        assert!(body.contains(r#""init":true"#));
+
+        // the other two events should not have session updates
+        let body = to_str(&envelopes[1]);
+        assert!(!body.contains(r#"{"type":"session","#));
+        let body = to_str(&envelopes[2]);
+        assert!(!body.contains(r#"{"type":"session","#));
     }
 }
