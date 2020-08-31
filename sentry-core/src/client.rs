@@ -253,7 +253,6 @@ impl Client {
                     if let Some(session) = session {
                         envelope.add(session.into());
                     }
-                    //sentry_debug!("sending envelope {:#?}", envelope);
                     transport.send_envelope(envelope);
                     return event_id;
                 }

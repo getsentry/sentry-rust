@@ -2,12 +2,18 @@ use std::fmt;
 
 use crate::protocol::{Context, Event, Level, User, Value};
 
-/// The minimal scope.
+/// A minimal API session guard.
 ///
-/// In minimal API mode all modification functions are available as normally
-/// just that generally calling them is impossible.
-#[derive(Debug, Clone)]
-pub struct Scope;
+/// Doesn't do anything but can be debug formatted.
+#[derive(Default)]
+#[must_use = "The duration of the Session from start to end is defined by the lifetime of this guard."]
+pub struct SessionGuard;
+
+impl fmt::Debug for SessionGuard {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "SessionGuard")
+    }
+}
 
 /// A minimal API scope guard.
 ///
@@ -20,6 +26,13 @@ impl fmt::Debug for ScopeGuard {
         write!(f, "ScopeGuard")
     }
 }
+
+/// The minimal scope.
+///
+/// In minimal API mode all modification functions are available as normally
+/// just that generally calling them is impossible.
+#[derive(Debug, Clone)]
+pub struct Scope;
 
 impl Scope {
     /// Clear the scope.

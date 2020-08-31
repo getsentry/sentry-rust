@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex, PoisonError, RwLock};
 
 use crate::protocol::{Breadcrumb, Context, Event, Level, User, Value};
 use crate::session::{Session, SessionUpdate};
-use crate::Client;
+use crate::{Client, Envelope};
 
 #[derive(Debug)]
 pub struct Stack {
@@ -115,6 +115,35 @@ impl Stack {
 
     pub fn depth(&self) -> usize {
         self.layers.len()
+    }
+}
+
+/// A session guard.
+///
+/// This is returned from [`Hub::start_session`] and will automatically end the
+/// newly created session on drop.
+///
+/// [`Hub::start_session`]: struct.Hub.html#method.start_session
+#[derive(Default)]
+#[must_use = "The duration of the Session from start to end is defined by the lifetime of this guard."]
+pub struct SessionGuard(pub(crate) Option<(Arc<Client>, Arc<Scope>)>);
+
+impl fmt::Debug for SessionGuard {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "SessionGuard")
+    }
+}
+
+impl Drop for SessionGuard {
+    fn drop(&mut self) {
+        if let Some((client, scope)) = self.0.take() {
+            if let Some(mut session) = scope.session.lock().unwrap().take() {
+                session.close();
+                let mut envelope = Envelope::new();
+                envelope.add(session.into());
+                client.capture_envelope(envelope);
+            }
+        }
     }
 }
 

@@ -189,9 +189,8 @@ mod tests {
     #[test]
     fn test_session_startstop() {
         let envelopes = capture_envelopes(|| {
-            sentry::start_session();
+            let _session = sentry::start_session();
             std::thread::sleep(std::time::Duration::from_millis(10));
-            sentry::end_session();
         });
         assert_eq!(envelopes.len(), 1);
 
@@ -205,12 +204,10 @@ mod tests {
     #[test]
     fn test_session_error() {
         let envelopes = capture_envelopes(|| {
-            sentry::start_session();
+            let _session = sentry::start_session();
 
             let err = "NaN".parse::<usize>().unwrap_err();
             sentry::capture_error(&err);
-
-            sentry::end_session();
         });
         assert_eq!(envelopes.len(), 2);
 
@@ -232,7 +229,7 @@ mod tests {
     #[test]
     fn test_inherit_session_from_top() {
         let envelopes = capture_envelopes(|| {
-            sentry::start_session();
+            let _session = sentry::start_session();
 
             let err = "NaN".parse::<usize>().unwrap_err();
             sentry::capture_error(&err);
@@ -252,8 +249,6 @@ mod tests {
                     },
                 );
             });
-
-            sentry::end_session();
         });
 
         assert_eq!(envelopes.len(), 4); // 3 errors and one session end
@@ -276,7 +271,7 @@ mod tests {
                 sentry::with_scope(
                     |_| {},
                     || {
-                        sentry::start_session();
+                        let _session = sentry::start_session();
 
                         let err = "NaN".parse::<usize>().unwrap_err();
                         sentry::capture_error(&err);
@@ -291,7 +286,7 @@ mod tests {
             sentry::capture_error(&err);
         });
 
-        assert_eq!(envelopes.len(), 3); // 3 errors, but no session end
+        assert_eq!(envelopes.len(), 4); // 3 errors and one session end
 
         let body = to_str(&envelopes[0]);
         assert!(body.contains(r#"{"type":"session","#));
@@ -299,10 +294,15 @@ mod tests {
         assert!(body.contains(r#""status":"ok","errors":1"#));
         assert!(body.contains(r#""init":true"#));
 
-        // the other two events should not have session updates
         let body = to_str(&envelopes[1]);
-        assert!(!body.contains(r#"{"type":"session","#));
+        assert!(body.starts_with("{}\n{\"type\":\"session\","));
+        assert!(body.contains(r#""status":"exited","errors":1"#));
+        assert!(!body.contains(r#""init":true"#));
+
+        // the other two events should not have session updates
         let body = to_str(&envelopes[2]);
+        assert!(!body.contains(r#"{"type":"session","#));
+        let body = to_str(&envelopes[3]);
         assert!(!body.contains(r#"{"type":"session","#));
     }
 }
