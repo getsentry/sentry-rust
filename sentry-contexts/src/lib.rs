@@ -23,6 +23,8 @@
 #![warn(missing_docs)]
 
 mod integration;
-mod utils;
+/// Contains functions to retrieve various contexts that can be useful
+/// to attach to events
+pub mod utils;
 
 pub use integration::ContextIntegration;
