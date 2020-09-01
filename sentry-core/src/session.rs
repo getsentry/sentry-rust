@@ -59,6 +59,11 @@ impl Session {
     }
 
     pub(crate) fn update_from_event(&mut self, event: &Event<'static>) -> SessionUpdate {
+        if self.status != SessionStatus::Ok {
+            // a session that has already transitioned to a "terminal" state
+            // should not receive any more updates
+            return SessionUpdate::Unchanged;
+        }
         let mut has_error = event.level >= Level::Error;
         let mut is_crash = false;
         for exc in &event.exception.values {
@@ -89,10 +94,13 @@ impl Session {
         }
     }
 
-    pub(crate) fn close(&mut self) {
-        self.duration = Some(self.started.elapsed().as_secs_f64());
+    pub(crate) fn close(mut self) -> SessionUpdate {
         if self.status == SessionStatus::Ok {
+            self.duration = Some(self.started.elapsed().as_secs_f64());
             self.status = SessionStatus::Exited;
+            SessionUpdate::NeedsFlushing(self)
+        } else {
+            SessionUpdate::Unchanged
         }
     }
 }

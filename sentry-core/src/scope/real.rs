@@ -137,11 +137,12 @@ impl fmt::Debug for SessionGuard {
 impl Drop for SessionGuard {
     fn drop(&mut self) {
         if let Some((client, scope)) = self.0.take() {
-            if let Some(mut session) = scope.session.lock().unwrap().take() {
-                session.close();
-                let mut envelope = Envelope::new();
-                envelope.add(session.into());
-                client.capture_envelope(envelope);
+            if let Some(session) = scope.session.lock().unwrap().take() {
+                if let SessionUpdate::NeedsFlushing(session) = session.close() {
+                    let mut envelope = Envelope::new();
+                    envelope.add(session.into());
+                    client.capture_envelope(envelope);
+                }
             }
         }
     }
