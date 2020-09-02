@@ -79,6 +79,13 @@ jobs:
           toolchain: ${{ matrix.rust }}
           override: true
 
+      # workaround for: https://github.com/actions/cache/issues/403
+      - name: Install GNU tar (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install gnu-tar
+          echo "::add-path::/usr/local/opt/gnu-tar/libexec/gnubin"
+
       - uses: actions/cache@v2
         with:
           path: |
@@ -115,6 +122,13 @@ jobs:
           profile: minimal
           toolchain: ${{ matrix.rust }}
           override: true
+
+      # workaround for: https://github.com/actions/cache/issues/403
+      - name: Install GNU tar (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install gnu-tar
+          echo "::add-path::/usr/local/opt/gnu-tar/libexec/gnubin"
 
       - uses: actions/cache@v2
         with:
