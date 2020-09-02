@@ -16,6 +16,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Install stable toolchain
+        id: toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -60,6 +61,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Install rust toolchain
+        id: toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -93,6 +95,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Install rust toolchain
+        id: toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
