@@ -9,6 +9,41 @@
 //! # Example
 //!
 //! ```no_run
+//! use actix_web::{server, App, Error, HttpRequest};
+//! use sentry_actix::SentryMiddleware;
+//!
+//! fn failing(_req: &HttpRequest) -> Result<String, Error> {
+//!     Err(std::io::Error::new(std::io::ErrorKind::Other, "An error happens here").into())
+//! }
+//!
+//! fn main() {
+//!     let _guard = sentry::init("https://public@sentry.io/1234");
+//!     std::env::set_var("RUST_BACKTRACE", "1");
+//!
+//!     server::new(|| {
+//!         App::new()
+//!             .middleware(SentryMiddleware::new())
+//!             .resource("/", |r| r.f(failing))
+//!     })
+//!     .bind("127.0.0.1:3001")
+//!     .unwrap()
+//!     .run();
+//! }
+//! ```
+//!
+//! # Using Release Health
+//!
+//! Thus far, per-request session support is considered **highly experimental**,
+//! and is not yet well optimized in the SDK. It is not yet recommended to be
+//! used in production!
+//!
+//! The Sentry SDK may be set up to start a *user-mode* session for the lifetime
+//! of the application. In order to start *request-mode* sessions for each
+//! individual request, you would have to disable automatic session tracking
+//! in favor of session tracking in the middleware, like so:
+//!
+//! ```no_run
+//!
 //! use std::env;
 //! use std::io;
 //!
@@ -16,16 +51,22 @@
 //! use sentry_actix::SentryMiddleware;
 //!
 //! fn failing(_req: &HttpRequest) -> Result<String, Error> {
-//!     Err(io::Error::new(io::ErrorKind::Other, "An error happens here").into())
+//!     Err(std::io::Error::new(std::io::ErrorKind::Other, "An error happens here").into())
 //! }
 //!
 //! fn main() {
-//!     let _guard = sentry::init("https://public@sentry.io/1234");
-//!     env::set_var("RUST_BACKTRACE", "1");
+//!     let _guard = sentry::init(("https://public@sentry.io/1234", sentry::ClientOptions {
+//!         release: sentry::release_name!(),
+//!         auto_session_tracking: false,
+//!         ..Default::default()
+//!     }));
+//!     std::env::set_var("RUST_BACKTRACE", "1");
 //!
-//!     server::new(|| {
+//!     server::new(move || {
+//!         let middleware = SentryMiddleware::builder().track_session(true).finish();
+//!
 //!         App::new()
-//!             .middleware(SentryMiddleware::new())
+//!             .middleware(middleware)
 //!             .resource("/", |r| r.f(failing))
 //!     })
 //!     .bind("127.0.0.1:3001")
@@ -116,13 +157,21 @@ impl SentryMiddlewareBuilder {
         self.middleware.capture_server_errors = val;
         self
     }
+
+    /// Enables or disables per-request Session tracking.
+    pub fn track_session(mut self, val: bool) -> Self {
+        self.middleware.track_session = val;
+        self
+    }
 }
 
 /// Reports certain failures to sentry.
+//#[derive(Clone)]
 pub struct SentryMiddleware {
     hub: Option<Arc<Hub>>,
     emit_header: bool,
     capture_server_errors: bool,
+    track_session: bool,
 }
 
 struct HubWrapper {
@@ -137,6 +186,7 @@ impl SentryMiddleware {
             hub: None,
             emit_header: false,
             capture_server_errors: true,
+            track_session: false,
         }
     }
 
@@ -211,6 +261,9 @@ impl<S: 'static> Middleware<S> for SentryMiddleware {
         let cached_data = Arc::new(Mutex::new(None));
 
         let root_scope = hub.push_scope();
+        if self.track_session {
+            hub.start_session();
+        }
         hub.configure_scope(move |scope| {
             scope.add_event_processor(Box::new(move |mut event| {
                 let mut cached_data = cached_data.lock().unwrap();
