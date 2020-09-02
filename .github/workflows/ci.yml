@@ -1,9 +1,8 @@
 # Notes on Caching:
 #
 # Caches are keyed by OS, rustc version, job and Cargo.toml hash.
-# Check and Test jobs don’t use caches on macOS because we observe the following
-# failure when using caches:
-# > error[E0463]: can't find crate for `serde_derive` which `chrono` depends on
+# We additionally cache the `Cargo.lock` file, as that is not being committed
+# directly to git.
 
 name: CI
 
@@ -18,6 +17,8 @@ jobs:
   lints:
     name: Lints
     runs-on: ubuntu-latest
+    env:
+      cache-name: lints
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
@@ -37,9 +38,10 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-${{ steps.toolchain.outputs.rustc_hash }}-lints-${{ hashFiles('**/Cargo.toml') }}
+            Cargo.lock
+          key: ${{ runner.os }}-${{ steps.toolchain.outputs.rustc_hash }}-${{ env.cache-name }}-${{ hashFiles('**/Cargo.toml') }}
           restore-keys: |
-            ${{ runner.os }}-${{ steps.toolchain.outputs.rustc_hash }}-lints-
+            ${{ runner.os }}-${{ steps.toolchain.outputs.rustc_hash }}-${{ env.cache-name }}-
 
       - name: Run cargo fmt
         uses: actions-rs/cargo@v1
@@ -63,6 +65,8 @@ jobs:
     name: checkall using ${{ matrix.rust }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
 
+    env:
+      cache-name: check
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
@@ -76,15 +80,15 @@ jobs:
           override: true
 
       - uses: actions/cache@v2
-        if: ${{ runner.os != 'macOS' }}
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-${{ steps.toolchain.outputs.rustc_hash }}-check-${{ hashFiles('**/Cargo.toml') }}
+            Cargo.lock
+          key: ${{ runner.os }}-${{ steps.toolchain.outputs.rustc_hash }}-${{ env.cache-name }}-${{ hashFiles('**/Cargo.toml') }}
           restore-keys: |
-            ${{ runner.os }}-${{ steps.toolchain.outputs.rustc_hash }}-check-
+            ${{ runner.os }}-${{ steps.toolchain.outputs.rustc_hash }}-${{ env.cache-name }}-
 
       - run: make checkall
 
@@ -98,6 +102,8 @@ jobs:
     name: testall using ${{ matrix.rust }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
 
+    env:
+      cache-name: test
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
@@ -111,15 +117,15 @@ jobs:
           override: true
 
       - uses: actions/cache@v2
-        if: ${{ runner.os != 'macOS' }}
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-${{ steps.toolchain.outputs.rustc_hash }}-test-${{ hashFiles('**/Cargo.toml') }}
+            Cargo.lock
+          key: ${{ runner.os }}-${{ steps.toolchain.outputs.rustc_hash }}-${{ env.cache-name }}-${{ hashFiles('**/Cargo.toml') }}
           restore-keys: |
-            ${{ runner.os }}-${{ steps.toolchain.outputs.rustc_hash }}-test-
+            ${{ runner.os }}-${{ steps.toolchain.outputs.rustc_hash }}-${{ env.cache-name }}-
 
       - name: Run cargo test
         uses: actions-rs/cargo@v1
@@ -137,6 +143,8 @@ jobs:
     name: checkfast/testfast using ${{ matrix.rust }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
 
+    env:
+      cache-name: fast-MSRV
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
@@ -154,7 +162,10 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-fast-msrv-${{ hashFiles('**/Cargo.toml') }}
+            Cargo.lock
+          key: ${{ runner.os }}-${{ steps.toolchain.outputs.rustc_hash }}-${{ env.cache-name }}-${{ hashFiles('**/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ steps.toolchain.outputs.rustc_hash }}-${{ env.cache-name }}
 
       - run: make checkfast
 
