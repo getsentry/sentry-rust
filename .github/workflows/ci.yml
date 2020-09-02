@@ -1,3 +1,10 @@
+# Notes on Caching:
+#
+# Caches are keyed by OS, rustc version, job and Cargo.toml hash.
+# Check and Test jobs don’t use caches on macOS because we observe the following
+# failure when using caches:
+# > error[E0463]: can't find crate for `serde_derive` which `chrono` depends on
+
 name: CI
 
 on:
@@ -69,6 +76,7 @@ jobs:
           override: true
 
       - uses: actions/cache@v2
+        if: ${{ runner.os != 'macOS' }}
         with:
           path: |
             ~/.cargo/registry
@@ -103,6 +111,7 @@ jobs:
           override: true
 
       - uses: actions/cache@v2
+        if: ${{ runner.os != 'macOS' }}
         with:
           path: |
             ~/.cargo/registry
