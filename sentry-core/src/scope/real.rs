@@ -140,7 +140,7 @@ impl Drop for SessionGuard {
             if let Some(session) = scope.session.lock().unwrap().take() {
                 if let SessionUpdate::NeedsFlushing(session) = session.close() {
                     let mut envelope = Envelope::new();
-                    envelope.add(session.into());
+                    envelope.add(session);
                     client.capture_envelope(envelope);
                 }
             }

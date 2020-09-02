@@ -46,8 +46,11 @@ impl Envelope {
         Default::default()
     }
 
-    pub(crate) fn add(&mut self, item: EnvelopeItem) {
-        self.items.push(item);
+    pub(crate) fn add<I>(&mut self, item: I)
+    where
+        I: Into<EnvelopeItem>,
+    {
+        self.items.push(item.into());
     }
 
     /// Returns the Envelopes Uuid, if any.

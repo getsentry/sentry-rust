@@ -251,7 +251,7 @@ impl Client {
                     });
                     let mut envelope: Envelope = event.into();
                     if let Some(session) = session {
-                        envelope.add(session.into());
+                        envelope.add(session);
                     }
                     transport.send_envelope(envelope);
                     return event_id;

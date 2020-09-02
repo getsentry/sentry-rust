@@ -4,7 +4,7 @@
 
 use std::borrow::Cow;
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use crate::protocol::{Event, Level, User};
 use crate::scope::StackLayer;
@@ -35,7 +35,7 @@ pub struct Session {
     environment: Option<Cow<'static, str>>,
     started: Instant,
     started_utc: DateTime<Utc>,
-    duration: Option<f64>,
+    duration: Option<Duration>,
     init: bool,
     dirty: bool,
 }
@@ -96,7 +96,7 @@ impl Session {
 
     pub(crate) fn close(mut self) -> SessionUpdate {
         if self.status == SessionStatus::Ok {
-            self.duration = Some(self.started.elapsed().as_secs_f64());
+            self.duration = Some(self.started.elapsed());
             self.status = SessionStatus::Exited;
             SessionUpdate::NeedsFlushing(self)
         } else {
@@ -146,7 +146,7 @@ impl serde::Serialize for Session {
         session.serialize_field("started", &self.started_utc)?;
 
         if let Some(duration) = self.duration {
-            session.serialize_field("duration", &duration)?;
+            session.serialize_field("duration", &duration.as_secs_f64())?;
         } else {
             session.skip_field("duration")?;
         }
