@@ -264,6 +264,9 @@ pub fn last_event_id() -> Option<Uuid> {
 
 /// Start a new session for Release Health.
 ///
+/// This is still **experimental** for the moment and is not recommended to be
+/// used with a very high volume of sessions (_request-mode_ sessions).
+///
 /// # Examples
 ///
 /// ```

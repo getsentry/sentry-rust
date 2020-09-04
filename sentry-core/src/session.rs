@@ -44,7 +44,7 @@ pub struct Session {
 impl Drop for Session {
     fn drop(&mut self) {
         self.close();
-        if let Some(item) = self.into_envelope_item() {
+        if let Some(item) = self.create_envelope_item() {
             let mut envelope = Envelope::new();
             envelope.add(item);
             self.client.capture_envelope(envelope);
@@ -107,7 +107,7 @@ impl Session {
         }
     }
 
-    pub(crate) fn into_envelope_item(&mut self) -> Option<EnvelopeItem> {
+    pub(crate) fn create_envelope_item(&mut self) -> Option<EnvelopeItem> {
         if self.dirty {
             let item = EnvelopeItem::Session(self.clone());
             self.init = false;

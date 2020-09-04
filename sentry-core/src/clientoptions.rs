@@ -84,9 +84,9 @@ pub struct ClientOptions {
     // Other options not documented in Unified API
     /// Enable Release Health Session tracking.
     ///
-    /// When automatic session tracking is enabled, as is the default, a new
-    /// "user-mode" session is started at the time of `sentry::init`, and will
-    /// persist for the application lifetime.
+    /// When automatic session tracking is enabled, a new "user-mode" session
+    /// is started at the time of `sentry::init`, and will persist for the
+    /// application lifetime.
     pub auto_session_tracking: bool,
     /// Border frames which indicate a border from a backtrace to
     /// useless internals. Some are automatically included.
@@ -183,7 +183,7 @@ impl Default for ClientOptions {
             http_proxy: None,
             https_proxy: None,
             shutdown_timeout: Duration::from_secs(2),
-            auto_session_tracking: true,
+            auto_session_tracking: false,
             extra_border_frames: vec![],
             trim_backtraces: true,
             user_agent: Cow::Borrowed(&USER_AGENT),

@@ -340,7 +340,7 @@ impl Hub {
                 let top = stack.top_mut();
                 if let Some(mut session) = top.scope.session.lock().unwrap().take() {
                     session.close();
-                    if let Some(item) = session.into_envelope_item() {
+                    if let Some(item) = session.create_envelope_item() {
                         let mut envelope = Envelope::new();
                         envelope.add(item);
                         if let Some(ref client) = top.client {
