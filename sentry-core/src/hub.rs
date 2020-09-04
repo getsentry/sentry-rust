@@ -8,8 +8,8 @@ use std::sync::{Arc, Mutex, PoisonError, RwLock, TryLockError};
 use std::thread;
 use std::time::Duration;
 
-use crate::protocol::{Breadcrumb, Event, Level};
-use crate::session::{Session, SessionStatus};
+use crate::protocol::{Breadcrumb, Event, Level, SessionStatus};
+use crate::session::Session;
 use crate::types::Uuid;
 use crate::{event_from_error, Integration, IntoBreadcrumbs, Scope, ScopeGuard};
 #[cfg(feature = "client")]
@@ -342,7 +342,7 @@ impl Hub {
                     session.close();
                     if let Some(item) = session.create_envelope_item() {
                         let mut envelope = Envelope::new();
-                        envelope.add(item);
+                        envelope.add_item(item);
                         if let Some(ref client) = top.client {
                             client.capture_envelope(envelope);
                         }

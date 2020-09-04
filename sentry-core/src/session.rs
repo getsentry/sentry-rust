@@ -2,42 +2,21 @@
 //!
 //! https://develop.sentry.dev/sdk/sessions/
 
-use std::borrow::Cow;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
-use crate::envelope::EnvelopeItem;
-use crate::protocol::{Event, Level, User};
+use crate::protocol::{
+    EnvelopeItem, Event, Level, SessionAttributes, SessionStatus, SessionUpdate,
+};
 use crate::scope::StackLayer;
-use crate::types::{DateTime, Utc, Uuid};
+use crate::types::{Utc, Uuid};
 use crate::{Client, Envelope};
 
-/// Represents the status of a session.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum SessionStatus {
-    Ok,
-    Crashed,
-    #[allow(dead_code)]
-    Abnormal,
-    Exited,
-}
-
-// TODO: make this a true POD type and move it to `sentry-types`,
-// and split out the client, user, and dirty flag into a separate guard struct
-// that lives on the scope.
 #[derive(Clone, Debug)]
 pub struct Session {
     client: Arc<Client>,
-    session_id: Uuid,
-    status: SessionStatus,
-    errors: usize,
-    user: Option<Arc<User>>,
-    release: Cow<'static, str>,
-    environment: Option<Cow<'static, str>>,
+    session_update: SessionUpdate<'static>,
     started: Instant,
-    started_utc: DateTime<Utc>,
-    duration: Option<Duration>,
-    init: bool,
     dirty: bool,
 }
 
@@ -46,7 +25,7 @@ impl Drop for Session {
         self.close();
         if let Some(item) = self.create_envelope_item() {
             let mut envelope = Envelope::new();
-            envelope.add(item);
+            envelope.add_item(item);
             self.client.capture_envelope(envelope);
         }
     }
@@ -56,24 +35,41 @@ impl Session {
     pub fn from_stack(stack: &StackLayer) -> Option<Self> {
         let client = stack.client.as_ref()?;
         let options = client.options();
+        let user = stack.scope.user.as_ref();
+        let distinct_id = user
+            .and_then(|user| {
+                user.id
+                    .as_ref()
+                    .or_else(|| user.email.as_ref())
+                    .or_else(|| user.username.as_ref())
+            })
+            .cloned();
         Some(Self {
             client: client.clone(),
-            session_id: Uuid::new_v4(),
-            status: SessionStatus::Ok,
-            errors: 0,
-            user: stack.scope.user.clone(),
-            release: options.release.clone()?,
-            environment: options.environment.clone(),
+            session_update: SessionUpdate {
+                session_id: Uuid::new_v4(),
+                distinct_id,
+                sequence: None,
+                timestamp: None,
+                started: Utc::now(),
+                init: true,
+                duration: None,
+                status: SessionStatus::Ok,
+                errors: 0,
+                attributes: SessionAttributes {
+                    release: options.release.clone()?,
+                    environment: options.environment.clone(),
+                    ip_address: None,
+                    user_agent: None,
+                },
+            },
             started: Instant::now(),
-            started_utc: Utc::now(),
-            duration: None,
-            init: true,
             dirty: true,
         })
     }
 
     pub(crate) fn update_from_event(&mut self, event: &Event<'static>) {
-        if self.status != SessionStatus::Ok {
+        if self.session_update.status != SessionStatus::Ok {
             // a session that has already transitioned to a "terminal" state
             // should not receive any more updates
             return;
@@ -91,26 +87,26 @@ impl Session {
         }
 
         if is_crash {
-            self.status = SessionStatus::Crashed;
+            self.session_update.status = SessionStatus::Crashed;
         }
         if has_error {
-            self.errors += 1;
+            self.session_update.errors += 1;
             self.dirty = true;
         }
     }
 
     pub(crate) fn close(&mut self) {
-        if self.status == SessionStatus::Ok {
-            self.duration = Some(self.started.elapsed());
-            self.status = SessionStatus::Exited;
+        if self.session_update.status == SessionStatus::Ok {
+            self.session_update.duration = Some(self.started.elapsed().as_secs_f64());
+            self.session_update.status = SessionStatus::Exited;
             self.dirty = true;
         }
     }
 
     pub(crate) fn create_envelope_item(&mut self) -> Option<EnvelopeItem> {
         if self.dirty {
-            let item = EnvelopeItem::Session(self.clone());
-            self.init = false;
+            let item = self.session_update.clone().into();
+            self.session_update.init = false;
             self.dirty = false;
             return Some(item);
         }
@@ -118,82 +114,11 @@ impl Session {
     }
 }
 
-#[derive(serde::Serialize)]
-struct Attrs {
-    release: Cow<'static, str>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    environment: Option<Cow<'static, str>>,
-}
-
-impl serde::Serialize for Session {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        use serde::ser::SerializeStruct;
-
-        let mut session = serializer.serialize_struct("Session", 8)?;
-        session.serialize_field("sid", &self.session_id)?;
-        let did = self.user.as_ref().and_then(|user| {
-            user.id
-                .as_ref()
-                .or_else(|| user.email.as_ref())
-                .or_else(|| user.username.as_ref())
-        });
-        if let Some(did) = did {
-            session.serialize_field("did", &did)?;
-        } else {
-            session.skip_field("did")?;
-        }
-
-        session.serialize_field(
-            "status",
-            match self.status {
-                SessionStatus::Ok => "ok",
-                SessionStatus::Crashed => "crashed",
-                SessionStatus::Abnormal => "abnormal",
-                SessionStatus::Exited => "exited",
-            },
-        )?;
-        session.serialize_field("errors", &self.errors)?;
-        session.serialize_field("started", &self.started_utc)?;
-
-        if let Some(duration) = self.duration {
-            session.serialize_field("duration", &duration.as_secs_f64())?;
-        } else {
-            session.skip_field("duration")?;
-        }
-        if self.init {
-            session.serialize_field("init", &true)?;
-        } else {
-            session.skip_field("init")?;
-        }
-
-        session.serialize_field(
-            "attrs",
-            &Attrs {
-                release: self.release.clone(),
-                environment: self.environment.clone(),
-            },
-        )?;
-
-        session.end()
-    }
-}
-
 #[cfg(all(test, feature = "test"))]
 mod tests {
     use crate as sentry;
-    use crate::Envelope;
+    use crate::protocol::{Envelope, EnvelopeItem, SessionStatus};
 
-    fn to_buf(envelope: &Envelope) -> Vec<u8> {
-        let mut vec = Vec::new();
-        envelope.to_writer(&mut vec).unwrap();
-        vec
-    }
-    fn to_str(envelope: &Envelope) -> String {
-        String::from_utf8(to_buf(envelope)).unwrap()
-    }
     fn capture_envelopes<F>(f: F) -> Vec<Envelope>
     where
         F: FnOnce(),
@@ -215,11 +140,17 @@ mod tests {
         });
         assert_eq!(envelopes.len(), 1);
 
-        let body = to_str(&envelopes[0]);
-        assert!(body.starts_with("{}\n{\"type\":\"session\","));
-        assert!(body.contains(r#""attrs":{"release":"some-release"}"#));
-        assert!(body.contains(r#""status":"exited","errors":0"#));
-        assert!(body.contains(r#""init":true"#));
+        let mut items = envelopes[0].items();
+        if let Some(EnvelopeItem::SessionUpdate(session)) = items.next() {
+            assert_eq!(session.status, SessionStatus::Exited);
+            assert!(session.duration.unwrap() > 0.01);
+            assert_eq!(session.errors, 0);
+            assert_eq!(session.attributes.release, "some-release");
+            assert_eq!(session.init, true);
+        } else {
+            panic!("expected session");
+        }
+        assert_eq!(items.next(), None);
     }
 
     #[test]
@@ -232,16 +163,27 @@ mod tests {
         });
         assert_eq!(envelopes.len(), 2);
 
-        let body = to_str(&envelopes[0]);
-        assert!(body.contains(r#"{"type":"session","#));
-        assert!(body.contains(r#""attrs":{"release":"some-release"}"#));
-        assert!(body.contains(r#""status":"ok","errors":1"#));
-        assert!(body.contains(r#""init":true"#));
+        let mut items = envelopes[0].items();
+        assert!(matches!(items.next(), Some(EnvelopeItem::Event(_))));
+        if let Some(EnvelopeItem::SessionUpdate(session)) = items.next() {
+            assert_eq!(session.status, SessionStatus::Ok);
+            assert_eq!(session.errors, 1);
+            assert_eq!(session.attributes.release, "some-release");
+            assert_eq!(session.init, true);
+        } else {
+            panic!("expected session");
+        }
+        assert_eq!(items.next(), None);
 
-        let body = to_str(&envelopes[1]);
-        assert!(body.contains(r#"{"type":"session","#));
-        assert!(body.contains(r#""status":"exited","errors":1"#));
-        assert!(!body.contains(r#""init":true"#));
+        let mut items = envelopes[1].items();
+        if let Some(EnvelopeItem::SessionUpdate(session)) = items.next() {
+            assert_eq!(session.status, SessionStatus::Exited);
+            assert_eq!(session.errors, 1);
+            assert_eq!(session.init, false);
+        } else {
+            panic!("expected session");
+        }
+        assert_eq!(items.next(), None);
     }
 
     #[test]
@@ -264,9 +206,15 @@ mod tests {
         assert!(envelopes.len() > 25);
         assert!(envelopes.len() < 75);
 
-        let body = to_str(&envelopes.pop().unwrap());
-        assert!(body.contains(r#"{"type":"session","#));
-        assert!(body.contains(r#""status":"exited","errors":100"#));
+        let envelope = envelopes.pop().unwrap();
+        let mut items = envelope.items();
+        if let Some(EnvelopeItem::SessionUpdate(session)) = items.next() {
+            assert_eq!(session.status, SessionStatus::Exited);
+            assert_eq!(session.errors, 100);
+        } else {
+            panic!("expected session");
+        }
+        assert_eq!(items.next(), None);
     }
 
     /// For _user-mode_ sessions, we want to inherit the session for any _new_
@@ -299,10 +247,15 @@ mod tests {
 
         assert_eq!(envelopes.len(), 4); // 3 errors and one session end
 
-        let body = to_str(&envelopes[3]);
-        assert!(body.contains(r#"{"type":"session","#));
-        assert!(body.contains(r#""status":"exited","errors":3"#));
-        assert!(!body.contains(r#""init":true"#));
+        let mut items = envelopes[3].items();
+        if let Some(EnvelopeItem::SessionUpdate(session)) = items.next() {
+            assert_eq!(session.status, SessionStatus::Exited);
+            assert_eq!(session.errors, 3);
+            assert_eq!(session.init, false);
+        } else {
+            panic!("expected session");
+        }
+        assert_eq!(items.next(), None);
     }
 
     /// We want to forward-inherit sessions as the previous test asserted, but
@@ -334,21 +287,34 @@ mod tests {
 
         assert_eq!(envelopes.len(), 4); // 3 errors and one session end
 
-        let body = to_str(&envelopes[0]);
-        assert!(body.contains(r#"{"type":"session","#));
-        assert!(body.contains(r#""attrs":{"release":"some-release"}"#));
-        assert!(body.contains(r#""status":"ok","errors":1"#));
-        assert!(body.contains(r#""init":true"#));
+        let mut items = envelopes[0].items();
+        assert!(matches!(items.next(), Some(EnvelopeItem::Event(_))));
+        if let Some(EnvelopeItem::SessionUpdate(session)) = items.next() {
+            assert_eq!(session.status, SessionStatus::Ok);
+            assert_eq!(session.errors, 1);
+            assert_eq!(session.init, true);
+        } else {
+            panic!("expected session");
+        }
+        assert_eq!(items.next(), None);
 
-        let body = to_str(&envelopes[1]);
-        assert!(body.starts_with("{}\n{\"type\":\"session\","));
-        assert!(body.contains(r#""status":"exited","errors":1"#));
-        assert!(!body.contains(r#""init":true"#));
+        let mut items = envelopes[1].items();
+        if let Some(EnvelopeItem::SessionUpdate(session)) = items.next() {
+            assert_eq!(session.status, SessionStatus::Exited);
+            assert_eq!(session.errors, 1);
+            assert_eq!(session.init, false);
+        } else {
+            panic!("expected session");
+        }
+        assert_eq!(items.next(), None);
 
         // the other two events should not have session updates
-        let body = to_str(&envelopes[2]);
-        assert!(!body.contains(r#"{"type":"session","#));
-        let body = to_str(&envelopes[3]);
-        assert!(!body.contains(r#"{"type":"session","#));
+        let mut items = envelopes[2].items();
+        assert!(matches!(items.next(), Some(EnvelopeItem::Event(_))));
+        assert_eq!(items.next(), None);
+
+        let mut items = envelopes[3].items();
+        assert!(matches!(items.next(), Some(EnvelopeItem::Event(_))));
+        assert_eq!(items.next(), None);
     }
 }

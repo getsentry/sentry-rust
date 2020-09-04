@@ -256,7 +256,7 @@ impl Client {
                         .and_then(|session| session.create_envelope_item())
                 });
                 if let Some(session_item) = session_item {
-                    envelope.add(session_item);
+                    envelope.add_item(session_item);
                 }
                 transport.send_envelope(envelope);
                 return event_id;

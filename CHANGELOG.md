@@ -6,6 +6,10 @@
 
 - The `Transport` was changed to work on `Envelope`s instead of `Event`s. The `send_event` trait function was removed in favor of `send_envelope`.
 
+**Features**:
+
+- The `Envelope`, `SessionUpdate`, and other related types have been added to the `sentry_types::protocol::v7` module.
+
 ## 0.19.1
 
 **Fixes**:
