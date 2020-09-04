@@ -3,7 +3,7 @@ use std::fmt;
 use std::sync::{Arc, Mutex, PoisonError, RwLock};
 
 use crate::protocol::{Breadcrumb, Context, Event, Level, User, Value};
-use crate::session::{Session, SessionUpdate};
+use crate::session::Session;
 use crate::{Client, Envelope};
 
 #[derive(Debug)]
@@ -137,10 +137,11 @@ impl fmt::Debug for SessionGuard {
 impl Drop for SessionGuard {
     fn drop(&mut self) {
         if let Some((client, scope)) = self.0.take() {
-            if let Some(session) = scope.session.lock().unwrap().take() {
-                if let SessionUpdate::NeedsFlushing(session) = session.close() {
+            if let Some(mut session) = scope.session.lock().unwrap().take() {
+                session.close();
+                if let Some(item) = session.to_envelope_item() {
                     let mut envelope = Envelope::new();
-                    envelope.add(session);
+                    envelope.add(item);
                     client.capture_envelope(envelope);
                 }
             }
@@ -292,11 +293,9 @@ impl Scope {
         Some(event)
     }
 
-    pub(crate) fn update_session_from_event(&self, event: &Event<'static>) -> SessionUpdate {
+    pub(crate) fn update_session_from_event(&self, event: &Event<'static>) {
         if let Some(session) = self.session.lock().unwrap().as_mut() {
-            session.update_from_event(event)
-        } else {
-            SessionUpdate::Unchanged
+            session.update_from_event(event);
         }
     }
 }

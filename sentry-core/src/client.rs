@@ -10,7 +10,6 @@ use rand::random;
 
 use crate::constants::SDK_INFO;
 use crate::protocol::{ClientSdkInfo, Event};
-use crate::session::SessionUpdate;
 use crate::types::{Dsn, Uuid};
 use crate::{ClientOptions, Envelope, Hub, Integration, Scope, Transport};
 
@@ -143,6 +142,14 @@ impl Client {
         mut event: Event<'static>,
         scope: Option<&Scope>,
     ) -> Option<Event<'static>> {
+        if let Some(scope) = scope {
+            scope.update_session_from_event(&event);
+        }
+
+        if !self.sample_should_send() {
+            return None;
+        }
+
         // event_id and sdk_info are set before the processors run so that the
         // processors can poke around in that data.
         if event.event_id.is_nil() {
@@ -237,25 +244,22 @@ impl Client {
     /// Captures an event and sends it to sentry.
     pub fn capture_event(&self, event: Event<'static>, scope: Option<&Scope>) -> Uuid {
         if let Some(ref transport) = *self.transport.read().unwrap() {
-            if self.sample_should_send() {
-                if let Some(event) = self.prepare_event(event, scope) {
-                    let event_id = event.event_id;
-                    let session = scope.and_then(|scope| {
-                        if let SessionUpdate::NeedsFlushing(session) =
-                            scope.update_session_from_event(&event)
-                        {
-                            Some(session)
-                        } else {
-                            None
-                        }
-                    });
-                    let mut envelope: Envelope = event.into();
-                    if let Some(session) = session {
-                        envelope.add(session);
-                    }
-                    transport.send_envelope(envelope);
-                    return event_id;
+            if let Some(event) = self.prepare_event(event, scope) {
+                let event_id = event.event_id;
+                let mut envelope: Envelope = event.into();
+                let session_item = scope.and_then(|scope| {
+                    scope
+                        .session
+                        .lock()
+                        .unwrap()
+                        .as_mut()
+                        .and_then(|session| session.to_envelope_item())
+                });
+                if let Some(session_item) = session_item {
+                    envelope.add(session_item);
                 }
+                transport.send_envelope(envelope);
+                return event_id;
             }
         }
         Default::default()

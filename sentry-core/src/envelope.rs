@@ -20,12 +20,6 @@ impl From<Event<'static>> for EnvelopeItem {
     }
 }
 
-impl From<Session> for EnvelopeItem {
-    fn from(session: Session) -> Self {
-        EnvelopeItem::Session(session)
-    }
-}
-
 /// A Sentry Envelope.
 ///
 /// An Envelope is the data format that Sentry uses for Ingestion. It can contain

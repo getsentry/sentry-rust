@@ -6,6 +6,7 @@ use std::borrow::Cow;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use crate::envelope::EnvelopeItem;
 use crate::protocol::{Event, Level, User};
 use crate::scope::StackLayer;
 use crate::types::{DateTime, Utc, Uuid};
@@ -18,11 +19,6 @@ pub enum SessionStatus {
     #[allow(dead_code)]
     Abnormal,
     Exited,
-}
-
-pub enum SessionUpdate {
-    NeedsFlushing(Session),
-    Unchanged,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -58,11 +54,11 @@ impl Session {
         })
     }
 
-    pub(crate) fn update_from_event(&mut self, event: &Event<'static>) -> SessionUpdate {
+    pub(crate) fn update_from_event(&mut self, event: &Event<'static>) {
         if self.status != SessionStatus::Ok {
             // a session that has already transitioned to a "terminal" state
             // should not receive any more updates
-            return SessionUpdate::Unchanged;
+            return;
         }
         let mut has_error = event.level >= Level::Error;
         let mut is_crash = false;
@@ -83,25 +79,24 @@ impl Session {
             self.errors += 1;
             self.dirty = true;
         }
-
-        if self.dirty {
-            self.dirty = false;
-            let session = self.clone();
-            self.init = false;
-            SessionUpdate::NeedsFlushing(session)
-        } else {
-            SessionUpdate::Unchanged
-        }
     }
 
-    pub(crate) fn close(mut self) -> SessionUpdate {
+    pub(crate) fn close(&mut self) {
         if self.status == SessionStatus::Ok {
             self.duration = Some(self.started.elapsed());
             self.status = SessionStatus::Exited;
-            SessionUpdate::NeedsFlushing(self)
-        } else {
-            SessionUpdate::Unchanged
+            self.dirty = true;
         }
+    }
+
+    pub(crate) fn to_envelope_item(&mut self) -> Option<EnvelopeItem> {
+        if self.dirty {
+            let item = EnvelopeItem::Session(self.clone());
+            self.init = false;
+            self.dirty = false;
+            return Some(item);
+        }
+        None
     }
 }
 
@@ -229,6 +224,31 @@ mod tests {
         assert!(body.contains(r#"{"type":"session","#));
         assert!(body.contains(r#""status":"exited","errors":1"#));
         assert!(!body.contains(r#""init":true"#));
+    }
+
+    #[test]
+    fn test_session_sampled_errors() {
+        let mut envelopes = crate::test::with_captured_envelopes_options(
+            || {
+                let _session = sentry::start_session();
+
+                for _ in 0..100 {
+                    let err = "NaN".parse::<usize>().unwrap_err();
+                    sentry::capture_error(&err);
+                }
+            },
+            crate::ClientOptions {
+                release: Some("some-release".into()),
+                sample_rate: 0.5,
+                ..Default::default()
+            },
+        );
+        assert!(envelopes.len() > 25);
+        assert!(envelopes.len() < 75);
+
+        let body = to_str(&envelopes.pop().unwrap());
+        assert!(body.contains(r#"{"type":"session","#));
+        assert!(body.contains(r#""status":"exited","errors":100"#));
     }
 
     /// For _user-mode_ sessions, we want to inherit the session for any _new_
