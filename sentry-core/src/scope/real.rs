@@ -1,8 +1,9 @@
 use std::borrow::Cow;
 use std::fmt;
-use std::sync::{Arc, PoisonError, RwLock};
+use std::sync::{Arc, Mutex, PoisonError, RwLock};
 
 use crate::protocol::{Breadcrumb, Context, Event, Level, User, Value};
+use crate::session::Session;
 use crate::Client;
 
 #[derive(Debug)]
@@ -41,6 +42,7 @@ pub struct Scope {
     pub(crate) tags: im::HashMap<String, String>,
     pub(crate) contexts: im::HashMap<String, Context>,
     pub(crate) event_processors: im::Vector<Arc<EventProcessor>>,
+    pub(crate) session: Arc<Mutex<Option<Session>>>,
 }
 
 impl fmt::Debug for Scope {
@@ -55,6 +57,7 @@ impl fmt::Debug for Scope {
             .field("tags", &self.tags)
             .field("contexts", &self.contexts)
             .field("event_processors", &self.event_processors.len())
+            .field("session", &self.session)
             .finish()
     }
 }
@@ -71,6 +74,7 @@ impl Default for Scope {
             tags: Default::default(),
             contexts: Default::default(),
             event_processors: Default::default(),
+            session: Default::default(),
         }
     }
 }
@@ -89,8 +93,8 @@ impl Stack {
     }
 
     pub fn push(&mut self) {
-        let scope = self.layers[self.layers.len() - 1].clone();
-        self.layers.push(scope);
+        let layer = self.layers[self.layers.len() - 1].clone();
+        self.layers.push(layer);
     }
 
     pub fn pop(&mut self) {
@@ -256,5 +260,11 @@ impl Scope {
         }
 
         Some(event)
+    }
+
+    pub(crate) fn update_session_from_event(&self, event: &Event<'static>) {
+        if let Some(session) = self.session.lock().unwrap().as_mut() {
+            session.update_from_event(event);
+        }
     }
 }

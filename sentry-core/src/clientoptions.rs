@@ -82,6 +82,12 @@ pub struct ClientOptions {
     /// The timeout on client drop for draining events on shutdown.
     pub shutdown_timeout: Duration,
     // Other options not documented in Unified API
+    /// Enable Release Health Session tracking.
+    ///
+    /// When automatic session tracking is enabled, a new "user-mode" session
+    /// is started at the time of `sentry::init`, and will persist for the
+    /// application lifetime.
+    pub auto_session_tracking: bool,
     /// Border frames which indicate a border from a backtrace to
     /// useless internals. Some are automatically included.
     pub extra_border_frames: Vec<&'static str>,
@@ -147,6 +153,7 @@ impl fmt::Debug for ClientOptions {
             .field("http_proxy", &self.http_proxy)
             .field("https_proxy", &self.https_proxy)
             .field("shutdown_timeout", &self.shutdown_timeout)
+            .field("auto_session_tracking", &self.auto_session_tracking)
             .field("extra_border_frames", &self.extra_border_frames)
             .field("trim_backtraces", &self.trim_backtraces)
             .field("user_agent", &self.user_agent)
@@ -176,6 +183,7 @@ impl Default for ClientOptions {
             http_proxy: None,
             https_proxy: None,
             shutdown_timeout: Duration::from_secs(2),
+            auto_session_tracking: false,
             extra_border_frames: vec![],
             trim_backtraces: true,
             user_agent: Cow::Borrowed(&USER_AGENT),

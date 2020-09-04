@@ -261,3 +261,27 @@ pub fn last_event_id() -> Option<Uuid> {
         Hub::with(|hub| hub.last_event_id())
     }}
 }
+
+/// Start a new session for Release Health.
+///
+/// This is still **experimental** for the moment and is not recommended to be
+/// used with a very high volume of sessions (_request-mode_ sessions).
+///
+/// # Examples
+///
+/// ```
+/// sentry::start_session();
+///
+/// // capturing any event / error here will update the sessions `errors` count,
+/// // up until we call `sentry::end_session`.
+///
+/// sentry::end_session();
+/// ```
+pub fn start_session() {
+    Hub::with_active(|hub| hub.start_session())
+}
+
+/// End the current Release Health Session.
+pub fn end_session() {
+    Hub::with_active(|hub| hub.end_session())
+}

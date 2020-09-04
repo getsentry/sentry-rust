@@ -24,6 +24,7 @@ test = ["client"]
 
 [dependencies]
 sentry-types = { version = "0.19.1", path = "../sentry-types" }
+serde = { version = "1.0.104", features = ["derive"] }
 lazy_static = "1.4.0"
 im = { version = "14.2.0", optional = true }
 rand = { version = "0.7.3", optional = true }

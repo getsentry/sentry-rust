@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use sentry_core::sentry_debug;
 
-use crate::{defaults::apply_defaults, Client, ClientOptions, Hub};
+use crate::defaults::apply_defaults;
+use crate::{Client, ClientOptions, Hub};
 
 /// Helper struct that is returned from `init`.
 ///
@@ -32,6 +33,8 @@ impl Drop for ClientInitGuard {
         } else {
             sentry_debug!("dropping client guard (no client to dispose)");
         }
+        // end any session that might be open before closing the client
+        crate::end_session();
         self.0.close(None);
     }
 }
@@ -88,6 +91,7 @@ where
     C: Into<ClientOptions>,
 {
     let opts = apply_defaults(opts.into());
+    let auto_session_tracking = opts.auto_session_tracking;
     let client = Arc::new(Client::from(opts));
 
     Hub::with(|hub| hub.bind_client(Some(client.clone())));
@@ -95,6 +99,9 @@ where
         sentry_debug!("enabled sentry client for DSN {}", dsn);
     } else {
         sentry_debug!("initialized disabled sentry client due to disabled or invalid DSN");
+    }
+    if auto_session_tracking {
+        crate::start_session()
     }
     ClientInitGuard(client)
 }
