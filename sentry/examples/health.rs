@@ -11,12 +11,12 @@ fn main() {
 
     let handle = std::thread::spawn(|| {
         // this session will be set to crashed
-        let _session = sentry::start_session();
+        sentry::start_session();
         std::thread::sleep(std::time::Duration::from_secs(3));
         panic!("oh no!");
     });
 
-    let session = sentry::start_session();
+    sentry::start_session();
 
     sentry::capture_message(
         "anything with a level >= Error will increase the error count",
@@ -31,7 +31,7 @@ fn main() {
 
     // this session will have an error count of 2, but otherwise have
     // a clean exit.
-    drop(session);
+    sentry::end_session();
 
     handle.join().ok();
 }

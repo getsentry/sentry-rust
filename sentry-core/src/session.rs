@@ -10,6 +10,7 @@ use crate::envelope::EnvelopeItem;
 use crate::protocol::{Event, Level, User};
 use crate::scope::StackLayer;
 use crate::types::{DateTime, Utc, Uuid};
+use crate::{Client, Envelope};
 
 /// Represents the status of a session.
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -21,8 +22,12 @@ pub enum SessionStatus {
     Exited,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+// TODO: make this a true POD type and move it to `sentry-types`,
+// and split out the client, user, and dirty flag into a separate guard struct
+// that lives on the scope.
+#[derive(Clone, Debug)]
 pub struct Session {
+    client: Arc<Client>,
     session_id: Uuid,
     status: SessionStatus,
     errors: usize,
@@ -36,10 +41,23 @@ pub struct Session {
     dirty: bool,
 }
 
+impl Drop for Session {
+    fn drop(&mut self) {
+        self.close();
+        if let Some(item) = self.into_envelope_item() {
+            let mut envelope = Envelope::new();
+            envelope.add(item);
+            self.client.capture_envelope(envelope);
+        }
+    }
+}
+
 impl Session {
     pub fn from_stack(stack: &StackLayer) -> Option<Self> {
-        let options = stack.client.as_ref()?.options();
+        let client = stack.client.as_ref()?;
+        let options = client.options();
         Some(Self {
+            client: client.clone(),
             session_id: Uuid::new_v4(),
             status: SessionStatus::Ok,
             errors: 0,
@@ -89,7 +107,7 @@ impl Session {
         }
     }
 
-    pub(crate) fn to_envelope_item(&mut self) -> Option<EnvelopeItem> {
+    pub(crate) fn into_envelope_item(&mut self) -> Option<EnvelopeItem> {
         if self.dirty {
             let item = EnvelopeItem::Session(self.clone());
             self.init = false;
@@ -192,7 +210,7 @@ mod tests {
     #[test]
     fn test_session_startstop() {
         let envelopes = capture_envelopes(|| {
-            let _session = sentry::start_session();
+            sentry::start_session();
             std::thread::sleep(std::time::Duration::from_millis(10));
         });
         assert_eq!(envelopes.len(), 1);
@@ -207,7 +225,7 @@ mod tests {
     #[test]
     fn test_session_error() {
         let envelopes = capture_envelopes(|| {
-            let _session = sentry::start_session();
+            sentry::start_session();
 
             let err = "NaN".parse::<usize>().unwrap_err();
             sentry::capture_error(&err);
@@ -230,7 +248,7 @@ mod tests {
     fn test_session_sampled_errors() {
         let mut envelopes = crate::test::with_captured_envelopes_options(
             || {
-                let _session = sentry::start_session();
+                sentry::start_session();
 
                 for _ in 0..100 {
                     let err = "NaN".parse::<usize>().unwrap_err();
@@ -257,7 +275,7 @@ mod tests {
     #[test]
     fn test_inherit_session_from_top() {
         let envelopes = capture_envelopes(|| {
-            let _session = sentry::start_session();
+            sentry::start_session();
 
             let err = "NaN".parse::<usize>().unwrap_err();
             sentry::capture_error(&err);
@@ -299,7 +317,7 @@ mod tests {
                 sentry::with_scope(
                     |_| {},
                     || {
-                        let _session = sentry::start_session();
+                        sentry::start_session();
 
                         let err = "NaN".parse::<usize>().unwrap_err();
                         sentry::capture_error(&err);

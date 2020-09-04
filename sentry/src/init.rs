@@ -3,14 +3,14 @@ use std::sync::Arc;
 use sentry_core::sentry_debug;
 
 use crate::defaults::apply_defaults;
-use crate::{Client, ClientOptions, Hub, SessionGuard};
+use crate::{Client, ClientOptions, Hub};
 
 /// Helper struct that is returned from `init`.
 ///
 /// When this is dropped events are drained with a 1 second timeout.
 #[must_use = "when the init guard is dropped the transport will be shut down and no further \
               events can be sent.  If you do want to ignore this use mem::forget on it."]
-pub struct ClientInitGuard(Arc<Client>, Option<SessionGuard>);
+pub struct ClientInitGuard(Arc<Client>);
 
 impl std::ops::Deref for ClientInitGuard {
     type Target = Client;
@@ -34,7 +34,7 @@ impl Drop for ClientInitGuard {
             sentry_debug!("dropping client guard (no client to dispose)");
         }
         // end any session that might be open before closing the client
-        drop(self.1.take());
+        crate::end_session();
         self.0.close(None);
     }
 }
@@ -100,10 +100,8 @@ where
     } else {
         sentry_debug!("initialized disabled sentry client due to disabled or invalid DSN");
     }
-    let session = if auto_session_tracking {
-        Some(crate::start_session())
-    } else {
-        None
-    };
-    ClientInitGuard(client, session)
+    if auto_session_tracking {
+        crate::start_session()
+    }
+    ClientInitGuard(client)
 }

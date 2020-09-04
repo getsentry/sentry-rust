@@ -11,7 +11,7 @@ use std::time::Duration;
 use crate::protocol::{Breadcrumb, Event, Level};
 use crate::session::{Session, SessionStatus};
 use crate::types::Uuid;
-use crate::{event_from_error, Integration, IntoBreadcrumbs, Scope, ScopeGuard, SessionGuard};
+use crate::{event_from_error, Integration, IntoBreadcrumbs, Scope, ScopeGuard};
 #[cfg(feature = "client")]
 use crate::{scope::Stack, Client, Envelope};
 
@@ -316,7 +316,7 @@ impl Hub {
     ///
     /// See the global [`start_session`](fn.start_session.html)
     /// for more documentation.
-    pub fn start_session(&self) -> SessionGuard {
+    pub fn start_session(&self) {
         with_client_impl! {{
             self.inner.with_mut(|stack| {
                 let top = stack.top_mut();
@@ -326,7 +326,28 @@ impl Hub {
                     let mut scope = Arc::make_mut(&mut top.scope);
                     scope.session = Arc::new(Mutex::new(Some(session)));
                 }
-                SessionGuard(top.client.clone().map(|client| (client, top.scope.clone())))
+            })
+        }}
+    }
+
+    /// End the current Release Health Session.
+    ///
+    /// See the global [`end_session`](fn.end_session.html)
+    /// for more documentation.
+    pub fn end_session(&self) {
+        with_client_impl! {{
+            self.inner.with_mut(|stack| {
+                let top = stack.top_mut();
+                if let Some(mut session) = top.scope.session.lock().unwrap().take() {
+                    session.close();
+                    if let Some(item) = session.into_envelope_item() {
+                        let mut envelope = Envelope::new();
+                        envelope.add(item);
+                        if let Some(ref client) = top.client {
+                            client.capture_envelope(envelope);
+                        }
+                    }
+                }
             })
         }}
     }

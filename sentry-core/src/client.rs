@@ -253,7 +253,7 @@ impl Client {
                         .lock()
                         .unwrap()
                         .as_mut()
-                        .and_then(|session| session.to_envelope_item())
+                        .and_then(|session| session.into_envelope_item())
                 });
                 if let Some(session_item) = session_item {
                     envelope.add(session_item);

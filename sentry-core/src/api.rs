@@ -1,6 +1,6 @@
 use crate::protocol::{Event, Level};
 use crate::types::Uuid;
-use crate::{Hub, Integration, IntoBreadcrumbs, Scope, SessionGuard};
+use crate::{Hub, Integration, IntoBreadcrumbs, Scope};
 
 /// Captures an event on the currently active client if any.
 ///
@@ -264,18 +264,21 @@ pub fn last_event_id() -> Option<Uuid> {
 
 /// Start a new session for Release Health.
 ///
-/// Returns a guard that ends the session on drop and thus determines the
-/// lifetime of the session.
-///
 /// # Examples
 ///
 /// ```
-/// let session = sentry::start_session();
+/// sentry::start_session();
 ///
-/// // capturing any event / error here will update the sessions `errors` count.
+/// // capturing any event / error here will update the sessions `errors` count,
+/// // up until we call `sentry::end_session`.
 ///
-/// drop(session);
+/// sentry::end_session();
 /// ```
-pub fn start_session() -> SessionGuard {
+pub fn start_session() {
     Hub::with_active(|hub| hub.start_session())
+}
+
+/// End the current Release Health Session.
+pub fn end_session() {
+    Hub::with_active(|hub| hub.end_session())
 }
