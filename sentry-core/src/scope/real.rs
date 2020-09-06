@@ -155,6 +155,11 @@ impl Scope {
         *self = Default::default();
     }
 
+    /// Deletes current breadcrumbs from the scope.
+    pub fn clear_breadcrumbs(&mut self) {
+        self.breadcrumbs.clear();
+    }
+
     /// Sets a level override.
     pub fn set_level(&mut self, level: Option<Level>) {
         self.level = level;

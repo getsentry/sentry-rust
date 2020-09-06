@@ -32,6 +32,12 @@ fn test_breadcrumbs() {
     let events = sentry::test::with_captured_events(|| {
         sentry::add_breadcrumb(|| sentry::Breadcrumb {
             ty: "log".into(),
+            message: Some("Old breadcrumb to be removed".into()),
+            ..Default::default()
+        });
+        sentry::configure_scope(|scope| scope.clear_breadcrumbs());
+        sentry::add_breadcrumb(|| sentry::Breadcrumb {
+            ty: "log".into(),
             message: Some("First breadcrumb".into()),
             ..Default::default()
         });
