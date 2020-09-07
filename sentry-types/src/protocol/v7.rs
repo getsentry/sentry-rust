@@ -24,6 +24,9 @@ use uuid::Uuid;
 
 use crate::utils::ts_seconds_float;
 
+pub use super::envelope::*;
+pub use super::session::*;
+
 /// An arbitrary (JSON) value.
 pub mod value {
     pub use serde_json::value::{from_value, to_value, Index, Map, Number, Value};
