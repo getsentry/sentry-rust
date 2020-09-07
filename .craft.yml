@@ -7,7 +7,6 @@ changelogPolicy: auto
 targets:
   - name: crates
     noDevDeps: true
-  - name: gh-pages
   - name: github
   - name: registry
     type: sdk
