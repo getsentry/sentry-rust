@@ -234,7 +234,9 @@ impl Scope {
             }
         }
 
-        event.breadcrumbs.extend(self.breadcrumbs.clone().into_iter());
+        event
+            .breadcrumbs
+            .extend(self.breadcrumbs.clone().into_iter());
         event.extra.extend(self.extra.clone().into_iter());
         event.tags.extend(self.tags.clone().into_iter());
         event.contexts.extend(self.contexts.clone().into_iter());
