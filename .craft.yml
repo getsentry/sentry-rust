@@ -4,6 +4,11 @@ github:
   repo: sentry-rust
 changelogPolicy: auto
 
+statusProvider:
+  name: github
+artifactProvider:
+  name: none
+
 targets:
   - name: crates
     noDevDeps: true
