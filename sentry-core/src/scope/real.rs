@@ -234,10 +234,12 @@ impl Scope {
             }
         }
 
-        event.breadcrumbs.extend(self.breadcrumbs.iter().cloned());
-        event.extra.extend(self.extra.iter().cloned());
-        event.tags.extend(self.tags.iter().cloned());
-        event.contexts.extend(self.contexts.iter().cloned());
+        event
+            .breadcrumbs
+            .extend(self.breadcrumbs.clone().into_iter());
+        event.extra.extend(self.extra.clone().into_iter());
+        event.tags.extend(self.tags.clone().into_iter());
+        event.contexts.extend(self.contexts.clone().into_iter());
 
         if event.transaction.is_none() {
             if let Some(ref txn) = self.transaction {
