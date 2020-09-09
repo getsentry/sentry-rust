@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+**Highlights**:
+
+- The Rust SDK now has **experimental** support for [Release Health Sessions](https://docs.sentry.io/product/releases/health/) using the `start_session` and `end_session` API (global and on the `Hub`).
+
 **Breaking Changes**:
 
 - The `Transport` was changed to work on `Envelope`s instead of `Event`s. The `send_event` trait function was removed in favor of `send_envelope`.
@@ -9,6 +13,26 @@
 **Features**:
 
 - The `Envelope`, `SessionUpdate`, and other related types have been added to the `sentry_types::protocol::v7` module.
+- A `clear_breadcrumbs` method was added to `Scope`.
+- `sentry_contexts::utils` is now public.
+
+**Fixes**:
+
+- Panic events now have a proper `mechanism`.
+
+**Deprecations**:
+
+- The `Future` and `FutureExt` exports have been renamed to `SentryFuture` and `SentryFutureExt` respectively.
+
+**Thank you**:
+
+Features, fixes and improvements in this release have been contributed by:
+
+- [@Jake-Shadle](https://github.com/Jake-Shadle)
+- [@maxcountryman](https://github.com/maxcountryman)
+- [@ErichDonGubler](https://github.com/ErichDonGubler)
+- [@nCrazed](https://github.com/nCrazed)
+- [@jrconlin](https://github.com/jrconlin)
 
 ## 0.19.1
 
