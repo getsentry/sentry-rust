@@ -1,6 +1,6 @@
 [package]
 name = "sentry-core"
-version = "0.19.1"
+version = "0.20.0"
 authors = ["Sentry <hello@sentry.io>"]
 license = "Apache-2.0"
 readme = "README.md"
@@ -23,7 +23,7 @@ debug-logs = ["log_"]
 test = ["client"]
 
 [dependencies]
-sentry-types = { version = "0.19.1", path = "../sentry-types" }
+sentry-types = { version = "0.20.0", path = "../sentry-types" }
 serde = { version = "1.0.104", features = ["derive"] }
 lazy_static = "1.4.0"
 im = { version = "15.0.0", optional = true }
@@ -35,7 +35,7 @@ log_ = { package = "log", version = "0.4.8", optional = true, features = ["std"]
 # Because we re-export all the public API in `sentry`, we actually run all the
 # doctests using the `sentry` crate. This also takes care of the doctest
 # limitation documented in https://github.com/rust-lang/rust/issues/45599.
-sentry = { version = "0.19.1", path = "../sentry", default-features = false, features = ["test"] }
+sentry = { version = "0.20.0", path = "../sentry", default-features = false, features = ["test"] }
 thiserror = "1.0.15"
 anyhow = "1.0.30"
 failure = "0.1.8"
