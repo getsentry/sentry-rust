@@ -120,3 +120,22 @@ fn test_factory() {
 
     assert_eq!(events.load(Ordering::SeqCst), 1);
 }
+
+#[test]
+fn test_reentrant_configure_scope() {
+    let events = sentry::test::with_captured_events(|| {
+        sentry::configure_scope(|scope1| {
+            scope1.set_tag("which_scope", "scope1");
+
+            sentry::configure_scope(|scope2| {
+                scope2.set_tag("which_scope", "scope2");
+            });
+        });
+
+        sentry::capture_message("look ma, no deadlock!", sentry::Level::Info);
+    });
+
+    assert_eq!(events.len(), 1);
+    // well, the "outer" `configure_scope` wins
+    assert_eq!(events[0].tags["which_scope"], "scope1");
+}

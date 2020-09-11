@@ -396,11 +396,8 @@ impl Hub {
         F: FnOnce(&mut Scope) -> R,
     {
         with_client_impl! {{
-            let (new_scope, rv) = self.with_current_scope(|scope| {
-                let mut new_scope = (**scope).clone();
-                let rv = f(&mut new_scope);
-                (new_scope, rv)
-            });
+            let mut new_scope = self.with_current_scope(|scope| scope.clone());
+            let rv = f(&mut new_scope);
             self.with_current_scope_mut(|ptr| *ptr = new_scope);
             rv
         }}
@@ -440,7 +437,7 @@ impl Hub {
     }
 
     #[cfg(feature = "client")]
-    pub(crate) fn with_current_scope<F: FnOnce(&Arc<Scope>) -> R, R>(&self, f: F) -> R {
+    pub(crate) fn with_current_scope<F: FnOnce(&Scope) -> R, R>(&self, f: F) -> R {
         self.inner.with(|stack| f(&stack.top().scope))
     }
 
