@@ -279,7 +279,8 @@ impl Client {
     /// If no timeout is provided the client will wait for as long a
     /// `shutdown_timeout` in the client options.
     pub fn close(&self, timeout: Option<Duration>) -> bool {
-        if let Some(transport) = self.transport.write().unwrap().take() {
+        let transport_opt = self.transport.write().unwrap().take();
+        if let Some(transport) = transport_opt {
             sentry_debug!("client close; request transport to shut down");
             transport.shutdown(timeout.unwrap_or(self.options.shutdown_timeout))
         } else {
