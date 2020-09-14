@@ -242,6 +242,10 @@ implement_http_transport! {
                                     disabled = Some(retry_after);
                                 }
                             }
+
+                            if let Err(err) = resp.bytes() {
+                                sentry_debug!("Failed to read sentry response: {}", err);
+                            }
                         }
                         Err(err) => {
                             sentry_debug!("Failed to send event: {}", err);
