@@ -31,6 +31,7 @@
 #![warn(missing_docs)]
 
 mod converters;
+mod filters;
 mod integration;
 mod logger;
 

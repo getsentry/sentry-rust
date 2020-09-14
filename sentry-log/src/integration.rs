@@ -1,8 +1,9 @@
 use std::sync::Once;
 
-use log::{Level, LevelFilter, Record};
+use log::LevelFilter;
 use sentry_core::{ClientOptions, Integration};
 
+use crate::filters::Filters;
 use crate::logger::Logger;
 
 /// Logger specific options.
@@ -37,13 +38,27 @@ impl Integration for LogIntegration {
         cfg.extra_border_frames
             .push("<sentry_log::Logger as log::Log>::log");
 
-        let filter = self.effective_global_filter();
+        let filters = self.create_filters();
+        let filter = filters.effective_global_filter();
         if filter > log::max_level() {
             log::set_max_level(filter);
         }
 
-        INIT.call_once(|| {
-            log::set_boxed_logger(Box::new(Logger::default())).ok();
+        INIT.call_once(move || {
+            // NOTE on safety:
+            // The way the current log-integration code is structured, we have
+            // no way to move the `dest_logger` from the integration to our own
+            // log instance without breaking the API.
+            // The `Once` here makes sure that we only ever do this unsafe
+            // `take` once, and there are no other pieces of code that read from
+            // from this integration instance.
+            let dest_log = unsafe {
+                let const_ptr = &self.dest_log as *const Option<Box<dyn log::Log>>;
+                let mut_ptr = const_ptr as *mut Option<Box<dyn log::Log>>;
+                (&mut *mut_ptr).take()
+            };
+            let logger = Logger { filters, dest_log };
+            log::set_boxed_logger(Box::new(logger)).ok();
         });
     }
 }
@@ -76,80 +91,14 @@ impl LogIntegration {
         self
     }
 
-    /// Returns the effective global filter.
-    ///
-    /// This is what is set for these logger options when the log level
-    /// needs to be set globally.  This is the greater of `global_filter`
-    /// and `filter`.
-    #[inline(always)]
-    pub(crate) fn effective_global_filter(&self) -> LevelFilter {
-        let filter = if let Some(filter) = self.global_filter {
-            if filter < self.filter {
-                self.filter
-            } else {
-                filter
-            }
-        } else {
-            self.filter
-        };
-        std::cmp::max(filter, self.issue_filter())
-    }
-
-    /// Returns the level for which issues should be created.
-    ///
-    /// This is controlled by `emit_error_events` and `emit_warning_events`.
-    #[inline(always)]
-    fn issue_filter(&self) -> LevelFilter {
-        if self.emit_warning_events {
-            LevelFilter::Warn
-        } else if self.emit_error_events {
-            LevelFilter::Error
-        } else {
-            LevelFilter::Off
+    pub(crate) fn create_filters(&self) -> Filters {
+        Filters {
+            global_filter: self.global_filter,
+            filter: self.filter,
+            emit_breadcrumbs: self.emit_breadcrumbs,
+            emit_error_events: self.emit_error_events,
+            emit_warning_events: self.emit_warning_events,
+            attach_stacktraces: self.attach_stacktraces,
         }
     }
-
-    /// Checks if an issue should be created.
-    pub(crate) fn create_issue_for_record(&self, record: &Record<'_>) -> bool {
-        match record.level() {
-            Level::Warn => self.emit_warning_events,
-            Level::Error => self.emit_error_events,
-            _ => false,
-        }
-    }
-}
-
-#[test]
-fn test_filters() {
-    let opt_warn = LogIntegration {
-        filter: LevelFilter::Warn,
-        ..Default::default()
-    };
-    assert_eq!(opt_warn.effective_global_filter(), LevelFilter::Warn);
-    assert_eq!(opt_warn.issue_filter(), LevelFilter::Error);
-
-    let opt_debug = LogIntegration {
-        global_filter: Some(LevelFilter::Debug),
-        filter: LevelFilter::Warn,
-        ..Default::default()
-    };
-    assert_eq!(opt_debug.effective_global_filter(), LevelFilter::Debug);
-
-    let opt_debug_inverse = LogIntegration {
-        global_filter: Some(LevelFilter::Warn),
-        filter: LevelFilter::Debug,
-        ..Default::default()
-    };
-    assert_eq!(
-        opt_debug_inverse.effective_global_filter(),
-        LevelFilter::Debug
-    );
-
-    let opt_weird = LogIntegration {
-        filter: LevelFilter::Error,
-        emit_warning_events: true,
-        ..Default::default()
-    };
-    assert_eq!(opt_weird.issue_filter(), LevelFilter::Warn);
-    assert_eq!(opt_weird.effective_global_filter(), LevelFilter::Warn);
 }
