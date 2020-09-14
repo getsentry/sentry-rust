@@ -234,7 +234,6 @@ implement_http_transport! {
                     envelope.to_writer(&mut body).unwrap();
 
                     sentry_debug!("Sending envelope");
-
                     match http_client
                         .post(url.as_str())
                         .body(body)
@@ -252,7 +251,10 @@ implement_http_transport! {
                                     disabled = Some(retry_after);
                                 }
                             }
-                            sentry_debug!("Got response: {:?}", resp.text());
+                            match resp.text() {
+                                Err(err) => { sentry_debug!("Failed to read sentry response: {}", err); },
+                                Ok(text) => { sentry_debug!("Get response: `{}`", text); },
+                            }
                         }
                         Err(err) => {
                             sentry_debug!("Failed to send envelope: {}", err);
