@@ -1,6 +1,6 @@
 [package]
 name = "sentry"
-version = "0.20.0"
+version = "0.20.1"
 authors = ["Sentry <hello@sentry.io>"]
 license = "Apache-2.0"
 readme = "README.md"
@@ -61,16 +61,16 @@ with_native_tls = ["native-tls"]
 with_rustls = ["rustls"]
 
 [dependencies]
-sentry-core = { version = "0.20.0", path = "../sentry-core", features = ["client"] }
-sentry-anyhow = { version = "0.20.0", path = "../sentry-anyhow", optional = true }
-sentry-backtrace = { version = "0.20.0", path = "../sentry-backtrace", optional = true }
-sentry-contexts = { version = "0.20.0", path = "../sentry-contexts", optional = true }
-sentry-debug-images = { version = "0.20.0", path = "../sentry-debug-images", optional = true }
-sentry-error-chain = { version = "0.20.0", path = "../sentry-error-chain", optional = true }
-sentry-failure = { version = "0.20.0", path = "../sentry-failure", optional = true }
-sentry-log = { version = "0.20.0", path = "../sentry-log", optional = true }
-sentry-panic = { version = "0.20.0", path = "../sentry-panic", optional = true }
-sentry-slog = { version = "0.20.0", path = "../sentry-slog", optional = true }
+sentry-core = { version = "0.20.1", path = "../sentry-core", features = ["client"] }
+sentry-anyhow = { version = "0.20.1", path = "../sentry-anyhow", optional = true }
+sentry-backtrace = { version = "0.20.1", path = "../sentry-backtrace", optional = true }
+sentry-contexts = { version = "0.20.1", path = "../sentry-contexts", optional = true }
+sentry-debug-images = { version = "0.20.1", path = "../sentry-debug-images", optional = true }
+sentry-error-chain = { version = "0.20.1", path = "../sentry-error-chain", optional = true }
+sentry-failure = { version = "0.20.1", path = "../sentry-failure", optional = true }
+sentry-log = { version = "0.20.1", path = "../sentry-log", optional = true }
+sentry-panic = { version = "0.20.1", path = "../sentry-panic", optional = true }
+sentry-slog = { version = "0.20.1", path = "../sentry-slog", optional = true }
 log_ = { package = "log", version = "0.4.8", optional = true, features = ["std"] }
 reqwest_ = { package = "reqwest", version = "0.10.8", optional = true, features = ["blocking", "json"], default-features = false }
 curl_ = { package = "curl", version = "0.4.25", optional = true }
@@ -81,9 +81,9 @@ httpdate = { version = "0.3.2", optional = true }
 serde_json = { version = "1.0.48", optional = true }
 
 [dev-dependencies]
-sentry-anyhow = { version = "0.20.0", path = "../sentry-anyhow" }
-sentry-error-chain = { version = "0.20.0", path = "../sentry-error-chain" }
-sentry-log = { version = "0.20.0", path = "../sentry-log", features = ["env_logger"] }
+sentry-anyhow = { version = "0.20.1", path = "../sentry-anyhow" }
+sentry-error-chain = { version = "0.20.1", path = "../sentry-error-chain" }
+sentry-log = { version = "0.20.1", path = "../sentry-log", features = ["env_logger"] }
 log_ = { package = "log", version = "0.4.8", features = ["std"] }
 failure_derive = "0.1.6"
 actix-web = { version = "0.7.19", default-features = false }
