@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**:
+
+- Fixed a deadlock when nesting `configure_scope` calls.
+- Improved transport shutdown logic and fixed a potential deadlock on shutdown.
+
 ## 0.20.0
 
 **Highlights**:
