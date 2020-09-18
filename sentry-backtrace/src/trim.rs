@@ -9,6 +9,7 @@ lazy_static::lazy_static! {
         "alloc::",
         "backtrace::",
         "sentry::",
+        "sentry_core::",
         "sentry_types::",
         // these are not modules but things like __rust_maybe_catch_panic
         "__rust_",
@@ -20,6 +21,7 @@ lazy_static::lazy_static! {
         "core::panicking::panic",
     ];
 
+    // TODO: remove all of this together with the deprecated `error_chain` support
     static ref SECONDARY_BORDER_FRAMES: Vec<(&'static str, &'static str)> = vec![
         ("error_chain::make_backtrace", "<T as core::convert::Into<U>>::into")
     ];

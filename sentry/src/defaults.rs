@@ -1,3 +1,5 @@
+#![cfg_attr(feature = "error-chain", allow(deprecated))]
+
 use std::env;
 use std::{borrow::Cow, sync::Arc};
 

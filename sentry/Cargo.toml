@@ -41,25 +41,6 @@ surf = ["surf_", "httpdate", "http-client", "futures"]
 native-tls = ["reqwest_/default-tls"]
 rustls = ["reqwest_/rustls-tls"]
 
-# deprecated feature flags, here for backwards compatibility, will be removed
-# at some point
-with_client_implementation = []
-with_backtrace = ["backtrace"]
-with_failure = ["failure"]
-with_panic = ["panic"]
-with_error_chain = ["error-chain"]
-with_debug_to_log = ["debug-logs"]
-with_test_support = ["test"]
-with_debug_meta = ["debug-images"]
-with_device_info = ["contexts"]
-with_rust_info = ["contexts"]
-with_default_transport = ["transport"]
-with_reqwest_transport = ["reqwest"]
-with_curl_transport = ["curl"]
-with_surf_transport = ["surf"]
-with_native_tls = ["native-tls"]
-with_rustls = ["rustls"]
-
 [dependencies]
 sentry-core = { version = "0.20.1", path = "../sentry-core", features = ["client"] }
 sentry-anyhow = { version = "0.20.1", path = "../sentry-anyhow", optional = true }

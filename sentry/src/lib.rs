@@ -109,6 +109,7 @@ pub mod integrations {
     pub use sentry_debug_images as debug_images;
     #[cfg(feature = "error-chain")]
     #[doc(inline)]
+    #[deprecated = "The `error_chain` integration is deprecated and will be removed in the future."]
     pub use sentry_error_chain as error_chain;
     #[cfg(feature = "failure")]
     #[doc(inline)]
@@ -122,19 +123,6 @@ pub mod integrations {
     #[cfg(feature = "slog")]
     #[doc(inline)]
     pub use sentry_slog as slog;
-}
-
-/// Useful internals.
-///
-/// This module contains types that users of the crate typically do not
-/// have to interface with directly.  These are often returned
-/// from methods on other types.
-#[deprecated = "These exports have been moved to the root or the `types` mod."]
-pub mod internals {
-    pub use crate::{
-        apply_defaults, ClientInitGuard, IntoBreadcrumbs, IntoDsn, Transport, TransportFactory,
-    };
-    pub use sentry_core::types::*;
 }
 
 #[doc(inline)]
