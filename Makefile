@@ -97,14 +97,3 @@ check-actix:
 	@echo 'ACTIX INTEGRATION'
 	@cd sentry-actix && RUSTFLAGS=-Dwarnings cargo check
 .PHONY: check-actix
-
-# Other
-
-travis-push-docs:
-	@# Intentionally allow command output
-	cargo doc --no-deps
-	cp misc/docs/index.html target/doc/
-	cd target/ && zip -r gh-pages ./doc
-	npm install -g @zeus-ci/cli
-	zeus upload -t "application/zip+docs" target/gh-pages.zip
-.PHONY: travis-push-docs
