@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+**Breaking Changes**:
+
+- Removed all deprecated exports and deprecated feature flags.
+
+**Deprecations**:
+
+- The `error_chain` integration was officialy deprecated and will be removed soon.
+
 ## 0.20.1
 
 **Fixes**:
@@ -74,7 +84,7 @@ Additionally, sentry can now be extended via `Integration`s.
 **Deprecations**:
 
 - The `internals` module is deprecated. Please `use` items from the crate root or the `types` module instead.
-- All the feature flags have been renamed, the old names are still available but
+- All the feature flags have been renamed, the old names are still available but will be removed in the future.
 
 ## 0.18.1
 

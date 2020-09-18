@@ -27,6 +27,7 @@
 #![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
 #![warn(missing_docs)]
 #![deny(unsafe_code)]
+#![allow(deprecated)]
 
 use std::fmt::{Debug, Display};
 
@@ -64,6 +65,7 @@ where
 }
 
 /// Creates an event from an error chain.
+#[deprecated = "The `error_chain` integration is deprecated and will be removed in the future."]
 pub fn event_from_error_chain<T>(e: &T) -> Event<'static>
 where
     T: ChainedError,
@@ -77,6 +79,7 @@ where
 }
 
 /// Captures an error chain.
+#[deprecated = "The `error_chain` integration is deprecated and will be removed in the future."]
 pub fn capture_error_chain<T>(e: &T) -> Uuid
 where
     T: ChainedError,
@@ -86,6 +89,7 @@ where
 }
 
 /// Hub extension methods for working with error chain
+#[deprecated = "The `error_chain` integration is deprecated and will be removed in the future."]
 pub trait ErrorChainHubExt {
     /// Captures an error chain on a specific hub.
     fn capture_error_chain<T>(&self, e: &T) -> Uuid
@@ -106,6 +110,7 @@ impl ErrorChainHubExt for Hub {
 
 /// The Sentry `error-chain` Integration.
 #[derive(Default)]
+#[deprecated = "The `error_chain` integration is deprecated and will be removed in the future."]
 pub struct ErrorChainIntegration;
 
 impl ErrorChainIntegration {

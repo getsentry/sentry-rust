@@ -78,12 +78,6 @@ pub use crate::intodsn::IntoDsn;
 pub use crate::scope::{Scope, ScopeGuard};
 pub use crate::transport::{Transport, TransportFactory};
 
-// deprecated exports
-#[deprecated = "The export was renamed to `SentryFuture`"]
-pub use crate::futures::SentryFuture as Future;
-#[deprecated = "The export was renamed to `SentryFutureExt`"]
-pub use crate::futures::SentryFutureExt as FutureExt;
-
 // client feature
 #[cfg(feature = "client")]
 mod client;
