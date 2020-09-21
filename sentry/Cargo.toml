@@ -61,6 +61,7 @@ serde_json = { version = "1.0.48", optional = true }
 
 [dev-dependencies]
 sentry-anyhow = { version = "0.20.1", path = "../sentry-anyhow" }
+sentry-failure = { version = "0.20.1", path = "../sentry-failure" }
 sentry-log = { version = "0.20.1", path = "../sentry-log", features = ["env_logger"] }
 log_ = { package = "log", version = "0.4.8", features = ["std"] }
 failure_derive = "0.1.6"
