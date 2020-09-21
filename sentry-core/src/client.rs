@@ -144,6 +144,8 @@ impl Client {
         mut event: Event<'static>,
         scope: Option<&Scope>,
     ) -> Option<Event<'static>> {
+        #![allow(deprecated)]
+
         if let Some(scope) = scope {
             scope.update_session_from_event(&event);
         }
@@ -194,7 +196,6 @@ impl Client {
             event.platform = "native".into();
         }
 
-        #[allow(deprecated)]
         if let Some(ref func) = self.options.before_send {
             sentry_debug!("invoking before_send callback");
             let id = event.event_id;
