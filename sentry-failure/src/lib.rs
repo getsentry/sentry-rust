@@ -40,7 +40,7 @@ use sentry_core::types::Uuid;
 use sentry_core::{ClientOptions, Hub, Integration};
 
 /// The Sentry Failure Integration.
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct FailureIntegration;
 
 impl FailureIntegration {

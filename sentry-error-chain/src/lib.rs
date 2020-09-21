@@ -109,7 +109,7 @@ impl ErrorChainHubExt for Hub {
 }
 
 /// The Sentry `error-chain` Integration.
-#[derive(Default)]
+#[derive(Debug, Default)]
 #[deprecated = "The `error_chain` integration is deprecated and will be removed in the future."]
 pub struct ErrorChainIntegration;
 

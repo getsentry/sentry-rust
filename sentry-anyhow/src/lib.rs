@@ -25,7 +25,28 @@ use std::error::Error;
 use std::fmt;
 
 use sentry_core::types::Uuid;
-use sentry_core::Hub;
+use sentry_core::{ClientOptions, Hub, Integration};
+
+/// The Sentry anyhow Integration.
+#[derive(Debug, Default)]
+pub struct AnyhowIntegration;
+
+impl AnyhowIntegration {
+    /// Creates a new Failure Integration.
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl Integration for AnyhowIntegration {
+    fn name(&self) -> &'static str {
+        "anyhow"
+    }
+
+    fn setup(&self, cfg: &mut ClientOptions) {
+        cfg.in_app_exclude.push("anyhow::");
+    }
+}
 
 /// Captures an `anyhow::Error`.
 ///

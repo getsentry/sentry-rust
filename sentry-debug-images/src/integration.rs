@@ -24,6 +24,16 @@ impl Default for DebugImagesIntegration {
     }
 }
 
+impl std::fmt::Debug for DebugImagesIntegration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        #[derive(Debug)]
+        struct Filter;
+        f.debug_struct("DebugImagesIntegration")
+            .field("filter", &Filter)
+            .finish()
+    }
+}
+
 impl Integration for DebugImagesIntegration {
     fn name(&self) -> &'static str {
         "debug-images"
