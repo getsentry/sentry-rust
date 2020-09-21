@@ -27,18 +27,10 @@ pub type BeforeCallback<T> = Arc<dyn Fn(T) -> Option<T> + Send + Sync>;
 #[derive(Clone)]
 pub struct ClientOptions {
     // Common options
-    /// The DSN to use.  If not set the client is effectively disabled.
-    pub dsn: Option<Dsn>,
-    /// Enables debug mode.
-    ///
-    /// In debug mode debug information is printed to stderr to help you understand what
-    /// sentry is doing.  When the `log` feature is enabled, Sentry will instead
-    /// log to the `sentry` logger independently of this flag with the `Debug` level.
-    pub debug: bool,
-    /// The release to be sent with events.
-    pub release: Option<Cow<'static, str>>,
-    /// The environment to be sent with events.
-    pub environment: Option<Cow<'static, str>>,
+    dsn: Option<Dsn>,
+    debug: bool,
+    release: Option<Cow<'static, str>>,
+    environment: Option<Cow<'static, str>>,
     /// The sample rate for event submission. (0.0 - 1.0, defaults to 1.0)
     pub sample_rate: f32,
     /// Maximum number of breadcrumbs. (defaults to 100)
@@ -102,6 +94,61 @@ impl ClientOptions {
     pub fn new() -> Self {
         Self::default()
     }
+
+    pub fn configure<F>(f: F) -> Self
+    where
+        F: FnOnce(&mut ClientOptions),
+    {
+        let mut opts = Self::new();
+        f(&mut opts);
+        opts
+    }
+
+    /// Set a DSN to use.
+    ///
+    /// If not set the client is effectively disabled.
+    pub fn set_dsn(&mut self, dsn: Dsn) -> &mut Self {
+        self.dsn = Some(dsn);
+        self
+    }
+    /// The configured DSN.
+    pub fn dsn(&self) -> Option<&Dsn> {
+        self.dsn.as_ref()
+    }
+
+    /// Enables/disables debug mode.
+    ///
+    /// In debug mode debug information is printed to stderr to help you understand what
+    /// sentry is doing.  When the `log` feature is enabled, Sentry will instead
+    /// log to the `sentry` logger independently of this flag with the `Debug` level.
+    pub fn set_debug(&mut self, debug: bool) -> &mut Self {
+        self.debug = debug;
+        self
+    }
+    pub fn debug(&self) -> bool {
+        self.debug
+    }
+
+    /// Set the release to be sent with events.
+    pub fn set_release(&mut self, release: Cow<'static, str>) -> &mut Self {
+        self.release = Some(release);
+        self
+    }
+    /// The release to be sent with events.
+    pub fn release(&self) -> Option<Cow<'static, str>> {
+        self.release.clone()
+    }
+
+    /// Set the environment to be sent with events.
+    pub fn set_environment(&mut self, environment: Cow<'static, str>) -> &mut Self {
+        self.environment = Some(environment);
+        self
+    }
+    /// The environment to be sent with events.
+    pub fn environment(&self) -> Option<Cow<'static, str>> {
+        self.environment.clone()
+    }
+
     /// Adds a configured integration to the options.
     ///
     /// # Examples
