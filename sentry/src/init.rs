@@ -65,10 +65,9 @@ impl Drop for ClientInitGuard {
 /// created to enable further configuration:
 ///
 /// ```
-/// let sentry = sentry::init(sentry::ClientOptions {
-///     release: Some("foo-bar-baz@1.0.0".into()),
-///     ..Default::default()
-/// });
+/// let sentry = sentry::init(sentry::ClientOptions::configure(|o| {
+///     o.set_release(Some("foo-bar-baz@1.0.0".into()))
+/// }));
 /// if sentry.is_enabled() {
 ///     // some other initialization
 /// }

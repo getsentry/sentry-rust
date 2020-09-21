@@ -39,11 +39,10 @@ lazy_static::lazy_static! {
 /// use std::sync::Arc;
 ///
 /// let transport = TestTransport::new();
-/// let options = ClientOptions {
-///     dsn: Some("https://public@example.com/1".parse().unwrap()),
-///     transport: Some(Arc::new(transport.clone())),
-///     ..ClientOptions::default()
-/// };
+/// let options = ClientOptions::configure(|o| {
+///     o.set_dsn(("https://public@example.com/1".parse().unwrap())
+///     .set_transport(transport.clone())
+/// });
 /// Hub::current().bind_client(Some(Arc::new(options.into())));
 /// ```
 pub struct TestTransport {

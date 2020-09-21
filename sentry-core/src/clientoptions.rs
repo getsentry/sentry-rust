@@ -21,10 +21,9 @@ pub type BeforeCallback<T> = Arc<dyn Fn(T) -> Option<T> + Send + Sync>;
 /// # Examples
 ///
 /// ```
-/// let _options = sentry::ClientOptions {
-///     debug: true,
-///     ..Default::default()
-/// };
+/// let _options = sentry::ClientOptions::configure(|o| {
+///     o.set_debug(true)
+/// );
 /// ```
 #[derive(Clone)]
 pub struct ClientOptions {
@@ -392,7 +391,6 @@ impl ClientOptions {
     /// impl sentry::Integration for MyIntegration {}
     ///
     /// let options = sentry::ClientOptions::new().add_integration(MyIntegration);
-    /// assert_eq!(options.integrations.len(), 1);
     /// ```
     pub fn add_integration<I: Integration>(mut self, integration: I) -> Self {
         self.integrations.push(Arc::new(integration));

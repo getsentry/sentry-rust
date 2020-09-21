@@ -36,12 +36,12 @@ use crate::{ClientOptions, Integration};
 /// std::env::set_var("SENTRY_RELEASE", "release-from-env");
 ///
 /// let options = sentry::ClientOptions::default();
-/// assert_eq!(options.release, None);
-/// assert!(options.transport.is_none());
+/// assert_eq!(options.release(), None);
+/// assert!(!options.has_transport());
 ///
 /// let options = sentry::apply_defaults(options);
-/// assert_eq!(options.release, Some("release-from-env".into()));
-/// assert!(options.transport.is_some());
+/// assert_eq!(options.release(), Some("release-from-env".into()));
+/// assert!(options.has_transport());
 /// ```
 ///
 /// [`AttachStacktraceIntegration`]: integrations/backtrace/struct.AttachStacktraceIntegration.html

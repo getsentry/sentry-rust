@@ -233,10 +233,9 @@ impl Client {
     /// let transport = sentry::test::TestTransport::new();
     /// let client = sentry::Client::from((
     ///     dsn,
-    ///     sentry::ClientOptions {
-    ///         transport: Some(Arc::new(transport)),
-    ///         ..Default::default()
-    ///     },
+    ///     sentry::ClientOptions::configure(|o| {
+    ///         o.set_transport(Arc::new(transport))
+    ///     }),
     /// ));
     /// assert!(client.is_enabled());
     /// ```

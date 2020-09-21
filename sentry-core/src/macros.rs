@@ -8,10 +8,9 @@
 /// ```
 /// # #[macro_use] extern crate sentry;
 /// # fn main() {
-/// let _sentry = sentry::init(sentry::ClientOptions {
-///     release: sentry::release_name!(),
-///     ..Default::default()
-/// });
+/// let _sentry = sentry::init(sentry::ClientOptions::configure(|o| {
+///     o.set_release(sentry::release_name!())
+/// }));
 /// # }
 /// ```
 #[macro_export]
