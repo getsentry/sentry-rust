@@ -57,8 +57,8 @@ impl Session {
                 status: SessionStatus::Ok,
                 errors: 0,
                 attributes: SessionAttributes {
-                    release: options.release.clone()?,
-                    environment: options.environment.clone(),
+                    release: options.release()?,
+                    environment: options.environment(),
                     ip_address: None,
                     user_agent: None,
                 },
@@ -125,10 +125,7 @@ mod tests {
     {
         crate::test::with_captured_envelopes_options(
             f,
-            crate::ClientOptions {
-                release: Some("some-release".into()),
-                ..Default::default()
-            },
+            crate::ClientOptions::configure(|opts| opts.set_release("some-release".into())),
         )
     }
 
@@ -197,11 +194,9 @@ mod tests {
                     sentry::capture_error(&err);
                 }
             },
-            crate::ClientOptions {
-                release: Some("some-release".into()),
-                sample_rate: 0.5,
-                ..Default::default()
-            },
+            crate::ClientOptions::configure(|opts| {
+                opts.set_release("some-release".into()).set_sample_rate(0.5)
+            }),
         );
         assert!(envelopes.len() > 25);
         assert!(envelopes.len() < 75);

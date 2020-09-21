@@ -217,7 +217,7 @@ impl<S: 'static> Middleware<S> for SentryMiddleware {
                 if cached_data.is_none() && req.is_valid() {
                     let with_pii = client
                         .as_ref()
-                        .map_or(false, |x| x.options().send_default_pii);
+                        .map_or(false, |x| x.options().send_default_pii());
                     *cached_data = Some(extract_request(&req.get(), with_pii));
                 }
 

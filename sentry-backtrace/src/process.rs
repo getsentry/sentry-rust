@@ -15,10 +15,10 @@ use crate::{Frame, Stacktrace};
 /// `ClientOptions`.
 pub fn process_event_stacktrace(stacktrace: &mut Stacktrace, options: &ClientOptions) {
     // automatically trim backtraces
-    if options.trim_backtraces {
+    if options.trim_backtraces() {
         trim_stacktrace(stacktrace, |frame, _| {
             if let Some(ref func) = frame.function {
-                options.extra_border_frames.contains(&func.as_str())
+                options.extra_border_frames().contains(&func.as_str())
             } else {
                 false
             }
@@ -49,7 +49,7 @@ pub fn process_event_stacktrace(stacktrace: &mut Stacktrace, options: &ClientOpt
             None => {}
         }
 
-        for m in &options.in_app_exclude {
+        for m in options.in_app_exclude() {
             if function_starts_with(func_name, m) {
                 frame.in_app = Some(false);
                 break;
@@ -60,7 +60,7 @@ pub fn process_event_stacktrace(stacktrace: &mut Stacktrace, options: &ClientOpt
             continue;
         }
 
-        for m in &options.in_app_include {
+        for m in options.in_app_include() {
             if function_starts_with(func_name, m) {
                 frame.in_app = Some(true);
                 any_in_app = true;

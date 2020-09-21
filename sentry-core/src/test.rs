@@ -123,7 +123,9 @@ pub fn with_captured_envelopes_options<F: FnOnce(), O: Into<ClientOptions>>(
 ) -> Vec<Envelope> {
     let transport = TestTransport::new();
     let mut options = options.into();
-    options.dsn = Some(options.dsn.unwrap_or_else(|| TEST_DSN.clone()));
+    if options.dsn().is_none() {
+        options.set_dsn(TEST_DSN.clone());
+    }
     options.transport = Some(Arc::new(transport.clone()));
     Hub::run(
         Arc::new(Hub::new(

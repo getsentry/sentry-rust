@@ -422,7 +422,7 @@ impl Hub {
                         if let Some(breadcrumb) = breadcrumb_opt {
                             scope.breadcrumbs.push_back(breadcrumb);
                         }
-                        while scope.breadcrumbs.len() > options.max_breadcrumbs {
+                        while scope.breadcrumbs.len() > options.max_breadcrumbs() {
                             scope.breadcrumbs.pop_front();
                         }
                     }

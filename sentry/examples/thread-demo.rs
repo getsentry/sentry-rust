@@ -14,11 +14,8 @@ fn main() {
     // special behavior in that all other threads spawned will get a hub based on
     // the hub from here.
     let _sentry = sentry::init(
-        sentry::ClientOptions {
-            release: sentry::release_name!(),
-            ..Default::default()
-        }
-        .add_integration(log_integration),
+        sentry::ClientOptions::configure(|o| o.set_release(sentry::release_name!()))
+            .add_integration(log_integration),
     );
 
     // the log integration sends to Hub::current()

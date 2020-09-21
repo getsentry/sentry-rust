@@ -126,7 +126,7 @@ impl Integration for ErrorChainIntegration {
     }
 
     fn setup(&self, cfg: &mut ClientOptions) {
-        cfg.in_app_exclude.push("error_chain::");
-        cfg.extra_border_frames.push("error_chain::make_backtrace");
+        cfg.add_in_app_exclude(&["error_chain::"]);
+        cfg.add_extra_border_frames(&["error_chain::make_backtrace"]);
     }
 }

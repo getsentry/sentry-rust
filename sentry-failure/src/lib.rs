@@ -56,8 +56,8 @@ impl Integration for FailureIntegration {
     }
 
     fn setup(&self, cfg: &mut ClientOptions) {
-        cfg.in_app_exclude.push("failure::");
-        cfg.extra_border_frames.extend_from_slice(&[
+        cfg.add_in_app_exclude(&["failure::"]);
+        cfg.add_extra_border_frames(&[
             "failure::error_message::err_msg",
             "failure::backtrace::Backtrace::new",
             "failure::backtrace::internal::InternalBacktrace::new",

@@ -33,9 +33,8 @@ impl Integration for LogIntegration {
     }
 
     fn setup(&self, cfg: &mut ClientOptions) {
-        cfg.in_app_exclude.push("log::");
-        cfg.extra_border_frames
-            .push("<sentry_log::Logger as log::Log>::log");
+        cfg.add_in_app_exclude(&["log::"]);
+        cfg.add_extra_border_frames(&["<sentry_log::Logger as log::Log>::log"]);
 
         let filter = self.effective_global_filter();
         if filter > log::max_level() {

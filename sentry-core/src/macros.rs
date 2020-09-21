@@ -60,7 +60,7 @@ macro_rules! sentry_debug {
         }
         #[cfg(not(feature = "debug-logs"))] {
             $crate::Hub::with(|hub| {
-                if hub.client().map_or(false, |c| c.options().debug) {
+                if hub.client().map_or(false, |c| c.options().debug()) {
                     eprint!("[sentry] ");
                     eprintln!($($arg)*);
                 }

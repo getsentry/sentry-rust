@@ -98,7 +98,7 @@ impl Client {
         Hub::with(|_| {});
 
         let create_transport = || {
-            options.dsn.as_ref()?;
+            options.dsn()?;
             let factory = options.transport.as_ref()?;
             Some(factory.create_transport(&options))
         };
@@ -180,13 +180,13 @@ impl Client {
         }
 
         if event.release.is_none() {
-            event.release = self.options.release.clone();
+            event.release = self.options.release();
         }
         if event.environment.is_none() {
-            event.environment = self.options.environment.clone();
+            event.environment = self.options.environment();
         }
         if event.server_name.is_none() {
-            event.server_name = self.options.server_name.clone();
+            event.server_name = self.options.server_name();
         }
         if &event.platform == "other" {
             event.platform = "native".into();
@@ -211,7 +211,7 @@ impl Client {
 
     /// Returns the DSN that constructed this client.
     pub fn dsn(&self) -> Option<&Dsn> {
-        self.options.dsn.as_ref()
+        self.options.dsn()
     }
 
     /// Quick check to see if the client is enabled.
@@ -238,7 +238,7 @@ impl Client {
     /// assert!(client.is_enabled());
     /// ```
     pub fn is_enabled(&self) -> bool {
-        self.options.dsn.is_some() && self.transport.read().unwrap().is_some()
+        self.options.dsn().is_some() && self.transport.read().unwrap().is_some()
     }
 
     /// Captures an event and sends it to sentry.
@@ -282,7 +282,7 @@ impl Client {
         let transport_opt = self.transport.write().unwrap().take();
         if let Some(transport) = transport_opt {
             sentry_debug!("client close; request transport to shut down");
-            transport.shutdown(timeout.unwrap_or(self.options.shutdown_timeout))
+            transport.shutdown(timeout.unwrap_or_else(|| self.options.shutdown_timeout()))
         } else {
             sentry_debug!("client close; no transport to shut down");
             true
@@ -290,7 +290,7 @@ impl Client {
     }
 
     fn sample_should_send(&self) -> bool {
-        let rate = self.options.sample_rate;
+        let rate = self.options.sample_rate();
         if rate >= 1.0 {
             true
         } else {

@@ -184,12 +184,12 @@ implement_http_transport! {
         queue_size: Arc<Mutex<usize>>,
         http_client: Option<ReqwestClient>,
     ) {
-        let dsn = options.dsn.clone().unwrap();
-        let user_agent = options.user_agent.to_string();
+        let dsn = options.dsn().cloned().unwrap();
+        let user_agent = options.user_agent().to_string();
 
         let mut disabled = None::<SystemTime>;
-        let http_proxy = options.http_proxy.as_ref().map(ToString::to_string);
-        let https_proxy = options.https_proxy.as_ref().map(ToString::to_string);
+        let http_proxy = options.http_proxy().as_ref().map(ToString::to_string);
+        let https_proxy = options.https_proxy().as_ref().map(ToString::to_string);
 
         thread::Builder::new()
             .name("sentry-transport".to_string())
@@ -293,10 +293,10 @@ implement_http_transport! {
         queue_size: Arc<Mutex<usize>>,
         http_client: curl::easy::Easy,
     ) {
-        let dsn = options.dsn.clone().unwrap();
-        let user_agent = options.user_agent.to_string();
-        let http_proxy = options.http_proxy.as_ref().map(ToString::to_string);
-        let https_proxy = options.https_proxy.as_ref().map(ToString::to_string);
+        let dsn = options.dsn().cloned().unwrap();
+        let user_agent = options.user_agent().to_string();
+        let http_proxy = options.http_proxy().as_ref().map(ToString::to_string);
+        let https_proxy = options.https_proxy().as_ref().map(ToString::to_string);
 
         let mut disabled = None::<SystemTime>;
         let mut handle = http_client;
@@ -426,8 +426,8 @@ implement_http_transport! {
         queue_size: Arc<Mutex<usize>>,
         http_client: SurfClient<NativeClient>,
     ) {
-        let dsn = options.dsn.clone().unwrap();
-        let user_agent = options.user_agent.to_string();
+        let dsn = options.dsn().cloned().unwrap();
+        let user_agent = options.user_agent().to_string();
         let mut disabled = None::<SystemTime>;
 
         thread::Builder::new()

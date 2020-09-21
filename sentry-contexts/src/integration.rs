@@ -43,8 +43,8 @@ impl Integration for ContextIntegration {
     }
 
     fn setup(&self, options: &mut ClientOptions) {
-        if options.server_name.is_none() {
-            options.server_name = server_name().map(Cow::Owned);
+        if options.server_name().is_none() {
+            options.set_server_name(server_name().map(Cow::Owned));
         }
     }
 

@@ -65,7 +65,7 @@ impl Integration for AttachStacktraceIntegration {
         mut event: Event<'static>,
         options: &ClientOptions,
     ) -> Option<Event<'static>> {
-        if options.attach_stacktrace && event.exception.is_empty() {
+        if options.attach_stacktrace() && event.exception.is_empty() {
             let thread = current_thread(true);
             if thread.stacktrace.is_some() {
                 event.threads.values.push(thread);

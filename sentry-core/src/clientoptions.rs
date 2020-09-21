@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::collections::VecDeque;
 use std::fmt;
 use std::sync::Arc;
 use std::time::Duration;
@@ -31,62 +32,38 @@ pub struct ClientOptions {
     debug: bool,
     release: Option<Cow<'static, str>>,
     environment: Option<Cow<'static, str>>,
-    /// The sample rate for event submission. (0.0 - 1.0, defaults to 1.0)
-    pub sample_rate: f32,
-    /// Maximum number of breadcrumbs. (defaults to 100)
-    pub max_breadcrumbs: usize,
-    /// Attaches stacktraces to messages.
-    pub attach_stacktrace: bool,
-    /// If turned on some default PII informat is attached.
-    pub send_default_pii: bool,
-    /// The server name to be reported.
-    pub server_name: Option<Cow<'static, str>>,
-    /// Module prefixes that are always considered "in_app".
-    pub in_app_include: Vec<&'static str>,
-    /// Module prefixes that are never "in_app".
-    pub in_app_exclude: Vec<&'static str>,
+    sample_rate: f32,
+    max_breadcrumbs: usize,
+    attach_stacktrace: bool,
+    send_default_pii: bool,
+    server_name: Option<Cow<'static, str>>,
+    in_app_include: Vec<&'static str>,
+    in_app_exclude: Vec<&'static str>,
+
     // Integration options
-    /// A list of integrations to enable.
-    pub integrations: Vec<Arc<dyn Integration>>,
-    /// Whether to add default integrations.
-    pub default_integrations: bool,
+    pub(crate) integrations: VecDeque<Arc<dyn Integration>>,
+    default_integrations: bool,
+
     // Hooks
-    /// Callback that is executed before event sending.
-    pub before_send: Option<BeforeCallback<Event<'static>>>,
-    /// Callback that is executed for each Breadcrumb being added.
-    pub before_breadcrumb: Option<BeforeCallback<Breadcrumb>>,
+    pub(crate) before_send: Option<BeforeCallback<Event<'static>>>,
+    pub(crate) before_breadcrumb: Option<BeforeCallback<Breadcrumb>>,
+
     // Transport options
     /// The transport to use.
     ///
     /// This is typically either a boxed function taking the client options by
     /// reference and returning a `Transport`, a boxed `Arc<Transport>` or
     /// alternatively the `DefaultTransportFactory`.
-    pub transport: Option<Arc<dyn TransportFactory>>,
-    /// An optional HTTP proxy to use.
-    ///
-    /// This will default to the `http_proxy` environment variable.
-    pub http_proxy: Option<Cow<'static, str>>,
-    /// An optional HTTPS proxy to use.
-    ///
-    /// This will default to the `HTTPS_PROXY` environment variable
-    /// or `http_proxy` if that one exists.
-    pub https_proxy: Option<Cow<'static, str>>,
-    /// The timeout on client drop for draining events on shutdown.
-    pub shutdown_timeout: Duration,
+    pub(crate) transport: Option<Arc<dyn TransportFactory>>,
+    http_proxy: Option<Cow<'static, str>>,
+    https_proxy: Option<Cow<'static, str>>,
+    shutdown_timeout: Duration,
+
     // Other options not documented in Unified API
-    /// Enable Release Health Session tracking.
-    ///
-    /// When automatic session tracking is enabled, a new "user-mode" session
-    /// is started at the time of `sentry::init`, and will persist for the
-    /// application lifetime.
-    pub auto_session_tracking: bool,
-    /// Border frames which indicate a border from a backtrace to
-    /// useless internals. Some are automatically included.
-    pub extra_border_frames: Vec<&'static str>,
-    /// Automatically trim backtraces of junk before sending. (defaults to true)
-    pub trim_backtraces: bool,
-    /// The user agent that should be reported.
-    pub user_agent: Cow<'static, str>,
+    auto_session_tracking: bool,
+    extra_border_frames: Vec<&'static str>,
+    trim_backtraces: bool,
+    user_agent: Cow<'static, str>,
 }
 
 impl ClientOptions {
@@ -95,9 +72,10 @@ impl ClientOptions {
         Self::default()
     }
 
+    /// Creates new Options and immediately configures them.
     pub fn configure<F>(f: F) -> Self
     where
-        F: FnOnce(&mut ClientOptions),
+        F: FnOnce(&mut ClientOptions) -> &mut ClientOptions,
     {
         let mut opts = Self::new();
         f(&mut opts);
@@ -125,13 +103,14 @@ impl ClientOptions {
         self.debug = debug;
         self
     }
+    /// Whether debug logging is enabled.
     pub fn debug(&self) -> bool {
         self.debug
     }
 
     /// Set the release to be sent with events.
-    pub fn set_release(&mut self, release: Cow<'static, str>) -> &mut Self {
-        self.release = Some(release);
+    pub fn set_release(&mut self, release: Option<Cow<'static, str>>) -> &mut Self {
+        self.release = release;
         self
     }
     /// The release to be sent with events.
@@ -140,13 +119,211 @@ impl ClientOptions {
     }
 
     /// Set the environment to be sent with events.
-    pub fn set_environment(&mut self, environment: Cow<'static, str>) -> &mut Self {
-        self.environment = Some(environment);
+    pub fn set_environment(&mut self, environment: Option<Cow<'static, str>>) -> &mut Self {
+        self.environment = environment;
         self
     }
     /// The environment to be sent with events.
     pub fn environment(&self) -> Option<Cow<'static, str>> {
         self.environment.clone()
+    }
+
+    /// Set the sample rate for event submission. (0.0 - 1.0, defaults to 1.0)
+    pub fn set_sample_rate(&mut self, sample_rate: f32) -> &mut Self {
+        self.sample_rate = sample_rate;
+        self
+    }
+    /// The sample rate for event submission.
+    pub fn sample_rate(&self) -> f32 {
+        self.sample_rate
+    }
+
+    /// Set the maximum number of breadcrumbs. (defaults to 100)
+    pub fn set_max_breadcrumbs(&mut self, max_breadcrumbs: usize) -> &mut Self {
+        self.max_breadcrumbs = max_breadcrumbs;
+        self
+    }
+    /// Maximum number of breadcrumbs.
+    pub fn max_breadcrumbs(&self) -> usize {
+        self.max_breadcrumbs
+    }
+
+    /// Enable attaching stacktraces to message events.
+    pub fn set_attach_stacktrace(&mut self, attach_stacktrace: bool) -> &mut Self {
+        self.attach_stacktrace = attach_stacktrace;
+        self
+    }
+    /// Attach stacktraces to message events.
+    pub fn attach_stacktrace(&self) -> bool {
+        self.attach_stacktrace
+    }
+
+    /// Attach some default PII informat to events.
+    pub fn set_send_default_pii(&mut self, send_default_pii: bool) -> &mut Self {
+        self.send_default_pii = send_default_pii;
+        self
+    }
+    /// If turned on some default PII informat is attached to events.
+    pub fn send_default_pii(&self) -> bool {
+        self.send_default_pii
+    }
+
+    /// Set the server name to be reported.
+    pub fn set_server_name(&mut self, server_name: Option<Cow<'static, str>>) -> &mut Self {
+        self.server_name = server_name;
+        self
+    }
+    /// The server name to be reported.
+    pub fn server_name(&self) -> Option<Cow<'static, str>> {
+        self.server_name.clone()
+    }
+
+    /// Add module prefixes that are always considered "in_app".
+    pub fn add_in_app_include(&mut self, in_app_include: &[&'static str]) -> &mut Self {
+        self.in_app_include.extend_from_slice(in_app_include);
+        self
+    }
+    /// Module prefixes that are always considered "in_app".
+    pub fn in_app_include(&self) -> &[&'static str] {
+        &self.in_app_include
+    }
+
+    /// Add module prefixes that are never "in_app".
+    pub fn add_in_app_exclude(&mut self, in_app_exclude: &[&'static str]) -> &mut Self {
+        self.in_app_exclude.extend_from_slice(in_app_exclude);
+        self
+    }
+    /// Module prefixes that are never "in_app".
+    pub fn in_app_exclude(&self) -> &[&'static str] {
+        &self.in_app_exclude
+    }
+
+    /// Enable adding default integrations on init.
+    pub fn set_default_integrations(&mut self, default_integrations: bool) -> &mut Self {
+        self.default_integrations = default_integrations;
+        self
+    }
+    /// Whether to add default integrations.
+    pub fn default_integrations(&self) -> bool {
+        self.default_integrations
+    }
+
+    /// Adds another integration *in front* of the already registered ones.
+    pub fn unshift_integration<I: Integration>(&mut self, integration: I) -> &mut Self {
+        self.integrations.push_front(Arc::new(integration));
+        self
+    }
+
+    /// Set a callback that is executed before event sending.
+    pub fn set_before_send<F>(&mut self, before_send: F) -> &mut Self
+    where
+        F: Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync + 'static,
+    {
+        self.before_send = Some(Arc::new(before_send));
+        self
+    }
+
+    /// Set a callback that is executed for each Breadcrumb being added.
+    pub fn set_before_breadcrumb<F>(&mut self, before_breadcrumb: F) -> &mut Self
+    where
+        F: Fn(Breadcrumb) -> Option<Breadcrumb> + Send + Sync + 'static,
+    {
+        self.before_breadcrumb = Some(Arc::new(before_breadcrumb));
+        self
+    }
+
+    /// The transport to use.
+    ///
+    /// This is typically either a boxed function taking the client options by
+    /// reference and returning a `Transport`, a boxed `Arc<Transport>` or
+    /// alternatively the `DefaultTransportFactory`.
+    pub fn set_transport<F>(&mut self, transport: F) -> &mut Self
+    where
+        F: TransportFactory + 'static,
+    {
+        self.transport = Some(Arc::new(transport));
+        self
+    }
+    /// Whether a [`TransportFactory`] has been set on these options.
+    pub fn has_transport(&self) -> bool {
+        self.transport.is_some()
+    }
+
+    /// An optional HTTP proxy to use.
+    ///
+    /// This will default to the `http_proxy` environment variable.
+    pub fn set_http_proxy(&mut self, http_proxy: Option<Cow<'static, str>>) -> &mut Self {
+        self.http_proxy = http_proxy;
+        self
+    }
+    /// The HTTP proxy Sentry will use.
+    pub fn http_proxy(&self) -> Option<Cow<'static, str>> {
+        self.http_proxy.clone()
+    }
+
+    /// Set an optional HTTPS proxy to use.
+    ///
+    /// This will default to the `HTTPS_PROXY` environment variable
+    /// or `http_proxy` if that one exists.
+    pub fn set_https_proxy(&mut self, https_proxy: Option<Cow<'static, str>>) -> &mut Self {
+        self.https_proxy = https_proxy;
+        self
+    }
+    /// The HTTPS proxy Sentry will use.
+    pub fn https_proxy(&self) -> Option<Cow<'static, str>> {
+        self.https_proxy.clone()
+    }
+
+    /// The timeout on client drop for draining events on shutdown.
+    pub fn shutdown_timeout(&self) -> Duration {
+        self.shutdown_timeout
+    }
+
+    /// Enable Release Health Session tracking.
+    ///
+    /// When automatic session tracking is enabled, a new "user-mode" session
+    /// is started at the time of `sentry::init`, and will persist for the
+    /// application lifetime.
+    pub fn set_auto_session_tracking(&mut self, auto_session_tracking: bool) -> &mut Self {
+        self.auto_session_tracking = auto_session_tracking;
+        self
+    }
+    /// Whether automatic session tracking is enabled.
+    pub fn auto_session_tracking(&self) -> bool {
+        self.auto_session_tracking
+    }
+
+    /// Add extra border frames which indicate a border from a backtrace to
+    /// useless internals.
+    pub fn add_extra_border_frames(&mut self, extra_border_frames: &[&'static str]) -> &mut Self {
+        self.extra_border_frames
+            .extend_from_slice(extra_border_frames);
+        self
+    }
+    /// Border frames which indicate a border from a backtrace to
+    /// useless internals. Some are automatically included.
+    pub fn extra_border_frames(&self) -> &[&'static str] {
+        &self.extra_border_frames
+    }
+
+    /// Automatically trim backtraces of junk before sending. (defaults to true)
+    pub fn set_trim_backtraces(&mut self, trim_backtraces: bool) -> &mut Self {
+        self.trim_backtraces = trim_backtraces;
+        self
+    }
+    /// Automatically trim backtraces of junk before sending.
+    pub fn trim_backtraces(&self) -> bool {
+        self.trim_backtraces
+    }
+
+    /// Set the user agent that should be reported.
+    pub fn set_user_agent(&mut self, user_agent: Cow<'static, str>) -> &mut Self {
+        self.user_agent = user_agent;
+        self
+    }
+    /// The user agent that should be reported.
+    pub fn user_agent(&self) -> Cow<'static, str> {
+        self.user_agent.clone()
     }
 
     /// Adds a configured integration to the options.
@@ -162,7 +339,7 @@ impl ClientOptions {
     /// assert_eq!(options.integrations.len(), 1);
     /// ```
     pub fn add_integration<I: Integration>(mut self, integration: I) -> Self {
-        self.integrations.push(Arc::new(integration));
+        self.integrations.push_back(Arc::new(integration));
         self
     }
 }
@@ -222,7 +399,7 @@ impl Default for ClientOptions {
             server_name: None,
             in_app_include: vec![],
             in_app_exclude: vec![],
-            integrations: vec![],
+            integrations: VecDeque::new(),
             default_integrations: true,
             before_send: None,
             before_breadcrumb: None,

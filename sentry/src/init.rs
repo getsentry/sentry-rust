@@ -91,7 +91,7 @@ where
     C: Into<ClientOptions>,
 {
     let opts = apply_defaults(opts.into());
-    let auto_session_tracking = opts.auto_session_tracking;
+    let auto_session_tracking = opts.auto_session_tracking();
     let client = Arc::new(Client::from(opts));
 
     Hub::with(|hub| hub.bind_client(Some(client.clone())));
