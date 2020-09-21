@@ -5,12 +5,11 @@
 **Breaking Changes**:
 
 - Removed all deprecated exports and deprecated feature flags.
-- Removed the deprecated `error_chain` integration.
 - The `failure` integration / feature is now off-by-default along with its deprecation.
 
 **Deprecations**:
 
-- The `failure` integration was officialy deprecated and will be removed soon.
+- The `error-chain` and `failure` integration was officialy deprecated and will be removed soon.
 
 ## 0.20.1
 
