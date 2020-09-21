@@ -29,6 +29,7 @@
 #![warn(missing_docs)]
 #![deny(unsafe_code)]
 #![warn(missing_doc_code_examples)]
+#![allow(deprecated)]
 
 use std::panic::PanicInfo;
 
@@ -41,6 +42,7 @@ use sentry_core::{ClientOptions, Hub, Integration};
 
 /// The Sentry Failure Integration.
 #[derive(Debug, Default)]
+#[deprecated = "The `failure` integration is deprecated and will be removed in the future."]
 pub struct FailureIntegration;
 
 impl FailureIntegration {
@@ -78,6 +80,7 @@ impl Integration for FailureIntegration {
 /// let panic_integration =
 ///     sentry_panic::PanicIntegration::new().add_extractor(sentry_failure::panic_extractor);
 /// ```
+#[deprecated = "The `failure` integration is deprecated and will be removed in the future."]
 pub fn panic_extractor(info: &PanicInfo<'_>) -> Option<Event<'static>> {
     let error = info.payload().downcast_ref::<Error>()?;
     Some(Event {
@@ -93,6 +96,7 @@ pub fn panic_extractor(info: &PanicInfo<'_>) -> Option<Event<'static>> {
 /// causes of a failure, however for certain more complex situations where
 /// fails are contained within a non fail error type that might also carry
 /// useful information it can be useful to call this method instead.
+#[deprecated = "The `failure` integration is deprecated and will be removed in the future."]
 pub fn exception_from_single_fail<F: Fail + ?Sized>(
     f: &F,
     bt: Option<&failure::Backtrace>,
@@ -110,6 +114,7 @@ pub fn exception_from_single_fail<F: Fail + ?Sized>(
 }
 
 /// Helper function to create an event from a `failure::Error`.
+#[deprecated = "The `failure` integration is deprecated and will be removed in the future."]
 pub fn event_from_error(err: &failure::Error) -> Event<'static> {
     let mut exceptions: Vec<_> = err
         .iter_chain()
@@ -133,6 +138,7 @@ pub fn event_from_error(err: &failure::Error) -> Event<'static> {
 }
 
 /// Helper function to create an event from a `failure::Fail`.
+#[deprecated = "The `failure` integration is deprecated and will be removed in the future."]
 pub fn event_from_fail<F: Fail + ?Sized>(fail: &F) -> Event<'static> {
     let mut exceptions = vec![exception_from_single_fail(fail, fail.backtrace())];
 
@@ -153,6 +159,7 @@ pub fn event_from_fail<F: Fail + ?Sized>(fail: &F) -> Event<'static> {
 /// Captures a boxed failure (`failure::Error`).
 ///
 /// This dispatches to the current hub.
+#[deprecated = "The `failure` integration is deprecated and will be removed in the future."]
 pub fn capture_error(err: &Error) -> Uuid {
     Hub::with_active(|hub| FailureHubExt::capture_error(hub.as_ref(), err))
 }
@@ -160,11 +167,13 @@ pub fn capture_error(err: &Error) -> Uuid {
 /// Captures a `failure::Fail`.
 ///
 /// This dispatches to the current hub.
+#[deprecated = "The `failure` integration is deprecated and will be removed in the future."]
 pub fn capture_fail<F: Fail + ?Sized>(fail: &F) -> Uuid {
     Hub::with_active(|hub| hub.capture_fail(fail))
 }
 
 /// Hub extension methods for working with failure.
+#[deprecated = "The `failure` integration is deprecated and will be removed in the future."]
 pub trait FailureHubExt {
     /// Captures a boxed failure (`failure::Error`).
     fn capture_error(&self, err: &Error) -> Uuid;
@@ -184,6 +193,7 @@ impl FailureHubExt for Hub {
 
 /// Extension trait providing methods to unwrap a result, preserving backtraces from the
 /// underlying error in the event of a panic.
+#[deprecated = "The `failure` integration is deprecated and will be removed in the future."]
 pub trait FailureResultExt {
     /// Type of the success case
     type Value;
