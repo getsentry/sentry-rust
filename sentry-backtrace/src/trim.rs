@@ -20,11 +20,6 @@ lazy_static::lazy_static! {
         "std::panicking::begin_panic",
         "core::panicking::panic",
     ];
-
-    // TODO: remove all of this together with the deprecated `error_chain` support
-    static ref SECONDARY_BORDER_FRAMES: Vec<(&'static str, &'static str)> = vec![
-        ("error_chain::make_backtrace", "<T as core::convert::Into<U>>::into")
-    ];
 }
 
 /// A helper function to trim a stacktrace.
@@ -42,42 +37,8 @@ where
         });
 
     if let Some(cutoff) = known_cutoff {
-        let secondary = {
-            let func = stacktrace.frames[stacktrace.frames.len() - cutoff - 1]
-                .function
-                .as_ref()
-                .unwrap();
-
-            SECONDARY_BORDER_FRAMES
-                .iter()
-                .filter_map(|&(primary, secondary)| {
-                    if function_starts_with(func, primary) {
-                        Some(secondary)
-                    } else {
-                        None
-                    }
-                })
-                .next()
-        };
         let trunc = stacktrace.frames.len() - cutoff - 1;
         stacktrace.frames.truncate(trunc);
-
-        if let Some(secondary) = secondary {
-            let secondary_cutoff =
-                stacktrace
-                    .frames
-                    .iter()
-                    .rev()
-                    .position(|frame| match frame.function {
-                        Some(ref func) => function_starts_with(&func, secondary),
-                        None => false,
-                    });
-
-            if let Some(cutoff) = secondary_cutoff {
-                let trunc = stacktrace.frames.len() - cutoff - 1;
-                stacktrace.frames.truncate(trunc);
-            }
-        }
     }
 }
 
