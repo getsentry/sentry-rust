@@ -1,11 +1,12 @@
-#![cfg_attr(feature = "error-chain", allow(deprecated))]
+#![allow(deprecated)]
 
 use std::borrow::Cow;
 use std::env;
+use std::sync::Arc;
 
 use crate::transports::DefaultTransportFactory;
 use crate::types::Dsn;
-use crate::ClientOptions;
+use crate::{ClientOptions, Integration};
 
 /// Apply default client options.
 ///
@@ -55,25 +56,35 @@ pub fn apply_defaults(mut opts: ClientOptions) -> ClientOptions {
         opts.set_transport(DefaultTransportFactory);
     }
     if opts.default_integrations() {
+        // default integrations need to be ordered *before* custom integrations,
+        // since they also process events in order
+        let mut integrations: Vec<Arc<dyn Integration>> = vec![];
+
         #[cfg(feature = "backtrace")]
         {
-            opts.unshift_integration(sentry_backtrace::AttachStacktraceIntegration::default());
+            integrations.push(Arc::new(
+                sentry_backtrace::AttachStacktraceIntegration::default(),
+            ));
         }
         #[cfg(feature = "debug-images")]
         {
-            opts.unshift_integration(sentry_debug_images::DebugImagesIntegration::default());
+            integrations.push(Arc::new(
+                sentry_debug_images::DebugImagesIntegration::default(),
+            ))
         }
         #[cfg(feature = "error-chain")]
         {
-            opts.unshift_integration(sentry_error_chain::ErrorChainIntegration::default());
+            integrations.push(Arc::new(
+                sentry_error_chain::ErrorChainIntegration::default(),
+            ))
         }
         #[cfg(feature = "contexts")]
         {
-            opts.unshift_integration(sentry_contexts::ContextIntegration::default());
+            integrations.push(Arc::new(sentry_contexts::ContextIntegration::default()));
         }
         #[cfg(feature = "failure")]
         {
-            opts.unshift_integration(sentry_failure::FailureIntegration::default());
+            integrations.push(Arc::new(sentry_failure::FailureIntegration::default()));
         }
         #[cfg(feature = "panic")]
         {
@@ -83,12 +94,18 @@ pub fn apply_defaults(mut opts: ClientOptions) -> ClientOptions {
             {
                 integration = integration.add_extractor(sentry_failure::panic_extractor);
             }
-            opts.unshift_integration(integration);
+            integrations.push(Arc::new(integration));
         }
         #[cfg(feature = "backtrace")]
         {
-            opts.unshift_integration(sentry_backtrace::ProcessStacktraceIntegration::default());
+            integrations.push(Arc::new(
+                sentry_backtrace::ProcessStacktraceIntegration::default(),
+            ));
         }
+
+        integrations.reverse();
+        integrations.extend(opts.integrations.into_iter());
+        opts.integrations = integrations;
     }
     if opts.dsn().is_none() {
         if let Some(dsn) = env::var("SENTRY_DSN")

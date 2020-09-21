@@ -415,6 +415,7 @@ impl Hub {
                     let scope = Arc::make_mut(&mut top.scope);
                     let options = client.options();
                     for breadcrumb in breadcrumb.into_breadcrumbs() {
+                        #[allow(deprecated)]
                         let breadcrumb_opt = match options.before_breadcrumb {
                             Some(ref callback) => callback(breadcrumb),
                             None => Some(breadcrumb)

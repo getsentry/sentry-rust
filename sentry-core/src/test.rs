@@ -121,6 +121,8 @@ pub fn with_captured_envelopes_options<F: FnOnce(), O: Into<ClientOptions>>(
     f: F,
     options: O,
 ) -> Vec<Envelope> {
+    #![allow(deprecated)]
+
     let transport = TestTransport::new();
     let mut options = options.into();
     if options.dsn().is_none() {

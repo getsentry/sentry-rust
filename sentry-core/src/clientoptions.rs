@@ -1,5 +1,6 @@
+#![allow(deprecated)]
+
 use std::borrow::Cow;
-use std::collections::VecDeque;
 use std::fmt;
 use std::sync::Arc;
 use std::time::Duration;
@@ -28,42 +29,97 @@ pub type BeforeCallback<T> = Arc<dyn Fn(T) -> Option<T> + Send + Sync>;
 #[derive(Clone)]
 pub struct ClientOptions {
     // Common options
-    dsn: Option<Dsn>,
-    debug: bool,
-    release: Option<Cow<'static, str>>,
-    environment: Option<Cow<'static, str>>,
-    sample_rate: f32,
-    max_breadcrumbs: usize,
-    attach_stacktrace: bool,
-    send_default_pii: bool,
-    server_name: Option<Cow<'static, str>>,
-    in_app_include: Vec<&'static str>,
-    in_app_exclude: Vec<&'static str>,
-
+    /// The DSN to use.  If not set the client is effectively disabled.
+    #[deprecated = "use accessor functions instead; direct field access will be removed soon"]
+    pub dsn: Option<Dsn>,
+    /// Enables debug mode.
+    ///
+    /// In debug mode debug information is printed to stderr to help you understand what
+    /// sentry is doing.  When the `log` feature is enabled, Sentry will instead
+    /// log to the `sentry` logger independently of this flag with the `Debug` level.
+    #[deprecated = "use accessor functions instead; direct field access will be removed soon"]
+    pub debug: bool,
+    /// The release to be sent with events.
+    #[deprecated = "use accessor functions instead; direct field access will be removed soon"]
+    pub release: Option<Cow<'static, str>>,
+    /// The environment to be sent with events.
+    #[deprecated = "use accessor functions instead; direct field access will be removed soon"]
+    pub environment: Option<Cow<'static, str>>,
+    /// The sample rate for event submission. (0.0 - 1.0, defaults to 1.0)
+    #[deprecated = "use accessor functions instead; direct field access will be removed soon"]
+    pub sample_rate: f32,
+    /// Maximum number of breadcrumbs. (defaults to 100)
+    #[deprecated = "use accessor functions instead; direct field access will be removed soon"]
+    pub max_breadcrumbs: usize,
+    /// Attaches stacktraces to messages.
+    #[deprecated = "use accessor functions instead; direct field access will be removed soon"]
+    pub attach_stacktrace: bool,
+    /// If turned on some default PII informat is attached.
+    #[deprecated = "use accessor functions instead; direct field access will be removed soon"]
+    pub send_default_pii: bool,
+    /// The server name to be reported.
+    #[deprecated = "use accessor functions instead; direct field access will be removed soon"]
+    pub server_name: Option<Cow<'static, str>>,
+    /// Module prefixes that are always considered "in_app".
+    #[deprecated = "use accessor functions instead; direct field access will be removed soon"]
+    pub in_app_include: Vec<&'static str>,
+    /// Module prefixes that are never "in_app".
+    #[deprecated = "use accessor functions instead; direct field access will be removed soon"]
+    pub in_app_exclude: Vec<&'static str>,
     // Integration options
-    pub(crate) integrations: VecDeque<Arc<dyn Integration>>,
-    default_integrations: bool,
-
+    /// A list of integrations to enable.
+    #[deprecated = "use accessor functions instead; direct field access will be removed soon"]
+    pub integrations: Vec<Arc<dyn Integration>>,
+    /// Whether to add default integrations.
+    #[deprecated = "use accessor functions instead; direct field access will be removed soon"]
+    pub default_integrations: bool,
     // Hooks
-    pub(crate) before_send: Option<BeforeCallback<Event<'static>>>,
-    pub(crate) before_breadcrumb: Option<BeforeCallback<Breadcrumb>>,
-
+    /// Callback that is executed before event sending.
+    #[deprecated = "use accessor functions instead; direct field access will be removed soon"]
+    pub before_send: Option<BeforeCallback<Event<'static>>>,
+    /// Callback that is executed for each Breadcrumb being added.
+    #[deprecated = "use accessor functions instead; direct field access will be removed soon"]
+    pub before_breadcrumb: Option<BeforeCallback<Breadcrumb>>,
     // Transport options
     /// The transport to use.
     ///
     /// This is typically either a boxed function taking the client options by
     /// reference and returning a `Transport`, a boxed `Arc<Transport>` or
     /// alternatively the `DefaultTransportFactory`.
-    pub(crate) transport: Option<Arc<dyn TransportFactory>>,
-    http_proxy: Option<Cow<'static, str>>,
-    https_proxy: Option<Cow<'static, str>>,
-    shutdown_timeout: Duration,
-
+    #[deprecated = "use accessor functions instead; direct field access will be removed soon"]
+    pub transport: Option<Arc<dyn TransportFactory>>,
+    /// An optional HTTP proxy to use.
+    ///
+    /// This will default to the `http_proxy` environment variable.
+    #[deprecated = "use accessor functions instead; direct field access will be removed soon"]
+    pub http_proxy: Option<Cow<'static, str>>,
+    /// An optional HTTPS proxy to use.
+    ///
+    /// This will default to the `HTTPS_PROXY` environment variable
+    /// or `http_proxy` if that one exists.
+    #[deprecated = "use accessor functions instead; direct field access will be removed soon"]
+    pub https_proxy: Option<Cow<'static, str>>,
+    /// The timeout on client drop for draining events on shutdown.
+    #[deprecated = "use accessor functions instead; direct field access will be removed soon"]
+    pub shutdown_timeout: Duration,
     // Other options not documented in Unified API
-    auto_session_tracking: bool,
-    extra_border_frames: Vec<&'static str>,
-    trim_backtraces: bool,
-    user_agent: Cow<'static, str>,
+    /// Enable Release Health Session tracking.
+    ///
+    /// When automatic session tracking is enabled, a new "user-mode" session
+    /// is started at the time of `sentry::init`, and will persist for the
+    /// application lifetime.
+    #[deprecated = "use accessor functions instead; direct field access will be removed soon"]
+    pub auto_session_tracking: bool,
+    /// Border frames which indicate a border from a backtrace to
+    /// useless internals. Some are automatically included.
+    #[deprecated = "use accessor functions instead; direct field access will be removed soon"]
+    pub extra_border_frames: Vec<&'static str>,
+    /// Automatically trim backtraces of junk before sending. (defaults to true)
+    #[deprecated = "use accessor functions instead; direct field access will be removed soon"]
+    pub trim_backtraces: bool,
+    /// The user agent that should be reported.
+    #[deprecated = "use accessor functions instead; direct field access will be removed soon"]
+    pub user_agent: Cow<'static, str>,
 }
 
 impl ClientOptions {
@@ -209,10 +265,10 @@ impl ClientOptions {
     }
 
     /// Adds another integration *in front* of the already registered ones.
-    pub fn unshift_integration<I: Integration>(&mut self, integration: I) -> &mut Self {
-        self.integrations.push_front(Arc::new(integration));
-        self
-    }
+    // pub fn unshift_integration<I: Integration>(&mut self, integration: I) -> &mut Self {
+    //     self.integrations.push_front(Arc::new(integration));
+    //     self
+    // }
 
     /// Set a callback that is executed before event sending.
     pub fn set_before_send<F>(&mut self, before_send: F) -> &mut Self
@@ -339,7 +395,7 @@ impl ClientOptions {
     /// assert_eq!(options.integrations.len(), 1);
     /// ```
     pub fn add_integration<I: Integration>(mut self, integration: I) -> Self {
-        self.integrations.push_back(Arc::new(integration));
+        self.integrations.push(Arc::new(integration));
         self
     }
 }
@@ -399,7 +455,7 @@ impl Default for ClientOptions {
             server_name: None,
             in_app_include: vec![],
             in_app_exclude: vec![],
-            integrations: VecDeque::new(),
+            integrations: vec![],
             default_integrations: true,
             before_send: None,
             before_breadcrumb: None,

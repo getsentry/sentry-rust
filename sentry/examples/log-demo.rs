@@ -7,11 +7,8 @@ fn main() {
         sentry_log::LogIntegration::default().with_env_logger_dest(Some(log_builder.build()));
 
     let _sentry = sentry::init(
-        sentry::ClientOptions {
-            release: sentry::release_name!(),
-            ..Default::default()
-        }
-        .add_integration(log_integration),
+        sentry::ClientOptions::configure(|o| o.set_release(sentry::release_name!()))
+            .add_integration(log_integration),
     );
 
     debug!("System is booting");

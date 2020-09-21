@@ -93,6 +93,8 @@ impl Client {
     /// If the DSN on the options is set to `None` the client will be entirely
     /// disabled.
     pub fn with_options(mut options: ClientOptions) -> Client {
+        #![allow(deprecated)]
+
         // Create the main hub eagerly to avoid problems with the background thread
         // See https://github.com/getsentry/sentry-rust/issues/237
         Hub::with(|_| {});
@@ -192,6 +194,7 @@ impl Client {
             event.platform = "native".into();
         }
 
+        #[allow(deprecated)]
         if let Some(ref func) = self.options.before_send {
             sentry_debug!("invoking before_send callback");
             let id = event.event_id;

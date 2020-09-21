@@ -1,13 +1,11 @@
 fn main() {
-    let _sentry = sentry::init(sentry::ClientOptions {
+    let _sentry = sentry::init(sentry::ClientOptions::configure(|o|
         // release health requires a release to be set
-        release: sentry::release_name!(),
-        debug: true,
+        o.set_release(sentry::release_name!())
+        .set_debug(true)
         // session tracking is enabled by default, but we want to explicitly
         // create the session
-        auto_session_tracking: false,
-        ..Default::default()
-    });
+        .set_auto_session_tracking(false)));
 
     let handle = std::thread::spawn(|| {
         // this session will be set to crashed

@@ -97,16 +97,15 @@ fn test_factory() {
     let events = Arc::new(AtomicUsize::new(0));
 
     let events_for_options = events.clone();
-    let options = sentry::ClientOptions {
-        dsn: "http://foo@example.com/42".parse().ok(),
-        transport: Some(Arc::new(
+    let dsn = "http://foo@example.com/42".parse().unwrap();
+    let options = sentry::ClientOptions::configure(|o| {
+        o.set_dsn(dsn).set_transport(
             move |opts: &sentry::ClientOptions| -> Arc<dyn sentry::Transport> {
-                assert_eq!(opts.dsn.as_ref().unwrap().host(), "example.com");
+                assert_eq!(opts.dsn().unwrap().host(), "example.com");
                 Arc::new(TestTransport(events_for_options.clone()))
             },
-        )),
-        ..Default::default()
-    };
+        )
+    });
 
     sentry::Hub::run(
         Arc::new(sentry::Hub::new(

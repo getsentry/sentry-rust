@@ -1,7 +1,5 @@
 #![cfg(feature = "test")]
 
-use std::sync::Arc;
-
 #[test]
 fn test_event_processors() {
     let events = sentry::test::with_captured_events(|| {
@@ -52,11 +50,10 @@ fn test_before_callbacks() {
             });
             sentry::capture_message("Hello World!", sentry::Level::Warning);
         },
-        sentry::ClientOptions {
-            before_send: Some(Arc::new(Box::new(before_send))),
-            before_breadcrumb: Some(Arc::new(Box::new(before_breadcrumb))),
-            ..Default::default()
-        },
+        sentry::ClientOptions::configure(|o| {
+            o.set_before_send(before_send)
+                .set_before_breadcrumb(before_breadcrumb)
+        }),
     );
 
     assert_eq!(events.len(), 1);
@@ -85,10 +82,7 @@ fn test_before_event_callback_drop() {
             });
             sentry::capture_message("Hello World!", sentry::Level::Warning);
         },
-        sentry::ClientOptions {
-            before_send: Some(Arc::new(Box::new(before_send))),
-            ..Default::default()
-        },
+        sentry::ClientOptions::configure(|o| o.set_before_send(before_send)),
     );
 
     assert_eq!(events.len(), 0);
@@ -109,10 +103,7 @@ fn test_before_breadcrumb_callback_drop() {
             });
             sentry::capture_message("Hello World!", sentry::Level::Warning);
         },
-        sentry::ClientOptions {
-            before_breadcrumb: Some(Arc::new(Box::new(before_breadcrumb))),
-            ..Default::default()
-        },
+        sentry::ClientOptions::configure(|o| o.set_before_breadcrumb(before_breadcrumb)),
     );
 
     assert_eq!(events.len(), 1);

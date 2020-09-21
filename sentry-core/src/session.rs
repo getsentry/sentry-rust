@@ -125,7 +125,7 @@ mod tests {
     {
         crate::test::with_captured_envelopes_options(
             f,
-            crate::ClientOptions::configure(|opts| opts.set_release("some-release".into())),
+            crate::ClientOptions::configure(|opts| opts.set_release(Some("some-release".into()))),
         )
     }
 
@@ -195,7 +195,8 @@ mod tests {
                 }
             },
             crate::ClientOptions::configure(|opts| {
-                opts.set_release("some-release".into()).set_sample_rate(0.5)
+                opts.set_release(Some("some-release".into()))
+                    .set_sample_rate(0.5)
             }),
         );
         assert!(envelopes.len() > 25);
