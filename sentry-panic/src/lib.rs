@@ -46,6 +46,14 @@ pub struct PanicIntegration {
     extractors: Vec<Box<PanicExtractor>>,
 }
 
+impl std::fmt::Debug for PanicIntegration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PanicIntegration")
+            .field("extractors", &self.extractors.len())
+            .finish()
+    }
+}
+
 static INIT: Once = Once::new();
 
 impl Integration for PanicIntegration {

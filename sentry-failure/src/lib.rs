@@ -41,7 +41,7 @@ use sentry_core::types::Uuid;
 use sentry_core::{ClientOptions, Hub, Integration};
 
 /// The Sentry Failure Integration.
-#[derive(Default)]
+#[derive(Debug, Default)]
 #[deprecated = "The `failure` integration is deprecated and will be removed in the future."]
 pub struct FailureIntegration;
 
