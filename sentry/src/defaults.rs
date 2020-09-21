@@ -1,3 +1,4 @@
+#![cfg_attr(feature = "error-chain", allow(deprecated))]
 #![cfg_attr(feature = "failure", allow(deprecated))]
 
 use std::env;
@@ -20,10 +21,11 @@ use crate::{ClientOptions, Integration};
 ///
 /// 1. [`AttachStacktraceIntegration`] (`feature = "backtrace"`)
 /// 2. [`DebugImagesIntegration`] (`feature = "debug-images"`)
-/// 3. [`ContextIntegration`] (`feature = "contexts"`)
-/// 4. [`FailureIntegration`] (`feature = "failure"`)
-/// 5. [`PanicIntegration`] (`feature = "panic"`)
-/// 6. [`ProcessStacktraceIntegration`] (`feature = "backtrace"`)
+/// 3. [`ErrorChainIntegration`] (`feature = "error-chain"`)
+/// 4. [`ContextIntegration`] (`feature = "contexts"`)
+/// 5. [`FailureIntegration`] (`feature = "failure"`)
+/// 6. [`PanicIntegration`] (`feature = "panic"`)
+/// 7. [`ProcessStacktraceIntegration`] (`feature = "backtrace"`)
 ///
 /// Some integrations can be used multiple times, however, the
 /// [`PanicIntegration`] can not, and it will not pick up custom panic
@@ -44,6 +46,7 @@ use crate::{ClientOptions, Integration};
 ///
 /// [`AttachStacktraceIntegration`]: integrations/backtrace/struct.AttachStacktraceIntegration.html
 /// [`DebugImagesIntegration`]: integrations/debug_images/struct.DebugImagesIntegration.html
+/// [`ErrorChainIntegration`]: integrations/error_chain/struct.ErrorChainIntegration.html
 /// [`ContextIntegration`]: integrations/contexts/struct.ContextIntegration.html
 /// [`FailureIntegration`]: integrations/failure/struct.FailureIntegration.html
 /// [`PanicIntegration`]: integrations/panic/struct.PanicIntegration.html
@@ -66,6 +69,12 @@ pub fn apply_defaults(mut opts: ClientOptions) -> ClientOptions {
         {
             integrations.push(Arc::new(
                 sentry_debug_images::DebugImagesIntegration::default(),
+            ))
+        }
+        #[cfg(feature = "error-chain")]
+        {
+            integrations.push(Arc::new(
+                sentry_error_chain::ErrorChainIntegration::default(),
             ))
         }
         #[cfg(feature = "contexts")]

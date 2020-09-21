@@ -54,6 +54,12 @@ This workspace contains various crates that provide support for logging events a
 
   An integration that adds a list of loaded libraries to events.
 
+- [sentry-error-chain](./sentry-error-chain)
+  [![crates.io](https://img.shields.io/crates/v/sentry-error-chain.svg)](https://crates.io/crates/sentry-error-chain)
+  [![docs.rs](https://docs.rs/sentry-error-chain/badge.svg)](https://docs.rs/sentry-error-chain)
+
+  An integration for the `error-chain` crate. This is _deprecated_ and may be completely removed in the future.
+
 - [sentry-failure](./sentry-failure)
   [![crates.io](https://img.shields.io/crates/v/sentry-failure.svg)](https://crates.io/crates/sentry-failure)
   [![docs.rs](https://docs.rs/sentry-failure/badge.svg)](https://docs.rs/sentry-failure)

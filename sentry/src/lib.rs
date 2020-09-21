@@ -56,6 +56,7 @@
 //!
 //! * `anyhow`: Enables support for the `anyhow` crate.
 //! * `debug-images`: Attaches a list of loaded libraries to events (currently only supported on unix).
+//! * `error-chain`: Enables support for the `error-chain` crate.
 //! * `failure`: Enables support for the `failure` crate.
 //! * `log`: Enables support for the `log` crate.
 //! * `env_logger`: Enables support for the `log` crate with additional `env_logger` support.
@@ -106,6 +107,10 @@ pub mod integrations {
     #[cfg(feature = "debug-images")]
     #[doc(inline)]
     pub use sentry_debug_images as debug_images;
+    #[cfg(feature = "error-chain")]
+    #[doc(inline)]
+    #[deprecated = "The `error_chain` integration is deprecated and will be removed in the future."]
+    pub use sentry_error_chain as error_chain;
     #[cfg(feature = "failure")]
     #[doc(inline)]
     #[deprecated = "The `failure` integration is deprecated and will be removed in the future."]

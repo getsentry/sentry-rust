@@ -25,6 +25,7 @@ panic = ["sentry-panic"]
 # other integrations
 anyhow = ["sentry-anyhow"]
 debug-images = ["sentry-debug-images"]
+error-chain = ["sentry-error-chain"]
 failure = ["sentry-failure"]
 log = ["sentry-log"]
 env_logger = ["sentry-log", "sentry-log/env_logger"]
@@ -46,6 +47,7 @@ sentry-anyhow = { version = "0.20.1", path = "../sentry-anyhow", optional = true
 sentry-backtrace = { version = "0.20.1", path = "../sentry-backtrace", optional = true }
 sentry-contexts = { version = "0.20.1", path = "../sentry-contexts", optional = true }
 sentry-debug-images = { version = "0.20.1", path = "../sentry-debug-images", optional = true }
+sentry-error-chain = { version = "0.20.1", path = "../sentry-error-chain", optional = true }
 sentry-failure = { version = "0.20.1", path = "../sentry-failure", optional = true }
 sentry-log = { version = "0.20.1", path = "../sentry-log", optional = true }
 sentry-panic = { version = "0.20.1", path = "../sentry-panic", optional = true }
@@ -61,6 +63,7 @@ serde_json = { version = "1.0.48", optional = true }
 
 [dev-dependencies]
 sentry-anyhow = { version = "0.20.1", path = "../sentry-anyhow" }
+sentry-error-chain = { version = "0.20.1", path = "../sentry-error-chain" }
 sentry-failure = { version = "0.20.1", path = "../sentry-failure" }
 sentry-log = { version = "0.20.1", path = "../sentry-log", features = ["env_logger"] }
 log_ = { package = "log", version = "0.4.8", features = ["std"] }
@@ -69,4 +72,5 @@ actix-web = { version = "0.7.19", default-features = false }
 tokio = { version = "0.2", features = ["macros"] }
 failure_ = { package = "failure", version = "0.1.6" }
 pretty_env_logger = "0.4.0"
+error-chain_ = { package = "error-chain", version = "0.12.1" }
 anyhow_ = { package = "anyhow", version = "1.0.30" }

@@ -7,6 +7,7 @@ members = [
     "sentry-contexts",
     "sentry-core",
     "sentry-debug-images",
+    "sentry-error-chain",
     "sentry-failure",
     "sentry-log",
     "sentry-panic",
