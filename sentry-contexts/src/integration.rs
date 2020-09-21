@@ -11,6 +11,7 @@ use crate::utils::{device_context, os_context, rust_context, server_name};
 /// See the [Contexts Interface] documentation for more info.
 ///
 /// [Contexts Interface]: https://develop.sentry.dev/sdk/event-payloads/contexts/
+#[derive(Debug)]
 pub struct ContextIntegration {
     /// Add `os` context, enabled by default.
     pub add_os: bool,

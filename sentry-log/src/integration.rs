@@ -61,6 +61,24 @@ impl Default for LogIntegration {
     }
 }
 
+impl std::fmt::Debug for LogIntegration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        #[derive(Debug)]
+        struct DestLog;
+        let dest_log = self.dest_log.as_ref().map(|_| DestLog);
+
+        f.debug_struct("LogIntegration")
+            .field("global_filter", &self.global_filter)
+            .field("filter", &self.filter)
+            .field("emit_breadcrumbs", &self.emit_breadcrumbs)
+            .field("emit_error_events", &self.emit_error_events)
+            .field("emit_warning_events", &self.emit_warning_events)
+            .field("attach_stacktraces", &self.attach_stacktraces)
+            .field("dest_log", &dest_log)
+            .finish()
+    }
+}
+
 impl LogIntegration {
     /// Initializes an env logger as destination target.
     #[cfg(feature = "env_logger")]

@@ -55,6 +55,17 @@ impl Default for SlogIntegration {
     }
 }
 
+impl std::fmt::Debug for SlogIntegration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        #[derive(Debug)]
+        struct SlogMapper;
+        let mapper = self.mapper.as_ref().map(|_| SlogMapper);
+        f.debug_struct("SlogIntegration")
+            .field("mapper", &mapper)
+            .finish()
+    }
+}
+
 impl SlogIntegration {
     /// Create a new `slog` Integration.
     pub fn new() -> Self {
