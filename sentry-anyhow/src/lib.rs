@@ -44,7 +44,7 @@ impl Integration for AnyhowIntegration {
     }
 
     fn setup(&self, cfg: &mut ClientOptions) {
-        cfg.in_app_exclude.push("anyhow::");
+        cfg.add_in_app_exclude(&["anyhow::"]);
     }
 }
 

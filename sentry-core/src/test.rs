@@ -40,7 +40,7 @@ lazy_static::lazy_static! {
 ///
 /// let transport = TestTransport::new();
 /// let options = ClientOptions::configure(|o| {
-///     o.set_dsn(("https://public@example.com/1".parse().unwrap())
+///     o.set_dsn("https://public@example.com/1".parse().unwrap())
 ///     .set_transport(transport.clone())
 /// });
 /// Hub::current().bind_client(Some(Arc::new(options.into())));
