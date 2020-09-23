@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use std::borrow::Cow;
 
 use sentry_core::protocol::map::Entry;
@@ -14,10 +16,13 @@ use crate::utils::{device_context, os_context, rust_context, server_name};
 #[derive(Debug)]
 pub struct ContextIntegration {
     /// Add `os` context, enabled by default.
+    #[deprecated = "use builder functions instead; direct field access will be removed soon"]
     pub add_os: bool,
     /// Add `rust` context, enabled by default.
+    #[deprecated = "use builder functions instead; direct field access will be removed soon"]
     pub add_rust: bool,
     /// Add `device` context, enabled by default.
+    #[deprecated = "use builder functions instead; direct field access will be removed soon"]
     pub add_device: bool,
 }
 
@@ -35,6 +40,23 @@ impl ContextIntegration {
     /// Create a new Context Integration.
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Add `os` context, enabled by default.
+    pub fn add_os(mut self, add_os: bool) -> Self {
+        self.add_os = add_os;
+        self
+    }
+    /// Add `rust` context, enabled by default.
+    pub fn add_rust(mut self, add_rust: bool) -> Self {
+        self.add_rust = add_rust;
+        self
+    }
+
+    /// Add `device` context, enabled by default.
+    pub fn add_device(mut self, add_device: bool) -> Self {
+        self.add_device = add_device;
+        self
     }
 }
 

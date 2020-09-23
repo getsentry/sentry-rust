@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use std::borrow::Cow;
 
 use sentry_core::protocol::{DebugMeta, Event};
@@ -6,6 +8,7 @@ use sentry_core::{ClientOptions, Integration};
 /// The Sentry Debug Images Integration.
 pub struct DebugImagesIntegration {
     /// A custom filter for which Events should get debug images.
+    #[deprecated = "use builder functions instead; direct field access will be removed soon"]
     pub filter: Box<dyn Fn(&Event<'static>) -> bool + Send + Sync>,
 }
 
@@ -13,6 +16,17 @@ impl DebugImagesIntegration {
     /// Creates a new Debug Images Integration.
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Sets a custom filter function.
+    ///
+    /// The filter specified which Events should get debug images.
+    pub fn filter<F>(mut self, filter: F) -> Self
+    where
+        F: Fn(&Event<'static>) -> bool + Send + Sync + 'static,
+    {
+        self.filter = Box::new(filter);
+        self
     }
 }
 
