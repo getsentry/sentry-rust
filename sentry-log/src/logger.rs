@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use crate::converters::{breadcrumb_from_record, event_from_record};
 use crate::LogIntegration;
 
