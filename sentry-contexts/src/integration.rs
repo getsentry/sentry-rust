@@ -1,5 +1,3 @@
-#![allow(deprecated)]
-
 use std::borrow::Cow;
 
 use sentry_core::protocol::map::Entry;
@@ -15,15 +13,9 @@ use crate::utils::{device_context, os_context, rust_context, server_name};
 /// [Contexts Interface]: https://develop.sentry.dev/sdk/event-payloads/contexts/
 #[derive(Debug)]
 pub struct ContextIntegration {
-    /// Add `os` context, enabled by default.
-    #[deprecated = "use builder functions instead; direct field access will be removed soon"]
-    pub add_os: bool,
-    /// Add `rust` context, enabled by default.
-    #[deprecated = "use builder functions instead; direct field access will be removed soon"]
-    pub add_rust: bool,
-    /// Add `device` context, enabled by default.
-    #[deprecated = "use builder functions instead; direct field access will be removed soon"]
-    pub add_device: bool,
+    add_os: bool,
+    add_rust: bool,
+    add_device: bool,
 }
 
 impl Default for ContextIntegration {
