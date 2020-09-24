@@ -11,16 +11,11 @@ Sentry integration for log and env_logger crates.
 """
 edition = "2018"
 
-[package.metadata.docs.rs]
-all-features = true
-
 [dependencies]
 sentry-core = { version = "0.20.1", path = "../sentry-core" }
 sentry-backtrace = { version = "0.20.1", path = "../sentry-backtrace" }
 log = { version = "0.4.8", features = ["std"] }
-env_logger = { version = "0.7.1", optional = true }
 
 [dev-dependencies]
 sentry = { version = "0.20.1", path = "../sentry", default-features = false, features = ["test"] }
 pretty_env_logger = "0.4.0"
-env_logger = "0.7.1"

@@ -8,21 +8,19 @@
 //! # Examples
 //!
 //! ```
-//! let log_integration = sentry_log::LogIntegration::default();
-//! let _sentry = sentry::init(sentry::ClientOptions::default().add_integration(log_integration));
-//!
-//! log::info!("Generates a breadcrumb");
-//! ```
-//!
-//! Or optionally with env_logger support:
-//!
-//! ```
 //! let mut log_builder = pretty_env_logger::formatted_builder();
 //! log_builder.parse_filters("info");
-//! let log_integration =
-//!     sentry_log::LogIntegration::default().with_env_logger_dest(Some(log_builder.build()));
-//! let _sentry = sentry::init(sentry::ClientOptions::default().add_integration(log_integration));
+//! let logger = sentry_log::SentryLogger::with_dest(log_builder.build());
 //!
+//! log::set_boxed_logger(Box::new(logger))
+//!     .map(|()| log::set_max_level(log::LevelFilter::Info))
+//!     .unwrap();
+//!
+//! let log_integration = sentry_log::LogIntegration::default();
+//! let _sentry = sentry::init(sentry::ClientOptions::new()
+//!     .add_integration(sentry_log::LogIntegration::new()));
+//!
+//! log::info!("Generates a breadcrumb");
 //! log::error!("Generates an event");
 //! ```
 
@@ -34,6 +32,6 @@ mod converters;
 mod integration;
 mod logger;
 
-pub use converters::{breadcrumb_from_record, event_from_record};
+pub use converters::*;
 pub use integration::LogIntegration;
-pub use logger::Logger;
+pub use logger::{NoopLogger, SentryLogger};

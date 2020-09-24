@@ -1,8 +1,8 @@
-use sentry_backtrace::current_stacktrace;
-use sentry_core::protocol::{Event, Exception};
+use sentry_core::protocol::{Event, Exception, Frame, Stacktrace};
 use sentry_core::{Breadcrumb, Level};
 
-fn convert_log_level(level: log::Level) -> Level {
+/// Converts a [`log::Level`] to a Sentry [`Level`]
+pub fn convert_log_level(level: log::Level) -> Level {
     match level {
         log::Level::Error => Level::Error,
         log::Level::Warn => Level::Warning,
@@ -11,7 +11,7 @@ fn convert_log_level(level: log::Level) -> Level {
     }
 }
 
-/// Creates a breadcrumb from a given log record.
+/// Creates a [`Breadcrumb`] from a given [`log::Record`].
 pub fn breadcrumb_from_record(record: &log::Record<'_>) -> Breadcrumb {
     Breadcrumb {
         ty: "log".into(),
@@ -22,25 +22,34 @@ pub fn breadcrumb_from_record(record: &log::Record<'_>) -> Breadcrumb {
     }
 }
 
-/// Creates an event from a given log record.
-///
-/// If `with_stacktrace` is set to `true` then a stacktrace is attached
-/// from the current frame.
-pub fn event_from_record(record: &log::Record<'_>, with_stacktrace: bool) -> Event<'static> {
+/// Creates an [`Event`] from a given [`log::Record`].
+pub fn event_from_record(record: &log::Record<'_>) -> Event<'static> {
     Event {
         logger: Some(record.target().into()),
         level: convert_log_level(record.level()),
-        exception: vec![Exception {
-            ty: record.target().into(),
-            value: Some(format!("{}", record.args())),
-            stacktrace: if with_stacktrace {
-                current_stacktrace()
-            } else {
-                None
-            },
-            ..Default::default()
-        }]
-        .into(),
+        message: Some(format!("{}", record.args())),
         ..Default::default()
     }
+}
+
+/// Creates an exception [`Event`] from a given [`log::Record`].
+pub fn exception_from_record(record: &log::Record<'_>) -> Event<'static> {
+    let mut event = event_from_record(record);
+    let frame = Frame {
+        module: record.module_path().map(ToOwned::to_owned),
+        filename: record.file().map(ToOwned::to_owned),
+        lineno: record.line().map(Into::into),
+        ..Default::default()
+    };
+    let exception = Exception {
+        ty: record.target().into(),
+        value: event.message.clone(),
+        stacktrace: Some(Stacktrace {
+            frames: vec![frame],
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+    event.exception = vec![exception].into();
+    event
 }

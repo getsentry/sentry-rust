@@ -30,8 +30,8 @@ pub enum RecordMapping {
 /// The default slog filter.
 ///
 /// By default, an exception event is captured for `critical` logs,
-/// a regular event for `error` and `warning` logs, and breadcrumbs for
-/// everything else.
+/// a regular event for `error`, a breadcrumb for `warning` and `info`, and
+/// `debug` and `trace` logs are ignored.
 pub fn default_filter(level: slog::Level) -> LevelFilter {
     match level {
         slog::Level::Critical => LevelFilter::Exception,
@@ -46,6 +46,9 @@ pub struct SentryDrain<D: Drain> {
     filter: Box<dyn Fn(slog::Level) -> LevelFilter + Send + Sync>,
     mapper: Option<Box<dyn Fn(&Record, &OwnedKVList) -> RecordMapping + Send + Sync>>,
 }
+
+impl<D: slog::SendSyncRefUnwindSafeDrain> std::panic::RefUnwindSafe for SentryDrain<D> {}
+impl<D: slog::SendSyncUnwindSafeDrain> std::panic::UnwindSafe for SentryDrain<D> {}
 
 impl<D: Drain> SentryDrain<D> {
     /// Creates a new `SentryDrain`, wrapping a `slog::Drain`.
