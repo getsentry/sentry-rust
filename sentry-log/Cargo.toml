@@ -13,7 +13,6 @@ edition = "2018"
 
 [dependencies]
 sentry-core = { version = "0.20.1", path = "../sentry-core" }
-sentry-backtrace = { version = "0.20.1", path = "../sentry-backtrace" }
 log = { version = "0.4.8", features = ["std"] }
 
 [dev-dependencies]
