@@ -17,7 +17,7 @@
 //!     .filter(|event| event.level >= Level::Warning);
 //! ```
 //!
-//! [`Event`]: sentry_core::Event
+//! [`Event`]: sentry_core::protocol::Event
 
 #![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
 #![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
