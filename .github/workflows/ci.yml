@@ -23,7 +23,7 @@ jobs:
           override: true
           components: rustfmt, clippy
 
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@master
         with:
           key: lints
 
@@ -60,19 +60,11 @@ jobs:
           toolchain: ${{ matrix.rust }}
           override: true
 
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@master
         with:
           key: check
 
       - run: make checkall
-
-      # Workaround for actions/cache#403 (https://github.com/actions/cache/issues/403)
-      #
-      # rust-lang/cargo#8603 has the exact bug that we run into
-      # (https://github.com/rust-lang/cargo/issues/8603)
-      - name: Flush the disk cache for macOS
-        if: matrix.os == 'macos-latest'
-        run: sudo /usr/sbin/purge
 
   test:
     strategy:
@@ -95,7 +87,7 @@ jobs:
           toolchain: ${{ matrix.rust }}
           override: true
 
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@master
         with:
           key: test
 
@@ -104,14 +96,6 @@ jobs:
         with:
           command: test
           args: --workspace --all-features
-
-      # Workaround for actions/cache#403 (https://github.com/actions/cache/issues/403)
-      #
-      # rust-lang/cargo#8603 has the exact bug that we run into
-      # (https://github.com/rust-lang/cargo/issues/8603)
-      - name: Flush the disk cache for macOS
-        if: matrix.os == 'macos-latest'
-        run: sudo /usr/sbin/purge
 
   fast-MSRV:
     strategy:
@@ -134,7 +118,7 @@ jobs:
           toolchain: ${{ matrix.rust }}
           override: true
 
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@master
         with:
           key: fast-MSRV
 
