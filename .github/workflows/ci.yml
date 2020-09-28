@@ -1,9 +1,3 @@
-# Notes on Caching:
-#
-# Caches are keyed by OS, rustc version, job and Cargo.toml hash.
-# We additionally cache the `Cargo.lock` file, as that is not being committed
-# directly to git.
-
 name: CI
 
 on:
@@ -17,14 +11,11 @@ jobs:
   lints:
     name: Lints
     runs-on: ubuntu-latest
-    env:
-      cache-name: lints
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
 
       - name: Install stable toolchain
-        id: toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -32,16 +23,9 @@ jobs:
           override: true
           components: rustfmt, clippy
 
-      - uses: actions/cache@v2
+      - uses: Swatinem/rust-cache@v1
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-            Cargo.lock
-          key: ${{ runner.os }}-${{ steps.toolchain.outputs.rustc_hash }}-${{ env.cache-name }}-${{ hashFiles('**/Cargo.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ steps.toolchain.outputs.rustc_hash }}-${{ env.cache-name }}-
+          key: lints
 
       - name: Run cargo fmt
         uses: actions-rs/cargo@v1
@@ -65,14 +49,11 @@ jobs:
     name: checkall using ${{ matrix.rust }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
 
-    env:
-      cache-name: check
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
 
       - name: Install rust toolchain
-        id: toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -80,22 +61,15 @@ jobs:
           override: true
 
       # workaround for: https://github.com/actions/cache/issues/403
-      - name: Install GNU tar (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          brew install gnu-tar
-          echo "::add-path::/usr/local/opt/gnu-tar/libexec/gnubin"
+      # - name: Install GNU tar (macOS)
+      #   if: runner.os == 'macOS'
+      #   run: |
+      #     brew install gnu-tar
+      #     echo "::add-path::/usr/local/opt/gnu-tar/libexec/gnubin"
 
-      - uses: actions/cache@v2
+      - uses: Swatinem/rust-cache@v1
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-            Cargo.lock
-          key: ${{ runner.os }}-${{ steps.toolchain.outputs.rustc_hash }}-${{ env.cache-name }}-${{ hashFiles('**/Cargo.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ steps.toolchain.outputs.rustc_hash }}-${{ env.cache-name }}-
+          key: check
 
       - run: make checkall
 
@@ -109,14 +83,11 @@ jobs:
     name: testall using ${{ matrix.rust }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
 
-    env:
-      cache-name: test
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
 
       - name: Install rust toolchain
-        id: toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -124,22 +95,15 @@ jobs:
           override: true
 
       # workaround for: https://github.com/actions/cache/issues/403
-      - name: Install GNU tar (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          brew install gnu-tar
-          echo "::add-path::/usr/local/opt/gnu-tar/libexec/gnubin"
+      #- name: Install GNU tar (macOS)
+      #  if: runner.os == 'macOS'
+      #  run: |
+      #    brew install gnu-tar
+      #    echo "::add-path::/usr/local/opt/gnu-tar/libexec/gnubin"
 
-      - uses: actions/cache@v2
+      - uses: Swatinem/rust-cache@v1
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-            Cargo.lock
-          key: ${{ runner.os }}-${{ steps.toolchain.outputs.rustc_hash }}-${{ env.cache-name }}-${{ hashFiles('**/Cargo.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ steps.toolchain.outputs.rustc_hash }}-${{ env.cache-name }}-
+          key: test
 
       - name: Run cargo test
         uses: actions-rs/cargo@v1
@@ -157,30 +121,20 @@ jobs:
     name: checkfast/testfast using ${{ matrix.rust }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
 
-    env:
-      cache-name: fast-MSRV
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
 
       - name: Install rust toolchain
-        id: toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: ${{ matrix.rust }}
           override: true
 
-      - uses: actions/cache@v2
+      - uses: Swatinem/rust-cache@v1
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-            Cargo.lock
-          key: ${{ runner.os }}-${{ steps.toolchain.outputs.rustc_hash }}-${{ env.cache-name }}-${{ hashFiles('**/Cargo.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ steps.toolchain.outputs.rustc_hash }}-${{ env.cache-name }}
+          key: fast-MSRV
 
       - run: make checkfast
 
