@@ -23,7 +23,7 @@ jobs:
           override: true
           components: rustfmt, clippy
 
-      - uses: Swatinem/rust-cache@master
+      - uses: Swatinem/rust-cache@v1
         with:
           key: lints
 
@@ -60,7 +60,7 @@ jobs:
           toolchain: ${{ matrix.rust }}
           override: true
 
-      - uses: Swatinem/rust-cache@master
+      - uses: Swatinem/rust-cache@v1
         with:
           key: check
 
@@ -87,7 +87,7 @@ jobs:
           toolchain: ${{ matrix.rust }}
           override: true
 
-      - uses: Swatinem/rust-cache@master
+      - uses: Swatinem/rust-cache@v1
         with:
           key: test
 
@@ -118,7 +118,7 @@ jobs:
           toolchain: ${{ matrix.rust }}
           override: true
 
-      - uses: Swatinem/rust-cache@master
+      - uses: Swatinem/rust-cache@v1
         with:
           key: fast-MSRV
 
