@@ -49,6 +49,9 @@ jobs:
     name: checkall using ${{ matrix.rust }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
 
+    env:
+      RUSTFLAGS: -Dwarnings
+
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
@@ -106,6 +109,9 @@ jobs:
 
     name: checkfast/testfast using ${{ matrix.rust }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+
+    env:
+      RUSTFLAGS: -Dwarnings
 
     steps:
       - name: Checkout sources
