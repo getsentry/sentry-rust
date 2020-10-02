@@ -22,8 +22,6 @@ use std::io::{Cursor, Read};
 #[cfg(feature = "surf")]
 use futures::executor;
 #[cfg(feature = "surf")]
-use http_client::native::NativeClient;
-#[cfg(feature = "surf")]
 use surf_::Client as SurfClient;
 
 use sentry_core::sentry_debug;
@@ -424,7 +422,7 @@ implement_http_transport! {
         signal: Arc<Condvar>,
         shutdown_immediately: Arc<AtomicBool>,
         queue_size: Arc<Mutex<usize>>,
-        http_client: SurfClient<NativeClient>,
+        http_client: SurfClient,
     ) {
         let dsn = options.dsn.clone().unwrap();
         let user_agent = options.user_agent.to_string();
@@ -464,11 +462,11 @@ implement_http_transport! {
 
                     let fut = http_client
                         .post(url.as_str())
-                        .set_header(
+                        .header(
                             "X-Sentry-Auth",
                             dsn.to_auth(Some(&user_agent)).to_string()
                         )
-                        .body_bytes(body);
+                        .body(body);
 
                     match executor::block_on(fut) {
                         Ok(resp) => {
@@ -499,8 +497,8 @@ implement_http_transport! {
 
     fn http_client(
         _options: &ClientOptions,
-        client: Option<SurfClient<NativeClient>>
-    ) -> SurfClient<NativeClient> {
+        client: Option<SurfClient>
+    ) -> SurfClient {
         client.unwrap_or_else(SurfClient::new)
     }
 }
