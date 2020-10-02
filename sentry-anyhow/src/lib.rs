@@ -12,7 +12,7 @@
 //! let _sentry =
 //!     sentry::init(sentry::ClientOptions::new().add_integration(AnyhowIntegration));
 //!
-//! if let Err(err) = match function_that_might_fail() {
+//! if let Err(err) = function_that_might_fail() {
 //!     capture_anyhow(&err);
 //! }
 //! ```
