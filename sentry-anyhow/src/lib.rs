@@ -3,20 +3,18 @@
 //! # Example
 //!
 //! ```no_run
-//! # fn function_that_might_fail() -> anyhow::Result<()> { Ok(()) }
 //! use sentry_anyhow::{capture_anyhow, AnyhowIntegration};
-//! # fn test() -> anyhow::Result<()> {
+//!
+//! fn function_that_might_fail() -> anyhow::Result<()> {
+//!     Err(anyhow::anyhow!("some kind of error"))
+//! }
+//!
 //! let _sentry =
 //!     sentry::init(sentry::ClientOptions::new().add_integration(AnyhowIntegration));
 //!
-//! let result = match function_that_might_fail() {
-//!     Ok(result) => result,
-//!     Err(err) => {
-//!         capture_anyhow(&err);
-//!         return Err(err);
-//!     }
-//! };
-//! # Ok(()) }
+//! if let Err(err) = match function_that_might_fail() {
+//!     capture_anyhow(&err);
+//! }
 //! ```
 
 #![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]

@@ -5,7 +5,7 @@ use sentry_core::{ClientOptions, Integration};
 
 /// The Sentry Debug Images Integration.
 pub struct DebugImagesIntegration {
-    filter: Box<dyn Fn(&Event<'static>) -> bool + Send + Sync>,
+    filter: Box<dyn Fn(&Event<'_>) -> bool + Send + Sync>,
 }
 
 impl DebugImagesIntegration {
@@ -19,7 +19,7 @@ impl DebugImagesIntegration {
     /// The filter specified which [`Event`]s should get debug images.
     pub fn filter<F>(mut self, filter: F) -> Self
     where
-        F: Fn(&Event<'static>) -> bool + Send + Sync + 'static,
+        F: Fn(&Event<'_>) -> bool + Send + Sync + 'static,
     {
         self.filter = Box::new(filter);
         self
