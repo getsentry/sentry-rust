@@ -23,6 +23,20 @@
 //! log::info!("Generates a breadcrumb");
 //! log::error!("Generates an event");
 //! ```
+//!
+//! Or one might also set an explicit filter, to customize how to treat log
+//! records:
+//!
+//! ```
+//! use sentry_log::LogFilter;
+//!
+//! let logger = sentry_log::SentryLogger::new().filter(|md| {
+//!     match md.level() {
+//!         log::Level::Error => LogFilter::Event,
+//!         _ => LogFilter::Ignore,
+//!     }
+//! });
+//! ```
 
 #![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
 #![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
@@ -34,4 +48,4 @@ mod logger;
 
 pub use converters::*;
 pub use integration::LogIntegration;
-pub use logger::{NoopLogger, SentryLogger};
+pub use logger::*;

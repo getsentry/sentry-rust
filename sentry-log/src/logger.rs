@@ -5,7 +5,7 @@ use crate::converters::{breadcrumb_from_record, event_from_record, exception_fro
 
 /// The Action that Sentry should perform for a [`log::Metadata`].
 #[derive(Debug)]
-pub enum LevelFilter {
+pub enum LogFilter {
     /// Ignore the [`Record`].
     Ignore,
     /// Create a [`Breadcrumb`] from this [`Record`].
@@ -32,11 +32,11 @@ pub enum RecordMapping {
 ///
 /// By default, an exception event is captured for `error`, a breadcrumb for
 /// `warning` and `info`, and `debug` and `trace` logs are ignored.
-pub fn default_filter(metadata: &log::Metadata) -> LevelFilter {
+pub fn default_filter(metadata: &log::Metadata) -> LogFilter {
     match metadata.level() {
-        log::Level::Error => LevelFilter::Exception,
-        log::Level::Warn | log::Level::Info => LevelFilter::Breadcrumb,
-        log::Level::Debug | log::Level::Trace => LevelFilter::Ignore,
+        log::Level::Error => LogFilter::Exception,
+        log::Level::Warn | log::Level::Info => LogFilter::Breadcrumb,
+        log::Level::Debug | log::Level::Trace => LogFilter::Ignore,
     }
 }
 
@@ -63,7 +63,7 @@ impl log::Log for NoopLogger {
 //#[derive(Debug)]
 pub struct SentryLogger<L: log::Log> {
     dest: L,
-    filter: Box<dyn Fn(&log::Metadata<'_>) -> LevelFilter + Send + Sync>,
+    filter: Box<dyn Fn(&log::Metadata<'_>) -> LogFilter + Send + Sync>,
     mapper: Option<Box<dyn Fn(&Record<'_>) -> RecordMapping + Send + Sync>>,
 }
 
@@ -100,7 +100,7 @@ impl<L: log::Log> SentryLogger<L> {
     /// their [`log::Metadata`].
     pub fn filter<F>(mut self, filter: F) -> Self
     where
-        F: Fn(&log::Metadata<'_>) -> LevelFilter + Send + Sync + 'static,
+        F: Fn(&log::Metadata<'_>) -> LogFilter + Send + Sync + 'static,
     {
         self.filter = Box::new(filter);
         self
@@ -123,7 +123,7 @@ impl<L: log::Log> log::Log for SentryLogger<L> {
     fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
         self.dest.enabled(metadata)
             || match (self.filter)(metadata) {
-                LevelFilter::Ignore => false,
+                LogFilter::Ignore => false,
                 _ => true,
             }
     }
@@ -132,12 +132,10 @@ impl<L: log::Log> log::Log for SentryLogger<L> {
         let item: RecordMapping = match &self.mapper {
             Some(mapper) => mapper(record),
             None => match (self.filter)(record.metadata()) {
-                LevelFilter::Ignore => RecordMapping::Ignore,
-                LevelFilter::Breadcrumb => {
-                    RecordMapping::Breadcrumb(breadcrumb_from_record(record))
-                }
-                LevelFilter::Event => RecordMapping::Event(event_from_record(record)),
-                LevelFilter::Exception => RecordMapping::Event(exception_from_record(record)),
+                LogFilter::Ignore => RecordMapping::Ignore,
+                LogFilter::Breadcrumb => RecordMapping::Breadcrumb(breadcrumb_from_record(record)),
+                LogFilter::Event => RecordMapping::Event(event_from_record(record)),
+                LogFilter::Exception => RecordMapping::Event(exception_from_record(record)),
             },
         };
 
