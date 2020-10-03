@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex, PoisonError, RwLock};
 use crate::protocol::{Breadcrumb, Context, Event, Level, User, Value};
 use crate::session::Session;
 use crate::Client;
+use sentry_types::protocol::v7::Span;
 
 #[derive(Debug)]
 pub struct Stack {
@@ -43,6 +44,7 @@ pub struct Scope {
     pub(crate) contexts: im::HashMap<String, Context>,
     pub(crate) event_processors: im::Vector<Arc<EventProcessor>>,
     pub(crate) session: Arc<Mutex<Option<Session>>>,
+    pub(crate) span: Option<Arc<Span>>,
 }
 
 impl fmt::Debug for Scope {
@@ -58,6 +60,7 @@ impl fmt::Debug for Scope {
             .field("contexts", &self.contexts)
             .field("event_processors", &self.event_processors.len())
             .field("session", &self.session)
+            .field("span", &self.span)
             .finish()
     }
 }
@@ -75,6 +78,7 @@ impl Default for Scope {
             contexts: Default::default(),
             event_processors: Default::default(),
             session: Default::default(),
+            span: Default::default(),
         }
     }
 }
@@ -210,6 +214,15 @@ impl Scope {
     /// Removes a extra.
     pub fn remove_extra(&mut self, key: &str) {
         self.extra.remove(key);
+    }
+
+    pub fn set_span(&mut self, span: &mut Span) {
+        if let Some(current_span) = &self.span {
+            span.trace_id = current_span.trace_id;
+            span.parent_span_id = Some(current_span.event_id.to_simple_ref().to_string());
+        } else {
+            self.span = Some(Arc::new(span.clone()));
+        }
     }
 
     /// Add an event processor to the scope.
