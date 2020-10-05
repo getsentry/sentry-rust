@@ -4,6 +4,7 @@ use uuid::Uuid;
 
 use super::v7::Event;
 use super::v7::SessionUpdate;
+use super::v7::Transaction;
 
 /// An Envelope Item.
 ///
@@ -22,6 +23,11 @@ pub enum EnvelopeItem {
     /// See the [Session Item documentation](https://develop.sentry.dev/sdk/envelopes/#session)
     /// for more details.
     SessionUpdate(SessionUpdate<'static>),
+    /// A Transaction Item.
+    ///
+    /// See the [Transaction Item documentation](https://develop.sentry.dev/sdk/envelopes/#transaction)
+    /// for more details.
+    Transaction(Transaction<'static>)
     // TODO:
     // * Attachment,
     // etc…
@@ -36,6 +42,12 @@ impl From<Event<'static>> for EnvelopeItem {
 impl From<SessionUpdate<'static>> for EnvelopeItem {
     fn from(session: SessionUpdate<'static>) -> Self {
         EnvelopeItem::SessionUpdate(session)
+    }
+}
+
+impl From<Transaction<'static>> for EnvelopeItem {
+    fn from(session: Transaction<'static>) -> Self {
+        EnvelopeItem::Transaction(session)
     }
 }
 
@@ -135,10 +147,14 @@ impl Envelope {
                 EnvelopeItem::SessionUpdate(session) => {
                     serde_json::to_writer(&mut item_buf, session)?
                 }
+                EnvelopeItem::Transaction(transaction) => {
+                    serde_json::to_writer(&mut item_buf, transaction)?
+                }
             }
             let item_type = match item {
                 EnvelopeItem::Event(_) => "event",
                 EnvelopeItem::SessionUpdate(_) => "session",
+                EnvelopeItem::Transaction(_) => "transaction",
             };
             writeln!(
                 writer,

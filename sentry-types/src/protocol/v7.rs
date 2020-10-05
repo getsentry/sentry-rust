@@ -1273,14 +1273,6 @@ mod event {
     }
 }
 
-/// Represents the type of `Event`
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub enum EventType {
-    /// A `transaction` event, used for Performance Monitoring (tracing)
-    #[serde(rename = "transaction")]
-    Transaction,
-}
-
 /// Represents a full event for Sentry.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Event<'a> {
@@ -1377,32 +1369,6 @@ pub struct Event<'a> {
     /// SDK metadata
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sdk: Option<Cow<'a, ClientSdkInfo>>,
-    /// Type of event. Omitted for regular events.
-    #[serde(default, skip_serializing_if = "Option::is_none", rename = "type")]
-    pub _type: Option<EventType>,
-    /// A timestamp representing when the measuring started.
-    ///
-    /// Only used for tracing (`Transaction`) events.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub start_timestamp: Option<DateTime<Utc>>,
-    /// The ID of the trace.
-    ///
-    /// Only used for tracing (`Transaction`) events.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub trace_id: Option<Uuid>,
-    /// Longer description of the transaction's operation.
-    ///
-    /// Only used for tracing (`Transaction`) events.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
-    /// Describes the status of the transaction.
-    ///
-    /// Only used for tracing (`Transaction`) events.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub status: Option<String>,
-    // TODO: Document this field
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub parent_span_id: Option<String>,
 }
 
 impl<'a> Default for Event<'a> {
@@ -1435,12 +1401,6 @@ impl<'a> Default for Event<'a> {
             extra: Default::default(),
             debug_meta: Default::default(),
             sdk: Default::default(),
-            _type: Default::default(),
-            start_timestamp: Default::default(),
-            trace_id: Default::default(),
-            description: Default::default(),
-            status: Default::default(),
-            parent_span_id: Default::default(),
         }
     }
 }
@@ -1486,12 +1446,6 @@ impl<'a> Event<'a> {
             extra: self.extra,
             debug_meta: Cow::Owned(self.debug_meta.into_owned()),
             sdk: self.sdk.map(|x| Cow::Owned(x.into_owned())),
-            _type: self._type,
-            start_timestamp: self.start_timestamp,
-            trace_id: self.trace_id,
-            description: self.description,
-            status: self.status,
-            parent_span_id: self.parent_span_id,
         }
     }
 }
@@ -1499,18 +1453,6 @@ impl<'a> Event<'a> {
 impl<'a> fmt::Display for Event<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Event(id: {}, ts: {})", self.event_id, self.timestamp)
-    }
-}
-
-mod span {
-    use super::*;
-
-    pub fn default_id() -> Uuid {
-        Uuid::new_v4()
-    }
-
-    pub fn default_timestamp() -> DateTime<Utc> {
-        Utc::now()
     }
 }
 
@@ -1550,7 +1492,7 @@ impl Default for Span {
             trace_id: event::default_id(),
             timestamp: Default::default(),
             tags: Default::default(),
-            start_timestamp: span::default_timestamp(),
+            start_timestamp: event::default_timestamp(),
             description: Default::default(),
             status: Default::default(),
             parent_span_id: Default::default(),
@@ -1591,6 +1533,18 @@ impl Span {
 
 impl<'a> fmt::Display for Span {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Span(id: {}, ts: {})", self.event_id, self.start_timestamp)
+        write!(
+            f,
+            "Span(id: {}, ts: {})",
+            self.event_id, self.start_timestamp
+        )
     }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct Transaction<'a> {
+    #[serde(flatten)]
+    event: Event<'a>,
+    #[serde(flatten)]
+    span: Span,
 }
