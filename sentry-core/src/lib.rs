@@ -63,7 +63,6 @@ mod hub;
 mod integration;
 mod intodsn;
 mod scope;
-mod session;
 mod transport;
 
 // public api or exports from this crate
@@ -81,6 +80,8 @@ pub use crate::transport::{Transport, TransportFactory};
 // client feature
 #[cfg(feature = "client")]
 mod client;
+#[cfg(feature = "client")]
+mod session;
 #[cfg(feature = "client")]
 pub use crate::client::Client;
 

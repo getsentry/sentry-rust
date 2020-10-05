@@ -13,12 +13,9 @@ use crate::utils::{device_context, os_context, rust_context, server_name};
 /// [Contexts Interface]: https://develop.sentry.dev/sdk/event-payloads/contexts/
 #[derive(Debug)]
 pub struct ContextIntegration {
-    /// Add `os` context, enabled by default.
-    pub add_os: bool,
-    /// Add `rust` context, enabled by default.
-    pub add_rust: bool,
-    /// Add `device` context, enabled by default.
-    pub add_device: bool,
+    add_os: bool,
+    add_rust: bool,
+    add_device: bool,
 }
 
 impl Default for ContextIntegration {
@@ -35,6 +32,23 @@ impl ContextIntegration {
     /// Create a new Context Integration.
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Add `os` context, enabled by default.
+    pub fn add_os(mut self, add_os: bool) -> Self {
+        self.add_os = add_os;
+        self
+    }
+    /// Add `rust` context, enabled by default.
+    pub fn add_rust(mut self, add_rust: bool) -> Self {
+        self.add_rust = add_rust;
+        self
+    }
+
+    /// Add `device` context, enabled by default.
+    pub fn add_device(mut self, add_device: bool) -> Self {
+        self.add_device = add_device;
+        self
     }
 }
 

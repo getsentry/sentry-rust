@@ -9,11 +9,10 @@ use std::thread;
 use std::time::Duration;
 
 use crate::protocol::{Breadcrumb, Event, Level, SessionStatus};
-use crate::session::Session;
 use crate::types::Uuid;
 use crate::{event_from_error, Integration, IntoBreadcrumbs, Scope, ScopeGuard};
 #[cfg(feature = "client")]
-use crate::{scope::Stack, Client, Envelope};
+use crate::{scope::Stack, session::Session, Client, Envelope};
 
 #[cfg(feature = "client")]
 lazy_static::lazy_static! {
