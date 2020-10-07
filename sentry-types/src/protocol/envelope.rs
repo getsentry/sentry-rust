@@ -27,7 +27,7 @@ pub enum EnvelopeItem {
     ///
     /// See the [Transaction Item documentation](https://develop.sentry.dev/sdk/envelopes/#transaction)
     /// for more details.
-    Transaction(Transaction<'static>)
+    Transaction(Transaction<'static>),
     // TODO:
     // * Attachment,
     // etc…

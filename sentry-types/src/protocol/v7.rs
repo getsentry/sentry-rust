@@ -1590,8 +1590,8 @@ pub struct Transaction<'a> {
     pub sdk: Option<Cow<'a, ClientSdkInfo>>,
     /// A platform identifier for this event.
     #[serde(
-    default = "event::default_platform",
-    skip_serializing_if = "event::is_default_platform"
+        default = "event::default_platform",
+        skip_serializing_if = "event::is_default_platform"
     )]
     pub platform: Cow<'a, str>,
     /// The end time of the transaction.
@@ -1618,7 +1618,7 @@ impl<'a> Default for Transaction<'a> {
             timestamp: Default::default(),
             start_timestamp: event::default_timestamp(),
             spans: Default::default(),
-            contexts: Default::default()
+            contexts: Default::default(),
         }
     }
 }
