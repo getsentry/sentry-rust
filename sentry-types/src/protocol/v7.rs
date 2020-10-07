@@ -1224,16 +1224,22 @@ pub struct BrowserContext {
 /// Holds information about a tracing event.
 #[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
 pub struct TraceContext {
-    #[serde(default = "event::default_id", serialize_with = "event::serialize_id")]
-    pub trace_id: Uuid,
+    /// The ID of the trace event
     #[serde(default = "event::default_id", serialize_with = "event::serialize_id")]
     pub span_id: Uuid,
+    /// Determines which trace the transaction belongs to.
+    #[serde(default = "event::default_id", serialize_with = "event::serialize_id")]
+    pub trace_id: Uuid,
+    /// Determines the parent of this transaction if any.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parent_span_id: Option<String>,
+    /// Short code identifying the type of operation the transaction is measuring.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub op: Option<String>,
+    /// Human readable detail description.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    /// Describes the status of the span (e.g. `ok`, `cancelled`, etc.)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status: Option<String>,
 }
@@ -1486,7 +1492,7 @@ pub struct Span {
     /// Determines which trace the span belongs to.
     #[serde(default = "event::default_id", serialize_with = "event::serialize_id")]
     pub trace_id: Uuid,
-    /// Determines the parent to which this span is a child of, if any.
+    /// Determines the parent of this span, if any.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parent_span_id: Option<String>,
     /// Determines whether this span is generated in the same process as its parent, if any.
