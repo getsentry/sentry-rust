@@ -93,6 +93,8 @@ impl Envelope {
         if self.event_id.is_none() {
             if let EnvelopeItem::Event(ref event) = item {
                 self.event_id = Some(event.event_id);
+            } else if let EnvelopeItem::Transaction(ref transaction) = item {
+                self.event_id = Some(transaction.event_id);
             }
         }
         self.items.push(item);
@@ -179,12 +181,20 @@ impl From<Event<'static>> for Envelope {
     }
 }
 
+impl From<Transaction<'static>> for Envelope {
+    fn from(transaction: Transaction<'static>) -> Self {
+        let mut envelope = Self::default();
+        envelope.add_item(transaction);
+        envelope
+    }
+}
+
 #[cfg(test)]
 mod test {
     use chrono::{DateTime, Utc};
 
     use super::*;
-    use crate::protocol::v7::{SessionAttributes, SessionStatus};
+    use crate::protocol::v7::{SessionAttributes, SessionStatus, Span};
 
     fn to_str(envelope: Envelope) -> String {
         let mut vec = Vec::new();
@@ -248,5 +258,33 @@ mod test {
         )
     }
 
-    // TODO: test_transaction
+    #[test]
+    fn test_transaction() {
+        let event_id = Uuid::parse_str("22d00b3f-d1b1-4b5d-8d20-49d138cd8a9c").unwrap();
+        let span_id = Uuid::parse_str("d42cee9f-c3e7-4f5c-ada9-47ab601a14d2").unwrap();
+        let trace_id = Uuid::parse_str("335e53d6-1447-4acc-9f89-e632b776cc28").unwrap();
+        let start_timestamp = "2020-07-20T14:51:14.296Z".parse::<DateTime<Utc>>().unwrap();
+        let spans = vec![
+            Span {
+                span_id,
+                trace_id,
+                start_timestamp,
+                ..Default::default()
+            }
+        ];
+        let transaction = Transaction {
+            event_id,
+            start_timestamp,
+            spans,
+            ..Default::default()
+        };
+        let envelope: Envelope = transaction.into();
+        assert_eq!(
+            to_str(envelope),
+            r#"{"event_id":"22d00b3f-d1b1-4b5d-8d20-49d138cd8a9c"}
+{"type":"transaction","length":216}
+{"event_id":"22d00b3fd1b14b5d8d2049d138cd8a9c","start_timestamp":1595256674.296,"spans":[{"span_id":"d42cee9fc3e74f5cada947ab601a14d2","trace_id":"335e53d614474acc9f89e632b776cc28","start_timestamp":1595256674.296}]}
+"#
+        )
+    }
 }
