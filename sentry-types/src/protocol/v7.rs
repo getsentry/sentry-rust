@@ -1038,6 +1038,7 @@ pub struct ClientSdkPackage {
 /// to `Context`.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "snake_case", tag = "type")]
+#[non_exhaustive]
 pub enum Context {
     /// Device data.
     Device(Box<DeviceContext>),
@@ -1049,8 +1050,9 @@ pub enum Context {
     App(Box<AppContext>),
     /// Web browser data.
     Browser(Box<BrowserContext>),
+    /// Tracing data.
+    Trace(Box<TraceContext>),
     /// Generic other context data.
-    // TODO: Add TraceContext
     #[serde(rename = "unknown")]
     Other(Map<String, Value>),
 }
@@ -1064,6 +1066,7 @@ impl Context {
             Context::Runtime(..) => "runtime",
             Context::App(..) => "app",
             Context::Browser(..) => "browser",
+            Context::Trace(..) => "trace",
             Context::Other(..) => "unknown",
         }
     }
@@ -1218,6 +1221,23 @@ pub struct BrowserContext {
     pub other: Map<String, Value>,
 }
 
+/// Holds information about a tracing event.
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
+pub struct TraceContext {
+    #[serde(default = "event::default_id", serialize_with = "event::serialize_id")]
+    pub trace_id: Uuid,
+    #[serde(default = "event::default_id", serialize_with = "event::serialize_id")]
+    pub span_id: Uuid,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent_span_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub op: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub status: Option<String>,
+}
+
 macro_rules! into_context {
     ($kind:ident, $ty:ty) => {
         impl From<$ty> for Context {
@@ -1233,6 +1253,7 @@ into_context!(Device, DeviceContext);
 into_context!(Os, OsContext);
 into_context!(Runtime, RuntimeContext);
 into_context!(Browser, BrowserContext);
+into_context!(Trace, TraceContext);
 
 mod event {
     use super::*;
@@ -1459,25 +1480,35 @@ impl<'a> fmt::Display for Event<'a> {
 /// Represents a tracing span.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Span {
+    /// The ID of the span
     #[serde(default = "event::default_id", serialize_with = "event::serialize_id")]
-    pub event_id: Uuid,
+    pub span_id: Uuid,
+    /// Determines which trace the span belongs to.
     #[serde(default = "event::default_id", serialize_with = "event::serialize_id")]
     pub trace_id: Uuid,
+    /// Determines the parent to which this span is a child of, if any.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parent_span_id: Option<String>,
+    /// Determines whether this span is generated in the same process as its parent, if any.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub same_process_as_parent: Option<bool>,
+    /// Short code identifying the type of operation the span is measuring.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub op: Option<String>,
+    /// Longer description of the span's operation, which uniquely identifies the span
+    /// but is consistent across instances of the span.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    /// The timestamp at the measuring of the span finished.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timestamp: Option<DateTime<Utc>>,
+    /// The timestamp at the measuring of the span started.
     #[serde(default = "event::default_timestamp", with = "ts_seconds_float")]
     pub start_timestamp: DateTime<Utc>,
+    /// Describes the status of the span (e.g. `ok`, `cancelled`, etc.)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status: Option<String>,
-    /// Optional tags to be attached to the event.
+    /// Optional tags to be attached to the span.
     #[serde(default, skip_serializing_if = "Map::is_empty")]
     pub tags: Map<String, String>,
     /// Optional extra information to be sent with the span.
@@ -1488,7 +1519,7 @@ pub struct Span {
 impl Default for Span {
     fn default() -> Self {
         Span {
-            event_id: event::default_id(),
+            span_id: event::default_id(),
             trace_id: event::default_id(),
             timestamp: Default::default(),
             tags: Default::default(),
@@ -1512,7 +1543,7 @@ impl Span {
     /// Creates a fully owned version of the span.
     pub fn into_owned(self) -> Span {
         Span {
-            event_id: self.event_id,
+            span_id: self.span_id,
             trace_id: self.trace_id,
             timestamp: self.timestamp,
             tags: self.tags,
@@ -1526,25 +1557,105 @@ impl Span {
         }
     }
 
+    /// Finalizes the span.
     pub fn finish(&mut self) {
         self.timestamp = Some(Utc::now());
     }
 }
 
-impl<'a> fmt::Display for Span {
+impl fmt::Display for Span {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
             "Span(id: {}, ts: {})",
-            self.event_id, self.start_timestamp
+            self.span_id, self.start_timestamp
         )
     }
 }
 
+/// Represents a tracing transaction.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Transaction<'a> {
-    #[serde(flatten)]
-    event: Event<'a>,
-    #[serde(flatten)]
-    span: Span,
+    /// The ID of the event
+    #[serde(default = "event::default_id", serialize_with = "event::serialize_id")]
+    pub event_id: Uuid,
+    /// The transaction name of the event.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub transaction: Option<String>,
+    /// Optional tags to be attached to the event.
+    #[serde(default, skip_serializing_if = "Map::is_empty")]
+    pub tags: Map<String, String>,
+    /// SDK metadata
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sdk: Option<Cow<'a, ClientSdkInfo>>,
+    /// A platform identifier for this event.
+    #[serde(
+    default = "event::default_platform",
+    skip_serializing_if = "event::is_default_platform"
+    )]
+    pub platform: Cow<'a, str>,
+    /// The end time of the transaction.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub timestamp: Option<DateTime<Utc>>,
+    /// The start time of the transaction.
+    #[serde(default = "event::default_timestamp", with = "ts_seconds_float")]
+    pub start_timestamp: DateTime<Utc>,
+    /// The collection of finished spans part of this transaction.
+    pub spans: Vec<Span>,
+    /// Optional contexts.
+    #[serde(default, skip_serializing_if = "Map::is_empty")]
+    pub contexts: Map<String, Context>,
+}
+
+impl<'a> Default for Transaction<'a> {
+    fn default() -> Self {
+        Transaction {
+            event_id: event::default_id(),
+            transaction: Default::default(),
+            tags: Default::default(),
+            sdk: Default::default(),
+            platform: event::default_platform(),
+            timestamp: Default::default(),
+            start_timestamp: event::default_timestamp(),
+            spans: Default::default(),
+            contexts: Default::default()
+        }
+    }
+}
+
+impl<'a> Transaction<'a> {
+    /// Creates a new span transaction the current timestamp and random id.
+    pub fn new() -> Transaction<'a> {
+        Default::default()
+    }
+
+    /// Creates a fully owned version of the transaction.
+    pub fn into_owned(self) -> Transaction<'static> {
+        Transaction {
+            event_id: self.event_id,
+            transaction: self.transaction,
+            tags: self.tags,
+            sdk: self.sdk.map(|x| Cow::Owned(x.into_owned())),
+            platform: Cow::Owned(self.platform.into_owned()),
+            timestamp: self.timestamp,
+            start_timestamp: self.start_timestamp,
+            spans: self.spans,
+            contexts: self.contexts,
+        }
+    }
+
+    /// Finalizes the transaction to be dispatched.
+    pub fn finish(&mut self) {
+        self.timestamp = Some(Utc::now());
+    }
+}
+
+impl<'a> fmt::Display for Transaction<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "Transaction(id: {}, ts: {})",
+            self.event_id, self.start_timestamp
+        )
+    }
 }
