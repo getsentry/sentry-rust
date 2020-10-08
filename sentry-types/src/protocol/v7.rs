@@ -1546,23 +1546,6 @@ impl Span {
         Default::default()
     }
 
-    /// Creates a fully owned version of the span.
-    pub fn into_owned(self) -> Span {
-        Span {
-            span_id: self.span_id,
-            trace_id: self.trace_id,
-            timestamp: self.timestamp,
-            tags: self.tags,
-            start_timestamp: self.start_timestamp,
-            description: self.description,
-            status: self.status,
-            parent_span_id: self.parent_span_id,
-            same_process_as_parent: self.same_process_as_parent,
-            op: self.op,
-            data: self.data,
-        }
-    }
-
     /// Finalizes the span.
     pub fn finish(&mut self) {
         self.timestamp = Some(Utc::now());
@@ -1585,9 +1568,9 @@ pub struct Transaction<'a> {
     /// The ID of the event
     #[serde(default = "event::default_id", serialize_with = "event::serialize_id")]
     pub event_id: Uuid,
-    /// The transaction name of the event.
+    /// The transaction name.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub transaction: Option<String>,
+    pub name: Option<String>,
     /// Optional tags to be attached to the event.
     #[serde(default, skip_serializing_if = "Map::is_empty")]
     pub tags: Map<String, String>,
@@ -1617,7 +1600,7 @@ impl<'a> Default for Transaction<'a> {
     fn default() -> Self {
         Transaction {
             event_id: event::default_id(),
-            transaction: Default::default(),
+            name: Default::default(),
             tags: Default::default(),
             sdk: Default::default(),
             platform: event::default_platform(),
@@ -1639,7 +1622,7 @@ impl<'a> Transaction<'a> {
     pub fn into_owned(self) -> Transaction<'static> {
         Transaction {
             event_id: self.event_id,
-            transaction: self.transaction,
+            name: self.name,
             tags: self.tags,
             sdk: self.sdk.map(|x| Cow::Owned(x.into_owned())),
             platform: Cow::Owned(self.platform.into_owned()),
