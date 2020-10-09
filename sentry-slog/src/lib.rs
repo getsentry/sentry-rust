@@ -69,6 +69,7 @@
 #![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
 #![warn(missing_docs)]
 #![deny(unsafe_code)]
+#![allow(clippy::match_like_matches_macro)]
 
 mod converters;
 mod drain;
