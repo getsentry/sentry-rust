@@ -40,6 +40,7 @@ impl From<SessionUpdate<'static>> for EnvelopeItem {
 }
 
 /// An Iterator over the items of an Envelope.
+#[derive(Clone)]
 pub struct EnvelopeItemIter<'s> {
     inner: std::slice::Iter<'s, EnvelopeItem>,
 }
