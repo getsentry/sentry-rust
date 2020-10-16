@@ -28,7 +28,6 @@ debug-images = ["sentry-debug-images"]
 error-chain = ["sentry-error-chain"]
 failure = ["sentry-failure"]
 log = ["sentry-log"]
-env_logger = ["sentry-log", "sentry-log/env_logger"]
 slog = ["sentry-slog"]
 # other features
 test = ["sentry-core/test"]
@@ -64,8 +63,10 @@ serde_json = { version = "1.0.48", optional = true }
 sentry-anyhow = { version = "0.20.1", path = "../sentry-anyhow" }
 sentry-error-chain = { version = "0.20.1", path = "../sentry-error-chain" }
 sentry-failure = { version = "0.20.1", path = "../sentry-failure" }
-sentry-log = { version = "0.20.1", path = "../sentry-log", features = ["env_logger"] }
+sentry-log = { version = "0.20.1", path = "../sentry-log" }
+sentry-slog = { version = "0.20.1", path = "../sentry-slog" }
 log_ = { package = "log", version = "0.4.8", features = ["std"] }
+slog_ = { package = "slog", version = "2.5.2" }
 failure_derive = "0.1.6"
 actix-web = { version = "0.7.19", default-features = false }
 tokio = { version = "0.2", features = ["macros"] }
