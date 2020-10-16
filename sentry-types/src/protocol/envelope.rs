@@ -22,9 +22,9 @@ pub enum EnvelopeItem {
     /// See the [Session Item documentation](https://develop.sentry.dev/sdk/envelopes/#session)
     /// for more details.
     SessionUpdate(SessionUpdate<'static>),
-    // TODO:
-    // * Attachment,
-    // etc…
+    /* TODO:
+     * * Attachment,
+     * etc… */
 }
 
 impl From<Event<'static>> for EnvelopeItem {
