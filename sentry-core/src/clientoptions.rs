@@ -38,6 +38,9 @@ pub struct ClientOptions {
     /// The release to be sent with events.
     pub release: Option<Cow<'static, str>>,
     /// The environment to be sent with events.
+    ///
+    /// Defaults to either `"development"` or `"production"` depending on the
+    /// `debug_assertions` cfg-attribute.
     pub environment: Option<Cow<'static, str>>,
     /// The sample rate for event submission. (0.0 - 1.0, defaults to 1.0)
     pub sample_rate: f32,
@@ -163,11 +166,16 @@ impl fmt::Debug for ClientOptions {
 
 impl Default for ClientOptions {
     fn default() -> ClientOptions {
+        let env = if cfg!(debug_assertions) {
+            "development"
+        } else {
+            "production"
+        };
         ClientOptions {
             dsn: None,
             debug: false,
             release: None,
-            environment: None,
+            environment: Some(env.into()),
             sample_rate: 1.0,
             max_breadcrumbs: 100,
             attach_stacktrace: false,
