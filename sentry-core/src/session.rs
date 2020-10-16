@@ -116,10 +116,18 @@ impl Session {
 
 // as defined here: https://develop.sentry.dev/sdk/envelopes/#size-limits
 const MAX_SESSION_ITEMS: usize = 100;
-const FLUSH_INTERVAL: u64 = 60;
+const FLUSH_INTERVAL: Duration = Duration::from_secs(60);
 
 type SessionQueue = Arc<Mutex<Vec<SessionUpdate<'static>>>>;
 
+/// Background Session Flusher
+///
+/// The background flusher queues session updates for delayed batched sending.
+/// It has its own background thread that will flush its queue once every
+/// `FLUSH_INTERVAL`.
+///
+/// For now it just batches all the session updates together into one envelope,
+/// but in the future it will also pre-aggregate session numbers.
 pub(crate) struct SessionFlusher {
     transport: TransportArc,
     queue: SessionQueue,
@@ -128,6 +136,7 @@ pub(crate) struct SessionFlusher {
 }
 
 impl SessionFlusher {
+    /// Creates a new Flusher that will submit envelopes to the given `transport`.
     pub fn new(transport: TransportArc) -> Self {
         let queue = Arc::new(Mutex::new(Vec::new()));
         #[allow(clippy::mutex_atomic)]
@@ -147,12 +156,12 @@ impl SessionFlusher {
                 }
                 let mut last_flush = Instant::now();
                 loop {
-                    let timeout = Duration::from_secs(FLUSH_INTERVAL) - last_flush.elapsed();
+                    let timeout = FLUSH_INTERVAL - last_flush.elapsed();
                     shutdown = cvar.wait_timeout(shutdown, timeout).unwrap().0;
                     if *shutdown {
                         return;
                     }
-                    if last_flush.elapsed() < Duration::from_secs(FLUSH_INTERVAL) {
+                    if last_flush.elapsed() < FLUSH_INTERVAL {
                         continue;
                     }
                     SessionFlusher::flush(&worker_queue, &worker_transport);
@@ -169,10 +178,24 @@ impl SessionFlusher {
         }
     }
 
+    /// Enqueues a session update for delayed sending.
+    ///
+    /// When the queue is full, it will be flushed immediately.
     pub fn enqueue(&self, session_update: SessionUpdate<'static>) {
-        self.queue.lock().unwrap().push(session_update)
+        let flush_immediately = {
+            let mut queue = self.queue.lock().unwrap();
+            queue.push(session_update);
+            queue.len() >= MAX_SESSION_ITEMS
+        };
+        if flush_immediately {
+            SessionFlusher::flush(&self.queue, &self.transport);
+        }
     }
 
+    /// Flushes the queue to the transport.
+    ///
+    /// This is a static method as it will be called from both the background
+    /// thread and the main thread on drop.
     fn flush(queue: &SessionQueue, transport: &TransportArc) {
         let queue: Vec<_> = std::mem::take(queue.lock().unwrap().as_mut());
 
