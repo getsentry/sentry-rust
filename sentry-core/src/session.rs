@@ -2,7 +2,7 @@
 //!
 //! https://develop.sentry.dev/sdk/sessions/
 
-use std::sync::{Arc, Condvar, Mutex};
+use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
@@ -164,7 +164,7 @@ impl SessionFlusher {
                     if last_flush.elapsed() < FLUSH_INTERVAL {
                         continue;
                     }
-                    SessionFlusher::flush(&worker_queue, &worker_transport);
+                    SessionFlusher::flush(worker_queue.lock().unwrap(), &worker_transport);
                     last_flush = Instant::now();
                 }
             })
@@ -182,13 +182,10 @@ impl SessionFlusher {
     ///
     /// When the queue is full, it will be flushed immediately.
     pub fn enqueue(&self, session_update: SessionUpdate<'static>) {
-        let flush_immediately = {
-            let mut queue = self.queue.lock().unwrap();
-            queue.push(session_update);
-            queue.len() >= MAX_SESSION_ITEMS
-        };
-        if flush_immediately {
-            SessionFlusher::flush(&self.queue, &self.transport);
+        let mut queue = self.queue.lock().unwrap();
+        queue.push(session_update);
+        if queue.len() >= MAX_SESSION_ITEMS {
+            SessionFlusher::flush(queue, &self.transport);
         }
     }
 
@@ -196,8 +193,9 @@ impl SessionFlusher {
     ///
     /// This is a static method as it will be called from both the background
     /// thread and the main thread on drop.
-    fn flush(queue: &SessionQueue, transport: &TransportArc) {
-        let queue: Vec<_> = std::mem::take(queue.lock().unwrap().as_mut());
+    fn flush(mut queue_lock: MutexGuard<Vec<SessionUpdate<'static>>>, transport: &TransportArc) {
+        let queue: Vec<_> = std::mem::take(queue_lock.as_mut());
+        drop(queue_lock);
 
         if queue.is_empty() {
             return;
@@ -233,7 +231,7 @@ impl Drop for SessionFlusher {
         if let Some(worker) = self.worker.take() {
             worker.join().ok();
         }
-        SessionFlusher::flush(&self.queue, &self.transport);
+        SessionFlusher::flush(self.queue.lock().unwrap(), &self.transport);
     }
 }
 
