@@ -3,12 +3,7 @@ use std::sync::Arc;
 use std::thread;
 
 fn main() {
-    let mut log_builder = pretty_env_logger::formatted_builder();
-    log_builder.parse_filters("info");
-    let log_integration = sentry_log::LogIntegration {
-        dest_log: Some(Box::new(log_builder.build())),
-        ..Default::default()
-    };
+    init_log();
 
     // this initializes sentry.  It also gives the thread that calls this some
     // special behavior in that all other threads spawned will get a hub based on
@@ -18,7 +13,7 @@ fn main() {
             release: sentry::release_name!(),
             ..Default::default()
         }
-        .add_integration(log_integration),
+        .add_integration(sentry_log::LogIntegration::new()),
     );
 
     // the log integration sends to Hub::current()
@@ -52,4 +47,14 @@ fn main() {
     })
     .join()
     .unwrap();
+}
+
+fn init_log() {
+    let mut log_builder = pretty_env_logger::formatted_builder();
+    log_builder.parse_filters("info");
+    let logger = sentry_log::SentryLogger::with_dest(log_builder.build());
+
+    log::set_boxed_logger(Box::new(logger))
+        .map(|()| log::set_max_level(log::LevelFilter::Info))
+        .unwrap();
 }
