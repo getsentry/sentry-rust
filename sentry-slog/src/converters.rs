@@ -1,7 +1,7 @@
 use sentry_core::protocol::{Breadcrumb, Event, Exception, Frame, Level, Map, Stacktrace, Value};
 use slog::{OwnedKVList, Record, KV};
 
-/// Converts a `slog::Level` to a sentry `Level`
+/// Converts a [`slog::Level`] to a Sentry [`Level`]
 pub fn convert_log_level(level: slog::Level) -> Level {
     match level {
         slog::Level::Trace | slog::Level::Debug => Level::Debug,
@@ -11,13 +11,13 @@ pub fn convert_log_level(level: slog::Level) -> Level {
     }
 }
 
-/// Adds the data from a `slog::KV` into a sentry `Map`.
+/// Adds the data from a [`slog::KV`] into a Sentry [`Map`].
 fn add_kv_to_map(map: &mut Map<String, Value>, kv: &impl KV) {
     let _ = (map, kv);
     // TODO: actually implement this ;-)
 }
 
-/// Creates a sentry `Breadcrumb` from the `slog::Record`.
+/// Creates a Sentry [`Breadcrumb`] from the [`Record`].
 pub fn breadcrumb_from_record(record: &Record, values: &OwnedKVList) -> Breadcrumb {
     let mut data = Map::new();
     add_kv_to_map(&mut data, &record.kv());
@@ -32,7 +32,7 @@ pub fn breadcrumb_from_record(record: &Record, values: &OwnedKVList) -> Breadcru
     }
 }
 
-/// Creates a simple message `Event` from the `slog::Record`.
+/// Creates a simple message [`Event`] from the [`Record`].
 pub fn event_from_record(record: &Record, values: &OwnedKVList) -> Event<'static> {
     let mut extra = Map::new();
     add_kv_to_map(&mut extra, &record.kv());
@@ -44,10 +44,10 @@ pub fn event_from_record(record: &Record, values: &OwnedKVList) -> Event<'static
     }
 }
 
-/// Creates an exception `Event` from the `slog::Record`.
+/// Creates an exception [`Event`] from the [`Record`].
 ///
 /// The exception will have a stacktrace that corresponds to the location
-/// information contained in the `slog::Record`.
+/// information contained in the [`Record`].
 ///
 /// # Examples
 ///
