@@ -7,9 +7,11 @@ use std::sync::RwLock;
 use std::time::Duration;
 
 use rand::random;
+use sentry_types::protocol::v7::SessionUpdate;
 
 use crate::constants::SDK_INFO;
 use crate::protocol::{ClientSdkInfo, Event};
+use crate::session::SessionFlusher;
 use crate::types::{Dsn, Uuid};
 use crate::{ClientOptions, Envelope, Hub, Integration, Scope, Transport};
 
@@ -18,6 +20,8 @@ impl<T: Into<ClientOptions>> From<T> for Client {
         Client::with_options(o.into())
     }
 }
+
+pub(crate) type TransportArc = Arc<RwLock<Option<Arc<dyn Transport>>>>;
 
 /// The Sentry Client.
 ///
@@ -38,7 +42,8 @@ impl<T: Into<ClientOptions>> From<T> for Client {
 /// [Unified API]: https://develop.sentry.dev/sdk/unified-api/
 pub struct Client {
     options: ClientOptions,
-    transport: RwLock<Option<Arc<dyn Transport>>>,
+    transport: TransportArc,
+    session_flusher: SessionFlusher,
     integrations: Vec<(TypeId, Arc<dyn Integration>)>,
     sdk_info: ClientSdkInfo,
 }
@@ -54,9 +59,12 @@ impl fmt::Debug for Client {
 
 impl Clone for Client {
     fn clone(&self) -> Client {
+        let transport = Arc::new(RwLock::new(self.transport.read().unwrap().clone()));
+        let session_flusher = SessionFlusher::new(transport.clone());
         Client {
             options: self.options.clone(),
-            transport: RwLock::new(self.transport.read().unwrap().clone()),
+            transport,
+            session_flusher,
             integrations: self.integrations.clone(),
             sdk_info: self.sdk_info.clone(),
         }
@@ -103,7 +111,7 @@ impl Client {
             Some(factory.create_transport(&options))
         };
 
-        let transport = RwLock::new(create_transport());
+        let transport = Arc::new(RwLock::new(create_transport()));
 
         let mut sdk_info = SDK_INFO.clone();
 
@@ -120,9 +128,11 @@ impl Client {
             sdk_info.integrations.push(integration.name().to_string());
         }
 
+        let session_flusher = SessionFlusher::new(transport.clone());
         Client {
             options,
             transport,
+            session_flusher,
             integrations,
             sdk_info,
         }
@@ -263,6 +273,10 @@ impl Client {
             }
         }
         Default::default()
+    }
+
+    pub(crate) fn enqueue_session(&self, session_update: SessionUpdate<'static>) {
+        self.session_flusher.enqueue(session_update)
     }
 
     pub(crate) fn capture_envelope(&self, envelope: Envelope) {
