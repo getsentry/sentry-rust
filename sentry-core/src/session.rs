@@ -2,9 +2,11 @@
 //!
 //! https://develop.sentry.dev/sdk/sessions/
 
-use std::sync::Arc;
-use std::time::Instant;
+use std::sync::{Arc, Condvar, Mutex, MutexGuard};
+use std::thread::JoinHandle;
+use std::time::{Duration, Instant};
 
+use crate::client::TransportArc;
 use crate::protocol::{
     EnvelopeItem, Event, Level, SessionAttributes, SessionStatus, SessionUpdate,
 };
@@ -23,10 +25,8 @@ pub struct Session {
 impl Drop for Session {
     fn drop(&mut self) {
         self.close();
-        if let Some(item) = self.create_envelope_item() {
-            let mut envelope = Envelope::new();
-            envelope.add_item(item);
-            self.client.capture_envelope(envelope);
+        if self.dirty {
+            self.client.enqueue_session(self.session_update.clone());
         }
     }
 }
@@ -114,8 +114,130 @@ impl Session {
     }
 }
 
+// as defined here: https://develop.sentry.dev/sdk/envelopes/#size-limits
+const MAX_SESSION_ITEMS: usize = 100;
+const FLUSH_INTERVAL: Duration = Duration::from_secs(60);
+
+type SessionQueue = Arc<Mutex<Vec<SessionUpdate<'static>>>>;
+
+/// Background Session Flusher
+///
+/// The background flusher queues session updates for delayed batched sending.
+/// It has its own background thread that will flush its queue once every
+/// `FLUSH_INTERVAL`.
+///
+/// For now it just batches all the session updates together into one envelope,
+/// but in the future it will also pre-aggregate session numbers.
+pub(crate) struct SessionFlusher {
+    transport: TransportArc,
+    queue: SessionQueue,
+    shutdown: Arc<(Mutex<bool>, Condvar)>,
+    worker: Option<JoinHandle<()>>,
+}
+
+impl SessionFlusher {
+    /// Creates a new Flusher that will submit envelopes to the given `transport`.
+    pub fn new(transport: TransportArc) -> Self {
+        let queue = Arc::new(Mutex::new(Vec::new()));
+        #[allow(clippy::mutex_atomic)]
+        let shutdown = Arc::new((Mutex::new(false), Condvar::new()));
+
+        let worker_transport = transport.clone();
+        let worker_queue = queue.clone();
+        let worker_shutdown = shutdown.clone();
+        let worker = std::thread::Builder::new()
+            .name("sentry-session-flusher".into())
+            .spawn(move || {
+                let (lock, cvar) = worker_shutdown.as_ref();
+                let mut shutdown = lock.lock().unwrap();
+                // check this immediately, in case the main thread is already shutting down
+                if *shutdown {
+                    return;
+                }
+                let mut last_flush = Instant::now();
+                loop {
+                    let timeout = FLUSH_INTERVAL - last_flush.elapsed();
+                    shutdown = cvar.wait_timeout(shutdown, timeout).unwrap().0;
+                    if *shutdown {
+                        return;
+                    }
+                    if last_flush.elapsed() < FLUSH_INTERVAL {
+                        continue;
+                    }
+                    SessionFlusher::flush(worker_queue.lock().unwrap(), &worker_transport);
+                    last_flush = Instant::now();
+                }
+            })
+            .unwrap();
+
+        Self {
+            transport,
+            queue,
+            shutdown,
+            worker: Some(worker),
+        }
+    }
+
+    /// Enqueues a session update for delayed sending.
+    ///
+    /// When the queue is full, it will be flushed immediately.
+    pub fn enqueue(&self, session_update: SessionUpdate<'static>) {
+        let mut queue = self.queue.lock().unwrap();
+        queue.push(session_update);
+        if queue.len() >= MAX_SESSION_ITEMS {
+            SessionFlusher::flush(queue, &self.transport);
+        }
+    }
+
+    /// Flushes the queue to the transport.
+    ///
+    /// This is a static method as it will be called from both the background
+    /// thread and the main thread on drop.
+    fn flush(mut queue_lock: MutexGuard<Vec<SessionUpdate<'static>>>, transport: &TransportArc) {
+        let queue: Vec<_> = std::mem::take(queue_lock.as_mut());
+        drop(queue_lock);
+
+        if queue.is_empty() {
+            return;
+        }
+
+        let mut envelope = Envelope::new();
+        let mut items = 0;
+
+        for session_update in queue {
+            if items >= MAX_SESSION_ITEMS {
+                if let Some(ref transport) = *transport.read().unwrap() {
+                    transport.send_envelope(envelope);
+                }
+                envelope = Envelope::new();
+                items = 0;
+            }
+            envelope.add_item(session_update);
+            items += 1;
+        }
+
+        if let Some(ref transport) = *transport.read().unwrap() {
+            transport.send_envelope(envelope);
+        }
+    }
+}
+
+impl Drop for SessionFlusher {
+    fn drop(&mut self) {
+        let (lock, cvar) = self.shutdown.as_ref();
+        *lock.lock().unwrap() = true;
+        cvar.notify_one();
+
+        if let Some(worker) = self.worker.take() {
+            worker.join().ok();
+        }
+        SessionFlusher::flush(self.queue.lock().unwrap(), &self.transport);
+    }
+}
+
 #[cfg(all(test, feature = "test"))]
 mod tests {
+    use super::*;
     use crate as sentry;
     use crate::protocol::{Envelope, EnvelopeItem, SessionStatus};
 
@@ -151,6 +273,27 @@ mod tests {
             panic!("expected session");
         }
         assert_eq!(items.next(), None);
+    }
+
+    #[test]
+    fn test_session_batching() {
+        #![allow(clippy::match_like_matches_macro)]
+        let envelopes = capture_envelopes(|| {
+            for _ in 0..(MAX_SESSION_ITEMS * 2) {
+                sentry::start_session();
+            }
+        });
+        // we only want *two* envelope for all the sessions
+        assert_eq!(envelopes.len(), 2);
+
+        let items = envelopes[0].items().chain(envelopes[1].items());
+        assert_eq!(items.clone().count(), MAX_SESSION_ITEMS * 2);
+        for item in items {
+            assert!(match item {
+                EnvelopeItem::SessionUpdate(_) => true,
+                _ => false,
+            });
+        }
     }
 
     #[test]
@@ -298,7 +441,17 @@ mod tests {
         }
         assert_eq!(items.next(), None);
 
+        // the other two events should not have session updates
         let mut items = envelopes[1].items();
+        assert!(matches!(items.next(), Some(EnvelopeItem::Event(_))));
+        assert_eq!(items.next(), None);
+
+        let mut items = envelopes[2].items();
+        assert!(matches!(items.next(), Some(EnvelopeItem::Event(_))));
+        assert_eq!(items.next(), None);
+
+        // the session end is sent last as it is possibly batched
+        let mut items = envelopes[3].items();
         if let Some(EnvelopeItem::SessionUpdate(session)) = items.next() {
             assert_eq!(session.status, SessionStatus::Exited);
             assert_eq!(session.errors, 1);
@@ -306,15 +459,6 @@ mod tests {
         } else {
             panic!("expected session");
         }
-        assert_eq!(items.next(), None);
-
-        // the other two events should not have session updates
-        let mut items = envelopes[2].items();
-        assert!(matches!(items.next(), Some(EnvelopeItem::Event(_))));
-        assert_eq!(items.next(), None);
-
-        let mut items = envelopes[3].items();
-        assert!(matches!(items.next(), Some(EnvelopeItem::Event(_))));
         assert_eq!(items.next(), None);
     }
 }

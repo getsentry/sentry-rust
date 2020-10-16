@@ -105,6 +105,7 @@ impl ClientOptions {
     pub fn new() -> Self {
         Self::default()
     }
+
     /// Adds a configured integration to the options.
     ///
     /// # Examples

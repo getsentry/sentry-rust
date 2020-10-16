@@ -7,9 +7,9 @@ use crate::{Client, ClientOptions, Hub};
 
 /// Helper struct that is returned from `init`.
 ///
-/// When this is dropped events are drained with a 1 second timeout.
-#[must_use = "when the init guard is dropped the transport will be shut down and no further \
-              events can be sent.  If you do want to ignore this use mem::forget on it."]
+/// When this is dropped events are drained with the configured `shutdown_timeout`.
+#[must_use = "when the init guard is dropped the send queue is flushed and the \
+              transport will be shut down and no further events can be sent."]
 pub struct ClientInitGuard(Arc<Client>);
 
 impl std::ops::Deref for ClientInitGuard {
@@ -56,6 +56,8 @@ impl Drop for ClientInitGuard {
 /// ```
 ///
 /// Or if draining on shutdown should be ignored:
+/// This is not recommended, as events or session updates that have been queued
+/// might be lost.
 ///
 /// ```
 /// std::mem::forget(sentry::init("https://key@sentry.io/1234"));
