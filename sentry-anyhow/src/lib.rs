@@ -9,8 +9,7 @@
 //!     Err(anyhow::anyhow!("some kind of error"))
 //! }
 //!
-//! let _sentry =
-//!     sentry::init(sentry::ClientOptions::new().add_integration(AnyhowIntegration));
+//! let _sentry = sentry::init(sentry::ClientOptions::new().add_integration(AnyhowIntegration));
 //!
 //! if let Err(err) = function_that_might_fail() {
 //!     capture_anyhow(&err);

@@ -12,13 +12,13 @@
 //! log_builder.parse_filters("info");
 //! let logger = sentry_log::SentryLogger::with_dest(log_builder.build());
 //!
-//! log::set_boxed_logger(Box::new(logger))
-//!     .map(|()| log::set_max_level(log::LevelFilter::Info))
-//!     .unwrap();
+//! log::set_boxed_logger(Box::new(logger)).unwrap();
+//! log::set_max_level(log::LevelFilter::Info);
 //!
 //! let log_integration = sentry_log::LogIntegration::default();
-//! let _sentry = sentry::init(sentry::ClientOptions::new()
-//!     .add_integration(sentry_log::LogIntegration::new()));
+//! let _sentry = sentry::init(
+//!     sentry::ClientOptions::new().add_integration(sentry_log::LogIntegration::new()),
+//! );
 //!
 //! log::info!("Generates a breadcrumb");
 //! log::error!("Generates an event");
@@ -30,11 +30,9 @@
 //! ```
 //! use sentry_log::LogFilter;
 //!
-//! let logger = sentry_log::SentryLogger::new().filter(|md| {
-//!     match md.level() {
-//!         log::Level::Error => LogFilter::Event,
-//!         _ => LogFilter::Ignore,
-//!     }
+//! let logger = sentry_log::SentryLogger::new().filter(|md| match md.level() {
+//!     log::Level::Error => LogFilter::Event,
+//!     _ => LogFilter::Ignore,
 //! });
 //! ```
 

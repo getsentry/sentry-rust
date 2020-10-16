@@ -3,7 +3,7 @@ use slog::{Drain, OwnedKVList, Record};
 
 use crate::{breadcrumb_from_record, event_from_record, exception_from_record};
 
-/// The Action that Sentry should perform for a [`slog::Level`].
+/// The action that Sentry should perform for a [`slog::Level`].
 #[derive(Debug)]
 pub enum LevelFilter {
     /// Ignore the [`Record`].
@@ -19,7 +19,7 @@ pub enum LevelFilter {
 /// The type of Data Sentry should ingest for a [`slog::Record`].
 #[allow(clippy::large_enum_variant)]
 pub enum RecordMapping {
-    /// Ignore the [`Record`]
+    /// Ignore the [`Record`].
     Ignore,
     /// Adds the [`Breadcrumb`] to the Sentry scope.
     Breadcrumb(Breadcrumb),
@@ -76,6 +76,17 @@ impl<D: Drain> SentryDrain<D> {
     ///
     /// The mapper is responsible for creating either breadcrumbs or events
     /// from [`Record`]s.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use sentry_slog::{breadcrumb_from_record, RecordMapping, SentryDrain};
+    ///
+    /// let drain = SentryDrain::new(slog::Discard).mapper(|record, kv| match record.level() {
+    ///     slog::Level::Trace => RecordMapping::Ignore,
+    ///     _ => RecordMapping::Breadcrumb(breadcrumb_from_record(record, kv)),
+    /// });
+    /// ```
     pub fn mapper<M>(mut self, mapper: M) -> Self
     where
         M: Fn(&Record, &OwnedKVList) -> RecordMapping + Send + Sync + 'static,

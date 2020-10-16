@@ -3,7 +3,7 @@ use sentry_core::protocol::{Breadcrumb, Event};
 
 use crate::converters::{breadcrumb_from_record, event_from_record, exception_from_record};
 
-/// The Action that Sentry should perform for a [`log::Metadata`].
+/// The action that Sentry should perform for a [`log::Metadata`].
 #[derive(Debug)]
 pub enum LogFilter {
     /// Ignore the [`Record`].
@@ -20,7 +20,7 @@ pub enum LogFilter {
 #[derive(Debug)]
 #[allow(clippy::large_enum_variant)]
 pub enum RecordMapping {
-    /// Ignore the [`Record`]
+    /// Ignore the [`Record`].
     Ignore,
     /// Adds the [`Breadcrumb`] to the Sentry scope.
     Breadcrumb(Breadcrumb),

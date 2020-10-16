@@ -54,8 +54,9 @@
 //!         _ => LevelFilter::Ignore,
 //!     })
 //!     .mapper(|record, kv| match record.level() {
-//!         slog::Level::Critical | slog::Level::Error =>
-//!             RecordMapping::Event(exception_from_record(record, kv)),
+//!         slog::Level::Critical | slog::Level::Error => {
+//!             RecordMapping::Event(exception_from_record(record, kv))
+//!         }
 //!         _ => RecordMapping::Ignore,
 //!     });
 //! ```
