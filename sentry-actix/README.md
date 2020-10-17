@@ -20,25 +20,28 @@ such as breadcrumbs do not work unless you bind the actix hub.
 use std::env;
 use std::io;
 
-use actix_web::{server, App, Error, HttpRequest};
-use sentry_actix::SentryMiddleware;
+use actix_web::{App, Error, get, HttpRequest, HttpServer};
 
-fn failing(_req: &HttpRequest) -> Result<String, Error> {
+#[get("/")]
+async fn failing(_req: HttpRequest) -> Result<String, Error> {
     Err(io::Error::new(io::ErrorKind::Other, "An error happens here").into())
 }
 
-fn main() {
+#[actix_web::main]
+async fn main() -> io::Result<()> {
     let _guard = sentry::init("https://public@sentry.io/1234");
     env::set_var("RUST_BACKTRACE", "1");
 
-    server::new(|| {
+    HttpServer::new(|| {
         App::new()
-            .middleware(SentryMiddleware::new())
-            .resource("/", |r| r.f(failing))
+            .wrap(sentry_actix::Sentry::new())
+            .service(failing)
     })
-    .bind("127.0.0.1:3001")
-    .unwrap()
-    .run();
+        .bind("127.0.0.1:3001")?
+        .run()
+        .await?;
+
+    Ok(())
 }
 ```
 

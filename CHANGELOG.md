@@ -4,6 +4,8 @@
 
 **Breaking Changes**:
 
+- Bump the minimum required Rust version to **1.42.0**.
+- The `actix` integration / middleware is now compatible with `actix-web 3`.
 - Removed all deprecated exports and deprecated feature flags.
 - The `failure` integration / feature is now off-by-default along with its deprecation.
 - The `log` and `slog` integrations were re-designed, they now offer types that wrap a `log::Log` or `slog::Drain` and forward log events to the currently active sentry `Hub` based on an optional filter and an optional mapper.
