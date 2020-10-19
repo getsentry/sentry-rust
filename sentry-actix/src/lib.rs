@@ -13,6 +13,7 @@
 //! use std::io;
 //!
 //! use actix_web::{get, App, Error, HttpRequest, HttpServer};
+//! use sentry::Level;
 //!
 //! #[get("/")]
 //! async fn failing(_req: HttpRequest) -> Result<String, Error> {
@@ -21,7 +22,7 @@
 //!
 //! #[actix_web::main]
 //! async fn main() -> io::Result<()> {
-//!     let _guard = sentry::init("https://public@sentry.io/1234");
+//!     let _guard = sentry::init(());
 //!     env::set_var("RUST_BACKTRACE", "1");
 //!
 //!     HttpServer::new(|| {
@@ -186,15 +187,13 @@ where
 
     fn call(&mut self, req: ServiceRequest) -> Self::Future {
         let inner = self.inner.clone();
-        let hub = inner
-            .hub
-            .clone()
-            .unwrap_or_else(|| Arc::new(Hub::new_from_top(Hub::main())));
+        let hub = Arc::new(Hub::new_from_top(
+            inner.hub.clone().unwrap_or_else(Hub::main),
+        ));
         let client = hub.client();
         let with_pii = client
             .as_ref()
             .map_or(false, |x| x.options().send_default_pii);
-        let guard = hub.push_scope();
 
         let (tx, sentry_req) = sentry_request_from_http(&req, with_pii);
         hub.configure_scope(|scope| {
@@ -230,9 +229,6 @@ where
                     }
                 }
             }
-
-            // Move the guard into the future and keep it from dropping until now
-            drop(guard);
 
             Ok(res)
         }
