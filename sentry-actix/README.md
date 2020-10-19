@@ -29,7 +29,7 @@ async fn failing(_req: HttpRequest) -> Result<String, Error> {
 
 #[actix_web::main]
 async fn main() -> io::Result<()> {
-    let _guard = sentry::init("https://public@sentry.io/1234");
+    let _guard = sentry::init(());
     env::set_var("RUST_BACKTRACE", "1");
 
     HttpServer::new(|| {
@@ -45,29 +45,20 @@ async fn main() -> io::Result<()> {
 }
 ```
 
-## Reusing the Hub
+# Reusing the Hub
 
-If you use this integration the `Hub::current()` returned hub is typically the wrong one.
-To get the request specific one you need to use the `ActixWebHubExt` trait:
-
-```rust
-use sentry::{Hub, Level};
-use sentry_actix::ActixWebHubExt;
-
-let hub = Hub::from_request(req);
-hub.capture_message("Something is not well", Level::Warning);
-```
-
-The hub can also be made current:
+This integration will automatically update the current Hub instance. For example,
+the following will capture a message in the current request's Hub:
 
 ```rust
-use sentry::{Hub, Level};
-use sentry_actix::ActixWebHubExt;
+use actix_web::{Error, get, HttpRequest};
+use sentry::Level;
 
-let hub = Hub::from_request(req);
-Hub::run(hub, || {
+#[get("/")]
+async fn hello_world(_req: HttpRequest) -> Result<String, Error> {
     sentry::capture_message("Something is not well", Level::Warning);
-});
+    Ok("Hello World".into())
+}
 ```
 
 ## Resources

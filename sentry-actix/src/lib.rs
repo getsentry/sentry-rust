@@ -39,30 +39,13 @@
 //!
 //! # Reusing the Hub
 //!
-//! If you use this integration the `Hub::current()` returned hub is typically the wrong one.
-//! To get the request specific one you need to use the `ActixWebHubExt` trait:
+//! This integration will automatically update the current Hub instance. For example,
+//! the following will capture a message in the current request's Hub:
 //!
 //! ```
 //! # fn test(req: &actix_web::HttpRequest) {
-//! use sentry::{Hub, Level};
-//! use sentry_actix::ActixWebHubExt;
-//!
-//! let hub = Hub::from_request(req);
-//! hub.capture_message("Something is not well", Level::Warning);
-//! # }
-//! ```
-//!
-//! The hub can also be made current:
-//!
-//! ```
-//! # fn test(req: &actix_web::HttpRequest) {
-//! use sentry::{Hub, Level};
-//! use sentry_actix::ActixWebHubExt;
-//!
-//! let hub = Hub::from_request(req);
-//! Hub::run(hub, || {
-//!     sentry::capture_message("Something is not well", Level::Warning);
-//! });
+//! use sentry::Level;
+//! sentry::capture_message("Something is not well", Level::Warning);
 //! # }
 //! ```
 
@@ -83,7 +66,7 @@ use futures_util::future::{ok, Future, Ready};
 use futures_util::FutureExt;
 
 use sentry_core::protocol::{ClientSdkPackage, Event, Request};
-use sentry_core::Hub;
+use sentry_core::{Hub, SentryFutureExt};
 
 /// A helper construct that can be used to reconfigure and build the middleware.
 pub struct SentryBuilder {
@@ -203,7 +186,10 @@ where
 
     fn call(&mut self, req: ServiceRequest) -> Self::Future {
         let inner = self.inner.clone();
-        let hub = inner.hub.clone().unwrap_or_else(Hub::current);
+        let hub = inner
+            .hub
+            .clone()
+            .unwrap_or_else(|| Arc::new(Hub::new_from_top(Hub::main())));
         let client = hub.client();
         let with_pii = client
             .as_ref()
@@ -217,7 +203,7 @@ where
             }))
         });
 
-        let fut = self.service.call(req);
+        let fut = self.service.call(req).bind_hub(hub.clone());
 
         async move {
             // Service errors
