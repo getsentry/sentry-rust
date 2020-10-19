@@ -75,17 +75,15 @@
 
 use std::borrow::Cow;
 use std::pin::Pin;
-use std::rc::Rc;
 use std::sync::Arc;
 
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
-use actix_web::{Error, HttpMessage, HttpRequest};
+use actix_web::Error;
 use futures_util::future::{ok, Future, Ready};
 use futures_util::FutureExt;
 
-use sentry::protocol::{ClientSdkPackage, Event};
-use sentry::types::Uuid;
-use sentry::Hub;
+use sentry_core::protocol::{ClientSdkPackage, Event, Request};
+use sentry_core::Hub;
 
 /// A helper construct that can be used to reconfigure and build the middleware.
 pub struct SentryBuilder {
@@ -100,22 +98,19 @@ impl SentryBuilder {
 
     /// Reconfigures the middleware so that it uses a specific hub instead of the default one.
     pub fn with_hub(mut self, hub: Arc<Hub>) -> Self {
-        let inner = Rc::get_mut(&mut self.middleware.0).expect("Multiple copies exist");
-        inner.hub = Some(hub);
+        self.middleware.hub = Some(hub);
         self
     }
 
     /// Reconfigures the middleware so that it uses a specific hub instead of the default one.
     pub fn with_default_hub(mut self) -> Self {
-        let inner = Rc::get_mut(&mut self.middleware.0).expect("Multiple copies exist");
-        inner.hub = None;
+        self.middleware.hub = None;
         self
     }
 
     /// If configured the sentry id is attached to a X-Sentry-Event header.
     pub fn emit_header(mut self, val: bool) -> Self {
-        let inner = Rc::get_mut(&mut self.middleware.0).expect("Multiple copies exist");
-        inner.emit_header = val;
+        self.middleware.emit_header = val;
         self
     }
 
@@ -123,33 +118,27 @@ impl SentryBuilder {
     ///
     /// The default is to report all errors.
     pub fn capture_server_errors(mut self, val: bool) -> Self {
-        let inner = Rc::get_mut(&mut self.middleware.0).expect("Multiple copies exist");
-        inner.capture_server_errors = val;
+        self.middleware.capture_server_errors = val;
         self
     }
 }
 
-struct Inner {
+/// Reports certain failures to Sentry.
+#[derive(Clone)]
+pub struct Sentry {
     hub: Option<Arc<Hub>>,
     emit_header: bool,
     capture_server_errors: bool,
 }
 
-/// Reports certain failures to Sentry.
-pub struct Sentry(Rc<Inner>);
-
-struct HubWrapper {
-    hub: Arc<Hub>,
-}
-
 impl Sentry {
     /// Creates a new sentry middleware.
     pub fn new() -> Self {
-        Sentry(Rc::new(Inner {
+        Sentry {
             hub: None,
             emit_header: false,
             capture_server_errors: true,
-        }))
+        }
     }
 
     /// Creates a new middleware builder.
@@ -184,7 +173,7 @@ where
     fn new_transform(&self, service: S) -> Self::Future {
         ok(SentryMiddleware {
             service,
-            inner: self.0.clone(),
+            inner: self.clone(),
         })
     }
 }
@@ -192,7 +181,7 @@ where
 /// The middleware for individual services.
 pub struct SentryMiddleware<S> {
     service: S,
-    inner: Rc<Inner>,
+    inner: Sentry,
 }
 
 impl<S, B> Service for SentryMiddleware<S>
@@ -214,7 +203,7 @@ where
 
     fn call(&mut self, req: ServiceRequest) -> Self::Future {
         let inner = self.inner.clone();
-        let hub = Arc::new(Hub::new_from_top(Hub::main()));
+        let hub = inner.hub.clone().unwrap_or_else(Hub::current);
         let client = hub.client();
         let with_pii = client
             .as_ref()
@@ -228,8 +217,6 @@ where
             }))
         });
 
-        req.extensions_mut().insert(HubWrapper { hub: hub.clone() });
-
         let fut = self.service.call(req);
 
         async move {
@@ -238,7 +225,7 @@ where
                 Ok(res) => res,
                 Err(e) => {
                     if inner.capture_server_errors {
-                        hub.capture_event(sentry::event_from_error(&e));
+                        hub.capture_error(&e);
                     }
                     return Err(e);
                 }
@@ -247,7 +234,7 @@ where
             // Response errors
             if inner.capture_server_errors {
                 if let Some(e) = res.response().error() {
-                    let event_id = hub.capture_event(sentry::event_from_error(e));
+                    let event_id = hub.capture_error(e);
 
                     if inner.emit_header {
                         res.response_mut().headers_mut().insert(
@@ -268,10 +255,7 @@ where
 }
 
 /// Build a Sentry request struct from the HTTP request
-fn sentry_request_from_http(
-    request: &ServiceRequest,
-    with_pii: bool,
-) -> (Option<String>, sentry::protocol::Request) {
+fn sentry_request_from_http(request: &ServiceRequest, with_pii: bool) -> (Option<String>, Request) {
     let transaction = if let Some(name) = request.match_name() {
         Some(String::from(name))
     } else if let Some(pattern) = request.match_pattern() {
@@ -280,7 +264,7 @@ fn sentry_request_from_http(
         None
     };
 
-    let mut sentry_req = sentry::protocol::Request {
+    let mut sentry_req = Request {
         url: format!(
             "{}://{}{}",
             request.connection_info().scheme(),
@@ -312,7 +296,7 @@ fn sentry_request_from_http(
 fn process_event(
     mut event: Event<'static>,
     transaction: Option<String>,
-    request: &sentry::protocol::Request,
+    request: &Request,
 ) -> Option<Event<'static>> {
     // Request
     if event.request.is_none() {
@@ -332,38 +316,4 @@ fn process_event(
         event.sdk = Some(Cow::Owned(sdk));
     }
     Some(event)
-}
-
-/// Utility function that takes an actix error and reports it to the default hub.
-///
-/// This is typically not very since the actix hub is likely never bound as the
-/// default hub.  It's generally recommended to use the `ActixWebHubExt` trait's
-/// extension method on the hub instead.
-pub fn capture_actix_error(err: &Error) -> Uuid {
-    Hub::with_active(|hub| hub.capture_actix_error(err))
-}
-
-/// Hub extensions for actix.
-pub trait ActixWebHubExt {
-    /// Returns the hub from a given http request.
-    ///
-    /// This requires that the `SentryMiddleware` middleware has been enabled or the
-    /// call will panic.
-    fn from_request(req: &HttpRequest) -> Arc<Hub>;
-    /// Captures an actix error on the given hub.
-    fn capture_actix_error(&self, err: &Error) -> Uuid;
-}
-
-impl ActixWebHubExt for Hub {
-    fn from_request(req: &HttpRequest) -> Arc<Hub> {
-        req.extensions()
-            .get::<HubWrapper>()
-            .expect("SentryMiddleware middleware was not registered")
-            .hub
-            .clone()
-    }
-
-    fn capture_actix_error(&self, err: &Error) -> Uuid {
-        self.capture_event(sentry::event_from_error(err))
-    }
 }

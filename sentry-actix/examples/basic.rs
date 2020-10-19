@@ -10,7 +10,7 @@ async fn failing(_req: HttpRequest) -> Result<String, Error> {
 
 #[actix_web::main]
 async fn main() -> io::Result<()> {
-    let _guard = sentry::init("https://public@sentry.io/1234");
+    let _guard = sentry::init(());
     env::set_var("RUST_BACKTRACE", "1");
 
     HttpServer::new(|| {
