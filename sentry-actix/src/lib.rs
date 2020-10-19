@@ -299,3 +299,120 @@ fn process_event(
     }
     Some(event)
 }
+
+#[cfg(test)]
+mod tests {
+    use std::io;
+
+    use actix_web::test::{call_service, init_service, TestRequest};
+    use actix_web::{get, web, App, HttpRequest, HttpResponse};
+
+    use sentry::{ClientInitGuard, Level};
+
+    use super::*;
+
+    fn _init() -> ClientInitGuard {
+        // Initialize with a 'valid' DSN so errors are captured
+        sentry::init("https://public@sentry.invalid/1")
+    }
+
+    fn _assert_hub_no_events() {
+        if Hub::current().last_event_id().is_some() {
+            panic!("Current hub should not have had any events.");
+        }
+    }
+
+    fn _assert_hub_has_events() {
+        Hub::current()
+            .last_event_id()
+            .expect("Current hub should have had events.");
+    }
+
+    /// Test explicit events sent to the current Hub inside an Actix service.
+    #[actix_rt::test]
+    async fn test_explicit_events() {
+        let _guard = _init();
+
+        let service = || {
+            // Current hub should have no events
+            _assert_hub_no_events();
+
+            // Add processor to ensure proper event fields
+            sentry::configure_scope(|scope| {
+                scope.add_event_processor(Box::new(move |event| {
+                    let request = event.request.expect("Request should be set.");
+                    assert_eq!(event.transaction, Some("/test".into()));
+                    assert_eq!(event.message, Some("Message".into()));
+                    assert_eq!(event.level, Level::Warning);
+                    assert_eq!(request.method, Some("GET".into()));
+                    None
+                }))
+            });
+
+            // Creates an event
+            sentry::capture_message("Message", Level::Warning);
+
+            // Current Hub should have the event
+            _assert_hub_has_events();
+
+            HttpResponse::Ok()
+        };
+
+        let mut app = init_service(
+            App::new()
+                .wrap(Sentry::new())
+                .service(web::resource("/test").to(service)),
+        )
+        .await;
+
+        // Call the service twice to check the isolation between them
+        for _ in 0..2 {
+            let req = TestRequest::get().uri("/test").to_request();
+            let res = call_service(&mut app, req).await;
+            assert!(res.status().is_success());
+        }
+
+        // Make sure the main Hub was never used
+        _assert_hub_no_events();
+    }
+
+    /// Ensures errors returned in the Actix service trigger an event.
+    #[actix_rt::test]
+    async fn test_response_errors() {
+        let _guard = _init();
+
+        #[get("/test")]
+        async fn failing(_req: HttpRequest) -> Result<String, Error> {
+            // Current hub should have no events
+            _assert_hub_no_events();
+
+            // Add processor to ensure proper event fields
+            sentry::configure_scope(|scope| {
+                scope.add_event_processor(Box::new(move |event| {
+                    let request = event.request.expect("Request should be set.");
+                    assert_eq!(event.transaction, Some("failing".into())); // Transaction name is the name of the function
+                    assert_eq!(event.message, None);
+                    assert_eq!(event.exception.values[0].ty, String::from("Custom"));
+                    assert_eq!(event.exception.values[0].value, Some("Test Error".into()));
+                    assert_eq!(event.level, Level::Error);
+                    assert_eq!(request.method, Some("GET".into()));
+                    None
+                }))
+            });
+
+            Err(io::Error::new(io::ErrorKind::Other, "Test Error").into())
+        }
+
+        let mut app = init_service(App::new().wrap(Sentry::new()).service(failing)).await;
+
+        // Call the service twice to check the isolation between them
+        for _ in 0..2 {
+            let req = TestRequest::get().uri("/test").to_request();
+            let res = call_service(&mut app, req).await;
+            assert!(res.status().is_server_error());
+        }
+
+        // Make sure the main Hub was never used
+        _assert_hub_no_events();
+    }
+}
