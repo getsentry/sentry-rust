@@ -68,7 +68,7 @@ sentry-slog = { version = "0.20.1", path = "../sentry-slog" }
 log_ = { package = "log", version = "0.4.8", features = ["std"] }
 slog_ = { package = "slog", version = "2.5.2" }
 failure_derive = "0.1.6"
-actix-web = { version = "0.7.19", default-features = false }
+actix-web = { version = "3", default-features = false }
 tokio = { version = "0.2", features = ["macros"] }
 failure_ = { package = "failure", version = "0.1.6" }
 pretty_env_logger = "0.4.0"

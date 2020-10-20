@@ -22,8 +22,11 @@ with_sentry_default = [
 ]
 
 [dependencies]
-sentry = { version = "0.20.1", path = "../sentry", default-features = false }
-sentry-failure = { version = "0.20.1", path = "../sentry-failure" }
-actix-web = { version = "0.7", default-features = false }
-failure = "0.1.3"
-fragile = "0.3.0"
+sentry-core = { version = "0.20.1", path = "../sentry-core", default-features = false }
+actix-web = { version = "3", default-features = false }
+futures-util = "0.3.5"
+
+[dev-dependencies]
+sentry = { version = "0.20.1", path = "../sentry", default-features = false, features = ["test"] }
+actix-rt = "1.1.1"
+futures = "0.3"

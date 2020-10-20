@@ -21,7 +21,7 @@ This workspace contains various crates that provide support for logging events a
   [![crates.io](https://img.shields.io/crates/v/sentry-actix.svg)](https://crates.io/crates/sentry-actix)
   [![docs.rs](https://docs.rs/sentry-actix/badge.svg)](https://docs.rs/sentry-actix)
 
-  An integration for the `actix-web (0.7)` framework.
+  An integration for the `actix-web (3.0+)` framework.
 
 - [sentry-anyhow](./sentry-anyhow)
   [![crates.io](https://img.shields.io/crates/v/sentry-anyhow.svg)](https://crates.io/crates/sentry-anyhow)
@@ -99,7 +99,7 @@ best API and adding new features.
 We currently only verify this crate against a recent version of Sentry hosted on [sentry.io](https://sentry.io/) but it
 should work with on-prem Sentry versions 8.20 and later.
 
-Additionally, the lowest Rust version we target is _1.40.0_.
+Additionally, the lowest Rust version we target is _1.42.0_.
 
 ## Resources
 
