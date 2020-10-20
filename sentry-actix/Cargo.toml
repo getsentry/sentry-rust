@@ -27,5 +27,6 @@ actix-web = { version = "3", default-features = false }
 futures-util = "0.3.5"
 
 [dev-dependencies]
-sentry = { version = "0.20.1", path = "../sentry", default-features = false }
+sentry = { version = "0.20.1", path = "../sentry", default-features = false, features = ["test"] }
 actix-rt = "1.1.1"
+futures = "0.3"
