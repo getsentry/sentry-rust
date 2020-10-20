@@ -12,54 +12,41 @@
 //! use std::env;
 //! use std::io;
 //!
-//! use actix_web::{server, App, Error, HttpRequest};
-//! use sentry_actix::SentryMiddleware;
+//! use actix_web::{get, App, Error, HttpRequest, HttpServer};
+//! use sentry::Level;
 //!
-//! fn failing(_req: &HttpRequest) -> Result<String, Error> {
+//! #[get("/")]
+//! async fn failing(_req: HttpRequest) -> Result<String, Error> {
 //!     Err(io::Error::new(io::ErrorKind::Other, "An error happens here").into())
 //! }
 //!
-//! fn main() {
-//!     let _guard = sentry::init("https://public@sentry.io/1234");
+//! #[actix_web::main]
+//! async fn main() -> io::Result<()> {
+//!     let _guard = sentry::init(());
 //!     env::set_var("RUST_BACKTRACE", "1");
 //!
-//!     server::new(|| {
+//!     HttpServer::new(|| {
 //!         App::new()
-//!             .middleware(SentryMiddleware::new())
-//!             .resource("/", |r| r.f(failing))
+//!             .wrap(sentry_actix::Sentry::new())
+//!             .service(failing)
 //!     })
-//!     .bind("127.0.0.1:3001")
-//!     .unwrap()
-//!     .run();
+//!     .bind("127.0.0.1:3001")?
+//!     .run()
+//!     .await?;
+//!
+//!     Ok(())
 //! }
 //! ```
 //!
 //! # Reusing the Hub
 //!
-//! If you use this integration the `Hub::current()` returned hub is typically the wrong one.
-//! To get the request specific one you need to use the `ActixWebHubExt` trait:
+//! This integration will automatically update the current Hub instance. For example,
+//! the following will capture a message in the current request's Hub:
 //!
 //! ```
 //! # fn test(req: &actix_web::HttpRequest) {
-//! use sentry::{Hub, Level};
-//! use sentry_actix::ActixWebHubExt;
-//!
-//! let hub = Hub::from_request(req);
-//! hub.capture_message("Something is not well", Level::Warning);
-//! # }
-//! ```
-//!
-//! The hub can also be made current:
-//!
-//! ```
-//! # fn test(req: &actix_web::HttpRequest) {
-//! use sentry::{Hub, Level};
-//! use sentry_actix::ActixWebHubExt;
-//!
-//! let hub = Hub::from_request(req);
-//! Hub::run(hub, || {
-//!     sentry::capture_message("Something is not well", Level::Warning);
-//! });
+//! use sentry::Level;
+//! sentry::capture_message("Something is not well", Level::Warning);
 //! # }
 //! ```
 
@@ -68,27 +55,28 @@
 #![warn(missing_docs)]
 #![allow(clippy::needless_doctest_main)]
 #![allow(deprecated)]
+#![allow(clippy::type_complexity)]
 
 use std::borrow::Cow;
-use std::cell::RefCell;
-use std::sync::{Arc, Mutex};
+use std::pin::Pin;
+use std::sync::Arc;
 
-use actix_web::middleware::{Finished, Middleware, Response, Started};
-use actix_web::{Error, HttpMessage, HttpRequest, HttpResponse};
-use failure::Fail;
-use sentry::protocol::{ClientSdkPackage, Event, Level};
-use sentry::types::Uuid;
-use sentry::{Hub, ScopeGuard};
-use sentry_failure::exception_from_single_fail;
+use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
+use actix_web::Error;
+use futures_util::future::{ok, Future, Ready};
+use futures_util::FutureExt;
+
+use sentry_core::protocol::{ClientSdkPackage, Event, Request};
+use sentry_core::{Hub, SentryFutureExt};
 
 /// A helper construct that can be used to reconfigure and build the middleware.
-pub struct SentryMiddlewareBuilder {
-    middleware: SentryMiddleware,
+pub struct SentryBuilder {
+    middleware: Sentry,
 }
 
-impl SentryMiddlewareBuilder {
+impl SentryBuilder {
     /// Finishes the building and returns a middleware
-    pub fn finish(self) -> SentryMiddleware {
+    pub fn finish(self) -> Sentry {
         self.middleware
     }
 
@@ -119,22 +107,18 @@ impl SentryMiddlewareBuilder {
     }
 }
 
-/// Reports certain failures to sentry.
-pub struct SentryMiddleware {
+/// Reports certain failures to Sentry.
+#[derive(Clone)]
+pub struct Sentry {
     hub: Option<Arc<Hub>>,
     emit_header: bool,
     capture_server_errors: bool,
 }
 
-struct HubWrapper {
-    hub: Arc<Hub>,
-    root_scope: RefCell<Option<ScopeGuard>>,
-}
-
-impl SentryMiddleware {
+impl Sentry {
     /// Creates a new sentry middleware.
-    pub fn new() -> SentryMiddleware {
-        SentryMiddleware {
+    pub fn new() -> Self {
+        Sentry {
             hub: None,
             emit_header: false,
             capture_server_errors: true,
@@ -142,58 +126,147 @@ impl SentryMiddleware {
     }
 
     /// Creates a new middleware builder.
-    pub fn builder() -> SentryMiddlewareBuilder {
-        SentryMiddleware::new().into_builder()
+    pub fn builder() -> SentryBuilder {
+        Sentry::new().into_builder()
     }
 
     /// Converts the middleware into a builder.
-    pub fn into_builder(self) -> SentryMiddlewareBuilder {
-        SentryMiddlewareBuilder { middleware: self }
-    }
-
-    fn new_hub(&self) -> Arc<Hub> {
-        Arc::new(Hub::new_from_top(Hub::main()))
+    pub fn into_builder(self) -> SentryBuilder {
+        SentryBuilder { middleware: self }
     }
 }
 
-impl Default for SentryMiddleware {
+impl Default for Sentry {
     fn default() -> Self {
-        SentryMiddleware::new()
+        Sentry::new()
     }
 }
 
-fn extract_request<S: 'static>(
-    req: &HttpRequest<S>,
-    with_pii: bool,
-) -> (Option<String>, sentry::protocol::Request) {
-    let resource = req.resource();
-    let transaction = if let Some(rdef) = resource.rdef() {
-        Some(rdef.pattern().to_string())
-    } else if resource.name() != "" {
-        Some(resource.name().to_string())
+impl<S, B> Transform<S> for Sentry
+where
+    S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+    S::Future: 'static,
+{
+    type Request = ServiceRequest;
+    type Response = ServiceResponse<B>;
+    type Error = Error;
+    type Transform = SentryMiddleware<S>;
+    type InitError = ();
+    type Future = Ready<Result<Self::Transform, Self::InitError>>;
+
+    fn new_transform(&self, service: S) -> Self::Future {
+        ok(SentryMiddleware {
+            service,
+            inner: self.clone(),
+        })
+    }
+}
+
+/// The middleware for individual services.
+pub struct SentryMiddleware<S> {
+    service: S,
+    inner: Sentry,
+}
+
+impl<S, B> Service for SentryMiddleware<S>
+where
+    S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+    S::Future: 'static,
+{
+    type Request = ServiceRequest;
+    type Response = ServiceResponse<B>;
+    type Error = Error;
+    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>>>>;
+
+    fn poll_ready(
+        &mut self,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Result<(), Self::Error>> {
+        self.service.poll_ready(cx)
+    }
+
+    fn call(&mut self, req: ServiceRequest) -> Self::Future {
+        let inner = self.inner.clone();
+        let hub = Arc::new(Hub::new_from_top(
+            inner.hub.clone().unwrap_or_else(Hub::main),
+        ));
+        let client = hub.client();
+        let with_pii = client
+            .as_ref()
+            .map_or(false, |x| x.options().send_default_pii);
+
+        let (tx, sentry_req) = sentry_request_from_http(&req, with_pii);
+        hub.configure_scope(|scope| {
+            scope.add_event_processor(Box::new(move |event| {
+                process_event(event, tx.clone(), &sentry_req)
+            }))
+        });
+
+        let fut = self.service.call(req).bind_hub(hub.clone());
+
+        async move {
+            // Service errors
+            let mut res: Self::Response = match fut.await {
+                Ok(res) => res,
+                Err(e) => {
+                    if inner.capture_server_errors {
+                        hub.capture_error(&e);
+                    }
+                    return Err(e);
+                }
+            };
+
+            // Response errors
+            if inner.capture_server_errors {
+                if let Some(e) = res.response().error() {
+                    let event_id = hub.capture_error(e);
+
+                    if inner.emit_header {
+                        res.response_mut().headers_mut().insert(
+                            "x-sentry-event".parse().unwrap(),
+                            event_id.to_simple_ref().to_string().parse().unwrap(),
+                        );
+                    }
+                }
+            }
+
+            Ok(res)
+        }
+        .boxed_local()
+    }
+}
+
+/// Build a Sentry request struct from the HTTP request
+fn sentry_request_from_http(request: &ServiceRequest, with_pii: bool) -> (Option<String>, Request) {
+    let transaction = if let Some(name) = request.match_name() {
+        Some(String::from(name))
+    } else if let Some(pattern) = request.match_pattern() {
+        Some(pattern)
     } else {
         None
     };
-    let mut sentry_req = sentry::protocol::Request {
+
+    let mut sentry_req = Request {
         url: format!(
             "{}://{}{}",
-            req.connection_info().scheme(),
-            req.connection_info().host(),
-            req.uri()
+            request.connection_info().scheme(),
+            request.connection_info().host(),
+            request.uri()
         )
         .parse()
         .ok(),
-        method: Some(req.method().to_string()),
-        headers: req
+        method: Some(request.method().to_string()),
+        headers: request
             .headers()
             .iter()
-            .map(|(k, v)| (k.as_str().into(), v.to_str().unwrap_or("").into()))
+            .map(|(k, v)| (k.to_string(), v.to_str().unwrap_or_default().to_string()))
             .collect(),
         ..Default::default()
     };
 
+    // If PII is enabled, include the remote address
     if with_pii {
-        if let Some(remote) = req.connection_info().remote() {
+        if let Some(remote) = request.connection_info().remote_addr() {
             sentry_req.env.insert("REMOTE_ADDR".into(), remote.into());
         }
     };
@@ -201,148 +274,141 @@ fn extract_request<S: 'static>(
     (transaction, sentry_req)
 }
 
-impl<S: 'static> Middleware<S> for SentryMiddleware {
-    fn start(&self, req: &HttpRequest<S>) -> Result<Started, Error> {
-        let hub = self.new_hub();
-        let outer_req = req;
-        let req = outer_req.clone();
-        let client = hub.client();
+/// Add request data to a Sentry event
+fn process_event(
+    mut event: Event<'static>,
+    transaction: Option<String>,
+    request: &Request,
+) -> Option<Event<'static>> {
+    // Request
+    if event.request.is_none() {
+        event.request = Some(request.clone());
+    }
 
-        let req = fragile::SemiSticky::new(req);
-        let cached_data = Arc::new(Mutex::new(None));
+    // Transaction
+    event.transaction = transaction;
 
-        let root_scope = hub.push_scope();
-        hub.configure_scope(move |scope| {
-            scope.add_event_processor(Box::new(move |mut event| {
-                let mut cached_data = cached_data.lock().unwrap();
-                if cached_data.is_none() && req.is_valid() {
-                    let with_pii = client
-                        .as_ref()
-                        .map_or(false, |x| x.options().send_default_pii);
-                    *cached_data = Some(extract_request(&req.get(), with_pii));
+    // SDK
+    if let Some(sdk) = event.sdk.take() {
+        let mut sdk = sdk.into_owned();
+        sdk.packages.push(ClientSdkPackage {
+            name: "sentry-actix".into(),
+            version: env!("CARGO_PKG_VERSION").into(),
+        });
+        event.sdk = Some(Cow::Owned(sdk));
+    }
+    Some(event)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io;
+
+    use actix_web::test::{call_service, init_service, TestRequest};
+    use actix_web::{get, web, App, HttpRequest, HttpResponse};
+    use futures::executor::block_on;
+
+    use sentry::Level;
+
+    use super::*;
+
+    fn _assert_hub_no_events() {
+        if Hub::current().last_event_id().is_some() {
+            panic!("Current hub should not have had any events.");
+        }
+    }
+
+    fn _assert_hub_has_events() {
+        Hub::current()
+            .last_event_id()
+            .expect("Current hub should have had events.");
+    }
+
+    /// Test explicit events sent to the current Hub inside an Actix service.
+    #[actix_rt::test]
+    async fn test_explicit_events() {
+        let events = sentry::test::with_captured_events(|| {
+            block_on(async {
+                let test_hub = Hub::current();
+
+                let service = || {
+                    // Current Hub should have no events
+                    _assert_hub_no_events();
+
+                    sentry::capture_message("Message", Level::Warning);
+
+                    // Current Hub should have the event
+                    _assert_hub_has_events();
+
+                    HttpResponse::Ok()
+                };
+
+                let mut app = init_service(
+                    App::new()
+                        .wrap(Sentry::builder().with_hub(test_hub).finish())
+                        .service(web::resource("/test").to(service)),
+                )
+                .await;
+
+                // Call the service twice (sequentially) to ensure the middleware isn't sticky
+                for _ in 0..2 {
+                    let req = TestRequest::get().uri("/test").to_request();
+                    let res = call_service(&mut app, req).await;
+                    assert!(res.status().is_success());
                 }
-
-                if let Some((ref transaction, ref req)) = *cached_data {
-                    if event.transaction.is_none() {
-                        event.transaction = transaction.clone();
-                    }
-                    if event.request.is_none() {
-                        event.request = Some(req.clone());
-                    }
-                }
-
-                if let Some(sdk) = event.sdk.take() {
-                    let mut sdk = sdk.into_owned();
-                    sdk.packages.push(ClientSdkPackage {
-                        name: "sentry-actix".into(),
-                        version: env!("CARGO_PKG_VERSION").into(),
-                    });
-                    event.sdk = Some(Cow::Owned(sdk));
-                }
-
-                Some(event)
-            }));
+            })
         });
 
-        outer_req.extensions_mut().insert(HubWrapper {
-            hub,
-            root_scope: RefCell::new(Some(root_scope)),
-        });
-        Ok(Started::Done)
+        assert_eq!(events.len(), 2);
+        for event in events {
+            let request = event.request.expect("Request should be set.");
+            assert_eq!(event.transaction, Some("/test".into()));
+            assert_eq!(event.message, Some("Message".into()));
+            assert_eq!(event.level, Level::Warning);
+            assert_eq!(request.method, Some("GET".into()));
+        }
     }
 
-    fn response(&self, req: &HttpRequest<S>, mut resp: HttpResponse) -> Result<Response, Error> {
-        if self.capture_server_errors && resp.status().is_server_error() {
-            let event_id = if let Some(error) = resp.error() {
-                Some(Hub::from_request(req).capture_actix_error(error))
-            } else {
-                None
-            };
-            match event_id {
-                Some(event_id) if self.emit_header => {
-                    resp.headers_mut().insert(
-                        "x-sentry-event",
-                        event_id.to_simple_ref().to_string().parse().unwrap(),
-                    );
+    /// Ensures errors returned in the Actix service trigger an event.
+    #[actix_rt::test]
+    async fn test_response_errors() {
+        let events = sentry::test::with_captured_events(|| {
+            block_on(async {
+                let test_hub = Hub::current();
+
+                #[get("/test")]
+                async fn failing(_req: HttpRequest) -> Result<String, Error> {
+                    // Current hub should have no events
+                    _assert_hub_no_events();
+
+                    Err(io::Error::new(io::ErrorKind::Other, "Test Error").into())
                 }
-                _ => {}
-            }
+
+                let mut app = init_service(
+                    App::new()
+                        .wrap(Sentry::builder().with_hub(test_hub).finish())
+                        .service(failing),
+                )
+                .await;
+
+                // Call the service twice (sequentially) to ensure the middleware isn't sticky
+                for _ in 0..2 {
+                    let req = TestRequest::get().uri("/test").to_request();
+                    let res = call_service(&mut app, req).await;
+                    assert!(res.status().is_server_error());
+                }
+            })
+        });
+
+        assert_eq!(events.len(), 2);
+        for event in events {
+            let request = event.request.expect("Request should be set.");
+            assert_eq!(event.transaction, Some("failing".into())); // Transaction name is the name of the function
+            assert_eq!(event.message, None);
+            assert_eq!(event.exception.values[0].ty, String::from("Custom"));
+            assert_eq!(event.exception.values[0].value, Some("Test Error".into()));
+            assert_eq!(event.level, Level::Error);
+            assert_eq!(request.method, Some("GET".into()));
         }
-        Ok(Response::Done(resp))
-    }
-
-    fn finish(&self, req: &HttpRequest<S>, _resp: &HttpResponse) -> Finished {
-        // if we make it to the end of the request we want to first drop the root
-        // scope before we drop the entire hub.  This will first drop the closures
-        // on the scope which in turn will release the circular dependency we have
-        // with the hub via the request.
-        if let Some(hub_wrapper) = req.extensions().get::<HubWrapper>() {
-            if let Ok(mut guard) = hub_wrapper.root_scope.try_borrow_mut() {
-                guard.take();
-            }
-        }
-        Finished::Done
-    }
-}
-
-/// Utility function that takes an actix error and reports it to the default hub.
-///
-/// This is typically not very since the actix hub is likely never bound as the
-/// default hub.  It's generally recommended to use the `ActixWebHubExt` trait's
-/// extension method on the hub instead.
-pub fn capture_actix_error(err: &Error) -> Uuid {
-    Hub::with_active(|hub| hub.capture_actix_error(err))
-}
-
-/// Hub extensions for actix.
-pub trait ActixWebHubExt {
-    /// Returns the hub from a given http request.
-    ///
-    /// This requires that the `SentryMiddleware` middleware has been enabled or the
-    /// call will panic.
-    fn from_request<S>(req: &HttpRequest<S>) -> Arc<Hub>;
-    /// Captures an actix error on the given hub.
-    fn capture_actix_error(&self, err: &Error) -> Uuid;
-}
-
-impl ActixWebHubExt for Hub {
-    fn from_request<S>(req: &HttpRequest<S>) -> Arc<Hub> {
-        req.extensions()
-            .get::<HubWrapper>()
-            .expect("SentryMiddleware middleware was not registered")
-            .hub
-            .clone()
-    }
-
-    fn capture_actix_error(&self, err: &Error) -> Uuid {
-        let mut exceptions = vec![];
-        let mut ptr: Option<&dyn Fail> = Some(err.as_fail());
-        let mut idx = 0;
-        while let Some(fail) = ptr {
-            // Check whether the failure::Fail held by err is a failure::Error wrapped in Compat
-            // If that's the case, we should be logging that error and its fail instead of the wrapper's construction in actix_web
-            // This wouldn't be necessary if failure::Compat<failure::Error>'s Fail::backtrace() impl was not "|| None",
-            // that is however impossible to do as of now because it conflicts with the generic implementation of Fail also provided in failure.
-            // Waiting for update that allows overlap, (https://github.com/rust-lang/rfcs/issues/1053), but chances are by then failure/std::error will be refactored anyway
-            let compat: Option<&failure::Compat<failure::Error>> = fail.downcast_ref();
-            let failure_err = compat.map(failure::Compat::get_ref);
-            let fail = failure_err.map_or(fail, |x| x.as_fail());
-            exceptions.push(exception_from_single_fail(
-                fail,
-                if idx == 0 {
-                    Some(failure_err.map_or_else(|| err.backtrace(), |err| err.backtrace()))
-                } else {
-                    fail.backtrace()
-                },
-            ));
-            ptr = fail.cause();
-            idx += 1;
-        }
-        exceptions.reverse();
-        self.capture_event(Event {
-            exception: exceptions.into(),
-            level: Level::Error,
-            ..Default::default()
-        })
     }
 }
