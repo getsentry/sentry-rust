@@ -13,7 +13,7 @@ use crate::constants::SDK_INFO;
 use crate::protocol::{ClientSdkInfo, Event};
 use crate::session::SessionFlusher;
 use crate::types::{Dsn, Uuid};
-use crate::{ClientOptions, Envelope, Hub, Integration, Scope, Transport};
+use crate::{ClientOptions, Envelope, Hub, Integration, Scope, SessionMode, Transport};
 
 impl<T: Into<ClientOptions>> From<T> for Client {
     fn from(o: T) -> Client {
@@ -60,7 +60,7 @@ impl fmt::Debug for Client {
 impl Clone for Client {
     fn clone(&self) -> Client {
         let transport = Arc::new(RwLock::new(self.transport.read().unwrap().clone()));
-        let session_flusher = SessionFlusher::new(transport.clone());
+        let session_flusher = SessionFlusher::new(transport.clone(), self.options.session_mode);
         Client {
             options: self.options.clone(),
             transport,
@@ -128,7 +128,7 @@ impl Client {
             sdk_info.integrations.push(integration.name().to_string());
         }
 
-        let session_flusher = SessionFlusher::new(transport.clone());
+        let session_flusher = SessionFlusher::new(transport.clone(), options.session_mode);
         Client {
             options,
             transport,
@@ -257,16 +257,20 @@ impl Client {
             if let Some(event) = self.prepare_event(event, scope) {
                 let event_id = event.event_id;
                 let mut envelope: Envelope = event.into();
-                let session_item = scope.and_then(|scope| {
-                    scope
-                        .session
-                        .lock()
-                        .unwrap()
-                        .as_mut()
-                        .and_then(|session| session.create_envelope_item())
-                });
-                if let Some(session_item) = session_item {
-                    envelope.add_item(session_item);
+                // For request-mode sessions, we aggregate them all instead of
+                // flushing them out early.
+                if self.options.session_mode == SessionMode::Application {
+                    let session_item = scope.and_then(|scope| {
+                        scope
+                            .session
+                            .lock()
+                            .unwrap()
+                            .as_mut()
+                            .and_then(|session| session.create_envelope_item())
+                    });
+                    if let Some(session_item) = session_item {
+                        envelope.add_item(session_item);
+                    }
                 }
                 transport.send_envelope(envelope);
                 return event_id;
@@ -294,6 +298,7 @@ impl Client {
     /// If no timeout is provided the client will wait for as long a
     /// `shutdown_timeout` in the client options.
     pub fn close(&self, timeout: Option<Duration>) -> bool {
+        self.session_flusher.flush();
         let transport_opt = self.transport.write().unwrap().take();
         if let Some(transport) = transport_opt {
             sentry_debug!("client close; request transport to shut down");
