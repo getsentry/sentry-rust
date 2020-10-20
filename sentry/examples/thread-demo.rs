@@ -8,13 +8,10 @@ fn main() {
     // this initializes sentry.  It also gives the thread that calls this some
     // special behavior in that all other threads spawned will get a hub based on
     // the hub from here.
-    let _sentry = sentry::init(
-        sentry::ClientOptions {
-            release: sentry::release_name!(),
-            ..Default::default()
-        }
-        .add_integration(sentry_log::LogIntegration::new()),
-    );
+    let _sentry = sentry::init(sentry::ClientOptions {
+        release: sentry::release_name!(),
+        ..Default::default()
+    });
 
     // the log integration sends to Hub::current()
     log::info!("Spawning thread");

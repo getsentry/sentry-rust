@@ -11,7 +11,7 @@
 
 **Deprecations**:
 
-- The `error-chain` and `failure` integration was officialy deprecated and will be removed soon.
+- The `error-chain` and `failure` integration was officially deprecated and will be removed soon.
 
 ## 0.20.1
 

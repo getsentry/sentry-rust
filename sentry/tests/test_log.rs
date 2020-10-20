@@ -11,17 +11,14 @@ fn test_log() {
         .map(|()| log::set_max_level(log::LevelFilter::Info))
         .unwrap();
 
-    let events = sentry::test::with_captured_events_options(
-        || {
-            sentry::configure_scope(|scope| {
-                scope.set_tag("worker", "worker1");
-            });
+    let events = sentry::test::with_captured_events(|| {
+        sentry::configure_scope(|scope| {
+            scope.set_tag("worker", "worker1");
+        });
 
-            log::info!("Hello World!");
-            log::error!("Shit's on fire yo");
-        },
-        sentry::ClientOptions::new().add_integration(sentry_log::LogIntegration::new()),
-    );
+        log::info!("Hello World!");
+        log::error!("Shit's on fire yo");
+    });
 
     assert_eq!(events.len(), 1);
     let event = events.into_iter().next().unwrap();
@@ -37,17 +34,14 @@ fn test_slog() {
     let drain = sentry_slog::SentryDrain::new(slog::Discard);
     let root = slog::Logger::root(drain, slog::o!());
 
-    let events = sentry::test::with_captured_events_options(
-        || {
-            sentry::configure_scope(|scope| {
-                scope.set_tag("worker", "worker1");
-            });
+    let events = sentry::test::with_captured_events(|| {
+        sentry::configure_scope(|scope| {
+            scope.set_tag("worker", "worker1");
+        });
 
-            slog::info!(root, "Hello World!");
-            slog::error!(root, "Shit's on fire yo");
-        },
-        sentry::ClientOptions::new().add_integration(sentry_slog::SlogIntegration::new()),
-    );
+        slog::info!(root, "Hello World!");
+        slog::error!(root, "Shit's on fire yo");
+    });
 
     assert_eq!(events.len(), 1);
     let event = events.into_iter().next().unwrap();

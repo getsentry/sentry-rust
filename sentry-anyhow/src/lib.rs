@@ -3,13 +3,11 @@
 //! # Example
 //!
 //! ```no_run
-//! use sentry_anyhow::{capture_anyhow, AnyhowIntegration};
+//! use sentry_anyhow::capture_anyhow;
 //!
 //! fn function_that_might_fail() -> anyhow::Result<()> {
 //!     Err(anyhow::anyhow!("some kind of error"))
 //! }
-//!
-//! let _sentry = sentry::init(sentry::ClientOptions::new().add_integration(AnyhowIntegration));
 //!
 //! if let Err(err) = function_that_might_fail() {
 //!     capture_anyhow(&err);
@@ -22,28 +20,7 @@
 #![deny(unsafe_code)]
 
 use sentry_core::types::Uuid;
-use sentry_core::{ClientOptions, Hub, Integration};
-
-/// The Sentry anyhow Integration.
-#[derive(Debug, Default)]
-pub struct AnyhowIntegration;
-
-impl AnyhowIntegration {
-    /// Creates a new anyhow Integration.
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
-
-impl Integration for AnyhowIntegration {
-    fn name(&self) -> &'static str {
-        "anyhow"
-    }
-
-    fn setup(&self, cfg: &mut ClientOptions) {
-        cfg.in_app_exclude.push("anyhow::");
-    }
-}
+use sentry_core::Hub;
 
 /// Captures an `anyhow::Error`.
 ///

@@ -11,19 +11,17 @@
 //!
 //! ```
 //! use sentry::{init, ClientOptions};
-//! use sentry_slog::{SentryDrain, SlogIntegration};
+//! use sentry_slog::SentryDrain;
 //!
-//! let options = ClientOptions::new().add_integration(SlogIntegration::new());
-//! let _sentry = sentry::init(options);
+//! let _sentry = sentry::init(());
 //!
 //! let drain = SentryDrain::new(slog::Discard);
 //! let root = slog::Logger::root(drain, slog::o!());
 //!
-//! # let options = ClientOptions::new().add_integration(SlogIntegration::new());
-//! # let events = sentry::test::with_captured_events_options(|| {
+//! # let events = sentry::test::with_captured_events(|| {
 //! slog::info!(root, "recorded as breadcrumb");
 //! slog::warn!(root, "recorded as regular event");
-//! # }, options.clone());
+//! # });
 //! # let captured_event = events.into_iter().next().unwrap();
 //!
 //! assert_eq!(
@@ -35,9 +33,9 @@
 //!     Some("recorded as regular event")
 //! );
 //!
-//! # let events = sentry::test::with_captured_events_options(|| {
+//! # let events = sentry::test::with_captured_events(|| {
 //! slog::crit!(root, "recorded as exception event");
-//! # }, options);
+//! # });
 //! # let captured_event = events.into_iter().next().unwrap();
 //!
 //! assert_eq!(captured_event.exception.len(), 1);
@@ -70,12 +68,9 @@
 #![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
 #![warn(missing_docs)]
 #![deny(unsafe_code)]
-#![allow(clippy::match_like_matches_macro)]
 
 mod converters;
 mod drain;
-mod integration;
 
 pub use converters::*;
 pub use drain::{default_filter, LevelFilter, RecordMapping, SentryDrain};
-pub use integration::SlogIntegration;

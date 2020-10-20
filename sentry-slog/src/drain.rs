@@ -127,10 +127,6 @@ impl<D: Drain> slog::Drain for SentryDrain<D> {
     }
 
     fn is_enabled(&self, level: slog::Level) -> bool {
-        self.drain.is_enabled(level)
-            || match (self.filter)(level) {
-                LevelFilter::Ignore => false,
-                _ => true,
-            }
+        self.drain.is_enabled(level) || !matches!((self.filter)(level), LevelFilter::Ignore)
     }
 }

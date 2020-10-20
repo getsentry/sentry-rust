@@ -4,13 +4,10 @@ use log_ as log;
 fn main() {
     init_log();
 
-    let _sentry = sentry::init(
-        sentry::ClientOptions {
-            release: sentry::release_name!(),
-            ..Default::default()
-        }
-        .add_integration(sentry_log::LogIntegration::new()),
-    );
+    let _sentry = sentry::init(sentry::ClientOptions {
+        release: sentry::release_name!(),
+        ..Default::default()
+    });
 
     debug!("System is booting");
     info!("System is booting");

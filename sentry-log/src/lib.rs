@@ -15,10 +15,7 @@
 //! log::set_boxed_logger(Box::new(logger)).unwrap();
 //! log::set_max_level(log::LevelFilter::Info);
 //!
-//! let log_integration = sentry_log::LogIntegration::default();
-//! let _sentry = sentry::init(
-//!     sentry::ClientOptions::new().add_integration(sentry_log::LogIntegration::new()),
-//! );
+//! let _sentry = sentry::init(());
 //!
 //! log::info!("Generates a breadcrumb");
 //! log::error!("Generates an event");
@@ -39,12 +36,9 @@
 #![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
 #![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
 #![warn(missing_docs)]
-#![allow(clippy::match_like_matches_macro)]
 
 mod converters;
-mod integration;
 mod logger;
 
 pub use converters::*;
-pub use integration::LogIntegration;
 pub use logger::*;

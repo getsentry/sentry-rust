@@ -14,11 +14,17 @@ lazy_static::lazy_static! {
         // these are not modules but things like __rust_maybe_catch_panic
         "__rust_",
         "___rust_",
+        // these are well-known library frames
+        "anyhow::",
+        "log::",
     ];
 
     static ref WELL_KNOWN_BORDER_FRAMES: Vec<&'static str> = vec![
         "std::panicking::begin_panic",
         "core::panicking::panic",
+        // well-known library frames
+        "anyhow::",
+        "<sentry_log::Logger as log::Log>::log",
     ];
 
     // TODO: remove all of this together with the deprecated `error_chain` support
