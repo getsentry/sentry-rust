@@ -121,11 +121,7 @@ impl<L: log::Log> SentryLogger<L> {
 
 impl<L: log::Log> log::Log for SentryLogger<L> {
     fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
-        self.dest.enabled(metadata)
-            || match (self.filter)(metadata) {
-                LogFilter::Ignore => false,
-                _ => true,
-            }
+        self.dest.enabled(metadata) || !matches!((self.filter)(metadata), LogFilter::Ignore)
     }
 
     fn log(&self, record: &log::Record<'_>) {

@@ -49,9 +49,10 @@ pub fn process_event_stacktrace(stacktrace: &mut Stacktrace, options: &ClientOpt
             None => {}
         }
 
-        for m in &options.in_app_exclude {
+        for m in &options.in_app_include {
             if function_starts_with(func_name, m) {
-                frame.in_app = Some(false);
+                frame.in_app = Some(true);
+                any_in_app = true;
                 break;
             }
         }
@@ -60,10 +61,9 @@ pub fn process_event_stacktrace(stacktrace: &mut Stacktrace, options: &ClientOpt
             continue;
         }
 
-        for m in &options.in_app_include {
+        for m in &options.in_app_exclude {
             if function_starts_with(func_name, m) {
-                frame.in_app = Some(true);
-                any_in_app = true;
+                frame.in_app = Some(false);
                 break;
             }
         }
