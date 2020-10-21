@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::fmt;
 use std::sync::{Arc, Mutex, PoisonError, RwLock};
 
-use crate::protocol::{Breadcrumb, Context, Event, Level, User, Value};
+use crate::protocol::{Breadcrumb, Context, Event, Level, Span, Transaction, User, Value};
 use crate::session::Session;
 use crate::Client;
 
@@ -43,6 +43,7 @@ pub struct Scope {
     pub(crate) contexts: im::HashMap<String, Context>,
     pub(crate) event_processors: im::Vector<Arc<EventProcessor>>,
     pub(crate) session: Arc<Mutex<Option<Session>>>,
+    pub(crate) span: Option<Span>,
 }
 
 impl fmt::Debug for Scope {
@@ -58,6 +59,7 @@ impl fmt::Debug for Scope {
             .field("contexts", &self.contexts)
             .field("event_processors", &self.event_processors.len())
             .field("session", &self.session)
+            .field("span", &self.span)
             .finish()
     }
 }
@@ -75,6 +77,7 @@ impl Default for Scope {
             contexts: Default::default(),
             event_processors: Default::default(),
             session: Default::default(),
+            span: Default::default(),
         }
     }
 }
@@ -171,9 +174,41 @@ impl Scope {
             .map(|fp| Arc::new(fp.iter().map(|x| Cow::Owned((*x).to_string())).collect()))
     }
 
-    /// Sets the transaction.
+    /// Sets the transaction name.
+    #[deprecated(note = "Use set_transaction_name instead")]
     pub fn set_transaction(&mut self, transaction: Option<&str>) {
-        self.transaction = transaction.map(|txn| Arc::new(txn.to_string()));
+        self.set_transaction_name(transaction)
+    }
+
+    /// Sets the transaction name.
+    pub fn set_transaction_name(&mut self, name: Option<&str>) {
+        self.transaction = name.map(|txn| Arc::new(txn.to_string()));
+        // TODO: Update transaction name (not feasible with Arc<Transaction<'static>>)
+        // if let Some(transaction) = self.get_transaction_mut() {
+        //     transaction.name = name.map(String::from);
+        // }
+    }
+
+    /// Returns the 'Transaction' attached to the scope (if there is one).
+    pub fn get_transaction(&self) -> Option<Arc<Transaction<'static>>> {
+        self.span.as_ref().map(|span| span.transaction.clone())
+    }
+
+    /// Sets the Span and Transaction on the scope.
+    pub fn set_span(&mut self, span: Option<Span>) {
+        if let Some(span) = span {
+            // Update the scope transaction name.
+            let tx = &span.transaction;
+            self.transaction = if let Some(name) = tx.name.clone() {
+                Some(Arc::new(name))
+            } else {
+                None
+            };
+            self.span = Some(span);
+        } else {
+            self.span = None;
+            self.transaction = None;
+        }
     }
 
     /// Sets the user for the current scope.

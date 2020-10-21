@@ -79,14 +79,14 @@ mod tests {
             // spawn two separate tasks, and await them in the end.
             runtime.block_on(async {
                 let task1 = async {
-                    configure_scope(|scope| scope.set_transaction(Some("transaction1")));
+                    configure_scope(|scope| scope.set_transaction_name(Some("transaction1")));
                     capture_message("oh hai from 1", Level::Info);
                 }
                 .bind_hub(Hub::new_from_top(Hub::current()));
                 let task1 = tokio::task::spawn(task1);
 
                 let task2 = async {
-                    configure_scope(|scope| scope.set_transaction(Some("transaction2")));
+                    configure_scope(|scope| scope.set_transaction_name(Some("transaction2")));
                     capture_message("oh hai from 2", Level::Info);
                 }
                 .bind_hub(Hub::new_from_top(Hub::current()));

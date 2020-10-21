@@ -47,6 +47,7 @@ pub use self::value::Value;
 
 /// The internally useed map type.
 pub use self::map::Map;
+use std::sync::Arc;
 
 /// A wrapper type for collections with attached meta data.
 ///
@@ -1520,6 +1521,9 @@ pub struct Span {
     /// Optional extra information to be sent with the span.
     #[serde(default, skip_serializing_if = "Map::is_empty")]
     pub data: Map<String, Value>,
+    /// The Transaction this Span is part of.
+    #[serde(skip)]
+    pub transaction: Arc<Transaction<'static>>,
 }
 
 impl Default for Span {
@@ -1536,6 +1540,7 @@ impl Default for Span {
             same_process_as_parent: Default::default(),
             op: Default::default(),
             data: Default::default(),
+            transaction: Default::default(),
         }
     }
 }
