@@ -5,6 +5,7 @@ use std::time::Duration;
 
 use crate::constants::USER_AGENT;
 use crate::protocol::{Breadcrumb, Event};
+use crate::tracing::TraceSampler;
 use crate::types::Dsn;
 use crate::{Integration, IntoDsn, TransportFactory};
 
@@ -98,6 +99,16 @@ pub struct ClientOptions {
     pub trim_backtraces: bool,
     /// The user agent that should be reported.
     pub user_agent: Cow<'static, str>,
+    /// The sample rate for traces. (if set, must be inside the 0.0 - 1.0 range)
+    ///
+    /// Tracing is enabled if either this or `traces_sampler` is defined. If both
+    /// are defined, `traces_sample_rate` is ignored.
+    pub traces_sample_rate: Option<f32>,
+    /// Function to compute tracing sample rate dynamically and filter unwanted traces.
+    ///
+    /// Tracing is enabled if either this or `traces_sampler` is defined. If both
+    /// are defined, `traces_sample_rate` is ignored.
+    pub traces_sampler: Option<TraceSampler>,
 }
 
 impl ClientOptions {
@@ -161,6 +172,8 @@ impl fmt::Debug for ClientOptions {
             .field("extra_border_frames", &self.extra_border_frames)
             .field("trim_backtraces", &self.trim_backtraces)
             .field("user_agent", &self.user_agent)
+            .field("traces_sample_rate", &self.traces_sample_rate)
+            .field("traces_sampler", &self.traces_sampler)
             .finish()
     }
 }
@@ -196,6 +209,8 @@ impl Default for ClientOptions {
             extra_border_frames: vec![],
             trim_backtraces: true,
             user_agent: Cow::Borrowed(&USER_AGENT),
+            traces_sample_rate: None,
+            traces_sampler: None,
         }
     }
 }

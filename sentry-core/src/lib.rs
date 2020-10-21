@@ -63,6 +63,7 @@ mod hub;
 mod integration;
 mod intodsn;
 mod scope;
+mod tracing;
 mod transport;
 
 // public api or exports from this crate
