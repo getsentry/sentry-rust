@@ -7,19 +7,9 @@ readme = "README.md"
 repository = "https://github.com/getsentry/sentry-rust"
 homepage = "https://sentry.io/welcome/"
 description = """
-Sentry client extension for actix-web 0.7.
+Sentry client extension for actix-web 3.
 """
 edition = "2018"
-
-[package.metadata.docs.rs]
-all-features = true
-
-[features]
-default = ["with_sentry_default"]
-with_sentry_default = [
-    "sentry/transport",
-    "sentry/panic",
-]
 
 [dependencies]
 sentry-core = { version = "0.20.1", path = "../sentry-core", default-features = false }
