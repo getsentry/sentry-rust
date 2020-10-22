@@ -412,8 +412,7 @@ mod tests {
                 #[get("/test")]
                 async fn original_transaction(_req: HttpRequest) -> Result<String, Error> {
                     // Override transaction name
-                    Hub::current()
-                        .configure_scope(|scope| scope.set_transaction(Some("new_transaction")));
+                    sentry::configure_scope(|scope| scope.set_transaction(Some("new_transaction")));
                     Err(io::Error::new(io::ErrorKind::Other, "Test Error").into())
                 }
 
