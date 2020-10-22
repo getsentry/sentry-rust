@@ -197,9 +197,8 @@ where
 
         let (tx, sentry_req) = sentry_request_from_http(&req, with_pii);
         hub.configure_scope(|scope| {
-            scope.add_event_processor(Box::new(move |event| {
-                process_event(event, tx.clone(), &sentry_req)
-            }))
+            scope.set_transaction(tx.as_deref());
+            scope.add_event_processor(Box::new(move |event| process_event(event, &sentry_req)))
         });
 
         let fut = self.service.call(req).bind_hub(hub.clone());
@@ -275,18 +274,11 @@ fn sentry_request_from_http(request: &ServiceRequest, with_pii: bool) -> (Option
 }
 
 /// Add request data to a Sentry event
-fn process_event(
-    mut event: Event<'static>,
-    transaction: Option<String>,
-    request: &Request,
-) -> Option<Event<'static>> {
+fn process_event(mut event: Event<'static>, request: &Request) -> Option<Event<'static>> {
     // Request
     if event.request.is_none() {
         event.request = Some(request.clone());
     }
-
-    // Transaction
-    event.transaction = transaction;
 
     // SDK
     if let Some(sdk) = event.sdk.take() {
@@ -429,5 +421,41 @@ mod tests {
         });
 
         assert!(events.is_empty());
+    }
+
+    /// Ensures transaction name can be overridden in handler scope.
+    #[actix_rt::test]
+    async fn test_override_transaction_name() {
+        let events = sentry::test::with_captured_events(|| {
+            block_on(async {
+                #[get("/test")]
+                async fn original_transaction(_req: HttpRequest) -> Result<String, Error> {
+                    // Override transaction name
+                    sentry::configure_scope(|scope| scope.set_transaction(Some("new_transaction")));
+                    Err(io::Error::new(io::ErrorKind::Other, "Test Error").into())
+                }
+
+                let mut app = init_service(
+                    App::new()
+                        .wrap(Sentry::builder().with_hub(Hub::current()).finish())
+                        .service(original_transaction),
+                )
+                .await;
+
+                let req = TestRequest::get().uri("/test").to_request();
+                let res = call_service(&mut app, req).await;
+                assert!(res.status().is_server_error());
+            })
+        });
+
+        assert_eq!(events.len(), 1);
+        let event = events[0].clone();
+        let request = event.request.expect("Request should be set.");
+        assert_eq!(event.transaction, Some("new_transaction".into())); // Transaction name is overridden by handler
+        assert_eq!(event.message, None);
+        assert_eq!(event.exception.values[0].ty, String::from("Custom"));
+        assert_eq!(event.exception.values[0].value, Some("Test Error".into()));
+        assert_eq!(event.level, Level::Error);
+        assert_eq!(request.method, Some("GET".into()));
     }
 }
