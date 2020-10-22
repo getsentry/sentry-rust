@@ -216,7 +216,7 @@ where
             };
 
             // Response errors
-            if inner.capture_server_errors {
+            if inner.capture_server_errors && res.response().status().is_server_error() {
                 if let Some(e) = res.response().error() {
                     let event_id = hub.capture_error(e);
 
@@ -321,8 +321,6 @@ mod tests {
     async fn test_explicit_events() {
         let events = sentry::test::with_captured_events(|| {
             block_on(async {
-                let test_hub = Hub::current();
-
                 let service = || {
                     // Current Hub should have no events
                     _assert_hub_no_events();
@@ -337,7 +335,7 @@ mod tests {
 
                 let mut app = init_service(
                     App::new()
-                        .wrap(Sentry::builder().with_hub(test_hub).finish())
+                        .wrap(Sentry::builder().with_hub(Hub::current()).finish())
                         .service(web::resource("/test").to(service)),
                 )
                 .await;
@@ -366,8 +364,6 @@ mod tests {
     async fn test_response_errors() {
         let events = sentry::test::with_captured_events(|| {
             block_on(async {
-                let test_hub = Hub::current();
-
                 #[get("/test")]
                 async fn failing(_req: HttpRequest) -> Result<String, Error> {
                     // Current hub should have no events
@@ -378,7 +374,7 @@ mod tests {
 
                 let mut app = init_service(
                     App::new()
-                        .wrap(Sentry::builder().with_hub(test_hub).finish())
+                        .wrap(Sentry::builder().with_hub(Hub::current()).finish())
                         .service(failing),
                 )
                 .await;
@@ -402,6 +398,29 @@ mod tests {
             assert_eq!(event.level, Level::Error);
             assert_eq!(request.method, Some("GET".into()));
         }
+    }
+
+    /// Ensures client errors (4xx) are not captured.
+    #[actix_rt::test]
+    async fn test_client_errors_discarded() {
+        let events = sentry::test::with_captured_events(|| {
+            block_on(async {
+                let service = || HttpResponse::NotFound();
+
+                let mut app = init_service(
+                    App::new()
+                        .wrap(Sentry::builder().with_hub(Hub::current()).finish())
+                        .service(web::resource("/test").to(service)),
+                )
+                .await;
+
+                let req = TestRequest::get().uri("/test").to_request();
+                let res = call_service(&mut app, req).await;
+                assert!(res.status().is_client_error());
+            })
+        });
+
+        assert!(events.is_empty());
     }
 
     /// Ensures transaction name can be overridden in handler scope.
