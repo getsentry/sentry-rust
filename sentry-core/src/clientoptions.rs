@@ -103,12 +103,12 @@ pub struct ClientOptions {
     ///
     /// Tracing is enabled if either this or `traces_sampler` is defined. If both
     /// are defined, `traces_sample_rate` is ignored.
-    pub traces_sample_rate: Option<f32>,
+    pub traces_sample_rate: f32,
     /// Function to compute tracing sample rate dynamically and filter unwanted traces.
     ///
     /// Tracing is enabled if either this or `traces_sampler` is defined. If both
     /// are defined, `traces_sample_rate` is ignored.
-    pub traces_sampler: Option<TraceSampler>,
+    pub traces_sampler: Option<Arc<dyn TraceSampler>>,
 }
 
 impl ClientOptions {
@@ -209,7 +209,7 @@ impl Default for ClientOptions {
             extra_border_frames: vec![],
             trim_backtraces: true,
             user_agent: Cow::Borrowed(&USER_AGENT),
-            traces_sample_rate: None,
+            traces_sample_rate: 0.0,
             traces_sampler: None,
         }
     }
