@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use crate::constants::USER_AGENT;
 use crate::protocol::{Breadcrumb, Event};
-use crate::tracing::TraceSampler;
+use crate::tracing::TracesSampler;
 use crate::types::Dsn;
 use crate::{Integration, IntoDsn, TransportFactory};
 
@@ -108,7 +108,7 @@ pub struct ClientOptions {
     ///
     /// Tracing is enabled if either this or `traces_sampler` is defined. If both
     /// are defined, `traces_sample_rate` is ignored.
-    pub traces_sampler: Option<Arc<dyn TraceSampler>>,
+    pub traces_sampler: Option<Arc<dyn TracesSampler>>,
 }
 
 impl ClientOptions {
