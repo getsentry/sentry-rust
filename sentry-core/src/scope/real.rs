@@ -183,14 +183,15 @@ impl Scope {
     /// Sets the transaction name.
     pub fn set_transaction_name(&mut self, name: Option<&str>) {
         self.transaction = name.map(|txn| Arc::new(txn.to_string()));
-        // TODO: Update transaction name (not feasible with Arc<Transaction<'static>>)
-        // if let Some(transaction) = self.get_transaction_mut() {
-        //     transaction.name = name.map(String::from);
-        // }
+        if let Some(span) = &mut self.span {
+            let tx = span.transaction.clone();
+            let mut tx = tx.write().unwrap();
+            tx.name = name.map(String::from);
+        }
     }
 
     /// Returns the 'Transaction' attached to the scope (if there is one).
-    pub fn get_transaction(&self) -> Option<Arc<Transaction<'static>>> {
+    pub fn get_transaction(&self) -> Option<Arc<RwLock<Transaction<'static>>>> {
         self.span.as_ref().map(|span| span.transaction.clone())
     }
 
@@ -198,8 +199,7 @@ impl Scope {
     pub fn set_span(&mut self, span: Option<Span>) {
         if let Some(span) = span {
             // Update the scope transaction name.
-            let tx = &span.transaction;
-            self.transaction = if let Some(name) = tx.name.clone() {
+            self.transaction = if let Some(name) = span.transaction.read().unwrap().name.clone() {
                 Some(Arc::new(name))
             } else {
                 None

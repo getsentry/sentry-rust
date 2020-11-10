@@ -13,6 +13,6 @@ pub trait TracesSampler: Fn(SamplingContext) -> bool + Send + Sync {}
 
 impl Debug for dyn TracesSampler {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "TraceSampler {{...}}")
+        write!(f, "TracesSampler {{...}}")
     }
 }

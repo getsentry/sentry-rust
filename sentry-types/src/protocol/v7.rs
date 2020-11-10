@@ -13,6 +13,7 @@ use std::iter::FromIterator;
 use std::net::{AddrParseError, IpAddr};
 use std::ops;
 use std::str;
+use std::sync::{Arc, RwLock};
 
 use ::debugid::DebugId;
 use chrono::{DateTime, Utc};
@@ -47,7 +48,6 @@ pub use self::value::Value;
 
 /// The internally useed map type.
 pub use self::map::Map;
-use std::sync::Arc;
 
 /// A wrapper type for collections with attached meta data.
 ///
@@ -1485,7 +1485,7 @@ impl<'a> fmt::Display for Event<'a> {
 }
 
 /// Represents a tracing span.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Span {
     /// The ID of the span
     #[serde(default = "event::default_id", serialize_with = "event::serialize_id")]
@@ -1523,7 +1523,25 @@ pub struct Span {
     pub data: Map<String, Value>,
     /// The Transaction this Span is part of.
     #[serde(skip)]
-    pub transaction: Arc<Transaction<'static>>,
+    pub transaction: Arc<RwLock<Transaction<'static>>>,
+}
+
+impl PartialEq for Span {
+    fn eq(&self, other: &Self) -> bool {
+        // Note: `transaction` is not checked since that would cause a recursion loop
+        // on PartialEq for Transaction.spans
+        PartialEq::eq(&self.span_id, &other.span_id)
+            || PartialEq::eq(&self.trace_id, &other.trace_id)
+            || PartialEq::eq(&self.parent_span_id, &other.parent_span_id)
+            || PartialEq::eq(&self.same_process_as_parent, &other.same_process_as_parent)
+            || PartialEq::eq(&self.op, &other.op)
+            || PartialEq::eq(&self.description, &other.description)
+            || PartialEq::eq(&self.timestamp, &other.timestamp)
+            || PartialEq::eq(&self.start_timestamp, &other.start_timestamp)
+            || PartialEq::eq(&self.status, &other.status)
+            || PartialEq::eq(&self.tags, &other.tags)
+            || PartialEq::eq(&self.data, &other.data)
+    }
 }
 
 impl Default for Span {
