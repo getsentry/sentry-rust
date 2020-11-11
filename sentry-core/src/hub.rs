@@ -334,13 +334,13 @@ impl Hub {
     /// See the global [`end_session`](crate::end_session_with)
     /// for more documentation.
     pub fn end_session(&self) {
-        self.end_session_with(SessionStatus::Exited)
+        self.end_session_with_status(SessionStatus::Exited)
     }
     /// End the current Release Health Session with the given [`SessionStatus`].
     ///
-    /// See the global [`end_session_with`](crate::end_session_with)
+    /// See the global [`end_session_with_status`](crate::end_session_with_status)
     /// for more documentation.
-    pub fn end_session_with(&self, status: SessionStatus) {
+    pub fn end_session_with_status(&self, status: SessionStatus) {
         with_client_impl! {{
             self.inner.with_mut(|stack| {
                 let top = stack.top_mut();

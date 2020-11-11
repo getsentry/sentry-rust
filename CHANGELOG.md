@@ -13,7 +13,7 @@
 
 **Features**:
 
-- Add the new `end_session_with` global and Hub functions which allow ending a Release Health Session with an explicit `SessionStatus`.
+- Add the new `end_session_with_status` global and Hub functions which allow ending a Release Health Session with an explicit `SessionStatus`.
 
 **Deprecations**:
 

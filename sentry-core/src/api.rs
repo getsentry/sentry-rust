@@ -285,7 +285,7 @@ pub fn start_session() {
 
 /// End the current Release Health Session.
 pub fn end_session() {
-    end_session_with(SessionStatus::Exited)
+    end_session_with_status(SessionStatus::Exited)
 }
 
 /// End the current Release Health Session with the given [`SessionStatus`].
@@ -295,6 +295,6 @@ pub fn end_session() {
 ///
 /// When an `Abnormal` session should be captured, it has to be done explicitly
 /// using this function.
-pub fn end_session_with(status: SessionStatus) {
-    Hub::with_active(|hub| hub.end_session_with(status))
+pub fn end_session_with_status(status: SessionStatus) {
+    Hub::with_active(|hub| hub.end_session_with_status(status))
 }

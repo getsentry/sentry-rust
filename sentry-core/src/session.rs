@@ -337,7 +337,7 @@ mod tests {
     fn test_session_abnormal() {
         let envelopes = capture_envelopes(|| {
             sentry::start_session();
-            sentry::end_session_with(SessionStatus::Abnormal);
+            sentry::end_session_with_status(SessionStatus::Abnormal);
         });
         assert_eq!(envelopes.len(), 1);
 
