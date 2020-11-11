@@ -279,12 +279,6 @@ impl Client {
         self.session_flusher.enqueue(session_update)
     }
 
-    pub(crate) fn capture_envelope(&self, envelope: Envelope) {
-        if let Some(ref transport) = *self.transport.read().unwrap() {
-            transport.send_envelope(envelope);
-        }
-    }
-
     /// Drains all pending events and shuts down the transport behind the
     /// client.  After shutting down the transport is removed.
     ///

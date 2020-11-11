@@ -331,21 +331,22 @@ impl Hub {
 
     /// End the current Release Health Session.
     ///
-    /// See the global [`end_session`](fn.end_session.html)
+    /// See the global [`end_session`](crate::end_session_with)
     /// for more documentation.
     pub fn end_session(&self) {
+        self.end_session_with_status(SessionStatus::Exited)
+    }
+    /// End the current Release Health Session with the given [`SessionStatus`].
+    ///
+    /// See the global [`end_session_with_status`](crate::end_session_with_status)
+    /// for more documentation.
+    pub fn end_session_with_status(&self, status: SessionStatus) {
         with_client_impl! {{
             self.inner.with_mut(|stack| {
                 let top = stack.top_mut();
+                // drop will close and enqueue the session
                 if let Some(mut session) = top.scope.session.lock().unwrap().take() {
-                    session.close();
-                    if let Some(item) = session.create_envelope_item() {
-                        let mut envelope = Envelope::new();
-                        envelope.add_item(item);
-                        if let Some(ref client) = top.client {
-                            client.capture_envelope(envelope);
-                        }
-                    }
+                    session.close(status);
                 }
             })
         }}
