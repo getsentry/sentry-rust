@@ -11,6 +11,10 @@
 - The `log` and `slog` integrations were re-designed, they now offer types that wrap a `log::Log` or `slog::Drain` and forward log events to the currently active sentry `Hub` based on an optional filter and an optional mapper.
 - The new `log` integration will not implicitly call `log::set_max_level_filter` anymore, and users need to do so manually.
 
+**Features**:
+
+- Add the new `end_session_with` global and Hub functions which allow ending a Release Health Session with an explicit `SessionStatus`.
+
 **Deprecations**:
 
 - The `error-chain` and `failure` integration was officially deprecated and will be removed soon.

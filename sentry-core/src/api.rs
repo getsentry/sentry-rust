@@ -1,3 +1,5 @@
+use sentry_types::protocol::v7::SessionStatus;
+
 use crate::protocol::{Event, Level};
 use crate::types::Uuid;
 use crate::{Hub, Integration, IntoBreadcrumbs, Scope};
@@ -283,5 +285,16 @@ pub fn start_session() {
 
 /// End the current Release Health Session.
 pub fn end_session() {
-    Hub::with_active(|hub| hub.end_session())
+    end_session_with(SessionStatus::Exited)
+}
+
+/// End the current Release Health Session with the given [`SessionStatus`].
+///
+/// By default, the SDK will only consider the `Exited` and `Crashed` status
+/// based on the type of events that were captured during the session.
+///
+/// When an `Abnormal` session should be captured, it has to be done explicitly
+/// using this function.
+pub fn end_session_with(status: SessionStatus) {
+    Hub::with_active(|hub| hub.end_session_with(status))
 }
