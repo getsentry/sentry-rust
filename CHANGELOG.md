@@ -13,6 +13,8 @@
 
 **Features**:
 
+- The SDK will now set a default `environment` based on `debug_assertions`.
+- Session updates are now sent lazily.
 - Add the new `end_session_with_status` global and Hub functions which allow ending a Release Health Session with an explicit `SessionStatus`.
 
 **Deprecations**:
