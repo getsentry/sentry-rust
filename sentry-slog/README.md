@@ -8,10 +8,9 @@
 
 Sentry `slog` Integration.
 
-The sentry `slog` integration consists of two parts, the
-[`SlogIntegration`] which configures how sentry should treat
-`slog::Record`s, and the [`SentryDrain`], which can be used to create a
-`slog::Logger`.
+This mainly provides the [`SentryDrain`], which wraps another [`slog::Drain`]
+and can be configured to forward [`slog::Record`]s to Sentry.
+The [`SentryDrain`] can be used to create a `slog::Logger`.
 
 *NOTE*: This integration currently does not process any `slog::KV` pairs,
 but support for this will be added in the future.
@@ -20,11 +19,9 @@ but support for this will be added in the future.
 
 ```rust
 use sentry::{init, ClientOptions};
-use sentry_slog::{SentryDrain, SlogIntegration};
+use sentry_slog::SentryDrain;
 
-let integration = SlogIntegration::default();
-let options = ClientOptions::default().add_integration(integration);
-let _sentry = sentry::init(options);
+let _sentry = sentry::init(());
 
 let drain = SentryDrain::new(slog::Discard);
 let root = slog::Logger::root(drain, slog::o!());
@@ -46,24 +43,28 @@ slog::crit!(root, "recorded as exception event");
 assert_eq!(captured_event.exception.len(), 1);
 ```
 
-The integration can also be customized with a `filter`, and a `mapper`:
+The Drain can also be customized with a `filter`, and a `mapper`:
 
 ```rust
-use sentry_slog::{exception_from_record, LevelFilter, RecordMapping, SlogIntegration};
+use sentry_slog::{exception_from_record, LevelFilter, RecordMapping, SentryDrain};
 
-let integration = SlogIntegration::default()
+let drain = SentryDrain::new(slog::Discard)
     .filter(|level| match level {
         slog::Level::Critical | slog::Level::Error => LevelFilter::Event,
         _ => LevelFilter::Ignore,
     })
-    .mapper(|record, kv| RecordMapping::Event(exception_from_record(record, kv)));
+    .mapper(|record, kv| match record.level() {
+        slog::Level::Critical | slog::Level::Error => {
+            RecordMapping::Event(exception_from_record(record, kv))
+        }
+        _ => RecordMapping::Ignore,
+    });
 ```
 
-Please not that the `mapper` can override any classification from the
-previous `filter`.
+When a `mapper` is specified, a corresponding `filter` should also be
+provided.
 
-[`SlogIntegration`]: https://docs.rs/sentry-slog/0.20.1/sentry_slog/struct.SlogIntegration.html
-[`SentryDrain`]: https://docs.rs/sentry-slog/0.20.1/sentry_slog/struct.SentryDrain.html
+[`SentryDrain`]: https://docs.rs/sentry-slog/0.21.0/sentry_slog/struct.SentryDrain.html
 
 ## Resources
 

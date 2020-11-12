@@ -28,12 +28,6 @@ async fn failing(_req: HttpRequest) -> Result<String, Error> {
     Err(io::Error::new(io::ErrorKind::Other, "An error happens here").into())
 }
 
-#[get("/hello")]
-async fn hello_world(_req: HttpRequest) -> Result<String, Error> {
-    sentry::capture_message("Something is not well", Level::Warning);
-    Ok("Hello World".into())
-}
-
 #[actix_web::main]
 async fn main() -> io::Result<()> {
     let _guard = sentry::init(());
@@ -43,7 +37,6 @@ async fn main() -> io::Result<()> {
         App::new()
             .wrap(sentry_actix::Sentry::new())
             .service(failing)
-            .service(hello_world)
     })
     .bind("127.0.0.1:3001")?
     .run()
@@ -53,20 +46,14 @@ async fn main() -> io::Result<()> {
 }
 ```
 
-# Reusing the Hub
+## Reusing the Hub
 
 This integration will automatically update the current Hub instance. For example,
 the following will capture a message in the current request's Hub:
 
 ```rust
-use actix_web::{Error, get, HttpRequest};
 use sentry::Level;
-
-#[get("/")]
-async fn hello_world(_req: HttpRequest) -> Result<String, Error> {
-    sentry::capture_message("Something is not well", Level::Warning);
-    Ok("Hello World".into())
-}
+sentry::capture_message("Something is not well", Level::Warning);
 ```
 
 ## Resources

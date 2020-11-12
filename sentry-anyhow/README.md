@@ -12,13 +12,14 @@ Adds support for capturing Sentry errors from `anyhow::Error`.
 
 ```rust
 use sentry_anyhow::capture_anyhow;
-let result = match function_that_might_fail() {
-    Ok(result) => result,
-    Err(err) => {
-        capture_anyhow(&err);
-        return Err(err);
-    }
-};
+
+fn function_that_might_fail() -> anyhow::Result<()> {
+    Err(anyhow::anyhow!("some kind of error"))
+}
+
+if let Err(err) = function_that_might_fail() {
+    capture_anyhow(&err);
+}
 ```
 
 ## Resources

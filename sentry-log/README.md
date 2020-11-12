@@ -16,22 +16,29 @@ anything above `Error` is captured as error event.
 ## Examples
 
 ```rust
-let log_integration = sentry_log::LogIntegration::default();
-let _sentry = sentry::init(sentry::ClientOptions::default().add_integration(log_integration));
-
-log::info!("Generates a breadcrumb");
-```
-
-Or optionally with env_logger support:
-
-```rust
 let mut log_builder = pretty_env_logger::formatted_builder();
 log_builder.parse_filters("info");
-let log_integration =
-    sentry_log::LogIntegration::default().with_env_logger_dest(Some(log_builder.build()));
-let _sentry = sentry::init(sentry::ClientOptions::default().add_integration(log_integration));
+let logger = sentry_log::SentryLogger::with_dest(log_builder.build());
 
+log::set_boxed_logger(Box::new(logger)).unwrap();
+log::set_max_level(log::LevelFilter::Info);
+
+let _sentry = sentry::init(());
+
+log::info!("Generates a breadcrumb");
 log::error!("Generates an event");
+```
+
+Or one might also set an explicit filter, to customize how to treat log
+records:
+
+```rust
+use sentry_log::LogFilter;
+
+let logger = sentry_log::SentryLogger::new().filter(|md| match md.level() {
+    log::Level::Error => LogFilter::Event,
+    _ => LogFilter::Ignore,
+});
 ```
 
 ## Resources

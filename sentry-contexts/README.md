@@ -17,11 +17,8 @@ See the [Contexts Interface] documentation for more info.
 ## Examples
 
 ```rust
-let integration = sentry_contexts::ContextIntegration {
-    add_os: false,
-    ..Default::default()
-};
-let _sentry = sentry::init(sentry::ClientOptions::default().add_integration(integration));
+let integration = sentry_contexts::ContextIntegration::new().add_os(false);
+let _sentry = sentry::init(sentry::ClientOptions::new().add_integration(integration));
 ```
 
 [Contexts Interface]: https://develop.sentry.dev/sdk/event-payloads/contexts/
