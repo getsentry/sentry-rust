@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Breaking Changes**:
+
+- The deprecated `error-chain` and `failure` integrations, features and crates were removed.
+
 ## 0.21.0
 
 **Breaking Changes**:
