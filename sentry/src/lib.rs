@@ -107,14 +107,6 @@ pub mod integrations {
     #[cfg(feature = "debug-images")]
     #[doc(inline)]
     pub use sentry_debug_images as debug_images;
-    #[cfg(feature = "error-chain")]
-    #[doc(inline)]
-    #[deprecated = "The `error_chain` integration is deprecated and will be removed in the future."]
-    pub use sentry_error_chain as error_chain;
-    #[cfg(feature = "failure")]
-    #[doc(inline)]
-    #[deprecated = "The `failure` integration is deprecated and will be removed in the future."]
-    pub use sentry_failure as failure;
     #[cfg(feature = "log")]
     #[doc(inline)]
     pub use sentry_log as log;
