@@ -58,8 +58,14 @@ pub struct ClientOptions {
     pub in_app_exclude: Vec<&'static str>,
     // Integration options
     /// A list of integrations to enable.
+    ///
+    /// See [`sentry::integrations`](integrations/index.html#installing-integrations) for
+    /// how to use this to enable extra integrations.
     pub integrations: Vec<Arc<dyn Integration>>,
     /// Whether to add default integrations.
+    ///
+    /// See [`sentry::integrations`](integrations/index.html#default-integrations) for
+    /// details how this works and interacts with manually installed integrations.
     pub default_integrations: bool,
     // Hooks
     /// Callback that is executed before event sending.

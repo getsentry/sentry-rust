@@ -90,8 +90,51 @@ pub use crate::init::{init, ClientInitGuard};
 
 /// Available Sentry Integrations.
 ///
-/// See the [`apply_defaults`] function for more information on which integrations are
-/// used by default.
+/// Integrations extend the functionality of the SDK for some common frameworks and
+/// libraries.  Integrations come two primary kinds: as event *sources* or as event
+/// *processors*.
+///
+/// Integrations which are *sources*, like e.g. the
+/// [`sentry::integrations::anyhow`](integrations::anyhow) integration, usually provide one
+/// or more functions to create new events.  They will usually provide their own extension
+/// trait exposing a new method on the [`Hub`].
+///
+/// Integrations which *process* events in some way usually implement the
+/// [`Itegration`](crate::Integration) trait and need to be installed when sentry is
+/// initialised.
+///
+/// # Installing Integrations
+///
+/// Processing integrations which implement [`Integration`](crate::Integration) need to be
+/// installed when sentry is initialised.  This is done using the
+/// [`ClientOptions::integrations`](crate::ClientOptions::integrations) field, which you can
+/// use to add extra integrations.
+///
+/// For example if you disabled the default integrations (see below) but still wanted the
+/// [`sentry::integrations::debug_images`](integrations::debug_images) integration enabled,
+/// you could do this as such:
+///
+/// ```
+/// use sentry::ClientOptions;
+/// use sentry::integrations::debug_images::DebugImagesIntegration;
+///
+/// let options = ClientOptions {
+///     // Add a DSN.
+///     default_integrations: false,
+///     integrations: vec![DebugImagesIntegration::default()],
+///     ..Default::default()
+/// };
+/// let _guard = sentry::init(options);
+/// ```
+///
+/// # Default Integrations
+///
+/// The [`ClientOptions::default_integrations`](crate::ClientOptions::default_integrations)
+/// option is a boolean field that when enabled will enable a number of default integrations
+/// **before** any integrations provided by
+/// [`ClientOptions::integrations`](crate::ClientOptions::integrations) are installed.  This
+/// is done using the [`apply_defaults`] function, which should be consulted for more
+/// details and the list of which integrations are by default enabled.
 ///
 /// [`apply_defaults`]: ../fn.apply_defaults.html
 pub mod integrations {

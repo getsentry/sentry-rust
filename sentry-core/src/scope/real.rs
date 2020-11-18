@@ -188,6 +188,8 @@ impl Scope {
     }
 
     /// Removes a tag.
+    ///
+    /// If the tag is not set, does nothing.
     pub fn remove_tag(&mut self, key: &str) {
         self.tags.remove(key);
     }
