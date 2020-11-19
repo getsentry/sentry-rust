@@ -3,15 +3,17 @@
 //! This integration adds a new event *source*, which allows you to create events directly
 //! from an [`anyhow::Error`] struct.  As it is only an event source it only needs to be
 //! enabled using the `anyhow` cargo feature, it does not need to be enabled in the call to
-//! [`sentry::init`](../../fn.init.html).
+//! [`sentry::init`](https://docs.rs/sentry/*/sentry/fn.init.html).
 //!
 //! This integration does not need to be installed, instead it provides an extra function to
 //! capture [`anyhow::Error`], optionally exposing it as a method on the
-//! [`sentry::Hub`](../../struct.Hub.html) using the [`AnyhowHubExt`] trait.
+//! [`sentry::Hub`](https://docs.rs/sentry/*/sentry/struct.Hub.html) using the
+//! [`AnyhowHubExt`] trait.
 //!
 //! Like a plain [`std::error::Error`] being captured, [`anyhow::Error`] is captured with a
 //! chain of all error sources, if present.  See
-//! [`sentry::capture_error`](../../fn.capture_error.html) for details of this.
+//! [`sentry::capture_error`](https://docs.rs/sentry/*/sentry/fn.capture_error.html) for
+//! details of this.
 //!
 //! # Example
 //!
