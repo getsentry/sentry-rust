@@ -178,6 +178,9 @@ impl Scope {
 
     /// Sets the user for the current scope.
     pub fn set_user(&mut self, user: Option<User>) {
+        if let Some(session) = self.session.lock().unwrap().as_mut() {
+            session.update_user(user.as_ref());
+        }
         self.user = user.map(Arc::new);
     }
 

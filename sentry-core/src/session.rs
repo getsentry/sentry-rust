@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 
 use crate::client::TransportArc;
 use crate::protocol::{
-    EnvelopeItem, Event, Level, SessionAttributes, SessionStatus, SessionUpdate,
+    EnvelopeItem, Event, Level, SessionAttributes, SessionStatus, SessionUpdate, User,
 };
 use crate::scope::StackLayer;
 use crate::types::{Utc, Uuid};
@@ -35,20 +35,12 @@ impl Session {
     pub fn from_stack(stack: &StackLayer) -> Option<Self> {
         let client = stack.client.as_ref()?;
         let options = client.options();
-        let user = stack.scope.user.as_ref();
-        let distinct_id = user
-            .and_then(|user| {
-                user.id
-                    .as_ref()
-                    .or_else(|| user.email.as_ref())
-                    .or_else(|| user.username.as_ref())
-            })
-            .cloned();
-        Some(Self {
+
+        let mut session = Self {
             client: client.clone(),
             session_update: SessionUpdate {
                 session_id: Uuid::new_v4(),
-                distinct_id,
+                distinct_id: None,
                 sequence: None,
                 timestamp: None,
                 started: Utc::now(),
@@ -65,7 +57,10 @@ impl Session {
             },
             started: Instant::now(),
             dirty: true,
-        })
+        };
+        session.update_user(stack.scope.user.as_deref());
+
+        Some(session)
     }
 
     pub(crate) fn update_from_event(&mut self, event: &Event<'static>) {
@@ -115,6 +110,21 @@ impl Session {
             return Some(item);
         }
         None
+    }
+
+    pub(crate) fn update_user(&mut self, user: Option<&User>) {
+        if !self.session_update.init {
+            // once a session update was sent, it becomes immutable
+            return;
+        }
+        self.session_update.distinct_id = user
+            .and_then(|user| {
+                user.id
+                    .as_ref()
+                    .or_else(|| user.email.as_ref())
+                    .or_else(|| user.username.as_ref())
+            })
+            .cloned();
     }
 }
 
@@ -350,6 +360,65 @@ mod tests {
         }
         assert_eq!(items.next(), None);
     }
+
+    #[test]
+    fn test_session_update_user() {
+        let envelopes = capture_envelopes(|| {
+            sentry::start_session();
+            // capturing this error means the session will be sent out to the
+            // server, becoming immutable.
+            let err = "NaN".parse::<usize>().unwrap_err();
+            sentry::capture_error(&err);
+
+            sentry::configure_scope(|scope| {
+                scope.set_user(Some(sentry::User {
+                    id: Some("foo".into()), // we won’t see this
+                    ..Default::default()
+                }))
+            });
+
+            sentry::start_session();
+            sentry::configure_scope(|scope| {
+                scope.set_user(Some(sentry::User {
+                    id: Some("foo-bar".into()),
+                    ..Default::default()
+                }))
+            });
+        });
+        assert_eq!(envelopes.len(), 2);
+
+        let mut items = envelopes[0].items();
+        assert!(matches!(items.next(), Some(EnvelopeItem::Event(_))));
+        if let Some(EnvelopeItem::SessionUpdate(session)) = items.next() {
+            assert_eq!(session.status, SessionStatus::Ok);
+            assert_eq!(session.errors, 1);
+            assert_eq!(session.distinct_id, None);
+            assert_eq!(session.init, true);
+        } else {
+            panic!("expected session");
+        }
+        assert_eq!(items.next(), None);
+
+        let mut items = envelopes[1].items();
+        if let Some(EnvelopeItem::SessionUpdate(session)) = items.next() {
+            assert_eq!(session.status, SessionStatus::Exited);
+            assert_eq!(session.errors, 1);
+            assert_eq!(session.distinct_id, None);
+            assert_eq!(session.init, false);
+        } else {
+            panic!("expected session");
+        }
+        if let Some(EnvelopeItem::SessionUpdate(session)) = items.next() {
+            assert_eq!(session.status, SessionStatus::Exited);
+            assert_eq!(session.errors, 0);
+            assert_eq!(session.distinct_id, Some("foo-bar".into()));
+            assert_eq!(session.init, true);
+        } else {
+            panic!("expected session");
+        }
+        assert_eq!(items.next(), None);
+    }
+
     #[test]
     fn test_session_sampled_errors() {
         let mut envelopes = crate::test::with_captured_envelopes_options(
