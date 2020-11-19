@@ -107,7 +107,7 @@ pub use crate::init::{init, ClientInitGuard};
 ///
 /// Processing integrations which implement [`Integration`](crate::Integration) need to be
 /// installed when sentry is initialised.  This is done using the
-/// [`ClientOptions::integrations`](crate::ClientOptions::integrations) field, which you can
+/// [`ClientOptions::add_integration`](crate::ClientOptions::add_integration) function, which you can
 /// use to add extra integrations.
 ///
 /// For example if you disabled the default integrations (see below) but still wanted the
@@ -119,11 +119,9 @@ pub use crate::init::{init, ClientInitGuard};
 /// use sentry::integrations::debug_images::DebugImagesIntegration;
 ///
 /// let options = ClientOptions {
-///     // Add a DSN.
 ///     default_integrations: false,
-///     integrations: vec![DebugImagesIntegration::default()],
 ///     ..Default::default()
-/// };
+/// }.add_integration(DebugImagesIntegration::new());
 /// let _guard = sentry::init(options);
 /// ```
 ///
@@ -134,7 +132,7 @@ pub use crate::init::{init, ClientInitGuard};
 /// **before** any integrations provided by
 /// [`ClientOptions::integrations`](crate::ClientOptions::integrations) are installed.  This
 /// is done using the [`apply_defaults`] function, which should be consulted for more
-/// details and the list of which integrations are by default enabled.
+/// details and the list of which integrations are enabled by default.
 ///
 /// [`apply_defaults`]: ../fn.apply_defaults.html
 pub mod integrations {
