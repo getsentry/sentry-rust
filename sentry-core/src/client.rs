@@ -151,12 +151,13 @@ impl Client {
         &self,
         mut event: Event<'static>,
         scope: Option<&Scope>,
+        is_sending: bool,
     ) -> Option<Event<'static>> {
         if let Some(scope) = scope {
             scope.update_session_from_event(&event);
         }
 
-        if !self.sample_should_send() {
+        if is_sending && !self.sample_should_send() {
             return None;
         }
 
@@ -172,6 +173,7 @@ impl Client {
         }
 
         if let Some(scope) = scope {
+            // Add eg Breadcrumbs to the event
             event = match scope.apply_to_event(event) {
                 Some(event) => event,
                 None => return None,
@@ -202,16 +204,18 @@ impl Client {
             event.platform = "native".into();
         }
 
-        if let Some(ref func) = self.options.before_send {
-            sentry_debug!("invoking before_send callback");
-            let id = event.event_id;
-            func(event).or_else(move || {
-                sentry_debug!("before_send dropped event {:?}", id);
-                None
-            })
-        } else {
-            Some(event)
+        if is_sending {
+            if let Some(ref func) = self.options.before_send {
+                sentry_debug!("invoking before_send callback");
+                let id = event.event_id;
+                return func(event).or_else(move || {
+                    sentry_debug!("before_send dropped event {:?}", id);
+                    None
+                });
+            }
         }
+
+        Some(event)
     }
 
     /// Returns the options of this client.
@@ -254,7 +258,7 @@ impl Client {
     /// Captures an event and sends it to sentry.
     pub fn capture_event(&self, event: Event<'static>, scope: Option<&Scope>) -> Uuid {
         if let Some(ref transport) = *self.transport.read().unwrap() {
-            if let Some(event) = self.prepare_event(event, scope) {
+            if let Some(event) = self.prepare_event(event, scope, true) {
                 let event_id = event.event_id;
                 let mut envelope: Envelope = event.into();
                 let session_item = scope.and_then(|scope| {
@@ -273,6 +277,39 @@ impl Client {
             }
         }
         Default::default()
+    }
+
+    pub fn assemble_event(
+        &self,
+        event: Event<'static>,
+        scope: Option<&Scope>,
+    ) -> (Option<Event<'static>>, Option<SessionUpdate<'static>>) {
+        if let Some(event) = self.prepare_event(event, scope, false) {
+            let session_item = scope.and_then(|scope| {
+                scope.session.lock().unwrap().as_mut().and_then(|session| {
+                    // Sorry :p
+                    match session.create_envelope_item() {
+                        Some(EnvelopeItem::SessionUpdate(update)) => Some(update),
+                        _ => None,
+                    }
+                })
+            });
+
+            return (Some(event), session_item);
+        }
+
+        (None, None)
+    }
+
+    pub fn send_envelope(&self, envelope: Envelope) {
+        if let Some(ref transport) = *self.transport.read().unwrap() {
+            // TODO: Should we actually do this?
+            if self.sample_should_send() {
+                transport.send_envelope(envelope);
+            } else {
+                sentry_debug!("ignoring envelope due to sample rate");
+            }
+        }
     }
 
     pub(crate) fn enqueue_session(&self, session_update: SessionUpdate<'static>) {
