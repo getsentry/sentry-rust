@@ -1,6 +1,3 @@
-#![cfg_attr(feature = "error-chain", allow(deprecated))]
-#![cfg_attr(feature = "failure", allow(deprecated))]
-
 use std::env;
 use std::{borrow::Cow, sync::Arc};
 
@@ -98,9 +95,9 @@ pub fn apply_defaults(mut opts: ClientOptions) -> ClientOptions {
             .map(Cow::Owned)
             .or_else(|| {
                 Some(Cow::Borrowed(if cfg!(debug_assertions) {
-                    "debug"
+                    "development"
                 } else {
-                    "release"
+                    "production"
                 }))
             });
     }
@@ -118,4 +115,27 @@ pub fn apply_defaults(mut opts: ClientOptions) -> ClientOptions {
             .or_else(|| opts.http_proxy.clone());
     }
     opts
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_default_environment() {
+        let opts = ClientOptions {
+            environment: Some("explicit-env".into()),
+            ..Default::default()
+        };
+        let opts = apply_defaults(opts);
+        assert_eq!(opts.environment.unwrap(), "explicit-env");
+
+        let opts = apply_defaults(Default::default());
+        // I doubt anyone runs test code without debug assertions
+        assert_eq!(opts.environment.unwrap(), "development");
+
+        env::set_var("SENTRY_ENVIRONMENT", "env-from-env");
+        let opts = apply_defaults(Default::default());
+        assert_eq!(opts.environment.unwrap(), "env-from-env");
+    }
 }
