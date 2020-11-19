@@ -115,6 +115,7 @@ pub use crate::init::{init, ClientInitGuard};
 /// you could do this as such:
 ///
 /// ```
+/// # #[cfg(feature = "debug-images")] {
 /// use sentry::ClientOptions;
 /// use sentry::integrations::debug_images::DebugImagesIntegration;
 ///
@@ -123,6 +124,7 @@ pub use crate::init::{init, ClientInitGuard};
 ///     ..Default::default()
 /// }.add_integration(DebugImagesIntegration::new());
 /// let _guard = sentry::init(options);
+/// # }
 /// ```
 ///
 /// # Default Integrations
