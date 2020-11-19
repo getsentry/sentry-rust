@@ -1648,3 +1648,73 @@ impl<'a> fmt::Display for Transaction<'a> {
         )
     }
 }
+
+/// The different types an attachment can have
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum AttachmentType {
+    /// A standard attachment without special meaning. (default)
+    Attachment,
+    /// A minidump file that creates an error event and is symbolicated. The
+    /// file should start with the `MDMP` magic bytes.
+    Minidump,
+    /// An Apple crash report file that creates an error event and is symbolicated.
+    AppleCrashReport,
+    /// An XML file containing UE4 crash meta data. During event ingestion,
+    /// event contexts and extra fields are extracted from this file.
+    UnrealContext,
+    /// A plain-text log file obtained from UE4 crashes. During event ingestion,
+    /// the last logs are extracted into event breadcrumbs.
+    UnrealLogs,
+}
+
+impl Default for AttachmentType {
+    fn default() -> Self {
+        Self::Attachment
+    }
+}
+
+impl AttachmentType {
+    /// Gets the string value Sentry expects for the attachment type
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Attachment => "event.attachment",
+            Self::Minidump => "event.minidump",
+            Self::AppleCrashReport => "event.applecrashreport",
+            Self::UnrealContext => "unreal.context",
+            Self::UnrealLogs => "unreal.logs",
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+/// Represents an attachment item
+pub struct Attachment {
+    /// The ID of the event
+    pub event_id: Uuid,
+    /// The actual attachment data
+    pub buffer: std::sync::Arc<Vec<u8>>,
+    /// The filename of the attachment
+    pub filename: std::ffi::OsString,
+    /// The special type of this attachment.
+    pub typ: Option<AttachmentType>,
+}
+
+impl Attachment {
+    /// Writes the attachment and its headers to the provided `Writer`.
+    pub fn to_writer<W>(&self, writer: &mut W) -> std::io::Result<()>
+    where
+        W: std::io::Write,
+    {
+        writeln!(
+            writer,
+            r#"{{"type":"attachment","length":{length},"event_id":"{event_id}","filename":"{filename}",attachment_type:"{at}"}}"#,
+            event_id = self.event_id.to_simple_ref().to_string(),
+            filename = self.filename.to_string_lossy(),
+            length = self.buffer.len(),
+            at = self.typ.unwrap_or_default().as_str()
+        )?;
+
+        writer.write_all(&self.buffer)?;
+        Ok(())
+    }
+}
