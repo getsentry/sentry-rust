@@ -1,6 +1,6 @@
 //! Release Health Sessions
 //!
-//! https://develop.sentry.dev/sdk/sessions/
+//! <https://develop.sentry.dev/sdk/sessions/>
 
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::thread::JoinHandle;

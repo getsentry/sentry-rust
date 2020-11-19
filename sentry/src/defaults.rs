@@ -15,9 +15,9 @@ use crate::{ClientOptions, Integration};
 /// also sets the `dsn`, `release`, `environment`, and proxy settings based on
 /// environment variables.
 ///
-/// When the `default_integrations` option is set to `true` (by default), the
-/// following integrations will be added *before* any manually defined
-/// integrations, depending on enabled feature flags:
+/// When the [`ClientOptions::default_integrations`] option is set to
+/// `true` (the default), the following integrations will be added *before*
+/// any manually defined integrations, depending on enabled feature flags:
 ///
 /// 1. [`AttachStacktraceIntegration`] (`feature = "backtrace"`)
 /// 2. [`DebugImagesIntegration`] (`feature = "debug-images"`)
