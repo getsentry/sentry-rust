@@ -145,11 +145,4 @@ fn test_parse_type_from_debug() {
         anyhow::Error::from("NaN".parse::<usize>().unwrap_err())
     );
     assert_eq!(parse(&err), "ParseIntError");
-
-    // `failure` is using normal debug formatting
-    let err = format!(
-        "{:?}",
-        failure::Error::from("NaN".parse::<usize>().unwrap_err())
-    );
-    assert_eq!(parse(&err), "ParseIntError");
 }
