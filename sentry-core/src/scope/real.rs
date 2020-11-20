@@ -32,11 +32,10 @@ pub type EventProcessor = Box<dyn Fn(Event<'static>) -> Option<Event<'static>> +
 /// [`add_breadcrumb`]: fn.add_breadcrumb.html
 /// [`configure_scope`]: fn.configure_scope.html
 #[derive(Clone)]
-#[allow(clippy::rc_buffer)]
 pub struct Scope {
     pub(crate) level: Option<Level>,
-    pub(crate) fingerprint: Option<Arc<Vec<Cow<'static, str>>>>,
-    pub(crate) transaction: Option<Arc<String>>,
+    pub(crate) fingerprint: Option<Arc<[Cow<'static, str>]>>,
+    pub(crate) transaction: Option<Arc<str>>,
     pub(crate) breadcrumbs: im::Vector<Breadcrumb>,
     pub(crate) user: Option<Arc<User>>,
     pub(crate) extra: im::HashMap<String, Value>,
@@ -168,13 +167,13 @@ impl Scope {
 
     /// Sets the fingerprint.
     pub fn set_fingerprint(&mut self, fingerprint: Option<&[&str]>) {
-        self.fingerprint = fingerprint
-            .map(|fp| Arc::new(fp.iter().map(|x| Cow::Owned((*x).to_string())).collect()))
+        self.fingerprint =
+            fingerprint.map(|fp| fp.iter().map(|s| Cow::Owned((*s).into())).collect())
     }
 
     /// Sets the transaction.
     pub fn set_transaction(&mut self, transaction: Option<&str>) {
-        self.transaction = transaction.map(|txn| Arc::new(txn.to_string()));
+        self.transaction = transaction.map(Arc::from);
     }
 
     /// Sets the user for the current scope.
@@ -232,8 +231,8 @@ impl Scope {
         }
 
         if event.user.is_none() {
-            if let Some(ref user) = self.user {
-                event.user = Some((**user).clone());
+            if let Some(user) = self.user.as_deref() {
+                event.user = Some(user.clone());
             }
         }
 
@@ -245,16 +244,16 @@ impl Scope {
         event.contexts.extend(self.contexts.clone().into_iter());
 
         if event.transaction.is_none() {
-            if let Some(ref txn) = self.transaction {
-                event.transaction = Some((**txn).clone());
+            if let Some(txn) = self.transaction.as_deref() {
+                event.transaction = Some(txn.to_owned());
             }
         }
 
         if event.fingerprint.len() == 1
             && (event.fingerprint[0] == "{{ default }}" || event.fingerprint[0] == "{{default}}")
         {
-            if let Some(ref fp) = self.fingerprint {
-                event.fingerprint = Cow::Owned((**fp).clone());
+            if let Some(fp) = self.fingerprint.as_deref() {
+                event.fingerprint = Cow::Owned(fp.to_owned());
             }
         }
 
