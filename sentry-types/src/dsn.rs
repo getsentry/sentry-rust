@@ -174,7 +174,7 @@ impl FromStr for Dsn {
 
         let project_id = path_segments
             .next()
-            .ok_or_else(|| ParseDsnError::NoProjectId)?
+            .ok_or(ParseDsnError::NoProjectId)?
             .parse()
             .map_err(ParseDsnError::InvalidProjectId)?;
         let path = match path_segments.next().unwrap_or("") {

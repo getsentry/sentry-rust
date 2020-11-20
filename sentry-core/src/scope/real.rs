@@ -32,6 +32,7 @@ pub type EventProcessor = Box<dyn Fn(Event<'static>) -> Option<Event<'static>> +
 /// [`add_breadcrumb`]: fn.add_breadcrumb.html
 /// [`configure_scope`]: fn.configure_scope.html
 #[derive(Clone)]
+#[allow(clippy::rc_buffer)]
 pub struct Scope {
     pub(crate) level: Option<Level>,
     pub(crate) fingerprint: Option<Arc<Vec<Cow<'static, str>>>>,
