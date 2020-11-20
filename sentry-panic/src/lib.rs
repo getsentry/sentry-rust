@@ -18,7 +18,6 @@
 #![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
 #![warn(missing_docs)]
 #![deny(unsafe_code)]
-#![warn(missing_doc_code_examples)]
 
 use std::panic::{self, PanicInfo};
 use std::sync::Once;
