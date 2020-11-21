@@ -173,16 +173,11 @@ impl fmt::Debug for ClientOptions {
 
 impl Default for ClientOptions {
     fn default() -> ClientOptions {
-        let env = if cfg!(debug_assertions) {
-            "development"
-        } else {
-            "production"
-        };
         ClientOptions {
             dsn: None,
             debug: false,
             release: None,
-            environment: Some(env.into()),
+            environment: None,
             sample_rate: 1.0,
             max_breadcrumbs: 100,
             attach_stacktrace: false,

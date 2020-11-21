@@ -6,6 +6,10 @@
 
 - The deprecated `error-chain` and `failure` integrations, features and crates were removed.
 
+**Fixes**:
+
+- Fix regression defaulting `ClientOptions::environment` from `SENTRY_ENVIRONMENT`.
+
 ## 0.21.0
 
 **Breaking Changes**:
