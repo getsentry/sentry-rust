@@ -292,7 +292,7 @@ impl Client {
                 scope.session.lock().unwrap().as_mut().and_then(|session| {
                     // Sorry :p
                     match session.create_envelope_item() {
-                        Some(EnvelopeItem::SessionUpdate(update)) => Some(update),
+                        Some(crate::protocol::EnvelopeItem::SessionUpdate(update)) => Some(update),
                         _ => None,
                     }
                 })

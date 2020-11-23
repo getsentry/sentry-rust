@@ -1689,14 +1689,12 @@ impl AttachmentType {
 #[derive(Clone, Debug, PartialEq)]
 /// Represents an attachment item
 pub struct Attachment {
-    /// The ID of the event
-    pub event_id: Uuid,
     /// The actual attachment data
     pub buffer: std::sync::Arc<Vec<u8>>,
     /// The filename of the attachment
     pub filename: std::ffi::OsString,
     /// The special type of this attachment.
-    pub typ: Option<AttachmentType>,
+    pub ty: Option<AttachmentType>,
 }
 
 impl Attachment {
@@ -1707,11 +1705,10 @@ impl Attachment {
     {
         writeln!(
             writer,
-            r#"{{"type":"attachment","length":{length},"event_id":"{event_id}","filename":"{filename}",attachment_type:"{at}"}}"#,
-            event_id = self.event_id.to_simple_ref().to_string(),
+            r#"{{"type":"attachment","length":{length},"filename":"{filename}",attachment_type:"{at}"}}"#,
             filename = self.filename.to_string_lossy(),
             length = self.buffer.len(),
-            at = self.typ.unwrap_or_default().as_str()
+            at = self.ty.unwrap_or_default().as_str()
         )?;
 
         writer.write_all(&self.buffer)?;
