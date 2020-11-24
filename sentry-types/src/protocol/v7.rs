@@ -1686,7 +1686,7 @@ impl AttachmentType {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, PartialEq)]
 /// Represents an attachment item
 pub struct Attachment {
     /// The actual attachment data
@@ -1713,5 +1713,17 @@ impl Attachment {
 
         writer.write_all(&self.buffer)?;
         Ok(())
+    }
+}
+
+// Implement Debug manually, otherwise users will be sad when they get a dump
+// of decimal encoded bytes to their console
+impl fmt::Debug for Attachment {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Attachment")
+            .field("buffer", &self.buffer.len())
+            .field("filename", &self.filename)
+            .field("type", &self.ty)
+            .finish()
     }
 }
