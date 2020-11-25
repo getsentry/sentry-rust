@@ -33,18 +33,6 @@ fn debug_id_from_build_id(build_id: &[u8]) -> Option<DebugId> {
     Uuid::from_slice(&data).map(DebugId::from_uuid).ok()
 }
 
-/// Filters for PT_LOAD segments.
-#[cfg(target_os = "linux")]
-fn filter_seg(lib: &findshlibs::linux::Segment) -> bool {
-    lib.is_load()
-}
-
-/// Filters for __TEXT segments.
-#[cfg(target_os = "macos")]
-fn filter_seg(lib: &findshlibs::macos::Segment) -> bool {
-    lib.is_code()
-}
-
 pub fn debug_images() -> Vec<DebugImage> {
     let mut images = vec![];
     if !TARGET_SUPPORTED {
