@@ -55,18 +55,17 @@ macro_rules! with_client_impl {
 #[doc(hidden)]
 macro_rules! sentry_debug {
     ($($arg:tt)*) => {
-        eprintln!($($arg)*);
-        // #[cfg(feature = "debug-logs")] {
-        //     ::log_::debug!(target: "sentry", $($arg)*);
-        // }
-        // #[cfg(not(feature = "debug-logs"))] {
-        //     $crate::Hub::with(|hub| {
-        //         if hub.client().map_or(false, |c| c.options().debug) {
-        //             eprint!("[sentry] ");
-        //             eprintln!($($arg)*);
-        //         }
-        //     });
-        // }
+        #[cfg(feature = "debug-logs")] {
+            ::log_::debug!(target: "sentry", $($arg)*);
+        }
+        #[cfg(not(feature = "debug-logs"))] {
+            $crate::Hub::with(|hub| {
+                if hub.client().map_or(false, |c| c.options().debug) {
+                    eprint!("[sentry] ");
+                    eprintln!($($arg)*);
+                }
+            });
+        }
     }
 }
 
