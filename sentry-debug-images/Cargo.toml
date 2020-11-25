@@ -17,4 +17,4 @@ all-features = true
 [dependencies]
 sentry-core = { version = "0.21.0", path = "../sentry-core" }
 lazy_static = "1.4.0"
-findshlibs = { git = "https://github.com/jan-auer/findshlibs", branch = "fix/load_addr" }
+findshlibs = "0.8.0"
