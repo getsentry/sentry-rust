@@ -7,17 +7,21 @@ use std::sync::RwLock;
 use std::time::Duration;
 
 use rand::random;
+use sentry_types::protocol::v7::SessionUpdate;
 
 use crate::constants::SDK_INFO;
 use crate::protocol::{ClientSdkInfo, Event};
+use crate::session::SessionFlusher;
 use crate::types::{Dsn, Uuid};
-use crate::{ClientOptions, Integration, Scope, Transport};
+use crate::{ClientOptions, Envelope, Hub, Integration, Scope, Transport};
 
 impl<T: Into<ClientOptions>> From<T> for Client {
     fn from(o: T) -> Client {
         Client::with_options(o.into())
     }
 }
+
+pub(crate) type TransportArc = Arc<RwLock<Option<Arc<dyn Transport>>>>;
 
 /// The Sentry Client.
 ///
@@ -38,7 +42,8 @@ impl<T: Into<ClientOptions>> From<T> for Client {
 /// [Unified API]: https://develop.sentry.dev/sdk/unified-api/
 pub struct Client {
     options: ClientOptions,
-    transport: RwLock<Option<Arc<dyn Transport>>>,
+    transport: TransportArc,
+    session_flusher: SessionFlusher,
     integrations: Vec<(TypeId, Arc<dyn Integration>)>,
     sdk_info: ClientSdkInfo,
 }
@@ -54,9 +59,12 @@ impl fmt::Debug for Client {
 
 impl Clone for Client {
     fn clone(&self) -> Client {
+        let transport = Arc::new(RwLock::new(self.transport.read().unwrap().clone()));
+        let session_flusher = SessionFlusher::new(transport.clone());
         Client {
             options: self.options.clone(),
-            transport: RwLock::new(self.transport.read().unwrap().clone()),
+            transport,
+            session_flusher,
             integrations: self.integrations.clone(),
             sdk_info: self.sdk_info.clone(),
         }
@@ -93,13 +101,17 @@ impl Client {
     /// If the DSN on the options is set to `None` the client will be entirely
     /// disabled.
     pub fn with_options(mut options: ClientOptions) -> Client {
+        // Create the main hub eagerly to avoid problems with the background thread
+        // See https://github.com/getsentry/sentry-rust/issues/237
+        Hub::with(|_| {});
+
         let create_transport = || {
             options.dsn.as_ref()?;
             let factory = options.transport.as_ref()?;
             Some(factory.create_transport(&options))
         };
 
-        let transport = RwLock::new(create_transport());
+        let transport = Arc::new(RwLock::new(create_transport()));
 
         let mut sdk_info = SDK_INFO.clone();
 
@@ -116,9 +128,11 @@ impl Client {
             sdk_info.integrations.push(integration.name().to_string());
         }
 
+        let session_flusher = SessionFlusher::new(transport.clone());
         Client {
             options,
             transport,
+            session_flusher,
             integrations,
             sdk_info,
         }
@@ -138,6 +152,14 @@ impl Client {
         mut event: Event<'static>,
         scope: Option<&Scope>,
     ) -> Option<Event<'static>> {
+        if let Some(scope) = scope {
+            scope.update_session_from_event(&event);
+        }
+
+        if !self.sample_should_send() {
+            return None;
+        }
+
         // event_id and sdk_info are set before the processors run so that the
         // processors can poke around in that data.
         if event.event_id.is_nil() {
@@ -232,15 +254,29 @@ impl Client {
     /// Captures an event and sends it to sentry.
     pub fn capture_event(&self, event: Event<'static>, scope: Option<&Scope>) -> Uuid {
         if let Some(ref transport) = *self.transport.read().unwrap() {
-            if self.sample_should_send() {
-                if let Some(event) = self.prepare_event(event, scope) {
-                    let event_id = event.event_id;
-                    transport.send_event(event);
-                    return event_id;
+            if let Some(event) = self.prepare_event(event, scope) {
+                let event_id = event.event_id;
+                let mut envelope: Envelope = event.into();
+                let session_item = scope.and_then(|scope| {
+                    scope
+                        .session
+                        .lock()
+                        .unwrap()
+                        .as_mut()
+                        .and_then(|session| session.create_envelope_item())
+                });
+                if let Some(session_item) = session_item {
+                    envelope.add_item(session_item);
                 }
+                transport.send_envelope(envelope);
+                return event_id;
             }
         }
         Default::default()
+    }
+
+    pub(crate) fn enqueue_session(&self, session_update: SessionUpdate<'static>) {
+        self.session_flusher.enqueue(session_update)
     }
 
     /// Drains all pending events and shuts down the transport behind the
@@ -251,7 +287,8 @@ impl Client {
     /// If no timeout is provided the client will wait for as long a
     /// `shutdown_timeout` in the client options.
     pub fn close(&self, timeout: Option<Duration>) -> bool {
-        if let Some(transport) = self.transport.write().unwrap().take() {
+        let transport_opt = self.transport.write().unwrap().take();
+        if let Some(transport) = transport_opt {
             sentry_debug!("client close; request transport to shut down");
             transport.shutdown(timeout.unwrap_or(self.options.shutdown_timeout))
         } else {

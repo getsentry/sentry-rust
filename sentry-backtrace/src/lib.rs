@@ -3,7 +3,9 @@
 //! Exposes functions to capture, process and convert/parse stacktraces, as well
 //! as integrations to process event stacktraces.
 
-#![deny(missing_docs)]
+#![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
+#![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
+#![warn(missing_docs)]
 
 mod integration;
 mod parse;

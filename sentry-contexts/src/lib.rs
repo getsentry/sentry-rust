@@ -4,22 +4,24 @@
 //! and `rust` contexts to Events, as well as sets a `server_name` if not
 //! already defined.
 //!
-//! See https://develop.sentry.dev/sdk/event-payloads/contexts/
+//! See the [Contexts Interface] documentation for more info.
 //!
 //! # Examples
 //!
 //! ```
-//! let integration = sentry_contexts::ContextIntegration {
-//!     add_os: false,
-//!     ..Default::default()
-//! };
-//! let _sentry = sentry::init(sentry::ClientOptions::default()
-//!     .add_integration(integration));
+//! let integration = sentry_contexts::ContextIntegration::new().add_os(false);
+//! let _sentry = sentry::init(sentry::ClientOptions::new().add_integration(integration));
 //! ```
+//!
+//! [Contexts Interface]: https://develop.sentry.dev/sdk/event-payloads/contexts/
 
-#![deny(missing_docs)]
+#![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
+#![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
+#![warn(missing_docs)]
 
 mod integration;
-mod utils;
+/// Contains functions to retrieve various contexts that can be useful
+/// to attach to events
+pub mod utils;
 
 pub use integration::ContextIntegration;

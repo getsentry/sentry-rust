@@ -2,13 +2,6 @@ use std::fmt;
 
 use crate::protocol::{Context, Event, Level, User, Value};
 
-/// The minimal scope.
-///
-/// In minimal API mode all modification functions are available as normally
-/// just that generally calling them is impossible.
-#[derive(Debug, Clone)]
-pub struct Scope;
-
 /// A minimal API scope guard.
 ///
 /// Doesn't do anything but can be debug formatted.
@@ -20,6 +13,13 @@ impl fmt::Debug for ScopeGuard {
         write!(f, "ScopeGuard")
     }
 }
+
+/// The minimal scope.
+///
+/// In minimal API mode all modification functions are available as normally
+/// just that generally calling them is impossible.
+#[derive(Debug, Clone)]
+pub struct Scope;
 
 impl Scope {
     /// Clear the scope.

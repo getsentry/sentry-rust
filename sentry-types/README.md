@@ -1,29 +1,48 @@
 <p align="center">
-  <a href="https://sentry.io" target="_blank" align="center">
-    <img src="https://sentry-brand.storage.googleapis.com/sentry-logo-black.png" width="280">
-  </a>
-  <br />
+    <a href="https://sentry.io" target="_blank" align="center">
+        <img src="https://sentry-brand.storage.googleapis.com/sentry-logo-black.png" width="280">
+    </a>
 </p>
 
-# Sentry Types
+# Sentry Rust SDK: sentry-types
 
-[![Crates.io](https://img.shields.io/crates/v/sentry-types.svg?style=flat)](https://crates.io/crates/sentry-types)
+This crate provides common types for working with the Sentry protocol or the
+Sentry server.  It's used by the Sentry Relay infrastructure as well as the
+rust Sentry client.
 
-This library implements Rust types for the Sentry v7 protocol as well as some other
-common types that are useful when working with Sentry (like DSNs and so forth).
+Most of the types in this crate are serializable in one form or another.
+The types in the `protocol` module are generally really only serializable
+to JSON as other formats are not supported by Sentry at this date.
 
-## Requirements
+### Contents
 
-We currently only verify this crate against a recent version of Sentry hosted on
-[sentry.io](https://sentry.io/) but it should work with on-prem Sentry versions
-8.20 and later.
+The crate provides a bunch of common types for working with Sentry as
+such (DSN, ProjectIDs, authentication headers) as well as types for
+the Sentry event protocol.
 
-Additionally, the lowest Rust version we target is _1.40.0_.
+Right now only `v7` of the protocol is implemented but it's versioned
+so later versions might be added later.
+
+### API Concepts
+
+Most types are directly serializable or deserializable and try to implement
+the `Default` type.  This means that objects can be created conviently
+and missing attributes can be filled in:
+
+```rust
+use sentry_types::protocol::v7;
+
+let event = v7::Event {
+    message: Some("Hello World!".to_string()),
+    culprit: Some("foo in bar".to_string()),
+    level: v7::Level::Info,
+    ..Default::default()
+};
+```
 
 ## Resources
 
-- [crates.io](https://crates.io/crates/sentry-actix)
-- [Documentation](https://docs.rs/sentry-actix)
-- [Bug Tracker](https://github.com/getsentry/sentry-rust/issues)
+License: Apache-2.0
+
 - [Discord](https://discord.gg/ez5KZN7) server for project discussions.
 - Follow [@getsentry](https://twitter.com/getsentry) on Twitter for updates

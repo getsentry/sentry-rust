@@ -1,9 +1,3 @@
-//! <p style="margin: -10px 0 0 15px; padding: 0; float: right;">
-//!   <a href="https://sentry.io/"><img
-//!     src="https://sentry-brand.storage.googleapis.com/sentry-logo-black.png"
-//!     style="width: 260px"></a>
-//! </p>
-//!
 //! This crate provides the core of the [Sentry](https://sentry.io/) SDK, which
 //! can be used to log events and errors.
 //!
@@ -19,7 +13,6 @@
 //! This crate follows the [Unified API] guidelines and is centered around
 //! the concepts of [`Client`], [`Hub`] and [`Scope`], as well as the extension
 //! points via the [`Integration`], [`Transport`] and [`TransportFactory`] traits.
-//!
 //!
 //! # Minimal API
 //!
@@ -50,7 +43,10 @@
 //! [`Integration`]: trait.Integration.html
 //! [`Transport`]: trait.Transport.html
 //! [`TransportFactory`]: trait.TransportFactory.html
+//! [`test`]: test/index.html
 
+#![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
+#![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
 #![warn(missing_docs)]
 
 // macros; these need to be first to be used by other modules
@@ -74,7 +70,7 @@ pub use crate::api::*;
 pub use crate::breadcrumbs::IntoBreadcrumbs;
 pub use crate::clientoptions::ClientOptions;
 pub use crate::error::{capture_error, event_from_error, parse_type_from_debug};
-pub use crate::futures::{FutureExt, SentryFuture as Future};
+pub use crate::futures::{SentryFuture, SentryFutureExt};
 pub use crate::hub::Hub;
 pub use crate::integration::Integration;
 pub use crate::intodsn::IntoDsn;
@@ -84,6 +80,8 @@ pub use crate::transport::{Transport, TransportFactory};
 // client feature
 #[cfg(feature = "client")]
 mod client;
+#[cfg(feature = "client")]
+mod session;
 #[cfg(feature = "client")]
 pub use crate::client::Client;
 
@@ -95,4 +93,4 @@ pub mod test;
 #[doc(inline)]
 pub use sentry_types as types;
 pub use sentry_types::protocol::v7 as protocol;
-pub use sentry_types::protocol::v7::{Breadcrumb, Level, User};
+pub use sentry_types::protocol::v7::{Breadcrumb, Envelope, Level, User};

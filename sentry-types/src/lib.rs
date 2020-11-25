@@ -31,6 +31,9 @@
 //!     ..Default::default()
 //! };
 //! ```
+
+#![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
+#![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
 #![warn(missing_docs)]
 
 #[macro_use]

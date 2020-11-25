@@ -1,8 +1,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::protocol::Event;
-use crate::ClientOptions;
+use crate::{ClientOptions, Envelope};
 
 /// The trait for transports.
 ///
@@ -10,8 +9,10 @@ use crate::ClientOptions;
 /// can be created to use a different abstraction to send events.  This is for instance
 /// used for the test system.
 pub trait Transport: Send + Sync + 'static {
-    /// Sends an event.
-    fn send_event(&self, event: Event<'static>);
+    /// Sends an [`Envelope`].
+    ///
+    /// [`Envelope`]: struct.Envelope.html
+    fn send_envelope(&self, envelope: Envelope);
 
     /// Drains the queue if there is one.
     ///
@@ -52,8 +53,8 @@ where
 }
 
 impl<T: Transport> Transport for Arc<T> {
-    fn send_event(&self, event: Event<'static>) {
-        (**self).send_event(event)
+    fn send_envelope(&self, envelope: Envelope) {
+        (**self).send_envelope(envelope)
     }
 
     fn shutdown(&self, timeout: Duration) -> bool {

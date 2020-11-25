@@ -12,7 +12,7 @@ use crate::process::process_event_stacktrace;
 /// and `extra_border_frames` options.
 /// It will then classify each frame according to the `in_app_include` and
 /// `in_app_exclude` options.
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct ProcessStacktraceIntegration;
 
 impl ProcessStacktraceIntegration {
@@ -45,7 +45,7 @@ impl Integration for ProcessStacktraceIntegration {
 ///
 /// This integration will add an additional thread backtrace to captured
 /// messages, respecting the `attach_stacktrace` option.
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct AttachStacktraceIntegration;
 
 impl AttachStacktraceIntegration {

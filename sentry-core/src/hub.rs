@@ -8,11 +8,11 @@ use std::sync::{Arc, Mutex, PoisonError, RwLock, TryLockError};
 use std::thread;
 use std::time::Duration;
 
-use crate::protocol::{Breadcrumb, Event, Level};
+use crate::protocol::{Breadcrumb, Event, Level, SessionStatus};
 use crate::types::Uuid;
 use crate::{event_from_error, Integration, IntoBreadcrumbs, Scope, ScopeGuard};
 #[cfg(feature = "client")]
-use crate::{scope::Stack, Client};
+use crate::{scope::Stack, session::Session, Client, Envelope};
 
 #[cfg(feature = "client")]
 lazy_static::lazy_static! {
@@ -48,40 +48,45 @@ impl HubImpl {
     }
 
     fn is_active_and_usage_safe(&self) -> bool {
-        let guard = match self.stack.try_read() {
-            Err(TryLockError::Poisoned(err)) => err.into_inner(),
-            Err(TryLockError::WouldBlock) => return false,
+        let guard = match self.stack.read() {
+            Err(err) => err.into_inner(),
             Ok(guard) => guard,
         };
-        guard.top().client.is_some()
+
+        guard
+            .top()
+            .client
+            .as_ref()
+            .map_or(false, |c| c.is_enabled())
     }
 }
 
 /// The central object that can manages scopes and clients.
 ///
 /// This can be used to capture events and manage the scope.  This object is
-/// internally synchronized so it can be used from multiple threads if needed.
+/// [`Send`][std::marker::Send] and [`Sync`][std::marker::Sync] so it can be used from
+/// multiple threads if needed.
 ///
-/// Each thread has its own thread-local (`Hub::current()`) hub, which is
-/// automatically derived from the main hub (`Hub::main()`).
+/// Each thread has its own thread-local ( see [`Hub::current`]) hub, which is
+/// automatically derived from the main hub ([`Hub::main`]).
 ///
 /// In most situations developers do not need to interface with the hub directly.  Instead
 /// toplevel convenience functions are expose that will automatically dispatch
-/// to the thread-local (`Hub::current()`) hub.  In some situations this might not be
+/// to the thread-local ([`Hub::current`]) hub.  In some situations this might not be
 /// possible in which case it might become necessary to manually work with the
 /// hub.  This is for instance the case when working with async code.
 ///
-/// Hubs that are wrapped in `Arc`s can be bound to the current thread with
+/// Hubs that are wrapped in [`Arc`]s can be bound to the current thread with
 /// the `run` static method.
 ///
 /// Most common operations:
 ///
-/// * `Hub::new`: creates a brand new hub
-/// * `Hub::current`: returns the thread local hub
-/// * `Hub::with`: invoke a callback with the thread local hub
-/// * `Hub::with_active`: like `Hub::with` but does not invoke the callback if
+/// * [`Hub::new`]: creates a brand new hub
+/// * [`Hub::current`]: returns the thread local hub
+/// * [`Hub::with`]: invoke a callback with the thread local hub
+/// * [`Hub::with_active`]: like `Hub::with` but does not invoke the callback if
 ///   the client is not in a supported state or not bound
-/// * `Hub::new_from_top`: creates a new hub with just the top scope of another hub.
+/// * [`Hub::new_from_top`]: creates a new hub with just the top scope of another hub.
 #[derive(Debug)]
 pub struct Hub {
     #[cfg(feature = "client")]
@@ -111,14 +116,19 @@ impl Hub {
         })
     }
 
-    /// Returns the current hub.
+    /// Returns the current, thread-local hub.
     ///
-    /// By default each thread gets a different thread local hub.  If an
-    /// atomically reference counted hub is available it can override this
-    /// one here by calling `Hub::run` with a closure.
+    /// Invoking this will return the current thread-local hub.  The first
+    /// time it is called on a thread, a new thread-local hub will be
+    /// created based on the topmost scope of the hub on the main thread as
+    /// returned by [`Hub::main`].  If the main thread did not yet have a
+    /// hub it will be created when invoking this function.
+    ///
+    /// To have control over which hub is installed as the current
+    /// thread-local hub, use [`Hub::run`].
     ///
     /// This method is unavailable if the client implementation is disabled.
-    /// When using the minimal API set use `Hub::with_active` instead.
+    /// When using the minimal API set use [`Hub::with_active`] instead.
     #[cfg(feature = "client")]
     pub fn current() -> Arc<Hub> {
         Hub::with(Arc::clone)
@@ -126,8 +136,8 @@ impl Hub {
 
     /// Returns the main thread's hub.
     ///
-    /// This is similar to `current` but instead of picking the current
-    /// thread's hub it returns the main thread's hub instead.
+    /// This is similar to [`Hub::current`] but instead of picking the
+    /// current thread's hub it returns the main thread's hub instead.
     #[cfg(feature = "client")]
     pub fn main() -> Arc<Hub> {
         PROCESS_HUB.0.clone()
@@ -135,7 +145,7 @@ impl Hub {
 
     /// Invokes the callback with the default hub.
     ///
-    /// This is a slightly more efficient version than `Hub::current()` and
+    /// This is a slightly more efficient version than [`Hub::current`] and
     /// also unavailable in minimal mode.
     #[cfg(feature = "client")]
     pub fn with<F, R>(f: F) -> R
@@ -145,7 +155,7 @@ impl Hub {
         if USE_PROCESS_HUB.with(Cell::get) {
             f(&PROCESS_HUB.0)
         } else {
-            // not on safety: this is safe because even though we change the Arc
+            // note on safety: this is safe because even though we change the Arc
             // by temorary binding we guarantee that the original Arc stays alive.
             // For more information see: run
             THREAD_HUB.with(|stack| unsafe {
@@ -155,7 +165,7 @@ impl Hub {
         }
     }
 
-    /// Like `Hub::with` but only calls the function if a client is bound.
+    /// Like [`Hub::with`] but only calls the function if a client is bound.
     ///
     /// This is useful for integrations that want to do efficiently nothing if there is no
     /// client bound.  Additionally this internally ensures that the client can be safely
@@ -177,6 +187,13 @@ impl Hub {
     }
 
     /// Binds a hub to the current thread for the duration of the call.
+    ///
+    /// During the execution of `f` the given hub will be installed as the
+    /// thread-local hub.  So any call to [`Hub::current`] during this time
+    /// will return the provided hub.
+    ///
+    /// Once the function is finished executing, including after it
+    /// paniced, the original hub is re-installed if one was present.
     #[cfg(feature = "client")]
     pub fn run<F: FnOnce() -> R, R>(hub: Arc<Hub>, f: F) -> R {
         let mut restore_process_hub = false;
@@ -227,24 +244,8 @@ impl Hub {
     /// Calls the given function with the requested integration instance when it
     /// is active on the currently active client.
     ///
-    /// # Example
-    /// ```
-    /// # use std::sync::Arc;
-    /// use sentry_core::{Client, ClientOptions, Hub, Integration};
-    ///
-    /// #[derive(Debug)]
-    /// struct MyIntegration(usize);
-    /// impl Integration for MyIntegration {}
-    ///
-    /// let client = Arc::new(Client::from(
-    ///     ClientOptions::default().add_integration(MyIntegration(10)),
-    /// ));
-    /// let hub = Hub::with(|hub| Hub::new_from_top(hub));
-    /// hub.bind_client(Some(client));
-    ///
-    /// let value = hub.with_integration(|integration: &MyIntegration| integration.0);
-    /// assert_eq!(value, 10);
-    /// ```
+    /// See the global [`capture_event`](fn.capture_event.html)
+    /// for more documentation.
     pub fn with_integration<I, F, R>(&self, f: F) -> R
     where
         I: Integration,
@@ -323,6 +324,47 @@ impl Hub {
         })
     }
 
+    /// Start a new session for Release Health.
+    ///
+    /// See the global [`start_session`](fn.start_session.html)
+    /// for more documentation.
+    pub fn start_session(&self) {
+        with_client_impl! {{
+            self.inner.with_mut(|stack| {
+                let top = stack.top_mut();
+                if let Some(session) = Session::from_stack(top) {
+                    // When creating a *new* session, we make sure it is unique,
+                    // as to no inherit *backwards* to any parents.
+                    let mut scope = Arc::make_mut(&mut top.scope);
+                    scope.session = Arc::new(Mutex::new(Some(session)));
+                }
+            })
+        }}
+    }
+
+    /// End the current Release Health Session.
+    ///
+    /// See the global [`sentry::end_session`](crate::end_session) for more documentation.
+    pub fn end_session(&self) {
+        self.end_session_with_status(SessionStatus::Exited)
+    }
+
+    /// End the current Release Health Session with the given [`SessionStatus`].
+    ///
+    /// See the global [`end_session_with_status`](crate::end_session_with_status)
+    /// for more documentation.
+    pub fn end_session_with_status(&self, status: SessionStatus) {
+        with_client_impl! {{
+            self.inner.with_mut(|stack| {
+                let top = stack.top_mut();
+                // drop will close and enqueue the session
+                if let Some(mut session) = top.scope.session.lock().unwrap().take() {
+                    session.close(status);
+                }
+            })
+        }}
+    }
+
     /// Pushes a new scope.
     ///
     /// This returns a guard that when dropped will pop the scope again.
@@ -367,11 +409,8 @@ impl Hub {
         F: FnOnce(&mut Scope) -> R,
     {
         with_client_impl! {{
-            let (new_scope, rv) = self.with_current_scope(|scope| {
-                let mut new_scope = (**scope).clone();
-                let rv = f(&mut new_scope);
-                (new_scope, rv)
-            });
+            let mut new_scope = self.with_current_scope(|scope| scope.clone());
+            let rv = f(&mut new_scope);
             self.with_current_scope_mut(|ptr| *ptr = new_scope);
             rv
         }}
@@ -411,7 +450,7 @@ impl Hub {
     }
 
     #[cfg(feature = "client")]
-    pub(crate) fn with_current_scope<F: FnOnce(&Arc<Scope>) -> R, R>(&self, f: F) -> R {
+    pub(crate) fn with_current_scope<F: FnOnce(&Scope) -> R, R>(&self, f: F) -> R {
         self.inner.with(|stack| f(&stack.top().scope))
     }
 

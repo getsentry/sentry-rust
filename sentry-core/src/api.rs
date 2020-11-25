@@ -1,6 +1,8 @@
+use sentry_types::protocol::v7::SessionStatus;
+
 use crate::protocol::{Event, Level};
 use crate::types::Uuid;
-use crate::{Hub, IntoBreadcrumbs, Scope};
+use crate::{Hub, Integration, IntoBreadcrumbs, Scope};
 
 /// Captures an event on the currently active client if any.
 ///
@@ -200,6 +202,41 @@ where
     }
 }
 
+/// Looks up an integration on the current Hub.
+///
+/// Calls the given function with the requested integration instance when it
+/// is active on the currently active client. When multiple instances of the
+/// same integration are added, the function will be called with the first one.
+///
+/// # Examples
+///
+/// ```
+/// use sentry::{ClientOptions, Integration};
+///
+/// struct MyIntegration(usize);
+/// impl Integration for MyIntegration {}
+///
+/// let options = ClientOptions::default()
+///     .add_integration(MyIntegration(10))
+///     .add_integration(MyIntegration(20));
+/// # let _options = options.clone();
+///
+/// let _sentry = sentry::init(options);
+///
+/// # sentry::test::with_captured_events_options(|| {
+/// let value = sentry::with_integration(|integration: &MyIntegration, _| integration.0);
+/// assert_eq!(value, 10);
+/// # }, _options);
+/// ```
+pub fn with_integration<I, F, R>(f: F) -> R
+where
+    I: Integration,
+    F: FnOnce(&I, &Hub) -> R,
+    R: Default,
+{
+    Hub::with_active(|hub| hub.with_integration(|i| f(i, hub)))
+}
+
 /// Returns the last event ID captured.
 ///
 /// This uses the current thread local [`Hub`], and will return `None` if no
@@ -225,4 +262,39 @@ pub fn last_event_id() -> Option<Uuid> {
     with_client_impl! {{
         Hub::with(|hub| hub.last_event_id())
     }}
+}
+
+/// Start a new session for Release Health.
+///
+/// This is still **experimental** for the moment and is not recommended to be
+/// used with a very high volume of sessions (_request-mode_ sessions).
+///
+/// # Examples
+///
+/// ```
+/// sentry::start_session();
+///
+/// // capturing any event / error here will update the sessions `errors` count,
+/// // up until we call `sentry::end_session`.
+///
+/// sentry::end_session();
+/// ```
+pub fn start_session() {
+    Hub::with_active(|hub| hub.start_session())
+}
+
+/// End the current Release Health Session.
+pub fn end_session() {
+    end_session_with_status(SessionStatus::Exited)
+}
+
+/// End the current Release Health Session with the given [`SessionStatus`].
+///
+/// By default, the SDK will only consider the `Exited` and `Crashed` status
+/// based on the type of events that were captured during the session.
+///
+/// When an `Abnormal` session should be captured, it has to be done explicitly
+/// using this function.
+pub fn end_session_with_status(status: SessionStatus) {
+    Hub::with_active(|hub| hub.end_session_with_status(status))
 }

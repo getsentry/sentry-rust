@@ -2,13 +2,14 @@ use std::sync::Arc;
 
 use sentry_core::sentry_debug;
 
-use crate::{defaults::apply_defaults, Client, ClientOptions, Hub};
+use crate::defaults::apply_defaults;
+use crate::{Client, ClientOptions, Hub};
 
 /// Helper struct that is returned from `init`.
 ///
-/// When this is dropped events are drained with a 1 second timeout.
-#[must_use = "when the init guard is dropped the transport will be shut down and no further \
-              events can be sent.  If you do want to ignore this use mem::forget on it."]
+/// When this is dropped events are drained with the configured `shutdown_timeout`.
+#[must_use = "when the init guard is dropped the send queue is flushed and the \
+              transport will be shut down and no further events can be sent."]
 pub struct ClientInitGuard(Arc<Client>);
 
 impl std::ops::Deref for ClientInitGuard {
@@ -32,6 +33,8 @@ impl Drop for ClientInitGuard {
         } else {
             sentry_debug!("dropping client guard (no client to dispose)");
         }
+        // end any session that might be open before closing the client
+        crate::end_session();
         self.0.close(None);
     }
 }
@@ -53,6 +56,8 @@ impl Drop for ClientInitGuard {
 /// ```
 ///
 /// Or if draining on shutdown should be ignored:
+/// This is not recommended, as events or session updates that have been queued
+/// might be lost.
 ///
 /// ```
 /// std::mem::forget(sentry::init("https://key@sentry.io/1234"));
@@ -88,6 +93,7 @@ where
     C: Into<ClientOptions>,
 {
     let opts = apply_defaults(opts.into());
+    let auto_session_tracking = opts.auto_session_tracking;
     let client = Arc::new(Client::from(opts));
 
     Hub::with(|hub| hub.bind_client(Some(client.clone())));
@@ -95,6 +101,9 @@ where
         sentry_debug!("enabled sentry client for DSN {}", dsn);
     } else {
         sentry_debug!("initialized disabled sentry client due to disabled or invalid DSN");
+    }
+    if auto_session_tracking {
+        crate::start_session()
     }
     ClientInitGuard(client)
 }

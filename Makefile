@@ -40,7 +40,7 @@ test: checkall testall
 
 testfast:
 	@echo 'TESTSUITE'
-	cd sentry && cargo test --features=with_test_support
+	cd sentry && cargo test --features=test
 .PHONY: testfast
 
 testall:
@@ -53,7 +53,7 @@ testall:
 checkfast: check-no-default-features check-default-features
 .PHONY: checkfast
 
-checkall: check-all-features check-no-default-features check-default-features check-failure check-panic check-all-impls check-curl-transport check-actix
+checkall: check-all-features check-no-default-features check-default-features check-panic check-curl-transport check-actix
 .PHONY: checkall
 
 check-all-features:
@@ -71,40 +71,19 @@ check-no-default-features:
 	@cd sentry && RUSTFLAGS=-Dwarnings cargo check --no-default-features
 .PHONY: check-no-default-features
 
-check-failure:
-	@echo 'NO CLIENT + FAILURE'
-	@cd sentry && RUSTFLAGS=-Dwarnings cargo check --no-default-features --features 'with_failure'
-.PHONY: check-failure
-
 check-panic:
 	@echo 'NO CLIENT + PANIC'
-	@cd sentry && RUSTFLAGS=-Dwarnings cargo check --no-default-features --features 'with_panic'
+	@cd sentry && RUSTFLAGS=-Dwarnings cargo check --no-default-features --features 'panic'
 .PHONY: check-panic
-
-check-all-impls:
-	@echo 'NO CLIENT + ALL IMPLS'
-	@cd sentry && RUSTFLAGS=-Dwarnings cargo check --no-default-features --features 'with_failure,with_panic'
-.PHONY: check-all-impls
 
 check-curl-transport:
 	@echo 'CURL TRANSPORT'
-	@cd sentry && RUSTFLAGS=-Dwarnings cargo check --features with_curl_transport
+	@cd sentry && RUSTFLAGS=-Dwarnings cargo check --features curl
 	@echo 'CURL TRANSPORT ONLY'
-	@cd sentry && RUSTFLAGS=-Dwarnings cargo check --no-default-features --features 'with_curl_transport,with_panic'
+	@cd sentry && RUSTFLAGS=-Dwarnings cargo check --no-default-features --features 'curl,panic'
 .PHONY: check-curl-transport
 
 check-actix:
 	@echo 'ACTIX INTEGRATION'
 	@cd sentry-actix && RUSTFLAGS=-Dwarnings cargo check
 .PHONY: check-actix
-
-# Other
-
-travis-push-docs:
-	@# Intentionally allow command output
-	cargo doc --no-deps
-	cp misc/docs/index.html target/doc/
-	cd target/ && zip -r gh-pages ./doc
-	npm install -g @zeus-ci/cli
-	zeus upload -t "application/zip+docs" target/gh-pages.zip
-.PHONY: travis-push-docs

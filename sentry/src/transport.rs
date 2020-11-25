@@ -6,32 +6,28 @@ use std::sync::{Arc, Condvar, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, SystemTime};
 
-#[cfg(any(
-    feature = "with_reqwest_transport",
-    feature = "with_curl_transport",
-    feature = "with_surf_transport"
-))]
+#[cfg(any(feature = "reqwest", feature = "curl", feature = "surf"))]
 use httpdate::parse_http_date;
 
-#[cfg(feature = "with_curl_transport")]
-use std::io::Cursor;
-#[cfg(feature = "with_curl_transport")]
-use {crate::types::Scheme, curl, std::io::Read};
+#[cfg(feature = "reqwest")]
+use reqwest_::{blocking::Client as ReqwestClient, header::RETRY_AFTER, Proxy};
 
-#[cfg(feature = "with_reqwest_transport")]
-use reqwest::{blocking::Client as ReqwestClient, header::RETRY_AFTER, Proxy};
+#[cfg(feature = "curl")]
+use crate::types::Scheme;
+#[cfg(feature = "curl")]
+use curl_ as curl;
+#[cfg(feature = "curl")]
+use std::io::{Cursor, Read};
 
-#[cfg(feature = "with_surf_transport")]
+#[cfg(feature = "surf")]
 use futures::executor;
-#[cfg(feature = "with_surf_transport")]
-use http_client::native::NativeClient;
-#[cfg(feature = "with_surf_transport")]
-use surf::Client as SurfClient;
+#[cfg(feature = "surf")]
+use surf_::Client as SurfClient;
 
 use sentry_core::sentry_debug;
 
 use crate::protocol::Event;
-use crate::{ClientOptions, Transport, TransportFactory};
+use crate::{ClientOptions, Envelope, Transport, TransportFactory};
 
 /// Creates the default HTTP transport.
 ///
@@ -43,19 +39,11 @@ pub struct DefaultTransportFactory;
 
 impl TransportFactory for DefaultTransportFactory {
     fn create_transport(&self, options: &ClientOptions) -> Arc<dyn Transport> {
-        #[cfg(any(
-            feature = "with_reqwest_transport",
-            feature = "with_curl_transport",
-            feature = "with_surf_transport"
-        ))]
+        #[cfg(any(feature = "reqwest", feature = "curl", feature = "surf"))]
         {
             Arc::new(HttpTransport::new(options))
         }
-        #[cfg(not(any(
-            feature = "with_reqwest_transport",
-            feature = "with_curl_transport",
-            feature = "with_surf_transport"
-        )))]
+        #[cfg(not(any(feature = "reqwest", feature = "curl", feature = "surf")))]
         {
             let _ = options;
             panic!("sentry crate was compiled without transport")
@@ -63,11 +51,7 @@ impl TransportFactory for DefaultTransportFactory {
     }
 }
 
-#[cfg(any(
-    feature = "with_reqwest_transport",
-    feature = "with_curl_transport",
-    feature = "with_surf_transport"
-))]
+#[cfg(any(feature = "reqwest", feature = "curl", feature = "surf"))]
 fn parse_retry_after(s: &str) -> Option<SystemTime> {
     if let Ok(value) = s.parse::<f64>() {
         Some(SystemTime::now() + Duration::from_secs(value.ceil() as u64))
@@ -88,11 +72,11 @@ macro_rules! implement_http_transport {
     ) => {
         $(#[$attr])*
         pub struct $typename {
-            sender: Mutex<SyncSender<Option<Event<'static>>>>,
+            sender: Mutex<SyncSender<Option<Envelope>>>,
             shutdown_signal: Arc<Condvar>,
             shutdown_immediately: Arc<AtomicBool>,
             queue_size: Arc<Mutex<usize>>,
-            _handle: Option<JoinHandle<()>>,
+            handle: Option<JoinHandle<()>>,
         }
 
         impl $typename {
@@ -118,7 +102,7 @@ macro_rules! implement_http_transport {
                 #[allow(clippy::mutex_atomic)]
                 let queue_size = Arc::new(Mutex::new(0));
                 let http_client = http_client(options, $hc_client);
-                let _handle = Some(spawn(
+                let handle = Some(spawn(
                     options,
                     receiver,
                     shutdown_signal.clone(),
@@ -131,32 +115,36 @@ macro_rules! implement_http_transport {
                     shutdown_signal,
                     shutdown_immediately,
                     queue_size,
-                    _handle,
+                    handle,
                 }
             }
         }
 
         impl Transport for $typename {
-            fn send_event(&self, event: Event<'static>) {
+            fn send_envelope(&self, envelope: Envelope) {
                 // we count up before we put the item on the queue and in case the
                 // queue is filled with too many items or we shut down, we decrement
                 // the count again as there is nobody that can pick it up.
                 *self.queue_size.lock().unwrap() += 1;
-                if self.sender.lock().unwrap().try_send(Some(event)).is_err() {
+                if self.sender.lock().unwrap().try_send(Some(envelope)).is_err() {
                     *self.queue_size.lock().unwrap() -= 1;
                 }
             }
 
             fn shutdown(&self, timeout: Duration) -> bool {
                 sentry_debug!("shutting down http transport");
-                let guard = self.queue_size.lock().unwrap();
-                if *guard == 0 {
+                if *self.queue_size.lock().unwrap() == 0 {
                     true
                 } else {
                     if let Ok(sender) = self.sender.lock() {
                         sender.send(None).ok();
                     }
-                    self.shutdown_signal.wait_timeout(guard, timeout).is_ok()
+                    let guard = self.queue_size.lock().unwrap();
+                    if *guard > 0 {
+                        self.shutdown_signal.wait_timeout(guard, timeout).is_ok()
+                    } else {
+                        true
+                    }
                 }
             }
         }
@@ -166,25 +154,29 @@ macro_rules! implement_http_transport {
                 sentry_debug!("dropping http transport");
                 self.shutdown_immediately.store(true, Ordering::SeqCst);
                 if let Ok(sender) = self.sender.lock() {
-                    sender.send(None).ok();
+                    if sender.send(None).is_ok() {
+                        if let Some(handle) = self.handle.take() {
+                            handle.join().ok();
+                        }
+                    }
                 }
             }
         }
     }
 }
 
-#[cfg(feature = "with_reqwest_transport")]
+#[cfg(feature = "reqwest")]
 implement_http_transport! {
     /// A transport can send events via HTTP to sentry via `reqwest`.
     ///
-    /// When the `with_default_transport` feature is enabled this will currently
+    /// When the `transport` feature is enabled this will currently
     /// be the default transport.  This is separately enabled by the
-    /// `with_reqwest_transport` flag.
+    /// `reqwest` flag.
     pub struct ReqwestHttpTransport;
 
     fn spawn(
         options: &ClientOptions,
-        receiver: Receiver<Option<Event<'static>>>,
+        receiver: Receiver<Option<Envelope>>,
         signal: Arc<Condvar>,
         shutdown_immediately: Arc<AtomicBool>,
         queue_size: Arc<Mutex<usize>>,
@@ -212,9 +204,9 @@ implement_http_transport! {
                     builder.build().unwrap()
                 });
 
-                let url = dsn.store_api_url().to_string();
+                let url = dsn.envelope_api_url().to_string();
 
-                while let Some(event) = receiver.recv().unwrap_or(None) {
+                while let Some(envelope) = receiver.recv().unwrap_or(None) {
                     // on drop we want to not continue processing the queue.
                     if shutdown_immediately.load(Ordering::SeqCst) {
                         let mut size = queue_size.lock().unwrap();
@@ -236,9 +228,13 @@ implement_http_transport! {
                         }
                     }
 
+                    let mut body = Vec::new();
+                    envelope.to_writer(&mut body).unwrap();
+
+                    sentry_debug!("Sending envelope");
                     match http_client
                         .post(url.as_str())
-                        .json(&event)
+                        .body(body)
                         .header("X-Sentry-Auth", dsn.to_auth(Some(&user_agent)).to_string())
                         .send()
                     {
@@ -253,9 +249,13 @@ implement_http_transport! {
                                     disabled = Some(retry_after);
                                 }
                             }
+                            match resp.text() {
+                                Err(err) => { sentry_debug!("Failed to read sentry response: {}", err); },
+                                Ok(text) => { sentry_debug!("Get response: `{}`", text); },
+                            }
                         }
                         Err(err) => {
-                            sentry_debug!("Failed to send event: {}", err);
+                            sentry_debug!("Failed to send envelope: {}", err);
                         }
                     }
 
@@ -276,16 +276,16 @@ implement_http_transport! {
     }
 }
 
-#[cfg(feature = "with_curl_transport")]
+#[cfg(feature = "curl")]
 implement_http_transport! {
     /// A transport can send events via HTTP to sentry via `curl`.
     ///
-    /// This is enabled by the `with_curl_transport` flag.
+    /// This is enabled by the `curl` flag.
     pub struct CurlHttpTransport;
 
     fn spawn(
         options: &ClientOptions,
-        receiver: Receiver<Option<Event<'static>>>,
+        receiver: Receiver<Option<Envelope>>,
         signal: Arc<Condvar>,
         shutdown_immediately: Arc<AtomicBool>,
         queue_size: Arc<Mutex<usize>>,
@@ -301,9 +301,9 @@ implement_http_transport! {
 
         thread::spawn(move || {
             sentry_debug!("spawning curl transport");
-            let url = dsn.store_api_url().to_string();
+            let url = dsn.envelope_api_url().to_string();
 
-            while let Some(event) = receiver.recv().unwrap_or(None) {
+            while let Some(envelope) = receiver.recv().unwrap_or(None) {
                 // on drop we want to not continue processing the queue.
                 if shutdown_immediately.load(Ordering::SeqCst) {
                     let mut size = queue_size.lock().unwrap();
@@ -339,7 +339,10 @@ implement_http_transport! {
                     _ => {}
                 }
 
-                let mut body = Cursor::new(serde_json::to_vec(&event).unwrap());
+                let mut body = Vec::new();
+                envelope.to_writer(&mut body).unwrap();
+                let mut body = Cursor::new(body);
+
                 let mut retry_after = None;
                 let mut headers = curl::easy::List::new();
                 headers.append(&format!("X-Sentry-Auth: {}", dsn.to_auth(Some(&user_agent)))).unwrap();
@@ -406,20 +409,20 @@ implement_http_transport! {
     }
 }
 
-#[cfg(feature = "with_surf_transport")]
+#[cfg(feature = "surf")]
 implement_http_transport! {
     /// A transport can send events via HTTP to sentry via `surf`.
     ///
-    /// This is enabled by the `with_surf_transport` flag.
+    /// This is enabled by the `surf` flag.
     pub struct SurfHttpTransport;
 
     fn spawn(
         options: &ClientOptions,
-        receiver: Receiver<Option<Event<'static>>>,
+        receiver: Receiver<Option<Envelope>>,
         signal: Arc<Condvar>,
         shutdown_immediately: Arc<AtomicBool>,
         queue_size: Arc<Mutex<usize>>,
-        http_client: SurfClient<NativeClient>,
+        http_client: SurfClient,
     ) {
         let dsn = options.dsn.clone().unwrap();
         let user_agent = options.user_agent.to_string();
@@ -430,9 +433,9 @@ implement_http_transport! {
             .spawn(move || {
                 sentry_debug!("spawning surf transport");
                 let http_client = http_client;
-                let url = dsn.store_api_url().to_string();
+                let url = dsn.envelope_api_url().to_string();
 
-                while let Some(event) = receiver.recv().unwrap_or(None) {
+                while let Some(envelope) = receiver.recv().unwrap_or(None) {
                     // on drop we want to not continue processing the queue.
                     if shutdown_immediately.load(Ordering::SeqCst) {
                         let mut size = queue_size.lock().unwrap();
@@ -454,32 +457,23 @@ implement_http_transport! {
                         }
                     }
 
-                    let req_result = http_client
+                    let mut body = Vec::new();
+                    envelope.to_writer(&mut body).unwrap();
+
+                    let fut = http_client
                         .post(url.as_str())
-                        .set_header(
-                            "X-Sentry-Auth".parse().unwrap(),
+                        .header(
+                            "X-Sentry-Auth",
                             dsn.to_auth(Some(&user_agent)).to_string()
                         )
-                        .body_json(&event);
-
-                    let fut = match req_result {
-                        Ok(fut) => fut,
-                        Err(err) => {
-                            sentry_debug!(
-                                "Skipping event send because JSON serialization failed: {}",
-                                err
-                            );
-
-                            continue;
-                        }
-                    };
+                        .body(body);
 
                     match executor::block_on(fut) {
                         Ok(resp) => {
                             if resp.status() == 429 {
                                 if let Some(retry_after) = resp
-                                    .header(&"Retry-After".parse().unwrap())
-                                    .and_then(|x| x.first())
+                                    .header("Retry-After")
+                                    .and_then(|x| x.iter().next())
                                     .map(|x| x.as_str())
                                     .and_then(parse_retry_after)
                                 {
@@ -503,33 +497,21 @@ implement_http_transport! {
 
     fn http_client(
         _options: &ClientOptions,
-        client: Option<SurfClient<NativeClient>>
-    ) -> SurfClient<NativeClient> {
+        client: Option<SurfClient>
+    ) -> SurfClient {
         client.unwrap_or_else(SurfClient::new)
     }
 }
 
-#[cfg(feature = "with_reqwest_transport")]
+#[cfg(feature = "reqwest")]
 type DefaultTransport = ReqwestHttpTransport;
 
-#[cfg(all(
-    feature = "with_curl_transport",
-    not(feature = "with_reqwest_transport"),
-    not(feature = "with_surf_transport")
-))]
+#[cfg(all(feature = "curl", not(feature = "reqwest"), not(feature = "surf")))]
 type DefaultTransport = CurlHttpTransport;
 
-#[cfg(all(
-    feature = "with_surf_transport",
-    not(feature = "with_reqwest_transport"),
-    not(feature = "with_curl_transport")
-))]
+#[cfg(all(feature = "surf", not(feature = "reqwest"), not(feature = "curl")))]
 type DefaultTransport = SurfHttpTransport;
 
 /// The default http transport.
-#[cfg(any(
-    feature = "with_reqwest_transport",
-    feature = "with_curl_transport",
-    feature = "with_surf_transport"
-))]
+#[cfg(any(feature = "reqwest", feature = "curl", feature = "surf"))]
 pub type HttpTransport = DefaultTransport;

@@ -11,20 +11,20 @@
 //! might optionally create a sentry `Event` out of a `PanicInfo`.
 //!
 //! ```
-//! let integration = sentry_panic::PanicIntegration::default()
-//!     .add_extractor(|info| None);
+//! let integration = sentry_panic::PanicIntegration::default().add_extractor(|info| None);
 //! ```
 
-#![deny(missing_docs)]
+#![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
+#![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
+#![warn(missing_docs)]
 #![deny(unsafe_code)]
-#![warn(missing_doc_code_examples)]
 
 use std::panic::{self, PanicInfo};
 use std::sync::Once;
 
 use sentry_backtrace::current_stacktrace;
-use sentry_core::protocol::{Event, Exception, Level};
-use sentry_core::{ClientOptions, Hub, Integration};
+use sentry_core::protocol::{Event, Exception, Level, Mechanism};
+use sentry_core::{ClientOptions, Integration};
 
 /// A panic handler that sends to Sentry.
 ///
@@ -32,10 +32,8 @@ use sentry_core::{ClientOptions, Hub, Integration};
 /// double faults in some cases where it's known to be unsafe to invoke the
 /// Sentry panic handler.
 pub fn panic_handler(info: &PanicInfo<'_>) {
-    Hub::with_active(|hub| {
-        hub.with_integration(|integration: &PanicIntegration| {
-            hub.capture_event(integration.event_from_panic_info(info))
-        })
+    sentry_core::with_integration(|integration: &PanicIntegration, hub| {
+        hub.capture_event(integration.event_from_panic_info(info))
     });
 }
 
@@ -45,6 +43,14 @@ type PanicExtractor = dyn Fn(&PanicInfo<'_>) -> Option<Event<'static>> + Send + 
 #[derive(Default)]
 pub struct PanicIntegration {
     extractors: Vec<Box<PanicExtractor>>,
+}
+
+impl std::fmt::Debug for PanicIntegration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PanicIntegration")
+            .field("extractors", &self.extractors.len())
+            .finish()
+    }
 }
 
 static INIT: Once = Once::new();
@@ -109,6 +115,11 @@ impl PanicIntegration {
         Event {
             exception: vec![Exception {
                 ty: "panic".into(),
+                mechanism: Some(Mechanism {
+                    ty: "panic".into(),
+                    handled: Some(false),
+                    ..Default::default()
+                }),
                 value: Some(msg.to_string()),
                 stacktrace: current_stacktrace(),
                 ..Default::default()

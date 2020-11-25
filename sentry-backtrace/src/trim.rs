@@ -9,19 +9,22 @@ lazy_static::lazy_static! {
         "alloc::",
         "backtrace::",
         "sentry::",
+        "sentry_core::",
         "sentry_types::",
         // these are not modules but things like __rust_maybe_catch_panic
         "__rust_",
         "___rust_",
+        // these are well-known library frames
+        "anyhow::",
+        "log::",
     ];
 
     static ref WELL_KNOWN_BORDER_FRAMES: Vec<&'static str> = vec![
         "std::panicking::begin_panic",
         "core::panicking::panic",
-    ];
-
-    static ref SECONDARY_BORDER_FRAMES: Vec<(&'static str, &'static str)> = vec![
-        ("error_chain::make_backtrace", "<T as core::convert::Into<U>>::into")
+        // well-known library frames
+        "anyhow::",
+        "<sentry_log::Logger as log::Log>::log",
     ];
 }
 
@@ -40,42 +43,8 @@ where
         });
 
     if let Some(cutoff) = known_cutoff {
-        let secondary = {
-            let func = stacktrace.frames[stacktrace.frames.len() - cutoff - 1]
-                .function
-                .as_ref()
-                .unwrap();
-
-            SECONDARY_BORDER_FRAMES
-                .iter()
-                .filter_map(|&(primary, secondary)| {
-                    if function_starts_with(func, primary) {
-                        Some(secondary)
-                    } else {
-                        None
-                    }
-                })
-                .next()
-        };
         let trunc = stacktrace.frames.len() - cutoff - 1;
         stacktrace.frames.truncate(trunc);
-
-        if let Some(secondary) = secondary {
-            let secondary_cutoff =
-                stacktrace
-                    .frames
-                    .iter()
-                    .rev()
-                    .position(|frame| match frame.function {
-                        Some(ref func) => function_starts_with(&func, secondary),
-                        None => false,
-                    });
-
-            if let Some(cutoff) = secondary_cutoff {
-                let trunc = stacktrace.frames.len() - cutoff - 1;
-                stacktrace.frames.truncate(trunc);
-            }
-        }
     }
 }
 

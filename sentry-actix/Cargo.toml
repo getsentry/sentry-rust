@@ -1,28 +1,22 @@
 [package]
 name = "sentry-actix"
-version = "0.18.0"
+version = "0.21.0"
 authors = ["Sentry <hello@sentry.io>"]
 license = "Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/getsentry/sentry-rust"
-homepage = "https://github.com/getsentry/sentry-rust"
-documentation = "https://docs.rs/sentry-actix"
+homepage = "https://sentry.io/welcome/"
 description = """
-Sentry client extension for actix-web
+Sentry client extension for actix-web 3.
 """
 edition = "2018"
 
-[features]
-default = ["with_sentry_default"]
-with_sentry_default = [
-    "sentry/with_default_transport",
-    "sentry/with_panic",
-    "sentry/with_native_tls"
-]
-
 [dependencies]
-sentry = { version = "0.18.0", path = "../sentry", default-features = false }
-sentry-failure = { version = "0.18.0", path = "../sentry-failure" }
-actix-web = { version = "0.7", default-features = false }
-failure = "0.1.3"
-fragile = "0.3.0"
+sentry-core = { version = "0.21.0", path = "../sentry-core", default-features = false }
+actix-web = { version = "3", default-features = false }
+futures-util = "0.3.5"
+
+[dev-dependencies]
+sentry = { version = "0.21.0", path = "../sentry", default-features = false, features = ["test"] }
+actix-rt = "1.1.1"
+futures = "0.3"

@@ -32,6 +32,12 @@ fn test_breadcrumbs() {
     let events = sentry::test::with_captured_events(|| {
         sentry::add_breadcrumb(|| sentry::Breadcrumb {
             ty: "log".into(),
+            message: Some("Old breadcrumb to be removed".into()),
+            ..Default::default()
+        });
+        sentry::configure_scope(|scope| scope.clear_breadcrumbs());
+        sentry::add_breadcrumb(|| sentry::Breadcrumb {
+            ty: "log".into(),
             message: Some("First breadcrumb".into()),
             ..Default::default()
         });
@@ -81,8 +87,9 @@ fn test_factory() {
     struct TestTransport(Arc<AtomicUsize>);
 
     impl sentry::Transport for TestTransport {
-        fn send_event(&self, event: sentry::protocol::Event<'static>) {
-            assert_eq!(event.message.unwrap(), "test");
+        fn send_envelope(&self, envelope: sentry::Envelope) {
+            let event = envelope.event().unwrap();
+            assert_eq!(event.message.as_ref().unwrap(), "test");
             self.0.fetch_add(1, Ordering::SeqCst);
         }
     }
@@ -112,4 +119,23 @@ fn test_factory() {
     );
 
     assert_eq!(events.load(Ordering::SeqCst), 1);
+}
+
+#[test]
+fn test_reentrant_configure_scope() {
+    let events = sentry::test::with_captured_events(|| {
+        sentry::configure_scope(|scope1| {
+            scope1.set_tag("which_scope", "scope1");
+
+            sentry::configure_scope(|scope2| {
+                scope2.set_tag("which_scope", "scope2");
+            });
+        });
+
+        sentry::capture_message("look ma, no deadlock!", sentry::Level::Info);
+    });
+
+    assert_eq!(events.len(), 1);
+    // well, the "outer" `configure_scope` wins
+    assert_eq!(events[0].tags["which_scope"], "scope1");
 }

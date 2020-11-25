@@ -38,6 +38,9 @@ pub struct ClientOptions {
     /// The release to be sent with events.
     pub release: Option<Cow<'static, str>>,
     /// The environment to be sent with events.
+    ///
+    /// Defaults to either `"development"` or `"production"` depending on the
+    /// `debug_assertions` cfg-attribute.
     pub environment: Option<Cow<'static, str>>,
     /// The sample rate for event submission. (0.0 - 1.0, defaults to 1.0)
     pub sample_rate: f32,
@@ -55,8 +58,14 @@ pub struct ClientOptions {
     pub in_app_exclude: Vec<&'static str>,
     // Integration options
     /// A list of integrations to enable.
+    ///
+    /// See [`sentry::integrations`](integrations/index.html#installing-integrations) for
+    /// how to use this to enable extra integrations.
     pub integrations: Vec<Arc<dyn Integration>>,
     /// Whether to add default integrations.
+    ///
+    /// See [`sentry::integrations`](integrations/index.html#default-integrations) for
+    /// details how this works and interacts with manually installed integrations.
     pub default_integrations: bool,
     // Hooks
     /// Callback that is executed before event sending.
@@ -82,6 +91,12 @@ pub struct ClientOptions {
     /// The timeout on client drop for draining events on shutdown.
     pub shutdown_timeout: Duration,
     // Other options not documented in Unified API
+    /// Enable Release Health Session tracking.
+    ///
+    /// When automatic session tracking is enabled, a new "user-mode" session
+    /// is started at the time of `sentry::init`, and will persist for the
+    /// application lifetime.
+    pub auto_session_tracking: bool,
     /// Border frames which indicate a border from a backtrace to
     /// useless internals. Some are automatically included.
     pub extra_border_frames: Vec<&'static str>,
@@ -96,6 +111,7 @@ impl ClientOptions {
     pub fn new() -> Self {
         Self::default()
     }
+
     /// Adds a configured integration to the options.
     ///
     /// # Examples
@@ -147,6 +163,7 @@ impl fmt::Debug for ClientOptions {
             .field("http_proxy", &self.http_proxy)
             .field("https_proxy", &self.https_proxy)
             .field("shutdown_timeout", &self.shutdown_timeout)
+            .field("auto_session_tracking", &self.auto_session_tracking)
             .field("extra_border_frames", &self.extra_border_frames)
             .field("trim_backtraces", &self.trim_backtraces)
             .field("user_agent", &self.user_agent)
@@ -176,6 +193,7 @@ impl Default for ClientOptions {
             http_proxy: None,
             https_proxy: None,
             shutdown_timeout: Duration::from_secs(2),
+            auto_session_tracking: false,
             extra_border_frames: vec![],
             trim_backtraces: true,
             user_agent: Cow::Borrowed(&USER_AGENT),
