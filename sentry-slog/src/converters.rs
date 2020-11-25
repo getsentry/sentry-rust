@@ -28,6 +28,12 @@ impl<'a> Serializer for MapSerializer<'a> {
         Ok(())
     }
 
+    fn emit_serde(&mut self, key: Key, val: &dyn slog::SerdeValue) -> slog::Result {
+        let value = serde_json::to_value(val.as_serde()).map_err(|_e| slog::Error::Other)?;
+        self.0.insert(key.into(), value);
+        Ok(())
+    }
+
     impl_into! { usize => emit_usize }
     impl_into! { isize => emit_isize }
     impl_into! { bool  => emit_bool  }
