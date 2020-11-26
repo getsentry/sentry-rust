@@ -123,3 +123,74 @@ pub fn exception_from_record(record: &Record, values: &OwnedKVList) -> Event<'st
     event.exception = vec![exception].into();
     event
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use serde::Serialize;
+
+    use slog::{b, o, record, Level};
+
+    #[derive(Serialize, Clone)]
+    struct Something {
+        msg: String,
+        count: usize,
+    }
+
+    impl slog::Value for Something {
+        fn serialize(
+            &self,
+            _record: &Record,
+            key: Key,
+            serializer: &mut dyn slog::Serializer,
+        ) -> slog::Result {
+            serializer.emit_serde(key, self)
+        }
+    }
+
+    impl slog::SerdeValue for Something {
+        fn as_serde(&self) -> &dyn erased_serde::Serialize {
+            self
+        }
+
+        fn to_sendable(&self) -> Box<dyn slog::SerdeValue + Send + 'static> {
+            Box::new(self.clone())
+        }
+    }
+
+    #[test]
+    fn test_slog_kvs() {
+        let extras = o!("lib" => "sentry", "version" => 1, "test" => true);
+
+        let mut map: Map<String, Value> = Map::new();
+
+        add_kv_to_map(
+            &mut map,
+            &record!(
+                Level::Debug,
+                "test",
+                &format_args!("Hello, world!"),
+                b!("something" => &Something {
+                    msg: "message!".into(),
+                    count: 42,
+                })
+            ),
+            &extras,
+        );
+
+        assert_eq!(map.get("lib"), Some(&"sentry".into()));
+        assert_eq!(map.get("version"), Some(&1.into()));
+        assert_eq!(map.get("test"), Some(&true.into()));
+        assert_eq!(
+            map.get("something"),
+            Some(&Value::Object(
+                vec![
+                    ("msg".to_string(), Value::from("message!")),
+                    ("count".to_string(), Value::from(42))
+                ]
+                .into_iter()
+                .collect()
+            ))
+        )
+    }
+}
