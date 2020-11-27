@@ -78,6 +78,7 @@ pub fn event_from_record(record: &Record, values: &OwnedKVList) -> Event<'static
     Event {
         message: Some(record.msg().to_string()),
         level: convert_log_level(record.level()),
+        extra,
         ..Default::default()
     }
 }
