@@ -6,9 +6,20 @@
 
 - The deprecated `error-chain` and `failure` integrations, features and crates were removed.
 
+**Features**:
+
+- The `slog` integration now supports capturing `slog::KV` pairs for both breadcrumbs and events.
+
 **Fixes**:
 
 - Fix regression defaulting `ClientOptions::environment` from `SENTRY_ENVIRONMENT`.
+- The `debug-images` integration now captures the correct `image_addr`.
+
+**Thank you**:
+
+Features, fixes and improvements in this release have been contributed by:
+
+- [@jrobsonchase](https://github.com/jrobsonchase)
 
 ## 0.21.0
 
