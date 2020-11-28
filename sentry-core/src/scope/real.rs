@@ -182,7 +182,7 @@ impl Scope {
 
     /// Sets the transaction name.
     pub fn set_transaction_name(&mut self, name: Option<&str>) {
-        self.transaction = name.map(|txn| Arc::new(txn.to_string()));
+        self.transaction = name.map(Arc::from);
         if let Some(span) = &mut self.span {
             let tx = span.transaction.clone();
             let mut tx = tx.write().unwrap();
@@ -200,7 +200,7 @@ impl Scope {
         if let Some(span) = span {
             // Update the scope transaction name.
             self.transaction = if let Some(name) = span.transaction.read().unwrap().name.clone() {
-                Some(Arc::new(name))
+                Some(Arc::from(name))
             } else {
                 None
             };
