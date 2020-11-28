@@ -1,6 +1,6 @@
 //! Release Health Sessions
 //!
-//! https://develop.sentry.dev/sdk/sessions/
+//! <https://develop.sentry.dev/sdk/sessions/>
 
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::thread::JoinHandle;
@@ -24,7 +24,7 @@ pub struct Session {
 
 impl Drop for Session {
     fn drop(&mut self) {
-        self.close();
+        self.close(SessionStatus::Exited);
         if self.dirty {
             self.client.enqueue_session(self.session_update.clone());
         }
@@ -95,10 +95,14 @@ impl Session {
         }
     }
 
-    pub(crate) fn close(&mut self) {
+    pub(crate) fn close(&mut self, status: SessionStatus) {
         if self.session_update.status == SessionStatus::Ok {
+            let status = match status {
+                SessionStatus::Ok => SessionStatus::Exited,
+                s => s,
+            };
             self.session_update.duration = Some(self.started.elapsed().as_secs_f64());
-            self.session_update.status = SessionStatus::Exited;
+            self.session_update.status = status;
             self.dirty = true;
         }
     }
@@ -329,6 +333,23 @@ mod tests {
         assert_eq!(items.next(), None);
     }
 
+    #[test]
+    fn test_session_abnormal() {
+        let envelopes = capture_envelopes(|| {
+            sentry::start_session();
+            sentry::end_session_with_status(SessionStatus::Abnormal);
+        });
+        assert_eq!(envelopes.len(), 1);
+
+        let mut items = envelopes[0].items();
+        if let Some(EnvelopeItem::SessionUpdate(session)) = items.next() {
+            assert_eq!(session.status, SessionStatus::Abnormal);
+            assert_eq!(session.init, true);
+        } else {
+            panic!("expected session");
+        }
+        assert_eq!(items.next(), None);
+    }
     #[test]
     fn test_session_sampled_errors() {
         let mut envelopes = crate::test::with_captured_envelopes_options(

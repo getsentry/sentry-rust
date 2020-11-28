@@ -24,8 +24,6 @@ jobs:
           components: rustfmt, clippy
 
       - uses: Swatinem/rust-cache@v1
-        with:
-          key: lints
 
       - name: Run cargo fmt
         uses: actions-rs/cargo@v1
@@ -64,8 +62,6 @@ jobs:
           override: true
 
       - uses: Swatinem/rust-cache@v1
-        with:
-          key: check
 
       - run: make checkall
 
@@ -91,8 +87,6 @@ jobs:
           override: true
 
       - uses: Swatinem/rust-cache@v1
-        with:
-          key: test
 
       - name: Run cargo test
         uses: actions-rs/cargo@v1
@@ -125,8 +119,6 @@ jobs:
           override: true
 
       - uses: Swatinem/rust-cache@v1
-        with:
-          key: fast-MSRV
 
       - run: make checkfast
 

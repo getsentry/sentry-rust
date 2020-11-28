@@ -1,6 +1,3 @@
-#![cfg_attr(feature = "error-chain", allow(deprecated))]
-#![cfg_attr(feature = "failure", allow(deprecated))]
-
 use std::env;
 use std::{borrow::Cow, sync::Arc};
 
@@ -15,17 +12,15 @@ use crate::{ClientOptions, Integration};
 /// also sets the `dsn`, `release`, `environment`, and proxy settings based on
 /// environment variables.
 ///
-/// When the `default_integrations` option is set to `true` (by default), the
-/// following integrations will be added *before* any manually defined
-/// integrations, depending on enabled feature flags:
+/// When the [`ClientOptions::default_integrations`] option is set to
+/// `true` (the default), the following integrations will be added *before*
+/// any manually defined integrations, depending on enabled feature flags:
 ///
 /// 1. [`AttachStacktraceIntegration`] (`feature = "backtrace"`)
 /// 2. [`DebugImagesIntegration`] (`feature = "debug-images"`)
-/// 3. [`ErrorChainIntegration`] (`feature = "error-chain"`)
-/// 4. [`ContextIntegration`] (`feature = "contexts"`)
-/// 5. [`FailureIntegration`] (`feature = "failure"`)
-/// 6. [`PanicIntegration`] (`feature = "panic"`)
-/// 7. [`ProcessStacktraceIntegration`] (`feature = "backtrace"`)
+/// 3. [`ContextIntegration`] (`feature = "contexts"`)
+/// 4. [`PanicIntegration`] (`feature = "panic"`)
+/// 5. [`ProcessStacktraceIntegration`] (`feature = "backtrace"`)
 ///
 /// Some integrations can be used multiple times, however, the
 /// [`PanicIntegration`] can not, and it will not pick up custom panic
@@ -46,9 +41,7 @@ use crate::{ClientOptions, Integration};
 ///
 /// [`AttachStacktraceIntegration`]: integrations/backtrace/struct.AttachStacktraceIntegration.html
 /// [`DebugImagesIntegration`]: integrations/debug_images/struct.DebugImagesIntegration.html
-/// [`ErrorChainIntegration`]: integrations/error_chain/struct.ErrorChainIntegration.html
 /// [`ContextIntegration`]: integrations/contexts/struct.ContextIntegration.html
-/// [`FailureIntegration`]: integrations/failure/struct.FailureIntegration.html
 /// [`PanicIntegration`]: integrations/panic/struct.PanicIntegration.html
 /// [`ProcessStacktraceIntegration`]: integrations/backtrace/struct.ProcessStacktraceIntegration.html
 pub fn apply_defaults(mut opts: ClientOptions) -> ClientOptions {
@@ -71,29 +64,13 @@ pub fn apply_defaults(mut opts: ClientOptions) -> ClientOptions {
                 sentry_debug_images::DebugImagesIntegration::default(),
             ))
         }
-        #[cfg(feature = "error-chain")]
-        {
-            integrations.push(Arc::new(
-                sentry_error_chain::ErrorChainIntegration::default(),
-            ))
-        }
         #[cfg(feature = "contexts")]
         {
             integrations.push(Arc::new(sentry_contexts::ContextIntegration::default()));
         }
-        #[cfg(feature = "failure")]
-        {
-            integrations.push(Arc::new(sentry_failure::FailureIntegration::default()));
-        }
         #[cfg(feature = "panic")]
         {
-            #[allow(unused_mut)]
-            let mut integration = sentry_panic::PanicIntegration::default();
-            #[cfg(feature = "failure")]
-            {
-                integration = integration.add_extractor(sentry_failure::panic_extractor);
-            }
-            integrations.push(Arc::new(integration));
+            integrations.push(Arc::new(sentry_panic::PanicIntegration::default()));
         }
         #[cfg(feature = "backtrace")]
         {
@@ -118,9 +95,9 @@ pub fn apply_defaults(mut opts: ClientOptions) -> ClientOptions {
             .map(Cow::Owned)
             .or_else(|| {
                 Some(Cow::Borrowed(if cfg!(debug_assertions) {
-                    "debug"
+                    "development"
                 } else {
-                    "release"
+                    "production"
                 }))
             });
     }
@@ -138,4 +115,27 @@ pub fn apply_defaults(mut opts: ClientOptions) -> ClientOptions {
             .or_else(|| opts.http_proxy.clone());
     }
     opts
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_default_environment() {
+        let opts = ClientOptions {
+            environment: Some("explicit-env".into()),
+            ..Default::default()
+        };
+        let opts = apply_defaults(opts);
+        assert_eq!(opts.environment.unwrap(), "explicit-env");
+
+        let opts = apply_defaults(Default::default());
+        // I doubt anyone runs test code without debug assertions
+        assert_eq!(opts.environment.unwrap(), "development");
+
+        env::set_var("SENTRY_ENVIRONMENT", "env-from-env");
+        let opts = apply_defaults(Default::default());
+        assert_eq!(opts.environment.unwrap(), "env-from-env");
+    }
 }

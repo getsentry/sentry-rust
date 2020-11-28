@@ -4,12 +4,39 @@
 
 **Breaking Changes**:
 
+- The deprecated `error-chain` and `failure` integrations, features and crates were removed.
+
+**Features**:
+
+- The `slog` integration now supports capturing `slog::KV` pairs for both breadcrumbs and events.
+
+**Fixes**:
+
+- Fix regression defaulting `ClientOptions::environment` from `SENTRY_ENVIRONMENT`.
+- The `debug-images` integration now captures the correct `image_addr`.
+
+**Thank you**:
+
+Features, fixes and improvements in this release have been contributed by:
+
+- [@jrobsonchase](https://github.com/jrobsonchase)
+
+## 0.21.0
+
+**Breaking Changes**:
+
 - Bump the minimum required Rust version to **1.42.0**.
 - The `actix` integration / middleware is now compatible with `actix-web 3`.
 - Removed all deprecated exports and deprecated feature flags.
 - The `failure` integration / feature is now off-by-default along with its deprecation.
 - The `log` and `slog` integrations were re-designed, they now offer types that wrap a `log::Log` or `slog::Drain` and forward log events to the currently active sentry `Hub` based on an optional filter and an optional mapper.
 - The new `log` integration will not implicitly call `log::set_max_level_filter` anymore, and users need to do so manually.
+
+**Features**:
+
+- The SDK will now set a default `environment` based on `debug_assertions`.
+- Session updates are now sent lazily.
+- Add the new `end_session_with_status` global and Hub functions which allow ending a Release Health Session with an explicit `SessionStatus`.
 
 **Deprecations**:
 

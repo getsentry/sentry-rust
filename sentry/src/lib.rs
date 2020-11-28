@@ -56,8 +56,6 @@
 //!
 //! * `anyhow`: Enables support for the `anyhow` crate.
 //! * `debug-images`: Attaches a list of loaded libraries to events (currently only supported on unix).
-//! * `error-chain`: Enables support for the `error-chain` crate.
-//! * `failure`: Enables support for the `failure` crate.
 //! * `log`: Enables support for the `log` crate.
 //! * `env_logger`: Enables support for the `log` crate with additional `env_logger` support.
 //! * `slog`: Enables support for the `slog` crate.
@@ -90,8 +88,51 @@ pub use crate::init::{init, ClientInitGuard};
 
 /// Available Sentry Integrations.
 ///
-/// See the [`apply_defaults`] function for more information on which integrations are
-/// used by default.
+/// Integrations extend the functionality of the SDK for some common frameworks and
+/// libraries.  Integrations come two primary kinds: as event *sources* or as event
+/// *processors*.
+///
+/// Integrations which are *sources*, like e.g. the
+/// [`sentry::integrations::anyhow`](integrations::anyhow) integration, usually provide one
+/// or more functions to create new events.  They will usually provide their own extension
+/// trait exposing a new method on the [`Hub`].
+///
+/// Integrations which *process* events in some way usually implement the
+/// [`Itegration`](crate::Integration) trait and need to be installed when sentry is
+/// initialised.
+///
+/// # Installing Integrations
+///
+/// Processing integrations which implement [`Integration`](crate::Integration) need to be
+/// installed when sentry is initialised.  This is done using the
+/// [`ClientOptions::add_integration`](crate::ClientOptions::add_integration) function, which you can
+/// use to add extra integrations.
+///
+/// For example if you disabled the default integrations (see below) but still wanted the
+/// [`sentry::integrations::debug_images`](integrations::debug_images) integration enabled,
+/// you could do this as such:
+///
+/// ```
+/// # #[cfg(feature = "debug-images")] {
+/// use sentry::ClientOptions;
+/// use sentry::integrations::debug_images::DebugImagesIntegration;
+///
+/// let options = ClientOptions {
+///     default_integrations: false,
+///     ..Default::default()
+/// }.add_integration(DebugImagesIntegration::new());
+/// let _guard = sentry::init(options);
+/// # }
+/// ```
+///
+/// # Default Integrations
+///
+/// The [`ClientOptions::default_integrations`](crate::ClientOptions::default_integrations)
+/// option is a boolean field that when enabled will enable a number of default integrations
+/// **before** any integrations provided by
+/// [`ClientOptions::integrations`](crate::ClientOptions::integrations) are installed.  This
+/// is done using the [`apply_defaults`] function, which should be consulted for more
+/// details and the list of which integrations are enabled by default.
 ///
 /// [`apply_defaults`]: ../fn.apply_defaults.html
 pub mod integrations {
@@ -107,14 +148,6 @@ pub mod integrations {
     #[cfg(feature = "debug-images")]
     #[doc(inline)]
     pub use sentry_debug_images as debug_images;
-    #[cfg(feature = "error-chain")]
-    #[doc(inline)]
-    #[deprecated = "The `error_chain` integration is deprecated and will be removed in the future."]
-    pub use sentry_error_chain as error_chain;
-    #[cfg(feature = "failure")]
-    #[doc(inline)]
-    #[deprecated = "The `failure` integration is deprecated and will be removed in the future."]
-    pub use sentry_failure as failure;
     #[cfg(feature = "log")]
     #[doc(inline)]
     pub use sentry_log as log;

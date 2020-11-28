@@ -28,15 +28,15 @@ sentry::capture_message("Hello World!", sentry::Level::Info);
 // seconds to send remaining events to the service.
 ```
 
-[`sentry::init`]: https://docs.rs/sentry/0.20.1/sentry/fn.init.html
-[`Hub`]: https://docs.rs/sentry/0.20.1/sentry/struct.Hub.html
+[`sentry::init`]: https://docs.rs/sentry/0.21.0/sentry/fn.init.html
+[`Hub`]: https://docs.rs/sentry/0.21.0/sentry/struct.Hub.html
 
 ## Integrations
 
 What makes this crate useful are the various integrations that exist.  Some of them are enabled
 by default, some uncommon ones or for deprecated parts of the ecosystem a feature flag needs to
 be enabled.  For the available integrations and how to use them see
-[integrations](https://docs.rs/sentry/0.20.1/sentry/integrations/index.html) and [apply_defaults](https://docs.rs/sentry/0.20.1/sentry/fn.apply_defaults.html).
+[integrations](https://docs.rs/sentry/0.21.0/sentry/integrations/index.html) and [apply_defaults](https://docs.rs/sentry/0.21.0/sentry/fn.apply_defaults.html).
 
 ## Minimal API
 
@@ -44,8 +44,8 @@ This crate comes fully featured. If the goal is to instrument libraries for usag
 with sentry, or to extend sentry with a custom [`Integration`] or a [`Transport`],
 one should use the [`sentry-core`] crate instead.
 
-[`Integration`]: https://docs.rs/sentry/0.20.1/sentry/trait.Integration.html
-[`Transport`]: https://docs.rs/sentry/0.20.1/sentry/trait.Transport.html
+[`Integration`]: https://docs.rs/sentry/0.21.0/sentry/trait.Integration.html
+[`Transport`]: https://docs.rs/sentry/0.21.0/sentry/trait.Transport.html
 [`sentry-core`]: https://crates.io/crates/sentry-core
 
 ## Features
@@ -57,7 +57,6 @@ Default features:
 
 * `backtrace`: Enables backtrace support.
 * `contexts`: Enables capturing device, os, and rust contexts.
-* `failure`: Enables support for the `failure` crate.
 * `panic`: Enables support for capturing panics.
 * `transport`: Enables the default transport, which is currently `reqwest` with `native-tls`.
 
@@ -66,6 +65,7 @@ Additional features:
 * `anyhow`: Enables support for the `anyhow` crate.
 * `debug-images`: Attaches a list of loaded libraries to events (currently only supported on unix).
 * `error-chain`: Enables support for the `error-chain` crate.
+* `failure`: Enables support for the `failure` crate.
 * `log`: Enables support for the `log` crate.
 * `env_logger`: Enables support for the `log` crate with additional `env_logger` support.
 * `slog`: Enables support for the `slog` crate.
