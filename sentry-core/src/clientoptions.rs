@@ -114,7 +114,7 @@ pub struct ClientOptions {
     ///
     /// Tracing is enabled if either this or `traces_sampler` is defined. If both
     /// are defined, `traces_sample_rate` is ignored.
-    pub traces_sampler: Option<Arc<dyn TracesSampler>>,
+    pub traces_sampler: Option<Arc<TracesSampler>>,
 }
 
 impl ClientOptions {

@@ -1521,6 +1521,9 @@ pub struct Span {
     /// Optional extra information to be sent with the span.
     #[serde(default, skip_serializing_if = "Map::is_empty")]
     pub data: Map<String, Value>,
+    /// Whether the span is sampled.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sampled: Option<bool>,
     /// The Transaction this Span is part of.
     #[serde(skip)]
     pub transaction: Arc<RwLock<Transaction<'static>>>,
@@ -1558,6 +1561,7 @@ impl Default for Span {
             same_process_as_parent: Default::default(),
             op: Default::default(),
             data: Default::default(),
+            sampled: Default::default(),
             transaction: Default::default(),
         }
     }
@@ -1617,6 +1621,9 @@ pub struct Transaction<'a> {
     /// Optional contexts.
     #[serde(default, skip_serializing_if = "Map::is_empty")]
     pub contexts: Map<String, Context>,
+    /// Whether the transaction is sampled.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sampled: Option<bool>,
 }
 
 impl<'a> Default for Transaction<'a> {
@@ -1631,6 +1638,7 @@ impl<'a> Default for Transaction<'a> {
             start_timestamp: event::default_timestamp(),
             spans: Default::default(),
             contexts: Default::default(),
+            sampled: Default::default(),
         }
     }
 }
@@ -1653,6 +1661,7 @@ impl<'a> Transaction<'a> {
             start_timestamp: self.start_timestamp,
             spans: self.spans,
             contexts: self.contexts,
+            sampled: self.sampled,
         }
     }
 

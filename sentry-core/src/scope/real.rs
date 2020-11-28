@@ -199,11 +199,7 @@ impl Scope {
     pub fn set_span(&mut self, span: Option<Span>) {
         if let Some(span) = span {
             // Update the scope transaction name.
-            self.transaction = if let Some(name) = span.transaction.read().unwrap().name.clone() {
-                Some(Arc::from(name))
-            } else {
-                None
-            };
+            self.transaction = span.transaction.read().unwrap().name.clone().map(Arc::from);
             self.span = Some(span);
         } else {
             self.span = None;

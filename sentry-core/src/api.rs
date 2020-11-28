@@ -1,6 +1,5 @@
-use sentry_types::protocol::v7::SessionStatus;
-
-use crate::protocol::{Event, Level};
+use crate::protocol::{Event, Level, SessionStatus, Transaction};
+use crate::tracing::SamplingContext;
 use crate::types::Uuid;
 use crate::{Hub, Integration, IntoBreadcrumbs, Scope};
 
@@ -297,4 +296,18 @@ pub fn end_session() {
 /// using this function.
 pub fn end_session_with_status(status: SessionStatus) {
     Hub::with_active(|hub| hub.end_session_with_status(status))
+}
+
+/// Start and return a transaction.
+pub fn start_transaction<'a>(
+    transaction: &'a mut Transaction<'a>,
+    custom_sampling_context: Option<SamplingContext>,
+) -> &'a Transaction<'a> {
+    Hub::with(|hub| {
+        if hub.is_active_and_usage_safe() {
+            hub.start_transaction(transaction, custom_sampling_context)
+        } else {
+            transaction
+        }
+    })
 }

@@ -8,7 +8,8 @@ use std::sync::{Arc, Mutex, PoisonError, RwLock, TryLockError};
 use std::thread;
 use std::time::Duration;
 
-use crate::protocol::{Breadcrumb, Event, Level, SessionStatus};
+use crate::protocol::{Breadcrumb, Event, Level, SessionStatus, Transaction};
+use crate::tracing::{SamplingContext, TracesSampler};
 use crate::types::Uuid;
 use crate::{event_from_error, Integration, IntoBreadcrumbs, Scope, ScopeGuard};
 #[cfg(feature = "client")]
@@ -442,6 +443,46 @@ impl Hub {
                 }
             })
         }}
+    }
+
+    /// The header value for `sentry-trace` corresponding to the current Span.
+    pub fn get_trace_headers(&self) -> Option<String> {
+        self.with_current_scope(|scope| {
+            if let Some(span) = &scope.span {
+                Some(format!(
+                    "{}-{}-{}",
+                    span.trace_id,
+                    span.span_id,
+                    span.sampled
+                        .map(|s| if s { "1" } else { "0" })
+                        .unwrap_or_default()
+                ))
+            } else {
+                None
+            }
+        })
+    }
+
+    /// Start and return a transaction.
+    pub fn start_transaction<'a>(
+        &self,
+        transaction: &'a mut Transaction<'a>,
+        custom_sampling_context: Option<SamplingContext>,
+    ) -> &'a Transaction<'a> {
+        if let Some(client) = self.client() {
+            let options = client.options();
+            let sampling_context = custom_sampling_context.unwrap_or_default();
+
+            let sampled = options
+                .traces_sampler
+                .clone()
+                .map(|sampler| sampler(sampling_context))
+                .unwrap_or_else(|| rand::random::<f32>() <= options.traces_sample_rate);
+
+            transaction.sampled = Some(sampled);
+        }
+
+        transaction
     }
 
     #[cfg(feature = "client")]
