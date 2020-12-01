@@ -37,13 +37,13 @@ impl AttachmentType {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(Clone, PartialEq)]
 /// Represents an attachment item
 pub struct Attachment {
     /// The actual attachment data
     pub buffer: std::borrow::Cow<'static, [u8]>,
     /// The filename of the attachment
-    pub filename: std::ffi::OsString,
+    pub filename: String,
     /// The special type of this attachment.
     pub ty: Option<AttachmentType>,
 }
@@ -57,7 +57,7 @@ impl Attachment {
         writeln!(
             writer,
             r#"{{"type":"attachment","length":{length},"filename":"{filename}","attachment_type":"{at}"}}"#,
-            filename = self.filename.to_string_lossy(),
+            filename = self.filename,
             length = self.buffer.len(),
             at = self.ty.unwrap_or_default().as_str()
         )?;
