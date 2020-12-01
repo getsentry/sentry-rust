@@ -3,7 +3,7 @@ use std::fmt;
 /// The different types an attachment can have.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum AttachmentType {
-    /// A standard attachment without special meaning. (default)
+    /// (default) A standard attachment without special meaning.
     Attachment,
     /// A minidump file that creates an error event and is symbolicated. The
     /// file should start with the `MDMP` magic bytes.
@@ -25,7 +25,7 @@ impl Default for AttachmentType {
 }
 
 impl AttachmentType {
-    /// Gets the string value Sentry expects for the attachment type
+    /// Gets the string value Sentry expects for the attachment type.
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Attachment => "event.attachment",
@@ -38,11 +38,11 @@ impl AttachmentType {
 }
 
 #[derive(Clone, PartialEq)]
-/// Represents an attachment item
+/// Represents an attachment item.
 pub struct Attachment {
-    /// The actual attachment data
+    /// The actual attachment data.
     pub buffer: std::borrow::Cow<'static, [u8]>,
-    /// The filename of the attachment
+    /// The filename of the attachment.
     pub filename: String,
     /// The special type of this attachment.
     pub ty: Option<AttachmentType>,
