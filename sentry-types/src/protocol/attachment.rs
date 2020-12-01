@@ -1,6 +1,6 @@
 use std::fmt;
 
-/// The different types an attachment can have
+/// The different types an attachment can have.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum AttachmentType {
     /// A standard attachment without special meaning. (default)
