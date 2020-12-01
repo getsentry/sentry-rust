@@ -2,7 +2,10 @@ use std::io::Write;
 
 use uuid::Uuid;
 
-use super::v7::{Attachment, Event, SessionUpdate, Transaction};
+use super::v7::Attachment;
+use super::v7::Event;
+use super::v7::SessionUpdate;
+use super::v7::Transaction;
 
 /// An Envelope Item.
 ///

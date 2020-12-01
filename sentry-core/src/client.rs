@@ -9,13 +9,11 @@ use std::time::Duration;
 use rand::random;
 use sentry_types::protocol::v7::SessionUpdate;
 
-use crate::{
-    constants::SDK_INFO,
-    protocol::{ClientSdkInfo, Event},
-    session::SessionFlusher,
-    types::{Dsn, Uuid},
-    ClientOptions, Envelope, Hub, Integration, Scope, Transport,
-};
+use crate::constants::SDK_INFO;
+use crate::protocol::{ClientSdkInfo, Event};
+use crate::session::SessionFlusher;
+use crate::types::{Dsn, Uuid};
+use crate::{ClientOptions, Envelope, Hub, Integration, Scope, Transport};
 
 impl<T: Into<ClientOptions>> From<T> for Client {
     fn from(o: T) -> Client {
