@@ -8,7 +8,7 @@ use super::v7::{Attachment, Event, SessionUpdate, Transaction};
 ///
 /// See the [documentation on Items](https://develop.sentry.dev/sdk/envelopes/#items)
 /// for more details.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 #[non_exhaustive]
 pub enum EnvelopeItem {
     /// An Event Item.
@@ -75,7 +75,7 @@ impl<'s> Iterator for EnvelopeItemIter<'s> {
 ///
 /// See the [documentation on Envelopes](https://develop.sentry.dev/sdk/envelopes/)
 /// for more details.
-#[derive(Clone, Default, Debug, PartialEq)]
+#[derive(Default, Debug, PartialEq)]
 pub struct Envelope {
     event_id: Option<Uuid>,
     items: Vec<EnvelopeItem>,
@@ -156,12 +156,8 @@ impl Envelope {
                     serde_json::to_writer(&mut item_buf, transaction)?
                 }
                 EnvelopeItem::Attachment(attachment) => {
-                    attachment.to_writer(&mut item_buf)?;
-
-                    writer.write_all(&item_buf)?;
+                    attachment.to_writer(&mut writer)?;
                     writeln!(writer)?;
-                    item_buf.clear();
-
                     continue;
                 }
             }
