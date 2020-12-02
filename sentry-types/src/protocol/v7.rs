@@ -24,6 +24,7 @@ use uuid::Uuid;
 
 use crate::utils::ts_seconds_float;
 
+pub use super::attachment::*;
 pub use super::envelope::*;
 pub use super::session::*;
 

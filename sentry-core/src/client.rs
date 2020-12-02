@@ -275,6 +275,13 @@ impl Client {
         Default::default()
     }
 
+    /// Sends the specified [`Envelope`] to sentry.
+    pub fn send_envelope(&self, envelope: Envelope) {
+        if let Some(ref transport) = *self.transport.read().unwrap() {
+            transport.send_envelope(envelope);
+        }
+    }
+
     pub(crate) fn enqueue_session(&self, session_update: SessionUpdate<'static>) {
         self.session_flusher.enqueue(session_update)
     }

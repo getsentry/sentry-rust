@@ -9,5 +9,6 @@ pub const LATEST: u16 = 7;
 #[cfg(feature = "protocol")]
 pub use v7 as latest;
 
+mod attachment;
 mod envelope;
 mod session;

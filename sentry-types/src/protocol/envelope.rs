@@ -2,6 +2,7 @@ use std::io::Write;
 
 use uuid::Uuid;
 
+use super::v7::Attachment;
 use super::v7::Event;
 use super::v7::SessionUpdate;
 use super::v7::Transaction;
@@ -28,8 +29,12 @@ pub enum EnvelopeItem {
     /// See the [Transaction Item documentation](https://develop.sentry.dev/sdk/envelopes/#transaction)
     /// for more details.
     Transaction(Transaction<'static>),
+    /// An Attachment Item.
+    ///
+    /// See the [Attachment Item documentation](https://develop.sentry.dev/sdk/envelopes/#attachment)
+    /// for more details.
+    Attachment(Attachment),
     // TODO:
-    // * Attachment,
     // etc…
 }
 
@@ -153,11 +158,17 @@ impl Envelope {
                 EnvelopeItem::Transaction(transaction) => {
                     serde_json::to_writer(&mut item_buf, transaction)?
                 }
+                EnvelopeItem::Attachment(attachment) => {
+                    attachment.to_writer(&mut writer)?;
+                    writeln!(writer)?;
+                    continue;
+                }
             }
             let item_type = match item {
                 EnvelopeItem::Event(_) => "event",
                 EnvelopeItem::SessionUpdate(_) => "session",
                 EnvelopeItem::Transaction(_) => "transaction",
+                EnvelopeItem::Attachment(_) => unreachable!(),
             };
             writeln!(
                 writer,
