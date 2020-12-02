@@ -41,7 +41,7 @@ impl AttachmentType {
 /// Represents an attachment item.
 pub struct Attachment {
     /// The actual attachment data.
-    pub buffer: std::borrow::Cow<'static, [u8]>,
+    pub buffer: Vec<u8>,
     /// The filename of the attachment.
     pub filename: String,
     /// The special type of this attachment.
