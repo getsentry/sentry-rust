@@ -160,7 +160,9 @@ impl SessionFlusher {
                 }
                 let mut last_flush = Instant::now();
                 loop {
-                    let timeout = FLUSH_INTERVAL - last_flush.elapsed();
+                    let timeout = FLUSH_INTERVAL
+                        .checked_sub(last_flush.elapsed())
+                        .unwrap_or_else(|| Duration::from_secs(0));
                     shutdown = cvar.wait_timeout(shutdown, timeout).unwrap().0;
                     if *shutdown {
                         return;
