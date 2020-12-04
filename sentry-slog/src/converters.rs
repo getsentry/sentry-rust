@@ -104,25 +104,11 @@ pub fn event_from_record(record: &Record, values: &OwnedKVList) -> Event<'static
 /// assert!(frame.lineno.unwrap() > 0);
 /// ```
 pub fn exception_from_record(record: &Record, values: &OwnedKVList) -> Event<'static> {
-    let mut event = event_from_record(record, values);
-    let frame = Frame {
-        function: Some(record.function().into()),
-        module: Some(record.module().into()),
-        filename: Some(record.file().into()),
-        lineno: Some(record.line().into()),
-        colno: Some(record.column().into()),
-        ..Default::default()
-    };
-    let exception = Exception {
-        ty: "slog::Record".into(),
-        stacktrace: Some(Stacktrace {
-            frames: vec![frame],
-            ..Default::default()
-        }),
-        ..Default::default()
-    };
-    event.exception = vec![exception].into();
-    event
+    // TODO: Exception records in Sentry need a valid type, value and full stack trace to support
+    // proper grouping and issue metadata generation. log::Record does not contain sufficient
+    // information for this. However, it may contain a serialized error which we can parse to emit
+    // an exception record.
+    event_from_record(record, values)
 }
 
 #[cfg(test)]
