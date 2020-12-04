@@ -14,6 +14,7 @@
 
 - Fix regression defaulting `ClientOptions::environment` from `SENTRY_ENVIRONMENT`.
 - The `debug-images` integration now captures the correct `image_addr`.
+- Do not send invalid exception events in the `log` and `slog` integrations. Both integrations no longer attach the location. To receive location information, set `options.attach_stacktrace` to `true`.
 
 **Thank you**:
 
