@@ -43,7 +43,10 @@
 //! # });
 //! # let captured_event = events.into_iter().next().unwrap();
 //!
-//! assert_eq!(captured_event.exception.len(), 1);
+//! assert_eq!(
+//!     captured_event.message.as_deref(),
+//!     Some("recorded as exception event")
+//! );
 //! ```
 //!
 //! The Drain can also be customized with a `filter`, and a `mapper`:
