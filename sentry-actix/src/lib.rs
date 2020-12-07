@@ -53,7 +53,6 @@
 #![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
 #![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
 #![warn(missing_docs)]
-#![allow(clippy::needless_doctest_main)]
 #![allow(deprecated)]
 #![allow(clippy::type_complexity)]
 
@@ -198,7 +197,9 @@ where
         let (tx, sentry_req) = sentry_request_from_http(&req, with_pii);
         hub.configure_scope(|scope| {
             scope.set_transaction(tx.as_deref());
-            scope.add_event_processor(Box::new(move |event| process_event(event, &sentry_req)))
+            scope.add_event_processor(Box::new(move |event| {
+                Some(process_event(event, &sentry_req))
+            }))
         });
 
         let fut = self.service.call(req).bind_hub(hub.clone());
@@ -274,7 +275,7 @@ fn sentry_request_from_http(request: &ServiceRequest, with_pii: bool) -> (Option
 }
 
 /// Add request data to a Sentry event
-fn process_event(mut event: Event<'static>, request: &Request) -> Option<Event<'static>> {
+fn process_event(mut event: Event<'static>, request: &Request) -> Event<'static> {
     // Request
     if event.request.is_none() {
         event.request = Some(request.clone());
@@ -289,7 +290,7 @@ fn process_event(mut event: Event<'static>, request: &Request) -> Option<Event<'
         });
         event.sdk = Some(Cow::Owned(sdk));
     }
-    Some(event)
+    event
 }
 
 #[cfg(test)]

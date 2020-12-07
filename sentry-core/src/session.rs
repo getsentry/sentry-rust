@@ -283,7 +283,6 @@ mod tests {
 
     #[test]
     fn test_session_batching() {
-        #![allow(clippy::match_like_matches_macro)]
         let envelopes = capture_envelopes(|| {
             for _ in 0..(MAX_SESSION_ITEMS * 2) {
                 sentry::start_session();
@@ -295,10 +294,7 @@ mod tests {
         let items = envelopes[0].items().chain(envelopes[1].items());
         assert_eq!(items.clone().count(), MAX_SESSION_ITEMS * 2);
         for item in items {
-            assert!(match item {
-                EnvelopeItem::SessionUpdate(_) => true,
-                _ => false,
-            });
+            assert!(matches!(item, EnvelopeItem::SessionUpdate(_)));
         }
     }
 
