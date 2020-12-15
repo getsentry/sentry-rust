@@ -199,7 +199,7 @@ impl Hub {
         let mut restore_process_hub = false;
         let did_switch = THREAD_HUB.with(|ctx| unsafe {
             let ptr = ctx.get();
-            if &**ptr as *const _ == &*hub as *const _ {
+            if std::ptr::eq(&**ptr, &*hub) {
                 None
             } else {
                 USE_PROCESS_HUB.with(|x| {

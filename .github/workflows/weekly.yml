@@ -1,0 +1,32 @@
+name: Weekly Beta
+
+on:
+  schedule:
+    - cron: "0 0 * * 1" # every monday at 00:00
+
+env:
+  RUSTFLAGS: -Dwarnings
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: beta
+          profile: minimal
+          override: true
+          components: clippy
+
+      - uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --all-features --workspace --tests --examples -- -D clippy::all
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --workspace --all-features
