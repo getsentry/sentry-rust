@@ -37,6 +37,14 @@ impl Integration for ProcessStacktraceIntegration {
                 process_event_stacktrace(stacktrace, &options);
             }
         }
+        for th in &mut event.threads {
+            if let Some(ref mut stacktrace) = th.stacktrace {
+                process_event_stacktrace(stacktrace, &options);
+            }
+        }
+        if let Some(ref mut stacktrace) = event.stacktrace {
+            process_event_stacktrace(stacktrace, &options);
+        }
         Some(event)
     }
 }
