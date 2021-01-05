@@ -38,4 +38,4 @@ log_ = { package = "log", version = "0.4.8", optional = true, features = ["std"]
 sentry = { version = "0.21.0", path = "../sentry", default-features = false, features = ["test"] }
 thiserror = "1.0.15"
 anyhow = "1.0.30"
-tokio = { version = "0.2", features = ["rt-core", "macros"] }
+tokio = { version = "1.0", features = ["rt", "macros"] }
