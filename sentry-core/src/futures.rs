@@ -74,7 +74,7 @@ mod tests {
     #[test]
     fn test_futures() {
         let mut events = with_captured_events(|| {
-            let mut runtime = Runtime::new().unwrap();
+            let runtime = Runtime::new().unwrap();
 
             // spawn two separate tasks, and await them in the end.
             runtime.block_on(async {

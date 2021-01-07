@@ -48,7 +48,7 @@ sentry-log = { version = "0.21.0", path = "../sentry-log", optional = true }
 sentry-panic = { version = "0.21.0", path = "../sentry-panic", optional = true }
 sentry-slog = { version = "0.21.0", path = "../sentry-slog", optional = true }
 log_ = { package = "log", version = "0.4.8", optional = true, features = ["std"] }
-reqwest_ = { package = "reqwest", version = "0.10.8", optional = true, features = ["blocking", "json"], default-features = false }
+reqwest_ = { package = "reqwest", version = "0.11", optional = true, features = ["blocking", "json"], default-features = false }
 curl_ = { package = "curl", version = "0.4.25", optional = true }
 surf_ = { package = "surf", version = "2.0.0", optional = true }
 futures = { version = "0.3", optional = true }
@@ -62,6 +62,6 @@ sentry-slog = { version = "0.21.0", path = "../sentry-slog" }
 log_ = { package = "log", version = "0.4.8", features = ["std"] }
 slog_ = { package = "slog", version = "2.5.2" }
 actix-web = { version = "3", default-features = false }
-tokio = { version = "0.2", features = ["macros"] }
+tokio = { version = "1.0", features = ["macros"] }
 pretty_env_logger = "0.4.0"
 anyhow_ = { package = "anyhow", version = "1.0.30" }
