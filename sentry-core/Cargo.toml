@@ -16,7 +16,7 @@ all-features = true
 
 [features]
 default = []
-client = ["im", "rand"]
+client = ["rand"]
 # I would love to just have a `log` feature, but this is used inside a macro,
 # and macros actually expand features (and extern crate) where they are used!
 debug-logs = ["log_"]
@@ -26,7 +26,6 @@ test = ["client"]
 sentry-types = { version = "0.21.0", path = "../sentry-types" }
 serde = { version = "1.0.104", features = ["derive"] }
 lazy_static = "1.4.0"
-im = { version = "15.0.0", optional = true }
 rand = { version = "0.7.3", optional = true }
 serde_json = "1.0.46"
 log_ = { package = "log", version = "0.4.8", optional = true, features = ["std"] }

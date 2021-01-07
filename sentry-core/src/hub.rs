@@ -427,16 +427,17 @@ impl Hub {
                 if let Some(ref client) = top.client {
                     let scope = Arc::make_mut(&mut top.scope);
                     let options = client.options();
+                    let breadcrumbs = Arc::make_mut(&mut scope.breadcrumbs);
                     for breadcrumb in breadcrumb.into_breadcrumbs() {
                         let breadcrumb_opt = match options.before_breadcrumb {
                             Some(ref callback) => callback(breadcrumb),
                             None => Some(breadcrumb)
                         };
                         if let Some(breadcrumb) = breadcrumb_opt {
-                            scope.breadcrumbs.push_back(breadcrumb);
+                            breadcrumbs.push_back(breadcrumb);
                         }
-                        while scope.breadcrumbs.len() > options.max_breadcrumbs {
-                            scope.breadcrumbs.pop_front();
+                        while breadcrumbs.len() > options.max_breadcrumbs {
+                            breadcrumbs.pop_front();
                         }
                     }
                 }
