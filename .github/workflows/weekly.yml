@@ -1,6 +1,7 @@
-name: Weekly Beta
+name: Weekly CI
 
 on:
+  push: # TODO: remove before merging
   schedule:
     - cron: "0 0 * * 1" # every monday at 00:00
 
@@ -8,7 +9,7 @@ env:
   RUSTFLAGS: -Dwarnings
 
 jobs:
-  test:
+  weekly-clippy-beta:
     runs-on: ubuntu-latest
 
     steps:
@@ -24,9 +25,21 @@ jobs:
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          name: clippy-beta-weekly
           args: --all-features --workspace --tests --examples -- -D clippy::all
 
       - uses: actions-rs/cargo@v1
         with:
           command: test
           args: --workspace --all-features
+
+  weekly-audit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+      - uses: actions-rs/audit-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
