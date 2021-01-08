@@ -10,6 +10,7 @@ env:
 
 jobs:
   weekly-clippy-beta:
+    name: Clippy Beta
     runs-on: ubuntu-latest
 
     steps:
@@ -25,7 +26,7 @@ jobs:
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          name: clippy-beta-weekly
+          name: Clippy Beta
           args: --all-features --workspace --tests --examples -- -D clippy::all
 
       - uses: actions-rs/cargo@v1
@@ -34,6 +35,7 @@ jobs:
           args: --workspace --all-features
 
   weekly-audit:
+    name: Audit
     runs-on: ubuntu-latest
 
     steps:
