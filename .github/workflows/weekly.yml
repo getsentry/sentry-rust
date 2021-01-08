@@ -1,7 +1,6 @@
 name: Weekly CI
 
 on:
-  push: # TODO: remove before merging
   schedule:
     - cron: "0 0 * * 1" # every monday at 00:00
 
