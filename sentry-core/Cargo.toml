@@ -30,7 +30,7 @@ test = ["client"]
 sentry-types = { version = "0.21.0", path = "../sentry-types" }
 serde = { version = "1.0.104", features = ["derive"] }
 lazy_static = "1.4.0"
-rand = { version = "0.7.3", optional = true }
+rand = { version = "0.8.1", optional = true }
 serde_json = "1.0.46"
 log_ = { package = "log", version = "0.4.8", optional = true, features = ["std"] }
 
