@@ -11,9 +11,6 @@ Sentry integration and utilities for dealing with stacktraces.
 """
 edition = "2018"
 
-[package.metadata.docs.rs]
-all-features = true
-
 [dependencies]
 sentry-core = { version = "0.21.0", path = "../sentry-core" }
 lazy_static = "1.4.0"

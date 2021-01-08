@@ -12,9 +12,6 @@ Sentry integration for os, device, and rust contexts.
 build = "build.rs"
 edition = "2018"
 
-[package.metadata.docs.rs]
-all-features = true
-
 [dependencies]
 sentry-core = { version = "0.21.0", path = "../sentry-core" }
 libc = "0.2.66"
@@ -26,7 +23,7 @@ lazy_static = "1.4.0"
 uname = "0.1.1"
 
 [build-dependencies]
-rustc_version = "0.2.3"
+rustc_version = "0.3.0"
 
 [dev-dependencies]
 sentry = { version = "0.21.0", path = "../sentry", default-features = false, features = ["test"] }

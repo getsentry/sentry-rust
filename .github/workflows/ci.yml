@@ -35,6 +35,7 @@ jobs:
         uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          name: Clippy
           args: --all-features --workspace --tests --examples -- -D clippy::all
 
   check:
@@ -44,7 +45,7 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
         rust: [stable]
 
-    name: checkall using ${{ matrix.rust }} on ${{ matrix.os }}
+    name: Check feature permutations using Rust ${{ matrix.rust }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
 
     env:
@@ -72,7 +73,7 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
         rust: [stable]
 
-    name: testall using ${{ matrix.rust }} on ${{ matrix.os }}
+    name: Test using Rust ${{ matrix.rust }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -101,7 +102,7 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
         rust: [1.45.0]
 
-    name: checkfast/testfast using ${{ matrix.rust }} on ${{ matrix.os }}
+    name: Check / Test MSRV ${{ matrix.rust }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
 
     env:

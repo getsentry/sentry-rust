@@ -1,4 +1,4 @@
-name: Weekly Beta
+name: Weekly CI
 
 on:
   schedule:
@@ -8,7 +8,8 @@ env:
   RUSTFLAGS: -Dwarnings
 
 jobs:
-  test:
+  weekly-clippy-beta:
+    name: Clippy Beta
     runs-on: ubuntu-latest
 
     steps:
@@ -24,9 +25,21 @@ jobs:
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          name: Clippy Beta
           args: --all-features --workspace --tests --examples -- -D clippy::all
 
       - uses: actions-rs/cargo@v1
         with:
           command: test
           args: --workspace --all-features
+
+  weekly-audit:
+    name: Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/audit-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}

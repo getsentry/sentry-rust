@@ -11,9 +11,6 @@ Sentry integration for the slog crate.
 """
 edition = "2018"
 
-[package.metadata.docs.rs]
-all-features = true
-
 [dependencies]
 sentry-core = { version = "0.21.0", path = "../sentry-core" }
 slog = { version = "2.5.2", features = ["nested-values"] }
