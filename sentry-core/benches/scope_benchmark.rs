@@ -21,6 +21,7 @@
 //! `client` feature. To test without it, one needs to comment the circular dependency
 //! before running the benchmark.
 
+use std::ops::Range;
 #[cfg(feature = "client")]
 use std::sync::Arc;
 
@@ -34,12 +35,7 @@ use sentry_core as sentry;
 /// This uses the [`sentry::add_breadcrumb`] API in *callback mode*, which means
 /// it is essentially a noop when the current Hub is inactive.
 fn scope_with_breadcrumbs(capture: bool) {
-    for i in 0..50 {
-        sentry::add_breadcrumb(|| Breadcrumb {
-            message: Some(format!("Breadcrumb {}", i)),
-            ..Default::default()
-        });
-    }
+    add_breadcrumbs(0..50);
 
     if capture {
         sentry::capture_message("capturing on outer scope", sentry::Level::Info);
@@ -49,12 +45,7 @@ fn scope_with_breadcrumbs(capture: bool) {
         |_| (),
         || {
             // 50 + 70 exceeds the default max_breadcrumbs of 100
-            for i in 0..70 {
-                sentry::add_breadcrumb(|| Breadcrumb {
-                    message: Some(format!("Breadcrumb {}", i)),
-                    ..Default::default()
-                });
-            }
+            add_breadcrumbs(50..120);
 
             if capture {
                 sentry::capture_message("capturing within a nested scope", sentry::Level::Info);
@@ -65,16 +56,28 @@ fn scope_with_breadcrumbs(capture: bool) {
     sentry::configure_scope(|scope| scope.clear());
 }
 
+/// This does multiple nested [`sentry::with_scope`] calls that manipulates breadcrumbs
+fn outer_scope_with_breadcrumbs() {
+    sentry::with_scope(
+        |_| (),
+        || {
+            add_breadcrumbs(20..50);
+            sentry::with_scope(
+                |_| (),
+                || {
+                    add_breadcrumbs(50..80);
+                },
+            )
+        },
+    )
+}
+
 /// Tests Scopes with Tags
 ///
 /// This uses the [`sentry::Scope::set_tag`] function to define, and then overwrite/extend
 /// the set of tags.
 fn scope_with_tags(capture: bool) {
-    sentry::configure_scope(|scope| {
-        for i in 0..20 {
-            scope.set_tag(&format!("tag {}", i), format!("tag value {}", i));
-        }
-    });
+    sentry::configure_scope(|scope| add_tags(scope, 0..20));
 
     if capture {
         sentry::capture_message("capturing on outer scope", sentry::Level::Info);
@@ -82,10 +85,8 @@ fn scope_with_tags(capture: bool) {
 
     sentry::with_scope(
         |scope| {
-            for i in 10..30 {
-                // since this is a hashmap, we basically overwrite 10, and add 10 new tags
-                scope.set_tag(&format!("tag {}", i), format!("tag value {}", i));
-            }
+            // since this is a hashmap, we basically overwrite 10, and add 10 new tags
+            add_tags(scope, 10..30)
         },
         || {
             if capture {
@@ -95,6 +96,31 @@ fn scope_with_tags(capture: bool) {
     );
 
     sentry::configure_scope(|scope| scope.clear());
+}
+
+/// This does multiple nested [`sentry::with_scope`] calls that manipulates tags
+fn outer_scope_with_tags() {
+    sentry::with_scope(
+        |scope| add_tags(scope, 20..22),
+        || sentry::with_scope(|scope| add_tags(scope, 22..24), || {}),
+    )
+}
+
+/// Adds a bunch of breadcrumbs
+fn add_breadcrumbs(range: Range<usize>) {
+    for i in range {
+        sentry::add_breadcrumb(|| Breadcrumb {
+            message: Some(format!("Breadcrumb {}", i)),
+            ..Default::default()
+        });
+    }
+}
+
+/// Adds a bunch of tags
+fn add_tags(scope: &mut sentry::Scope, range: Range<usize>) {
+    for i in range {
+        scope.set_tag(&format!("tag {}", i), format!("tag value {}", i));
+    }
 }
 
 /// Returns a new *active* [`sentry::Hub`] which discards Events in the Transport.
@@ -133,6 +159,11 @@ fn scope_benchmark(c: &mut Criterion) {
             let hub = Arc::new(discarding_hub());
             sentry::Hub::run(hub, || b.iter(|| scope_with_tags(true)))
         });
+        group.bench_function("outer-scope", |b| {
+            let hub = Arc::new(discarding_hub());
+            sentry::configure_scope(|scope| add_tags(scope, 0..20));
+            sentry::Hub::run(hub, || b.iter(outer_scope_with_tags))
+        });
     }
 
     group.finish();
@@ -149,6 +180,11 @@ fn scope_benchmark(c: &mut Criterion) {
         group.bench_function("dropping-client", |b| {
             let hub = Arc::new(discarding_hub());
             sentry::Hub::run(hub, || b.iter(|| scope_with_breadcrumbs(true)))
+        });
+        group.bench_function("outer-scope", |b| {
+            let hub = Arc::new(discarding_hub());
+            add_breadcrumbs(0..20);
+            sentry::Hub::run(hub, || b.iter(outer_scope_with_breadcrumbs))
         });
     }
 

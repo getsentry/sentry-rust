@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::collections::{HashMap, VecDeque};
 use std::fmt;
 use std::sync::{Arc, Mutex, PoisonError, RwLock};
 
@@ -36,12 +37,12 @@ pub struct Scope {
     pub(crate) level: Option<Level>,
     pub(crate) fingerprint: Option<Arc<[Cow<'static, str>]>>,
     pub(crate) transaction: Option<Arc<str>>,
-    pub(crate) breadcrumbs: im::Vector<Breadcrumb>,
+    pub(crate) breadcrumbs: Arc<VecDeque<Breadcrumb>>,
     pub(crate) user: Option<Arc<User>>,
-    pub(crate) extra: im::HashMap<String, Value>,
-    pub(crate) tags: im::HashMap<String, String>,
-    pub(crate) contexts: im::HashMap<String, Context>,
-    pub(crate) event_processors: im::Vector<Arc<EventProcessor>>,
+    pub(crate) extra: Arc<HashMap<String, Value>>,
+    pub(crate) tags: Arc<HashMap<String, String>>,
+    pub(crate) contexts: Arc<HashMap<String, Context>>,
+    pub(crate) event_processors: Arc<Vec<Arc<EventProcessor>>>,
     pub(crate) session: Arc<Mutex<Option<Session>>>,
 }
 
@@ -157,7 +158,7 @@ impl Scope {
 
     /// Deletes current breadcrumbs from the scope.
     pub fn clear_breadcrumbs(&mut self) {
-        self.breadcrumbs.clear();
+        self.breadcrumbs = Default::default();
     }
 
     /// Sets a level override.
@@ -183,34 +184,34 @@ impl Scope {
 
     /// Sets a tag to a specific value.
     pub fn set_tag<V: ToString>(&mut self, key: &str, value: V) {
-        self.tags.insert(key.to_string(), value.to_string());
+        Arc::make_mut(&mut self.tags).insert(key.to_string(), value.to_string());
     }
 
     /// Removes a tag.
     ///
     /// If the tag is not set, does nothing.
     pub fn remove_tag(&mut self, key: &str) {
-        self.tags.remove(key);
+        Arc::make_mut(&mut self.tags).remove(key);
     }
 
     /// Sets a context for a key.
     pub fn set_context<C: Into<Context>>(&mut self, key: &str, value: C) {
-        self.contexts.insert(key.to_string(), value.into());
+        Arc::make_mut(&mut self.contexts).insert(key.to_string(), value.into());
     }
 
     /// Removes a context for a key.
     pub fn remove_context(&mut self, key: &str) {
-        self.contexts.remove(key);
+        Arc::make_mut(&mut self.contexts).remove(key);
     }
 
     /// Sets a extra to a specific value.
     pub fn set_extra(&mut self, key: &str, value: Value) {
-        self.extra.insert(key.to_string(), value);
+        Arc::make_mut(&mut self.extra).insert(key.to_string(), value);
     }
 
     /// Removes a extra.
     pub fn remove_extra(&mut self, key: &str) {
-        self.extra.remove(key);
+        Arc::make_mut(&mut self.extra).remove(key);
     }
 
     /// Add an event processor to the scope.
@@ -218,7 +219,7 @@ impl Scope {
         &mut self,
         f: Box<dyn Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync>,
     ) {
-        self.event_processors.push_back(Arc::new(f));
+        Arc::make_mut(&mut self.event_processors).push(Arc::new(f));
     }
 
     /// Applies the contained scoped data to fill an event.
@@ -234,12 +235,18 @@ impl Scope {
             }
         }
 
+        event.breadcrumbs.extend(self.breadcrumbs.iter().cloned());
         event
-            .breadcrumbs
-            .extend(self.breadcrumbs.clone().into_iter());
-        event.extra.extend(self.extra.clone().into_iter());
-        event.tags.extend(self.tags.clone().into_iter());
-        event.contexts.extend(self.contexts.clone().into_iter());
+            .extra
+            .extend(self.extra.iter().map(|(k, v)| (k.to_owned(), v.to_owned())));
+        event
+            .tags
+            .extend(self.tags.iter().map(|(k, v)| (k.to_owned(), v.to_owned())));
+        event.contexts.extend(
+            self.contexts
+                .iter()
+                .map(|(k, v)| (k.to_owned(), v.to_owned())),
+        );
 
         if event.transaction.is_none() {
             if let Some(txn) = self.transaction.as_deref() {
@@ -255,7 +262,7 @@ impl Scope {
             }
         }
 
-        for processor in &self.event_processors {
+        for processor in self.event_processors.as_ref() {
             let id = event.event_id;
             event = match processor(event) {
                 Some(event) => event,
