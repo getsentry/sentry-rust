@@ -54,6 +54,7 @@ surf_ = { package = "surf", version = "2.0.0", optional = true }
 futures = { version = "0.3", optional = true }
 httpdate = { version = "0.3.2", optional = true }
 serde_json = { version = "1.0.48", optional = true }
+tokio = { version = "1.0", features = ["rt"] }
 
 [dev-dependencies]
 sentry-anyhow = { version = "0.21.0", path = "../sentry-anyhow" }

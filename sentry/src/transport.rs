@@ -162,6 +162,144 @@ macro_rules! implement_http_transport {
     }
 }
 
+enum Task {
+    SendEnvelope(Envelope),
+    Flush(SyncSender<()>),
+    Shutdown,
+}
+
+struct TransportThread {
+    sender: SyncSender<Task>,
+    shutdown: Arc<AtomicBool>,
+    handle: Option<JoinHandle<()>>,
+}
+
+impl TransportThread {
+    fn new<'a, SendFn, SendFuture>(send: SendFn) -> Self
+    where
+        SendFn: Fn(Envelope) -> SendFuture + Send + 'static,
+        SendFuture: std::future::Future<Output = ()> + 'a,
+    {
+        let (sender, receiver) = sync_channel(30);
+        let shutdown = Arc::new(AtomicBool::new(false));
+        let shutdown_worker = shutdown.clone();
+        let handle = thread::Builder::new()
+            .name("sentry-transport".into())
+            .spawn(move || {
+                // create a runtime on the transport thread
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .unwrap();
+
+                // and block on an async fn in this runtime/thread
+                rt.block_on(async move {
+                    for task in receiver.into_iter() {
+                        if shutdown_worker.load(Ordering::SeqCst) {
+                            return;
+                        }
+                        let envelope = match task {
+                            Task::SendEnvelope(envelope) => envelope,
+                            Task::Flush(sender) => {
+                                sender.send(()).ok();
+                                continue;
+                            }
+                            Task::Shutdown => {
+                                return;
+                            }
+                        };
+                        // TODO: rate limiting, etc:
+                        send(envelope).await;
+                    }
+                })
+            })
+            .ok();
+
+        Self {
+            sender,
+            shutdown,
+            handle,
+        }
+    }
+
+    fn send(&self, envelope: Envelope) {
+        let _ = self.sender.send(Task::SendEnvelope(envelope));
+    }
+
+    fn flush(&self, timeout: Duration) -> bool {
+        let (sender, receiver) = sync_channel(1);
+        let _ = self.sender.send(Task::Flush(sender));
+        receiver.recv_timeout(timeout).is_err()
+    }
+}
+
+impl Drop for TransportThread {
+    fn drop(&mut self) {
+        self.shutdown.store(true, Ordering::SeqCst);
+        let _ = self.sender.send(Task::Shutdown);
+        if let Some(handle) = self.handle.take() {
+            handle.join().unwrap();
+        }
+    }
+}
+
+pub struct NewReqwestHttpTransport {
+    thread: TransportThread,
+}
+
+impl NewReqwestHttpTransport {
+    pub fn new(options: &ClientOptions) -> Self {
+        Self::new_internal(options, None)
+    }
+
+    pub fn with_client(options: &ClientOptions, client: reqwest_::Client) -> Self {
+        Self::new_internal(options, Some(client))
+    }
+
+    fn new_internal(options: &ClientOptions, client: Option<reqwest_::Client>) -> Self {
+        let client = client.unwrap_or_else(|| {
+            let mut builder = reqwest_::Client::builder();
+            if let Some(url) = options.http_proxy.as_ref() {
+                builder = builder.proxy(Proxy::http(url.as_ref()).unwrap());
+            };
+            if let Some(url) = options.https_proxy.as_ref() {
+                builder = builder.proxy(Proxy::https(url.as_ref()).unwrap());
+            };
+            builder.build().unwrap()
+        });
+        let dsn = options.dsn.as_ref().unwrap();
+        let user_agent = options.user_agent.to_owned();
+        let auth = dsn.to_auth(Some(&user_agent)).to_string();
+        let url = dsn.envelope_api_url().to_string();
+
+        let thread = TransportThread::new(move |envelope| {
+            let mut body = Vec::new();
+            envelope.to_writer(&mut body).unwrap();
+            let request = client.post(&url).header("X-Sentry-Auth", &auth).body(body);
+
+            // NOTE: because of lifetime issues, building the request using the
+            // `client` has to happen outside of this async block.
+            async move {
+                request.send().await.unwrap();
+            }
+        });
+        Self { thread }
+    }
+}
+
+impl Transport for NewReqwestHttpTransport {
+    fn send_envelope(&self, envelope: Envelope) {
+        self.thread.send(envelope)
+    }
+    fn flush(&self, timeout: Duration) -> bool {
+        self.thread.flush(timeout)
+    }
+
+    fn shutdown(&self, timeout: Duration) -> bool {
+        self.flush(timeout)
+    }
+}
+
 #[cfg(feature = "reqwest")]
 implement_http_transport! {
     /// A transport can send events via HTTP to sentry via `reqwest`.
@@ -501,7 +639,7 @@ implement_http_transport! {
 }
 
 #[cfg(feature = "reqwest")]
-type DefaultTransport = ReqwestHttpTransport;
+type DefaultTransport = NewReqwestHttpTransport;
 
 #[cfg(all(feature = "curl", not(feature = "reqwest"), not(feature = "surf")))]
 type DefaultTransport = CurlHttpTransport;
