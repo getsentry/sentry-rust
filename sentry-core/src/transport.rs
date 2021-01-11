@@ -14,14 +14,18 @@ pub trait Transport: Send + Sync + 'static {
     /// [`Envelope`]: struct.Envelope.html
     fn send_envelope(&self, envelope: Envelope);
 
-    /// Drains the queue if there is one.
+    /// Flushes the transport queue if there is one.
     ///
-    /// The default implementation does nothing.  If the queue was successfully
-    /// shutdowned the return value should be `true` or `false` if events were
-    /// left in it.
-    fn shutdown(&self, timeout: Duration) -> bool {
+    /// If the queue was successfully drained, the return value should be
+    /// `true` or `false` if events were left in it.
+    fn flush(&self, timeout: Duration) -> bool {
         let _timeout = timeout;
         true
+    }
+
+    /// Instructs the Transport to shut down.
+    fn shutdown(&self, timeout: Duration) -> bool {
+        self.flush(timeout)
     }
 }
 

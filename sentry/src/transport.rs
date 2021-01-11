@@ -72,7 +72,7 @@ macro_rules! implement_http_transport {
     ) => {
         $(#[$attr])*
         pub struct $typename {
-            sender: Mutex<SyncSender<Option<Envelope>>>,
+            sender: SyncSender<Option<Envelope>>,
             shutdown_signal: Arc<Condvar>,
             shutdown_immediately: Arc<AtomicBool>,
             queue_size: Arc<Mutex<usize>>,
@@ -111,7 +111,7 @@ macro_rules! implement_http_transport {
                     http_client,
                 ));
                 $typename {
-                    sender: Mutex::new(sender),
+                    sender,
                     shutdown_signal,
                     shutdown_immediately,
                     queue_size,
@@ -126,7 +126,7 @@ macro_rules! implement_http_transport {
                 // queue is filled with too many items or we shut down, we decrement
                 // the count again as there is nobody that can pick it up.
                 *self.queue_size.lock().unwrap() += 1;
-                if self.sender.lock().unwrap().try_send(Some(envelope)).is_err() {
+                if self.sender.try_send(Some(envelope)).is_err() {
                     *self.queue_size.lock().unwrap() -= 1;
                 }
             }
@@ -136,9 +136,8 @@ macro_rules! implement_http_transport {
                 if *self.queue_size.lock().unwrap() == 0 {
                     true
                 } else {
-                    if let Ok(sender) = self.sender.lock() {
-                        sender.send(None).ok();
-                    }
+                    self.sender.send(None).ok();
+
                     let guard = self.queue_size.lock().unwrap();
                     if *guard > 0 {
                         self.shutdown_signal.wait_timeout(guard, timeout).is_ok()
@@ -153,12 +152,10 @@ macro_rules! implement_http_transport {
             fn drop(&mut self) {
                 sentry_debug!("dropping http transport");
                 self.shutdown_immediately.store(true, Ordering::SeqCst);
-                if let Ok(sender) = self.sender.lock() {
-                    if sender.send(None).is_ok() {
+                    if self.sender.send(None).is_ok() {
                         if let Some(handle) = self.handle.take() {
                             handle.join().ok();
                         }
-                    }
                 }
             }
         }
