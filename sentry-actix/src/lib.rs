@@ -9,11 +9,9 @@
 //! # Example
 //!
 //! ```no_run
-//! use std::env;
 //! use std::io;
 //!
 //! use actix_web::{get, App, Error, HttpRequest, HttpServer};
-//! use sentry::Level;
 //!
 //! #[get("/")]
 //! async fn failing(_req: HttpRequest) -> Result<String, Error> {
@@ -23,7 +21,7 @@
 //! #[actix_web::main]
 //! async fn main() -> io::Result<()> {
 //!     let _guard = sentry::init(());
-//!     env::set_var("RUST_BACKTRACE", "1");
+//!     std::env::set_var("RUST_BACKTRACE", "1");
 //!
 //!     HttpServer::new(|| {
 //!         App::new()
@@ -40,14 +38,11 @@
 //!
 //! # Reusing the Hub
 //!
-//! This integration will automatically update the current Hub instance. For example,
-//! the following will capture a message in the current request's Hub:
+//! This integration will automatically create a new per-request Hub from the main Hub, and update the
+//! current Hub instance. For example, the following will capture a message in the current request's Hub:
 //!
 //! ```
-//! # fn test(req: &actix_web::HttpRequest) {
-//! use sentry::Level;
-//! sentry::capture_message("Something is not well", Level::Warning);
-//! # }
+//! sentry::capture_message("Something is not well", sentry::Level::Warning);
 //! ```
 
 #![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
