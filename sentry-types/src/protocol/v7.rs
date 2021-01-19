@@ -4,7 +4,6 @@
 //! cleanup by renaming attributes has been applied.  The idea here is that
 //! a future sentry protocol will be a cleanup of the old one and is mapped
 //! to similar values on the rust side.
-#![allow(clippy::trivially_copy_pass_by_ref)]
 
 use std::borrow::Cow;
 use std::cmp;
@@ -1291,8 +1290,7 @@ mod event {
         Cow::Borrowed(DEFAULT_FINGERPRINT)
     }
 
-    #[allow(clippy::ptr_arg)]
-    pub fn is_default_fingerprint<'a>(fp: &[Cow<'a, str>]) -> bool {
+    pub fn is_default_fingerprint(fp: &[Cow<'_, str>]) -> bool {
         fp.len() == 1 && ((&fp)[0] == "{{ default }}" || (&fp)[0] == "{{default}}")
     }
 

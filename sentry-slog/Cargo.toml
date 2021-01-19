@@ -1,6 +1,6 @@
 [package]
 name = "sentry-slog"
-version = "0.21.0"
+version = "0.22.0"
 authors = ["Sentry <hello@sentry.io>"]
 license = "Apache-2.0"
 readme = "README.md"
@@ -11,15 +11,12 @@ Sentry integration for the slog crate.
 """
 edition = "2018"
 
-[package.metadata.docs.rs]
-all-features = true
-
 [dependencies]
-sentry-core = { version = "0.21.0", path = "../sentry-core" }
+sentry-core = { version = "0.22.0", path = "../sentry-core" }
 slog = { version = "2.5.2", features = ["nested-values"] }
 serde_json = "1.0.46"
 
 [dev-dependencies]
-sentry = { version = "0.21.0", path = "../sentry", default-features = false, features = ["test"] }
+sentry = { version = "0.22.0", path = "../sentry", default-features = false, features = ["test"] }
 serde = "1.0.117"
 erased-serde = "0.3.12"

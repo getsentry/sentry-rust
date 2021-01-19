@@ -9,11 +9,9 @@
 //! # Example
 //!
 //! ```no_run
-//! use std::env;
 //! use std::io;
 //!
 //! use actix_web::{get, App, Error, HttpRequest, HttpServer};
-//! use sentry::Level;
 //!
 //! #[get("/")]
 //! async fn failing(_req: HttpRequest) -> Result<String, Error> {
@@ -23,7 +21,7 @@
 //! #[actix_web::main]
 //! async fn main() -> io::Result<()> {
 //!     let _guard = sentry::init(());
-//!     env::set_var("RUST_BACKTRACE", "1");
+//!     std::env::set_var("RUST_BACKTRACE", "1");
 //!
 //!     HttpServer::new(|| {
 //!         App::new()
@@ -54,20 +52,16 @@
 //!
 //! # Reusing the Hub
 //!
-//! This integration will automatically update the current Hub instance. For example,
-//! the following will capture a message in the current request's Hub:
+//! This integration will automatically create a new per-request Hub from the main Hub, and update the
+//! current Hub instance. For example, the following will capture a message in the current request's Hub:
 //!
 //! ```
-//! # fn test(req: &actix_web::HttpRequest) {
-//! use sentry::Level;
-//! sentry::capture_message("Something is not well", Level::Warning);
-//! # }
+//! sentry::capture_message("Something is not well", sentry::Level::Warning);
 //! ```
 
 #![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
 #![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
 #![warn(missing_docs)]
-#![allow(clippy::needless_doctest_main)]
 #![allow(deprecated)]
 #![allow(clippy::type_complexity)]
 
@@ -220,7 +214,9 @@ where
         let (tx, sentry_req) = sentry_request_from_http(&req, with_pii);
         hub.configure_scope(|scope| {
             scope.set_transaction(tx.as_deref());
-            scope.add_event_processor(Box::new(move |event| process_event(event, &sentry_req)))
+            scope.add_event_processor(Box::new(move |event| {
+                Some(process_event(event, &sentry_req))
+            }))
         });
 
         let fut = self.service.call(req).bind_hub(hub.clone());
@@ -296,7 +292,7 @@ fn sentry_request_from_http(request: &ServiceRequest, with_pii: bool) -> (Option
 }
 
 /// Add request data to a Sentry event
-fn process_event(mut event: Event<'static>, request: &Request) -> Option<Event<'static>> {
+fn process_event(mut event: Event<'static>, request: &Request) -> Event<'static> {
     // Request
     if event.request.is_none() {
         event.request = Some(request.clone());
@@ -311,7 +307,7 @@ fn process_event(mut event: Event<'static>, request: &Request) -> Option<Event<'
         });
         event.sdk = Some(Cow::Owned(sdk));
     }
-    Some(event)
+    event
 }
 
 #[cfg(test)]

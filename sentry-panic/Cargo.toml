@@ -1,6 +1,6 @@
 [package]
 name = "sentry-panic"
-version = "0.21.0"
+version = "0.22.0"
 authors = ["Sentry <hello@sentry.io>"]
 license = "Apache-2.0"
 readme = "README.md"
@@ -11,12 +11,9 @@ Sentry integration for capturing panics.
 """
 edition = "2018"
 
-[package.metadata.docs.rs]
-all-features = true
-
 [dependencies]
-sentry-core = { version = "0.21.0", path = "../sentry-core" }
-sentry-backtrace = { version = "0.21.0", path = "../sentry-backtrace" }
+sentry-core = { version = "0.22.0", path = "../sentry-core" }
+sentry-backtrace = { version = "0.22.0", path = "../sentry-backtrace" }
 
 [dev-dependencies]
-sentry = { version = "0.21.0", path = "../sentry", default-features = false, features = ["test"] }
+sentry = { version = "0.22.0", path = "../sentry", default-features = false, features = ["test"] }

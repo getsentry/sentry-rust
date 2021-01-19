@@ -1,6 +1,6 @@
 [package]
 name = "sentry-debug-images"
-version = "0.21.0"
+version = "0.22.0"
 authors = ["Sentry <hello@sentry.io>"]
 license = "Apache-2.0"
 readme = "README.md"
@@ -11,10 +11,7 @@ Sentry integration that adds the list of loaded libraries to events.
 """
 edition = "2018"
 
-[package.metadata.docs.rs]
-all-features = true
-
 [dependencies]
-sentry-core = { version = "0.21.0", path = "../sentry-core" }
+sentry-core = { version = "0.22.0", path = "../sentry-core" }
 lazy_static = "1.4.0"
 findshlibs = "0.8.0"

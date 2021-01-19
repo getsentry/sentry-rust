@@ -1,4 +1,4 @@
-use sentry_core::protocol::{Event, Exception, Frame, Stacktrace};
+use sentry_core::protocol::Event;
 use sentry_core::{Breadcrumb, Level};
 
 /// Converts a [`log::Level`] to a Sentry [`Level`]
@@ -17,7 +17,7 @@ pub fn breadcrumb_from_record(record: &log::Record<'_>) -> Breadcrumb {
         ty: "log".into(),
         level: convert_log_level(record.level()),
         category: Some(record.target().into()),
-        message: Some(format!("{}", record.args())),
+        message: Some(record.args().to_string()),
         ..Default::default()
     }
 }
@@ -27,29 +27,16 @@ pub fn event_from_record(record: &log::Record<'_>) -> Event<'static> {
     Event {
         logger: Some(record.target().into()),
         level: convert_log_level(record.level()),
-        message: Some(format!("{}", record.args())),
+        message: Some(record.args().to_string()),
         ..Default::default()
     }
 }
 
 /// Creates an exception [`Event`] from a given [`log::Record`].
 pub fn exception_from_record(record: &log::Record<'_>) -> Event<'static> {
-    let mut event = event_from_record(record);
-    let frame = Frame {
-        module: record.module_path().map(ToOwned::to_owned),
-        filename: record.file().map(ToOwned::to_owned),
-        lineno: record.line().map(Into::into),
-        ..Default::default()
-    };
-    let exception = Exception {
-        ty: record.target().into(),
-        value: event.message.clone(),
-        stacktrace: Some(Stacktrace {
-            frames: vec![frame],
-            ..Default::default()
-        }),
-        ..Default::default()
-    };
-    event.exception = vec![exception].into();
-    event
+    // TODO: Exception records in Sentry need a valid type, value and full stack trace to support
+    // proper grouping and issue metadata generation. log::Record does not contain sufficient
+    // information for this. However, it may contain a serialized error which we can parse to emit
+    // an exception record.
+    event_from_record(record)
 }

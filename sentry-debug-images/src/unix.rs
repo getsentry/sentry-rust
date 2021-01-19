@@ -16,7 +16,7 @@ const UUID_SIZE: usize = 16;
 ///
 /// The `DebugId::appendix` field is always `0` for ELF.
 fn debug_id_from_build_id(build_id: &[u8]) -> Option<DebugId> {
-    let mut data = [0 as u8; UUID_SIZE];
+    let mut data = [0u8; UUID_SIZE];
     let len = build_id.len().min(UUID_SIZE);
     data[0..len].copy_from_slice(&build_id[0..len]);
 

@@ -79,7 +79,6 @@ pub struct SessionAttributes<'a> {
     pub user_agent: Option<String>,
 }
 
-#[allow(clippy::trivially_copy_pass_by_ref)]
 fn is_false(val: &bool) -> bool {
     !val
 }

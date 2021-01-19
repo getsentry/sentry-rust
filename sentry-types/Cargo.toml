@@ -1,6 +1,6 @@
 [package]
 name = "sentry-types"
-version = "0.21.0"
+version = "0.22.0"
 authors = ["Sentry <hello@sentry.io>"]
 license = "Apache-2.0"
 readme = "README.md"
@@ -18,14 +18,12 @@ all-features = true
 [features]
 default = ["protocol"]
 protocol = []
-# for backwards compatibility:
-with_protocol = ["protocol"]
 
 [dependencies]
 thiserror = "1.0.15"
 serde = { version = "1.0.104", features = ["derive"] }
 serde_json = "1.0.46"
 url = { version = "2.1.1", features = ["serde"] }
-chrono = { version = "0.4.10", features = ["serde"] }
+chrono = { version = "0.4.10", default-features = false, features = ["clock", "std", "serde"] }
 uuid = { version = "0.8.1", features = ["v4", "serde"] }
 debugid = { version = "0.7.2", features = ["serde"] }
