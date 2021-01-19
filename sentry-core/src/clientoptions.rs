@@ -27,6 +27,8 @@ pub type BeforeCallback<T> = Arc<dyn Fn(T) -> Option<T> + Send + Sync>;
 /// not be tracked, and sessions will be pre-aggregated before being sent upstream.
 /// This applies both to automatic and manually triggered sessions.
 ///
+/// **NOTE**: Support for *request-mode* sessions was added in Sentry `21.2`.
+///
 /// See the [Documentation on Session Modes](https://develop.sentry.dev/sdk/sessions/#sdk-considerations)
 /// for more information.
 #[derive(Copy, Clone, Debug, PartialEq)]
