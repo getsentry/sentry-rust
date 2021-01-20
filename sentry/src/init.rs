@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use sentry_core::sentry_debug;
+use sentry_core::{sentry_debug, SessionMode};
 
 use crate::defaults::apply_defaults;
 use crate::{Client, ClientOptions, Hub};
@@ -94,6 +94,7 @@ where
 {
     let opts = apply_defaults(opts.into());
     let auto_session_tracking = opts.auto_session_tracking;
+    let session_mode = opts.session_mode;
     let client = Arc::new(Client::from(opts));
 
     Hub::with(|hub| hub.bind_client(Some(client.clone())));
@@ -102,7 +103,7 @@ where
     } else {
         sentry_debug!("initialized disabled sentry client due to disabled or invalid DSN");
     }
-    if auto_session_tracking {
+    if auto_session_tracking && session_mode == SessionMode::Application {
         crate::start_session()
     }
     ClientInitGuard(client)
