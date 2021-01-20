@@ -30,8 +30,8 @@ pub enum RecordMapping {
 /// The default slog filter.
 ///
 /// By default, an exception event is captured for `critical` logs,
-/// a regular event for `error`, a breadcrumb for `warning` and `info`, and
-/// `debug` and `trace` logs are ignored.
+/// a regular event for `error` and `warning` logs and a breadcrumb for `info`,
+/// `debug` and `trace`.
 pub fn default_filter(level: slog::Level) -> LevelFilter {
     match level {
         slog::Level::Critical => LevelFilter::Exception,
