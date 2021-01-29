@@ -9,11 +9,9 @@
 //! # Example
 //!
 //! ```no_run
-//! use std::env;
 //! use std::io;
 //!
 //! use actix_web::{get, App, Error, HttpRequest, HttpServer};
-//! use sentry::Level;
 //!
 //! #[get("/")]
 //! async fn failing(_req: HttpRequest) -> Result<String, Error> {
@@ -23,7 +21,7 @@
 //! #[actix_web::main]
 //! async fn main() -> io::Result<()> {
 //!     let _guard = sentry::init(());
-//!     env::set_var("RUST_BACKTRACE", "1");
+//!     std::env::set_var("RUST_BACKTRACE", "1");
 //!
 //!     HttpServer::new(|| {
 //!         App::new()
@@ -38,16 +36,27 @@
 //! }
 //! ```
 //!
-//! # Reusing the Hub
+//! # Using Release Health
 //!
-//! This integration will automatically update the current Hub instance. For example,
-//! the following will capture a message in the current request's Hub:
+//! The actix middleware will automatically start a new session for each request
+//! when `auto_session_tracking` is enabled and the client is configured to
+//! use `SessionMode::Request`.
 //!
 //! ```
-//! # fn test(req: &actix_web::HttpRequest) {
-//! use sentry::Level;
-//! sentry::capture_message("Something is not well", Level::Warning);
-//! # }
+//! let _sentry = sentry::init(sentry::ClientOptions {
+//!     session_mode: sentry::SessionMode::Request,
+//!     auto_session_tracking: true,
+//!     ..Default::default()
+//! });
+//! ```
+//!
+//! # Reusing the Hub
+//!
+//! This integration will automatically create a new per-request Hub from the main Hub, and update the
+//! current Hub instance. For example, the following will capture a message in the current request's Hub:
+//!
+//! ```
+//! sentry::capture_message("Something is not well", sentry::Level::Warning);
 //! ```
 
 #![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
@@ -190,9 +199,17 @@ where
             inner.hub.clone().unwrap_or_else(Hub::main),
         ));
         let client = hub.client();
+        let track_sessions = client.as_ref().map_or(false, |client| {
+            let options = client.options();
+            options.auto_session_tracking
+                && options.session_mode == sentry_core::SessionMode::Request
+        });
+        if track_sessions {
+            hub.start_session();
+        }
         let with_pii = client
             .as_ref()
-            .map_or(false, |x| x.options().send_default_pii);
+            .map_or(false, |client| client.options().send_default_pii);
 
         let (tx, sentry_req) = sentry_request_from_http(&req, with_pii);
         hub.configure_scope(|scope| {
@@ -458,5 +475,46 @@ mod tests {
         assert_eq!(event.exception.values[0].value, Some("Test Error".into()));
         assert_eq!(event.level, Level::Error);
         assert_eq!(request.method, Some("GET".into()));
+    }
+
+    #[actix_rt::test]
+    async fn test_track_session() {
+        let envelopes = sentry::test::with_captured_envelopes_options(
+            || {
+                block_on(async {
+                    #[get("/")]
+                    async fn hello() -> impl actix_web::Responder {
+                        String::from("Hello there!")
+                    }
+
+                    let middleware = Sentry::builder().with_hub(Hub::current()).finish();
+
+                    let mut app = init_service(App::new().wrap(middleware).service(hello)).await;
+
+                    for _ in 0..5 {
+                        let req = TestRequest::get().uri("/").to_request();
+                        call_service(&mut app, req).await;
+                    }
+                })
+            },
+            sentry::ClientOptions {
+                release: Some("some-release".into()),
+                session_mode: sentry::SessionMode::Request,
+                auto_session_tracking: true,
+                ..Default::default()
+            },
+        );
+        assert_eq!(envelopes.len(), 1);
+
+        let mut items = envelopes[0].items();
+        if let Some(sentry::protocol::EnvelopeItem::SessionAggregates(aggregate)) = items.next() {
+            let aggregates = &aggregate.aggregates;
+
+            assert_eq!(aggregates[0].distinct_id, None);
+            assert_eq!(aggregates[0].exited, 5);
+        } else {
+            panic!("expected session");
+        }
+        assert_eq!(items.next(), None);
     }
 }

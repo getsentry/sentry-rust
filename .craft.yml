@@ -1,4 +1,4 @@
-minVersion: "0.10.1"
+minVersion: "0.15.0"
 github:
   owner: getsentry
   repo: sentry-rust

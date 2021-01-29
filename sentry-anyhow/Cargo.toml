@@ -1,6 +1,6 @@
 [package]
 name = "sentry-anyhow"
-version = "0.21.0"
+version = "0.22.0"
 authors = ["Sentry <hello@sentry.io>"]
 license = "Apache-2.0"
 readme = "README.md"
@@ -12,8 +12,8 @@ Sentry integration for anyhow.
 edition = "2018"
 
 [dependencies]
-sentry-core = { version = "0.21.0", path = "../sentry-core" }
+sentry-core = { version = "0.22.0", path = "../sentry-core" }
 anyhow = "1.0.30"
 
 [dev-dependencies]
-sentry = { version = "0.21.0", path = "../sentry", default-features = false, features = ["test"] }
+sentry = { version = "0.22.0", path = "../sentry", default-features = false, features = ["test"] }

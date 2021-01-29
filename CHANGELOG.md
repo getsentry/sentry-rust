@@ -1,26 +1,36 @@
 # Changelog
 
-## Unreleased
+## 0.22.0
 
 **Breaking Changes**:
 
+- The minimum supported Rust version was bumped to **1.45.0**.
 - The deprecated `error-chain` and `failure` integrations, features and crates were removed.
 
 **Features**:
 
 - The `slog` integration now supports capturing `slog::KV` pairs for both breadcrumbs and events.
+- Preliminary support for attachments was added to `sentry-types` and the `Envelope`. However, deeper integration into the SDK is not yet complete.
 
 **Fixes**:
 
 - Fix regression defaulting `ClientOptions::environment` from `SENTRY_ENVIRONMENT`.
 - The `debug-images` integration now captures the correct `image_addr`.
 - Do not send invalid exception events in the `log` and `slog` integrations. Both integrations no longer attach the location. To receive location information, set `options.attach_stacktrace` to `true`.
+- Process all event backtraces the same way.
+- Fix a panic in the session flusher.
+
+**Updates**:
+
+- Updated `reqwest` to version `0.11`, which is based on `tokio 1`.
+- Removed usage of the abandoned `im` crate, thus solving a transitive RUSTSEC advisory.
 
 **Thank you**:
 
 Features, fixes and improvements in this release have been contributed by:
 
 - [@jrobsonchase](https://github.com/jrobsonchase)
+- [@Jake-Shadle](https://github.com/Jake-Shadle)
 
 ## 0.21.0
 

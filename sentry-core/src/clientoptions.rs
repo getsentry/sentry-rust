@@ -11,6 +11,34 @@ use crate::{Integration, IntoDsn, TransportFactory};
 /// Type alias for before event/breadcrumb handlers.
 pub type BeforeCallback<T> = Arc<dyn Fn(T) -> Option<T> + Send + Sync>;
 
+/// The Session Mode of the SDK.
+///
+/// Depending on the use-case, the SDK can be set to two different session modes:
+///
+/// * **Application Mode Sessions**:
+///   This mode should be used for user-attended programs, which typically have
+///   a single long running session that span the applications' lifetime.
+///
+/// * **Request Mode Sessions**:
+///   This mode is intended for servers that use one session per incoming
+///   request, and thus have a lot of very short lived sessions.
+///
+/// Setting the SDK to *request-mode* sessions means that session durations will
+/// not be tracked, and sessions will be pre-aggregated before being sent upstream.
+/// This applies both to automatic and manually triggered sessions.
+///
+/// **NOTE**: Support for *request-mode* sessions was added in Sentry `21.2`.
+///
+/// See the [Documentation on Session Modes](https://develop.sentry.dev/sdk/sessions/#sdk-considerations)
+/// for more information.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum SessionMode {
+    /// Long running application session.
+    Application,
+    /// Lots of short per-request sessions.
+    Request,
+}
+
 /// Configuration settings for the client.
 ///
 /// These options are explained in more detail in the general
@@ -97,6 +125,8 @@ pub struct ClientOptions {
     /// is started at the time of `sentry::init`, and will persist for the
     /// application lifetime.
     pub auto_session_tracking: bool,
+    /// Determine how Sessions are being tracked.
+    pub session_mode: SessionMode,
     /// Border frames which indicate a border from a backtrace to
     /// useless internals. Some are automatically included.
     pub extra_border_frames: Vec<&'static str>,
@@ -164,6 +194,7 @@ impl fmt::Debug for ClientOptions {
             .field("https_proxy", &self.https_proxy)
             .field("shutdown_timeout", &self.shutdown_timeout)
             .field("auto_session_tracking", &self.auto_session_tracking)
+            .field("session_mode", &self.session_mode)
             .field("extra_border_frames", &self.extra_border_frames)
             .field("trim_backtraces", &self.trim_backtraces)
             .field("user_agent", &self.user_agent)
@@ -194,6 +225,7 @@ impl Default for ClientOptions {
             https_proxy: None,
             shutdown_timeout: Duration::from_secs(2),
             auto_session_tracking: false,
+            session_mode: SessionMode::Application,
             extra_border_frames: vec![],
             trim_backtraces: true,
             user_agent: Cow::Borrowed(&USER_AGENT),

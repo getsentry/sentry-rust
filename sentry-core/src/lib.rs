@@ -68,7 +68,7 @@ mod transport;
 // public api or exports from this crate
 pub use crate::api::*;
 pub use crate::breadcrumbs::IntoBreadcrumbs;
-pub use crate::clientoptions::ClientOptions;
+pub use crate::clientoptions::{ClientOptions, SessionMode};
 pub use crate::error::{capture_error, event_from_error, parse_type_from_debug};
 pub use crate::futures::{SentryFuture, SentryFutureExt};
 pub use crate::hub::Hub;

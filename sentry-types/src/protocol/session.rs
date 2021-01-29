@@ -129,3 +129,44 @@ pub struct SessionUpdate<'a> {
     #[serde(rename = "attrs")]
     pub attributes: SessionAttributes<'a>,
 }
+
+#[allow(clippy::trivially_copy_pass_by_ref)]
+fn is_zero(val: &u32) -> bool {
+    *val == 0
+}
+
+/// An aggregation grouped by `started` and `distinct_id`.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct SessionAggregateItem {
+    /// The timestamp of when the session itself started.
+    pub started: DateTime<Utc>,
+    /// The distinct identifier.
+    #[serde(rename = "did", default, skip_serializing_if = "Option::is_none")]
+    pub distinct_id: Option<String>,
+    /// The number of exited sessions that ocurred.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub exited: u32,
+    /// The number of errored sessions that ocurred, not including the abnormal and crashed ones.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub errored: u32,
+    /// The number of abnormal sessions that ocurred.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub abnormal: u32,
+    /// The number of crashed sessions that ocurred.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub crashed: u32,
+}
+
+/// An Aggregation of Release Health Sessions
+///
+/// For *request-mode* sessions, sessions will be aggregated instead of being
+/// sent as individual updates.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct SessionAggregates<'a> {
+    /// A batch of sessions that were started.
+    #[serde(default)]
+    pub aggregates: Vec<SessionAggregateItem>,
+    /// The shared session event attributes.
+    #[serde(rename = "attrs")]
+    pub attributes: SessionAttributes<'a>,
+}
