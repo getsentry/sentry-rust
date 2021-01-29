@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use curl_::{self as curl, easy::Easy as CurlClient};
 
-use super::TransportThread;
+use super::thread::TransportThread;
 
 use crate::{sentry_debug, types::Scheme, ClientOptions, Envelope, Transport};
 

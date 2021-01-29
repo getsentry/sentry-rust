@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use surf_::{http::headers as SurfHeaders, Client as SurfClient};
 
-use super::TransportThread;
+use super::thread::TransportThread;
 
 use crate::{sentry_debug, ClientOptions, Envelope, Transport};
 
