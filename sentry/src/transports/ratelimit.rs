@@ -1,6 +1,8 @@
 use httpdate::parse_http_date;
 use std::time::{Duration, SystemTime};
 
+// TODO: maybe move this someplace where we can filter an `Envelope`s items.
+
 /// A Utility that helps with rate limiting sentry requests.
 #[derive(Debug, Default)]
 pub struct RateLimiter {
@@ -84,6 +86,7 @@ impl RateLimiter {
 
 /// The Category of payload that a Rate Limit refers to.
 #[non_exhaustive]
+#[allow(dead_code)]
 pub enum RateLimitingCategory {
     /// Rate Limit for any kind of payload.
     Any,
