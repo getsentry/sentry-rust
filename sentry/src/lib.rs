@@ -76,6 +76,7 @@
 
 mod defaults;
 mod init;
+mod ratelimit;
 mod transport;
 
 // re-export from core
@@ -161,6 +162,8 @@ pub mod integrations {
 
 #[doc(inline)]
 pub use sentry_core::types::protocol::latest as protocol;
+
+pub use ratelimit::{RateLimiter, RateLimitingCategory};
 
 /// The provided transports.
 ///
