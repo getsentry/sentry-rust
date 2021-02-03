@@ -76,7 +76,7 @@
 
 mod defaults;
 mod init;
-mod transport;
+pub mod transports;
 
 // re-export from core
 #[doc(inline)]
@@ -161,23 +161,3 @@ pub mod integrations {
 
 #[doc(inline)]
 pub use sentry_core::types::protocol::latest as protocol;
-
-/// The provided transports.
-///
-/// This module exposes all transports that are compiled into the sentry
-/// library.  The `reqwest`, `curl` and `surf` features turn on these transports.
-pub mod transports {
-    pub use crate::transport::DefaultTransportFactory;
-
-    #[cfg(feature = "reqwest")]
-    pub use crate::transport::ReqwestHttpTransport;
-
-    #[cfg(feature = "curl")]
-    pub use crate::transport::CurlHttpTransport;
-
-    #[cfg(feature = "surf")]
-    pub use crate::transport::SurfHttpTransport;
-
-    #[cfg(any(feature = "reqwest", feature = "curl", feature = "surf"))]
-    pub use crate::transport::HttpTransport;
-}
