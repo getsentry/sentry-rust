@@ -290,6 +290,16 @@ impl Client {
         self.session_flusher.enqueue(session_update)
     }
 
+    /// Drains all pending events without shutting down.
+    pub fn flush(&self, timeout: Option<Duration>) -> bool {
+        self.session_flusher.flush();
+        if let Some(ref transport) = *self.transport.read().unwrap() {
+            transport.flush(timeout.unwrap_or(self.options.shutdown_timeout))
+        } else {
+            true
+        }
+    }
+
     /// Drains all pending events and shuts down the transport behind the
     /// client.  After shutting down the transport is removed.
     ///
