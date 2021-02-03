@@ -33,7 +33,10 @@ use sentry_core::{ClientOptions, Integration};
 /// Sentry panic handler.
 pub fn panic_handler(info: &PanicInfo<'_>) {
     sentry_core::with_integration(|integration: &PanicIntegration, hub| {
-        hub.capture_event(integration.event_from_panic_info(info))
+        hub.capture_event(integration.event_from_panic_info(info));
+        if let Some(client) = hub.client() {
+            client.flush(None);
+        }
     });
 }
 
