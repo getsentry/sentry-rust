@@ -1,5 +1,5 @@
 #![cfg(feature = "test")]
-
+#![allow(clippy::unnecessary_wraps)]
 use std::sync::Arc;
 
 #[test]
