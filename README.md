@@ -8,6 +8,7 @@
 # Sentry SDK for Rust
 
 [![Build Status](https://travis-ci.com/getsentry/sentry-rust.svg?branch=master)](https://travis-ci.com/getsentry/sentry-rust)
+[![codecov](https://codecov.io/gh/getsentry/sentry-rust/branch/master/graph/badge.svg?token=x4RzFE8N6t)](https://codecov.io/gh/getsentry/sentry-rust)
 
 This workspace contains various crates that provide support for logging events and errors / panics to the
 [Sentry](https://sentry.io/) error logging service.

@@ -123,3 +123,28 @@ jobs:
       - run: make checkfast
 
       - run: make testfast
+
+  codecov:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    continue-on-error: true # well, its nightly and highly experimental
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          components: llvm-tools-preview
+          override: true
+
+      - uses: Swatinem/rust-cache@v1
+
+      - uses: Swatinem/fucov@v1
+        with:
+          args: --workspace --all-features
+
+      - uses: codecov/codecov-action@e156083f13aff6830c92fc5faa23505779fbf649
+        with:
+          directory: coverage
