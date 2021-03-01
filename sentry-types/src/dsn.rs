@@ -204,8 +204,8 @@ impl FromStr for Dsn {
             scheme,
             public_key,
             secret_key,
-            port,
             host,
+            port,
             path,
             project_id,
         })

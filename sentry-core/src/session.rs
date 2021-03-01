@@ -139,9 +139,9 @@ struct AggregatedSessions {
     attributes: SessionAttributes<'static>,
 }
 
-impl Into<EnvelopeItem> for AggregatedSessions {
-    fn into(self) -> EnvelopeItem {
-        let aggregates = self
+impl From<AggregatedSessions> for EnvelopeItem {
+    fn from(sessions: AggregatedSessions) -> Self {
+        let aggregates = sessions
             .buckets
             .into_iter()
             .map(|(key, counts)| SessionAggregateItem {
@@ -156,7 +156,7 @@ impl Into<EnvelopeItem> for AggregatedSessions {
 
         SessionAggregates {
             aggregates,
-            attributes: self.attributes,
+            attributes: sessions.attributes,
         }
         .into()
     }

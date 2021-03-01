@@ -27,8 +27,8 @@ pub mod ts_seconds_float {
     where
         D: de::Deserializer<'de>,
     {
-        Ok(d.deserialize_any(SecondsTimestampVisitor)
-            .map(|dt| dt.with_timezone(&Utc))?)
+        d.deserialize_any(SecondsTimestampVisitor)
+            .map(|dt| dt.with_timezone(&Utc))
     }
 
     pub fn serialize<S>(dt: &DateTime<Utc>, serializer: S) -> Result<S::Ok, S::Error>

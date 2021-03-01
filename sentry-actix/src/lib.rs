@@ -257,10 +257,8 @@ where
 fn sentry_request_from_http(request: &ServiceRequest, with_pii: bool) -> (Option<String>, Request) {
     let transaction = if let Some(name) = request.match_name() {
         Some(String::from(name))
-    } else if let Some(pattern) = request.match_pattern() {
-        Some(pattern)
     } else {
-        None
+        request.match_pattern()
     };
 
     let mut sentry_req = Request {
