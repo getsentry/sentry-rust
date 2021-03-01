@@ -397,9 +397,9 @@ impl<T> From<*mut T> for Addr {
     }
 }
 
-impl Into<u64> for Addr {
-    fn into(self) -> u64 {
-        self.0
+impl From<Addr> for u64 {
+    fn from(addr: Addr) -> Self {
+        addr.0
     }
 }
 
@@ -449,9 +449,9 @@ impl<T> From<*mut T> for RegVal {
     }
 }
 
-impl Into<u64> for RegVal {
-    fn into(self) -> u64 {
-        self.0
+impl From<RegVal> for u64 {
+    fn from(reg: RegVal) -> Self {
+        reg.0
     }
 }
 
@@ -496,9 +496,9 @@ impl From<i32> for CError {
     }
 }
 
-impl Into<i32> for CError {
-    fn into(self) -> i32 {
-        self.number
+impl From<CError> for i32 {
+    fn from(err: CError) -> Self {
+        err.number
     }
 }
 
@@ -555,9 +555,9 @@ impl From<(i32, i32)> for PosixSignal {
     }
 }
 
-impl Into<i32> for PosixSignal {
-    fn into(self) -> i32 {
-        self.number
+impl From<PosixSignal> for i32 {
+    fn from(sig: PosixSignal) -> Self {
+        sig.number
     }
 }
 
