@@ -55,18 +55,6 @@ This workspace contains various crates that provide support for logging events a
 
   An integration that adds a list of loaded libraries to events.
 
-- [sentry-error-chain](./sentry-error-chain)
-  [![crates.io](https://img.shields.io/crates/v/sentry-error-chain.svg)](https://crates.io/crates/sentry-error-chain)
-  [![docs.rs](https://docs.rs/sentry-error-chain/badge.svg)](https://docs.rs/sentry-error-chain)
-
-  An integration for the `error-chain` crate. This is _deprecated_ and will be completely removed in the future.
-
-- [sentry-failure](./sentry-failure)
-  [![crates.io](https://img.shields.io/crates/v/sentry-failure.svg)](https://crates.io/crates/sentry-failure)
-  [![docs.rs](https://docs.rs/sentry-failure/badge.svg)](https://docs.rs/sentry-failure)
-
-  An integration for the `failure` crate. This is _deprecated_ and will be completely removed in the future.
-
 - [sentry-log](./sentry-log)
   [![crates.io](https://img.shields.io/crates/v/sentry-log.svg)](https://crates.io/crates/sentry-log)
   [![docs.rs](https://docs.rs/sentry-log/badge.svg)](https://docs.rs/sentry-log)
@@ -98,7 +86,7 @@ best API and adding new features.
 ## Requirements
 
 We currently only verify this crate against a recent version of Sentry hosted on [sentry.io](https://sentry.io/) but it
-should work with on-prem Sentry versions 8.20 and later.
+should work with on-prem Sentry versions 20.6 and later.
 
 Additionally, the lowest Rust version we target is _1.45.0_.
 
