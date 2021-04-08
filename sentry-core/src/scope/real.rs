@@ -1,5 +1,5 @@
 use std::borrow::Cow;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::fmt;
 use std::sync::{Arc, Mutex, PoisonError, RwLock};
 
@@ -204,7 +204,54 @@ impl Scope {
         Arc::make_mut(&mut self.contexts).remove(key);
     }
 
+    /// Returns a mutable reference to a context key if it exists.
+    ///
+    /// This allows in-place modification of a context value, especially useful when dealing
+    /// with [`Context::Other`] and need to do something more complicated then the
+    /// [`Scope::set_context_other`] shortcut allows.
+    ///
+    /// If the `key` does not exist `None` is returned.
+    pub fn context_mut(&mut self, key: &str) -> Option<&mut BTreeMap<String, Value>> {
+        match Arc::make_mut(&mut self.contexts).get_mut(key) {
+            Some(Context::Other(map)) => Some(map),
+            _ => None,
+        }
+    }
+
+    /// Sets a key-value pair in a custom context section.
+    ///
+    /// The context has a number of well-defined sections but also allows creating custom
+    /// sections with arbitrary key-value mappings using the [`Context::Other`] map.  This
+    /// is useful to create application-specific sections.
+    ///
+    /// This method is a shortcut which allows you to directly set such a key-value pair as
+    /// this is much more convenient than using the [`Scope::set_context`] method.  If the
+    /// section does not yet exist it is created, if the key already exists in this section
+    /// it is overwritten.
+    pub fn set_context_other(
+        &mut self,
+        section: &str,
+        key: impl Into<String>,
+        value: impl Into<Value>,
+    ) {
+        match self.context_mut(section) {
+            Some(map) => {
+                map.insert(key.into(), value.into());
+            }
+            None => {
+                let mut map = BTreeMap::new();
+                map.insert(key.into(), value.into());
+                self.set_context(section, Context::Other(map));
+            }
+        }
+    }
+
     /// Sets a extra to a specific value.
+    ///
+    /// This adds a generic key-value field to the event payload.  Consider using
+    /// [`Scope::set_context_other`] (or use [`Scope::set_context`] directly) instead which
+    /// allows controlling the grouping of generic key-values into more logical areas using
+    /// the context key.
     pub fn set_extra(&mut self, key: &str, value: Value) {
         Arc::make_mut(&mut self.extra).insert(key.to_string(), value);
     }
