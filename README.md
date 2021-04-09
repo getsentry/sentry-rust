@@ -88,7 +88,7 @@ best API and adding new features.
 We currently only verify this crate against a recent version of Sentry hosted on [sentry.io](https://sentry.io/) but it
 should work with on-prem Sentry versions 20.6 and later.
 
-Additionally, the lowest Rust version we target is _1.45.0_.
+Additionally, the lowest Rust version we target is _1.46.0_.
 
 ## Resources
 
