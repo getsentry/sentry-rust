@@ -56,3 +56,18 @@ fn test_unwind_safe() {
 
     assert_eq!(events.len(), 1);
 }
+
+#[test]
+fn test_concurrent_init() {
+    let _guard = sentry::init(sentry::ClientOptions {
+        ..Default::default()
+    });
+
+    std::thread::spawn(|| {
+        let _guard = sentry::init(sentry::ClientOptions {
+            ..Default::default()
+        });
+    })
+    .join()
+    .unwrap();
+}
