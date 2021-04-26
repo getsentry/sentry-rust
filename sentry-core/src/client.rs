@@ -43,7 +43,7 @@ pub(crate) type TransportArc = Arc<RwLock<Option<Arc<dyn Transport>>>>;
 pub struct Client {
     options: ClientOptions,
     transport: TransportArc,
-    session_flusher: SessionFlusher,
+    session_flusher: RwLock<Option<SessionFlusher>>,
     integrations: Vec<(TypeId, Arc<dyn Integration>)>,
     sdk_info: ClientSdkInfo,
 }
@@ -60,7 +60,10 @@ impl fmt::Debug for Client {
 impl Clone for Client {
     fn clone(&self) -> Client {
         let transport = Arc::new(RwLock::new(self.transport.read().unwrap().clone()));
-        let session_flusher = SessionFlusher::new(transport.clone(), self.options.session_mode);
+        let session_flusher = RwLock::new(Some(SessionFlusher::new(
+            transport.clone(),
+            self.options.session_mode,
+        )));
         Client {
             options: self.options.clone(),
             transport,
@@ -128,7 +131,10 @@ impl Client {
             sdk_info.integrations.push(integration.name().to_string());
         }
 
-        let session_flusher = SessionFlusher::new(transport.clone(), options.session_mode);
+        let session_flusher = RwLock::new(Some(SessionFlusher::new(
+            transport.clone(),
+            options.session_mode,
+        )));
         Client {
             options,
             transport,
@@ -287,12 +293,16 @@ impl Client {
     }
 
     pub(crate) fn enqueue_session(&self, session_update: SessionUpdate<'static>) {
-        self.session_flusher.enqueue(session_update)
+        if let Some(ref flusher) = *self.session_flusher.read().unwrap() {
+            flusher.enqueue(session_update);
+        }
     }
 
     /// Drains all pending events without shutting down.
     pub fn flush(&self, timeout: Option<Duration>) -> bool {
-        self.session_flusher.flush();
+        if let Some(ref flusher) = *self.session_flusher.read().unwrap() {
+            flusher.flush();
+        }
         if let Some(ref transport) = *self.transport.read().unwrap() {
             transport.flush(timeout.unwrap_or(self.options.shutdown_timeout))
         } else {
@@ -308,7 +318,7 @@ impl Client {
     /// If no timeout is provided the client will wait for as long a
     /// `shutdown_timeout` in the client options.
     pub fn close(&self, timeout: Option<Duration>) -> bool {
-        self.session_flusher.flush();
+        drop(self.session_flusher.write().unwrap().take());
         let transport_opt = self.transport.write().unwrap().take();
         if let Some(transport) = transport_opt {
             sentry_debug!("client close; request transport to shut down");

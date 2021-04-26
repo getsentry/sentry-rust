@@ -156,7 +156,7 @@ impl Hub {
             f(&PROCESS_HUB.0)
         } else {
             // note on safety: this is safe because even though we change the Arc
-            // by temorary binding we guarantee that the original Arc stays alive.
+            // by temporary binding we guarantee that the original Arc stays alive.
             // For more information see: run
             THREAD_HUB.with(|stack| unsafe {
                 let ptr = stack.get();
