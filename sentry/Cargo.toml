@@ -27,6 +27,7 @@ anyhow = ["sentry-anyhow"]
 debug-images = ["sentry-debug-images"]
 log = ["sentry-log"]
 slog = ["sentry-slog"]
+tracing = ["sentry-tracing"]
 # other features
 test = ["sentry-core/test"]
 debug-logs = ["log_", "sentry-core/debug-logs"]
@@ -47,6 +48,7 @@ sentry-debug-images = { version = "0.22.0", path = "../sentry-debug-images", opt
 sentry-log = { version = "0.22.0", path = "../sentry-log", optional = true }
 sentry-panic = { version = "0.22.0", path = "../sentry-panic", optional = true }
 sentry-slog = { version = "0.22.0", path = "../sentry-slog", optional = true }
+sentry-tracing = { version = "0.22.0", path = "../sentry-tracing", optional = true }
 log_ = { package = "log", version = "0.4.8", optional = true, features = ["std"] }
 reqwest_ = { package = "reqwest", version = "0.11", optional = true, features = ["blocking", "json"], default-features = false }
 curl_ = { package = "curl", version = "0.4.25", optional = true }
@@ -59,8 +61,11 @@ tokio = { version = "1.0", features = ["rt"] }
 sentry-anyhow = { version = "0.22.0", path = "../sentry-anyhow" }
 sentry-log = { version = "0.22.0", path = "../sentry-log" }
 sentry-slog = { version = "0.22.0", path = "../sentry-slog" }
+sentry-tracing = { version = "0.22.0", path = "../sentry-tracing" }
 log_ = { package = "log", version = "0.4.8", features = ["std"] }
 slog_ = { package = "slog", version = "2.5.2" }
+tracing_ = { package = "tracing", version = "0.1" }
+tracing-subscriber = { version = "0.2", features = ["fmt", "tracing-log"] }
 actix-web = { version = "3", default-features = false }
 tokio = { version = "1.0", features = ["macros"] }
 pretty_env_logger = "0.4.0"
