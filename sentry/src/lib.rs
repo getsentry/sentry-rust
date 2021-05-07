@@ -59,6 +59,7 @@
 //! * `log`: Enables support for the `log` crate.
 //! * `env_logger`: Enables support for the `log` crate with additional `env_logger` support.
 //! * `slog`: Enables support for the `slog` crate.
+//! * `tracing`: Enables support for the `tracing` crate.
 //! * `test`: Enables testing support.
 //! * `debug-logs`: Uses the `log` crate for internal logging.
 //! * `reqwest`: Enables the `reqwest` transport, which is currently the default.
@@ -157,6 +158,9 @@ pub mod integrations {
     #[cfg(feature = "slog")]
     #[doc(inline)]
     pub use sentry_slog as slog;
+    #[cfg(feature = "tracing")]
+    #[doc(inline)]
+    pub use sentry_tracing as tracing;
 }
 
 #[doc(inline)]

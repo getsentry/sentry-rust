@@ -73,6 +73,12 @@ This workspace contains various crates that provide support for logging events a
 
   An integration for the `slog` crate.
 
+- [sentry-tracing](./sentry-tracing)
+  [![crates.io](https://img.shields.io/crates/v/sentry-tracing.svg)](https://crates.io/crates/sentry-tracing)
+  [![docs.rs](https://docs.rs/sentry-tracing/badge.svg)](https://docs.rs/sentry-tracing)
+
+  An integration for the `tracing` crate.
+
 - [sentry-types](./sentry-types)
   [![crates.io](https://img.shields.io/crates/v/sentry-types.svg)](https://crates.io/crates/sentry-types)
   [![docs.rs](https://docs.rs/sentry-types/badge.svg)](https://docs.rs/sentry-types)
