@@ -932,6 +932,7 @@ mod test_exception {
                         image_addr: Some(v7::Addr(0)),
                         instruction_addr: Some(v7::Addr(0)),
                         symbol_addr: Some(v7::Addr(0)),
+                        addr_mode: None,
                     }],
                     frames_omitted: Some((1, 2)),
                     registers: {

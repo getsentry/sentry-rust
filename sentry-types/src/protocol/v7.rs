@@ -230,6 +230,13 @@ pub struct Frame {
     /// If known the location of symbol.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub symbol_addr: Option<Addr>,
+    /// Optionally changes the addressing mode. The default value is the same as
+    /// `"abs"` which means absolute referencing. This can also be set to
+    /// `"rel:DEBUG_ID"` or `"rel:IMAGE_INDEX"` to make addresses relative to an
+    /// object referenced by debug id or index. This for instance is necessary
+    /// for WASM processing as WASM does not use a unified address space.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub addr_mode: Option<String>,
 }
 
 /// Represents template debug info.
@@ -914,6 +921,9 @@ pub enum DebugImage {
     Symbolic(SymbolicDebugImage),
     /// A reference to a proguard debug file.
     Proguard(ProguardDebugImage),
+    /// Image used for WebAssembly. Their structure is identical to other native
+    /// images.
+    Wasm(WasmDebugImage),
 }
 
 impl DebugImage {
@@ -923,6 +933,7 @@ impl DebugImage {
             DebugImage::Apple(..) => "apple",
             DebugImage::Symbolic(..) => "symbolic",
             DebugImage::Proguard(..) => "proguard",
+            DebugImage::Wasm(..) => "wasm",
         }
     }
 }
@@ -984,9 +995,32 @@ pub struct ProguardDebugImage {
     pub uuid: Uuid,
 }
 
+/// Represents a WebAssembly debug image.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct WasmDebugImage {
+    /// The name of the debug image (usually filename)
+    pub name: String,
+    /// Identifier of the dynamic library or executable.
+    pub debug_id: Uuid,
+    /// Name or absolute URL to the WASM file containing debug information for
+    /// this image. This value might be required to retrieve debug files from
+    /// certain symbol servers. This should correspond to the externalized URL
+    /// pulled from the external_debug_info custom section.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub debug_file: Option<String>,
+    /// Identifier of the WASM file. It is the value of the build_id custom
+    /// section formatted as HEX string.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub code_id: Option<String>,
+    /// The absolute URL to the wasm file. This helps to locate the file if it
+    /// is missing on Sentry.
+    pub code_file: String,
+}
+
 into_debug_image!(Apple, AppleDebugImage);
 into_debug_image!(Symbolic, SymbolicDebugImage);
 into_debug_image!(Proguard, ProguardDebugImage);
+into_debug_image!(Wasm, WasmDebugImage);
 
 /// Represents debug meta information.
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
