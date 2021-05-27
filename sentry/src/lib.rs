@@ -56,8 +56,7 @@
 //!
 //! * `anyhow`: Enables support for the `anyhow` crate.
 //! * `debug-images`: Attaches a list of loaded libraries to events (currently only supported on unix).
-//! * `log`: Enables support for the `log` crate.
-//! * `env_logger`: Enables support for the `log` crate with additional `env_logger` support.
+//! * `log`: Enables support for the `log` and `env_logger` crate.
 //! * `slog`: Enables support for the `slog` crate.
 //! * `tracing`: Enables support for the `tracing` crate.
 //! * `test`: Enables testing support.
