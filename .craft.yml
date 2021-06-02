@@ -9,4 +9,3 @@ targets:
   - name: registry
     sdks:
       cargo:sentry:
-        name: registry
