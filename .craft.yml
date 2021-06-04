@@ -1,19 +1,11 @@
-minVersion: "0.15.0"
-github:
-  owner: getsentry
-  repo: sentry-rust
+minVersion: 0.23.1
 changelogPolicy: auto
-
-statusProvider:
-  name: github
 artifactProvider:
   name: none
-
 targets:
   - name: crates
     noDevDeps: true
   - name: github
   - name: registry
-    type: sdk
-    config:
-      canonical: "cargo:sentry"
+    sdks:
+      cargo:sentry:
