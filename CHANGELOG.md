@@ -6,6 +6,10 @@
 
 - The minium supported Rust version was bumped to **1.46.0** due to requirements from dependencies.
 
+**Fixes**:
+
+- Honor the `attach_stacktrace` option correctly when capturing errors.
+
 ## 0.22.0
 
 **Breaking Changes**:
