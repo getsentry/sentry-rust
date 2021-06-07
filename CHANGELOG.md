@@ -6,6 +6,10 @@
 
 - The minium supported Rust version was bumped to **1.46.0** due to requirements from dependencies.
 
+**Features**:
+
+- Allow capturing backtraces from anyhow errors.
+
 ## 0.22.0
 
 **Breaking Changes**:

@@ -24,6 +24,7 @@ lazy_static::lazy_static! {
                 \s+at\s                          # padded "at" in new line
                 (?P<path>[^\r\n]+?)              # path to source file
                 (?::(?P<lineno>\d+))?            # optional source line
+                (?::(?P<colno>\d+))?             # optional source column
             )?
         $
     "#).unwrap();
@@ -34,7 +35,7 @@ pub fn parse_stacktrace(bt: &str) -> Option<Stacktrace> {
     let mut last_address = None;
 
     let frames = FRAME_RE
-        .captures_iter(&bt)
+        .captures_iter(bt)
         .map(|captures| {
             let abs_path = captures.name("path").map(|m| m.as_str().to_string());
             let filename = abs_path.as_ref().map(|p| filename(p).to_string());
@@ -62,6 +63,9 @@ pub fn parse_stacktrace(bt: &str) -> Option<Stacktrace> {
                 filename,
                 lineno: captures
                     .name("lineno")
+                    .map(|x| x.as_str().parse::<u64>().unwrap()),
+                colno: captures
+                    .name("colno")
                     .map(|x| x.as_str().parse::<u64>().unwrap()),
                 ..Default::default()
             }
