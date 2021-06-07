@@ -10,6 +10,10 @@
 
 - Allow capturing backtraces from anyhow errors.
 
+**Fixes**:
+
+- Honor the `attach_stacktrace` option correctly when capturing errors.
+
 ## 0.22.0
 
 **Breaking Changes**:

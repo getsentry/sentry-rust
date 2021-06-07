@@ -139,3 +139,38 @@ fn test_reentrant_configure_scope() {
     // well, the "outer" `configure_scope` wins
     assert_eq!(events[0].tags["which_scope"], "scope1");
 }
+
+#[test]
+fn test_attached_stacktrace() {
+    use log_ as log;
+
+    let logger = sentry_log::SentryLogger::new();
+
+    log::set_boxed_logger(Box::new(logger))
+        .map(|()| log::set_max_level(log::LevelFilter::Info))
+        .unwrap();
+
+    let options = sentry::apply_defaults(sentry::ClientOptions {
+        attach_stacktrace: true,
+        ..Default::default()
+    });
+    let events = sentry::test::with_captured_events_options(
+        || {
+            let error = "thisisnotanumber".parse::<u32>().unwrap_err();
+            sentry::capture_error(&error);
+
+            sentry::capture_message("some kind of message", sentry::Level::Info);
+
+            log::error!("Shit's on fire yo");
+        },
+        options,
+    );
+
+    assert_eq!(events.len(), 3);
+
+    let stacktraces: Vec<_> = events
+        .into_iter()
+        .flat_map(|ev| ev.threads.into_iter().filter_map(|thrd| thrd.stacktrace))
+        .collect();
+    assert_eq!(stacktraces.len(), 3);
+}
