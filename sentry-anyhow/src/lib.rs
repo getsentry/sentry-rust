@@ -64,8 +64,33 @@ pub trait AnyhowHubExt {
 }
 
 impl AnyhowHubExt for Hub {
-    fn capture_anyhow(&self, e: &anyhow::Error) -> Uuid {
-        let e: &dyn std::error::Error = e.as_ref();
-        self.capture_error(e)
+    fn capture_anyhow(&self, anyhow_error: &anyhow::Error) -> Uuid {
+        let dyn_err: &dyn std::error::Error = anyhow_error.as_ref();
+        let mut event = sentry_core::event_from_error(dyn_err);
+
+        // exception records are sorted in reverse
+        if let Some(exc) = event.exception.iter_mut().last() {
+            let backtrace = anyhow_error.backtrace();
+            exc.stacktrace = sentry_backtrace::parse_stacktrace(&format!("{:#}", backtrace));
+        }
+
+        self.capture_event(event)
     }
+}
+
+#[test]
+fn test_has_backtrace() {
+    std::env::set_var("RUST_BACKTRACE", "1");
+
+    let events = sentry::test::with_captured_events(|| {
+        capture_anyhow(&anyhow::anyhow!("Oh jeez"));
+    });
+
+    let stacktrace = events[0].exception[0].stacktrace.as_ref().unwrap();
+    let found_test_fn = stacktrace.frames.iter().any(|frame| match &frame.function {
+        Some(f) => f.contains("test_has_backtrace"),
+        None => false,
+    });
+
+    assert!(found_test_fn);
 }
