@@ -87,10 +87,10 @@ fn test_has_backtrace() {
     });
 
     let stacktrace = events[0].exception[0].stacktrace.as_ref().unwrap();
-    let found_test_fn = stacktrace
-        .frames
-        .iter()
-        .any(|frame| frame.function.as_deref() == Some("sentry_anyhow::test_has_backtrace"));
+    let found_test_fn = stacktrace.frames.iter().any(|frame| match &frame.function {
+        Some(f) => f.contains("test_has_backtrace"),
+        None => false,
+    });
 
     assert!(found_test_fn);
 }
