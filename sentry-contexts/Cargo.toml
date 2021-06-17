@@ -23,7 +23,7 @@ lazy_static = "1.4.0"
 uname = "0.1.1"
 
 [build-dependencies]
-rustc_version = "0.3.0"
+rustc_version = "0.4.0"
 
 [dev-dependencies]
 sentry = { version = "0.22.0", path = "../sentry", default-features = false, features = ["test"] }

@@ -8,11 +8,27 @@
 
 **Features**:
 
+- Added support for pre-aggregated Sessions using the new `SessionMode::Request` option. This requires **Sentry 21.2**.
+- Added a new `Client::flush` method to explicitly flush the transport and use that to make sure events are flushed out when using `panic=abort`.
+- Added a new `flush` hook to the `Transport` trait.
+- Exposed a new `RateLimiter` utility that transport implementations can use to drop envelopes early when the DSN is being rate limited.
 - Allow capturing backtraces from anyhow errors.
+- Added new crate `sentry-tracing` and feature `tracing` that enables support to capture Events and Breadcrumbs from tracing logs.
 
 **Fixes**:
 
 - Honor the `attach_stacktrace` option correctly when capturing errors.
+- Added the missing `addr_mode` property to `Frame`.
+- Fixed extracting the error type from a `anyhow::msg`.
+
+**Thank you**:
+
+Features, fixes and improvements in this release have been contributed by:
+
+- [@XX](https://github.com/XX)
+- [@Jake-Shadle](https://github.com/Jake-Shadle)
+- [@Tuetuopay](https://github.com/Tuetuopay)
+- [@irevoire](https://github.com/irevoire)
 
 ## 0.22.0
 
