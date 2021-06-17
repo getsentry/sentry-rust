@@ -19,6 +19,7 @@
 
 - Honor the `attach_stacktrace` option correctly when capturing errors.
 - Added the missing `addr_mode` property to `Frame`.
+- Fixed extracting the error type from a `anyhow::msg`.
 
 **Thank you**:
 
