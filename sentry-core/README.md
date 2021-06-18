@@ -6,14 +6,14 @@
 
 # Sentry Rust SDK: sentry-core
 
-This crate provides the core of the [Sentry](https://sentry.io/) SDK, which
-can be used to log events and errors.
+This crate provides the core of the [Sentry] SDK, which can be used to log
+events and errors.
 
-This crate is meant for integration authors and third party library authors
+`sentry-core` is meant for integration authors and third-party library authors
 that want to instrument their code for sentry.
 
 Regular users who wish to integrate sentry into their applications should
-rather use the [`sentry`] crate, which comes with a default transport, and
+instead use the [`sentry`] crate, which comes with a default transport and
 a large set of integrations for various third-party libraries.
 
 ## Core Concepts
@@ -34,15 +34,16 @@ functionality.
 
 ## Features
 
-* `feature = "client"`: Activates the [`Client`] type and certain
+- `feature = "client"`: Activates the [`Client`] type and certain
   [`Hub`] functionality.
-* `feature = "test"`: Activates the [`test`] module, which can be used to
+- `feature = "test"`: Activates the [`test`] module, which can be used to
   write integration tests. It comes with a test transport which can capture
   all sent events for inspection.
-* `feature = "debug-logs"`: Uses the `log` crate for debug output, instead
+- `feature = "debug-logs"`: Uses the `log` crate for debug output, instead
   of printing to `stderr`. This feature is **deprecated** and will be
   replaced by a dedicated log callback in the future.
 
+[Sentry]: https://sentry.io/
 [`sentry`]: https://crates.io/crates/sentry
 [Unified API]: https://develop.sentry.dev/sdk/unified-api/
 [`Client`]: https://docs.rs/sentry-core/0.21.0/sentry_core/struct.Client.html

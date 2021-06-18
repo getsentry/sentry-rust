@@ -6,12 +6,12 @@
 
 # Sentry Rust SDK: sentry-debug-images
 
-The Sentry Debug Images Integration.
+The Sentry Debug Images integration.
 
 The [`DebugImagesIntegration`] adds metadata about the loaded shared
 libraries to Sentry [`Event`]s.
 
-This Integration only works on Unix-like OSs right now. Support for Windows
+This Integration only works on Unix-like OSes right now. Support for Windows
 will be added in the future.
 
 ## Configuration

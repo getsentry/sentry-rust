@@ -16,7 +16,8 @@ This workspace contains various crates that provide support for logging events a
 - [sentry](./sentry) [![crates.io](https://img.shields.io/crates/v/sentry.svg)](https://crates.io/crates/sentry)
   [![docs.rs](https://docs.rs/sentry/badge.svg)](https://docs.rs/sentry)
 
-  The main `sentry` crate aimed at application users that want to log events to sentry.
+  The main `sentry` crate aimed at application users that want to log events to sentry. You'll want
+  to start here if you're trying to use sentry in your application.
 
 - [sentry-actix](./sentry-actix)
   [![crates.io](https://img.shields.io/crates/v/sentry-actix.svg)](https://crates.io/crates/sentry-actix)

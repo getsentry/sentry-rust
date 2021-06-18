@@ -30,8 +30,11 @@ sentry::capture_message("Hello World!", sentry::Level::Info);
 // seconds to send remaining events to the service.
 ```
 
+More complex examples on how to use sentry can also be found in [examples].
+
 [`sentry::init`]: https://docs.rs/sentry/0.21.0/sentry/fn.init.html
 [`Hub`]: https://docs.rs/sentry/0.21.0/sentry/struct.Hub.html
+[examples]: https://github.com/getsentry/sentry-rust/tree/master/sentry/examples
 
 ## Integrations
 
