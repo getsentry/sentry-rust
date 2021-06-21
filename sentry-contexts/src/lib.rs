@@ -1,14 +1,14 @@
-//! Adds Contexts to Sentry Events
+//! Adds Contexts to Sentry Events.
 //!
 //! This integration is enabled by default in `sentry` and adds `device`, `os`
-//! and `rust` contexts to Events, as well as sets a `server_name` if not
+//! and `rust` contexts to Events, and also sets a `server_name` if it is not
 //! already defined.
 //!
 //! See the [Contexts Interface] documentation for more info.
 //!
 //! # Examples
 //!
-//! ```
+//! ```rust
 //! let integration = sentry_contexts::ContextIntegration::new().add_os(false);
 //! let _sentry = sentry::init(sentry::ClientOptions::new().add_integration(integration));
 //! ```

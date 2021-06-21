@@ -2,7 +2,7 @@
 //!
 //! The `log` crate is supported in two ways. First, logs can be captured as
 //! breadcrumbs for later. Secondly, error logs can be captured as events to
-//! Sentry. By default anything above `Info` is recorded as breadcrumb and
+//! Sentry. By default anything above `Info` is recorded as a breadcrumb and
 //! anything above `Error` is captured as error event.
 //!
 //! # Examples
