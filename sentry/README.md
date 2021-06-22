@@ -7,20 +7,18 @@
 # Sentry Rust SDK: sentry
 
 This crate provides support for logging events and errors / panics to the
-[Sentry] error logging service. It integrates with the standard panic
+[Sentry](https://sentry.io/) error logging service.  It integrates with the standard panic
 system in Rust as well as a few popular error handling setups.
-
-[Sentry]: https://sentry.io/
 
 ## Quickstart
 
-The most convenient way to use this library is via the [`sentry::init`] function,
+The most convenient way to use this library is the [`sentry::init`] function,
 which starts a sentry client with a default set of integrations, and binds
 it to the current [`Hub`].
 
 The [`sentry::init`] function returns a guard that when dropped will flush Events that were not
-yet sent to the sentry service. It has a two second deadline for this so shutdown of
-applications might slightly delay as a result of this. Keep the guard around or sending events
+yet sent to the sentry service.  It has a two second deadline for this so shutdown of
+applications might slightly delay as a result of this.  Keep the guard around or sending events
 will not work.
 
 ```rust
@@ -30,25 +28,19 @@ sentry::capture_message("Hello World!", sentry::Level::Info);
 // seconds to send remaining events to the service.
 ```
 
-More complex examples on how to use sentry can also be found in [examples]. Extended instructions
-may also be found on [Sentry itself].
-
 [`sentry::init`]: https://docs.rs/sentry/0.21.0/sentry/fn.init.html
 [`Hub`]: https://docs.rs/sentry/0.21.0/sentry/struct.Hub.html
-[examples]: https://github.com/getsentry/sentry-rust/tree/master/sentry/examples
-[Sentry itself]: https://docs.sentry.io/platforms/rust
 
 ## Integrations
 
-What makes this crate useful are its various integrations. Some of them are enabled by 
-default; See [Features]. Uncommon integrations or integrations for deprecated parts of 
-the ecosystem require a feature flag. For available integrations and how to use them, see
-[integrations](https://docs.rs/sentry/0.21.0/sentry/integrations/index.html) and
-[apply_defaults](https://docs.rs/sentry/0.21.0/sentry/fn.apply_defaults.html). 
+What makes this crate useful are the various integrations that exist.  Some of them are enabled
+by default, some uncommon ones or for deprecated parts of the ecosystem a feature flag needs to
+be enabled.  For the available integrations and how to use them see
+[integrations](https://docs.rs/sentry/0.21.0/sentry/integrations/index.html) and [apply_defaults](https://docs.rs/sentry/0.21.0/sentry/fn.apply_defaults.html).
 
 ## Minimal API
 
-This crate comes fully-featured. If the goal is to instrument libraries for usage
+This crate comes fully featured. If the goal is to instrument libraries for usage
 with sentry, or to extend sentry with a custom [`Integration`] or a [`Transport`],
 one should use the [`sentry-core`] crate instead.
 
@@ -58,57 +50,35 @@ one should use the [`sentry-core`] crate instead.
 
 ## Features
 
-Additional functionality and integrations are enabled via feature flags. Some features require
-extra setup to function properly.
+Functionality of the crate can be turned on and off by feature flags.  This is the current list
+of feature flags:
 
-| Feature        | Default | Is Integration | Deprecated | Additional notes                                                                         |
-| -------------- | ------- | -------------- | ---------- | ---------------------------------------------------------------------------------------- |
-| `backtrace`    | ✅      | 🔌             |            |                                                                                          |
-| `contexts`     | ✅      | 🔌             |            |                                                                                          |
-| `panic`        | ✅      | 🔌             |            |                                                                                          |
-| `transport`    | ✅      |                |            |                                                                                          |
-| `anyhow`       |         | 🔌             |            |                                                                                          |
-| `test`         |         |                |            |                                                                                          |
-| `debug-images` |         | 🔌             |            |                                                                                          |
-| `log`          |         | 🔌             |            | Requires additional setup; See [`sentry-log`]'s documentation.                           |
-| `debug-logs`   |         |                | ✂️         | Requires additional setup; See [`sentry-log`]'s documentation.                           |
-| `slog`         |         | 🔌             |            | Requires additional setup; See [`sentry-slog`]'s documentation.                          |
-| `reqwest`      | ✅      |                |            |                                                                                          |
-| `native-tls`   | ✅      |                |            | `reqwest` must be enabled.                                                               |
-| `rustls`       |         |                |            | `reqwest` must be enabled. `native-tls` must be disabled via `default-features = false`. |
-| `curl`         |         |                |            |                                                                                          |
-| `surf`         |         |                |            |                                                                                          |
+Default features:
 
-[`sentry-log`]: https://docs.rs/sentry-log
-[`sentry-slog`]: https://docs.rs/sentry-slog
+* `backtrace`: Enables backtrace support.
+* `contexts`: Enables capturing device, os, and rust contexts.
+* `panic`: Enables support for capturing panics.
+* `transport`: Enables the default transport, which is currently `reqwest` with `native-tls`.
 
-Descriptions of all features, grouped by an arbitrary set of categories, sorted in a similarly 
-arbitrary order:
+Additional features:
 
-### Default features
-- `backtrace`: Enables backtrace support.
-- `contexts`: Enables capturing device, OS, and Rust contexts.
-- `panic`: Enables support for capturing panics.
-- `transport`: Enables the default transport, which is currently `reqwest` with `native-tls`.
-
-### Debugging/Testing
-- `anyhow`: Enables support for the `anyhow` crate.
-- `test`: Enables testing support.
-- `debug-images`: Attaches a list of loaded libraries to events (currently only supported on Unix).
-
-### Logging
-- `log`: Enables support for the `log` crate.
-- `slog`: Enables support for the `slog` crate.
-- `debug-logs`: **Deprecated**. Uses the `log` crate for internal logging.
-
-### Transports
-- `reqwest`: **Default**. Enables the `reqwest` transport.
-- `native-tls`: **Default**. Uses the `native-tls` crate. This only affects the `reqwest` transport.
-- `rustls`: Enables `rustls` support for `reqwest`. Please note that `native-tls` is a default 
-  feature, and `default-features = false` must be set to completely disable building `native-tls` 
-  dependencies.
-- `curl`: Enables the curl transport.
-- `surf`: Enables the surf transport.
+* `anyhow`: Enables support for the `anyhow` crate.
+* `debug-images`: Attaches a list of loaded libraries to events (currently only supported on unix).
+* `error-chain`: Enables support for the `error-chain` crate.
+* `failure`: Enables support for the `failure` crate.
+* `log`: Enables support for the `log` crate.
+* `env_logger`: Enables support for the `log` crate with additional `env_logger` support.
+* `slog`: Enables support for the `slog` crate.
+* `test`: Enables testing support.
+* `debug-logs`: Uses the `log` crate for internal logging.
+* `reqwest`: Enables the `reqwest` transport, which is currently the default.
+* `curl`: Enables the curl transport.
+* `surf`: Enables the surf transport.
+* `native-tls`: Uses the `native-tls` crate, which is currently the default.
+  This only has an effect on the `reqwest` transport.
+* `rustls`: Enables the `rustls` support of the `reqwest` transport.
+  Please note that `native-tls` is a default feature, and one needs to use
+  `default-features = false` to completely disable building `native-tls` dependencies.
 
 ## Resources
 
