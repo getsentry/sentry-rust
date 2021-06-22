@@ -59,25 +59,25 @@ one should use the [`sentry-core`] crate instead.
 ## Features
 
 Additional functionality and integrations are enabled via feature flags. Some features require
-extra setup to function properly. 
+extra setup to function properly.
 
-| Feature | Default | Is Integration | Deprecated | Additional notes |
-| --- | --- | --- | --- | --- |
-| `backtrace` | ✅ | 🔌 | | |
-| `contexts` | ✅ | 🔌 | | |
-| `panic` | ✅ | 🔌 | | |
-| `transport` | ✅ | | | |
-| `anyhow` | | 🔌 | | |
-| `test` | | | | |
-| `debug-images` | | 🔌 | | |
-| `log` | | 🔌 |  |Requires additional setup; See [`sentry-log`]'s documentation. |
-| `debug-logs` | | | ✂️ | | Requires additional setup; See [`sentry-log`]'s documentation. |
-| `slog` | | 🔌 | | | Requires additional setup; See [`sentry-slog`]'s documentation. |
-| `reqwest` | ✅ | | | |
-| `native-tls` | ✅ | | | `reqwest` must be enabled. | |
-| `rustls` | | | | `reqwest` must be enabled. `native-tls` must be disabled via `default-features = false`. | |
-| `curl` | | | | |
-| `surf` | | | | |
+| Feature        | Default | Is Integration | Deprecated | Additional notes                                                                         |
+| -------------- | ------- | -------------- | ---------- | ---------------------------------------------------------------------------------------- |
+| `backtrace`    | ✅      | 🔌             |            |                                                                                          |
+| `contexts`     | ✅      | 🔌             |            |                                                                                          |
+| `panic`        | ✅      | 🔌             |            |                                                                                          |
+| `transport`    | ✅      |                |            |                                                                                          |
+| `anyhow`       |         | 🔌             |            |                                                                                          |
+| `test`         |         |                |            |                                                                                          |
+| `debug-images` |         | 🔌             |            |                                                                                          |
+| `log`          |         | 🔌             |            | Requires additional setup; See [`sentry-log`]'s documentation.                           |
+| `debug-logs`   |         |                | ✂️         | Requires additional setup; See [`sentry-log`]'s documentation.                           |
+| `slog`         |         | 🔌             |            | Requires additional setup; See [`sentry-slog`]'s documentation.                          |
+| `reqwest`      | ✅      |                |            |                                                                                          |
+| `native-tls`   | ✅      |                |            | `reqwest` must be enabled.                                                               |
+| `rustls`       |         |                |            | `reqwest` must be enabled. `native-tls` must be disabled via `default-features = false`. |
+| `curl`         |         |                |            |                                                                                          |
+| `surf`         |         |                |            |                                                                                          |
 
 [`sentry-log`]: https://docs.rs/sentry-log
 [`sentry-slog`]: https://docs.rs/sentry-slog
