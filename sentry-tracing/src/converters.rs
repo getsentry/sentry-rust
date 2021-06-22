@@ -58,7 +58,7 @@ impl Visit for BTreeMapRecorder {
 
 /// Creates a [`Breadcrumb`] from a given [`tracing_core::Event`]
 pub fn breadcrumb_from_event(event: &tracing_core::Event) -> Breadcrumb {
-    let (message, data) = extract_data(&event);
+    let (message, data) = extract_data(event);
     Breadcrumb {
         category: Some(event.metadata().target().to_owned()),
         ty: "log".into(),
@@ -71,7 +71,7 @@ pub fn breadcrumb_from_event(event: &tracing_core::Event) -> Breadcrumb {
 
 /// Creates an [`Event`] from a given [`tracing_core::Event`]
 pub fn event_from_event(event: &tracing_core::Event) -> Event<'static> {
-    let (message, extra) = extract_data(&event);
+    let (message, extra) = extract_data(event);
     Event {
         logger: Some(event.metadata().target().to_owned()),
         level: convert_tracing_level(event.metadata().level()),

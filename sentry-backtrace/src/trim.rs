@@ -38,7 +38,7 @@ where
         .iter()
         .rev()
         .position(|frame| match frame.function {
-            Some(ref func) => is_well_known(&func) || f(frame, stacktrace),
+            Some(ref func) => is_well_known(func) || f(frame, stacktrace),
             None => false,
         });
 
@@ -59,5 +59,5 @@ pub fn is_sys_function(func: &str) -> bool {
 fn is_well_known(func: &str) -> bool {
     WELL_KNOWN_BORDER_FRAMES
         .iter()
-        .any(|m| function_starts_with(&func, m))
+        .any(|m| function_starts_with(func, m))
 }

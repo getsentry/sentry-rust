@@ -388,7 +388,7 @@ mod tests {
             assert!(session.duration.unwrap() > 0.01);
             assert_eq!(session.errors, 0);
             assert_eq!(session.attributes.release, "some-release");
-            assert_eq!(session.init, true);
+            assert!(session.init);
         } else {
             panic!("expected session");
         }
@@ -494,7 +494,7 @@ mod tests {
             assert_eq!(session.status, SessionStatus::Ok);
             assert_eq!(session.errors, 1);
             assert_eq!(session.attributes.release, "some-release");
-            assert_eq!(session.init, true);
+            assert!(session.init);
         } else {
             panic!("expected session");
         }
@@ -504,7 +504,7 @@ mod tests {
         if let Some(EnvelopeItem::SessionUpdate(session)) = items.next() {
             assert_eq!(session.status, SessionStatus::Exited);
             assert_eq!(session.errors, 1);
-            assert_eq!(session.init, false);
+            assert!(!session.init);
         } else {
             panic!("expected session");
         }
@@ -522,7 +522,7 @@ mod tests {
         let mut items = envelopes[0].items();
         if let Some(EnvelopeItem::SessionUpdate(session)) = items.next() {
             assert_eq!(session.status, SessionStatus::Abnormal);
-            assert_eq!(session.init, true);
+            assert!(session.init);
         } else {
             panic!("expected session");
         }
@@ -594,7 +594,7 @@ mod tests {
         if let Some(EnvelopeItem::SessionUpdate(session)) = items.next() {
             assert_eq!(session.status, SessionStatus::Exited);
             assert_eq!(session.errors, 3);
-            assert_eq!(session.init, false);
+            assert!(!session.init);
         } else {
             panic!("expected session");
         }
@@ -635,7 +635,7 @@ mod tests {
         if let Some(EnvelopeItem::SessionUpdate(session)) = items.next() {
             assert_eq!(session.status, SessionStatus::Ok);
             assert_eq!(session.errors, 1);
-            assert_eq!(session.init, true);
+            assert!(session.init);
         } else {
             panic!("expected session");
         }
@@ -655,7 +655,7 @@ mod tests {
         if let Some(EnvelopeItem::SessionUpdate(session)) = items.next() {
             assert_eq!(session.status, SessionStatus::Exited);
             assert_eq!(session.errors, 1);
-            assert_eq!(session.init, false);
+            assert!(!session.init);
         } else {
             panic!("expected session");
         }
