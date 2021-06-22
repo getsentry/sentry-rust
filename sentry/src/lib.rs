@@ -124,27 +124,26 @@ pub use crate::init::{init, ClientInitGuard};
 /// Available Sentry Integrations.
 ///
 /// Integrations extend the functionality of the SDK for some common frameworks and
-/// libraries. Integrations come two primary kinds: as event *sources* or as event
-/// *processors*.
+/// libraries. There are two different kinds of integrations:
+/// - Event sources
+/// - Event processors
 ///
-/// Integrations which are *sources*, like e.g. the [`sentry::integrations::anyhow`]
-/// integration, usually provide one or more functions to create new events. They
-/// will usually provide their own extension trait exposing a new method on the
-/// [`Hub`].
+/// Integrations which are **event sources** such as
+/// [`sentry::integrations::anyhow`] typically provide one or more functions to
+/// create new events. These integrations will have an extension trait which exposes
+/// a new method on the [`Hub`].
 ///
-/// Integrations which *process* events in some way usually implement the
+/// Integrations which **process events** in some way usually implement the
 /// [`Integration`] trait and need to be installed when sentry is initialised.
 ///
 /// # Installing Integrations
 ///
 /// Processing integrations which implement [`Integration`] need to be installed
-/// when sentry is initialised. This is done using the
-/// [`ClientOptions::add_integration`] function, which you can use to add extra
-/// integrations.
+/// when sentry is initialised. This can be accomplished by using
+/// [`ClientOptions::add_integration()`].
 ///
-/// For example if you disabled the default integrations (see below) but still
-/// wanted the [`sentry::integrations::debug_images`] integration enabled, you could
-/// do the following:
+/// For example, if one were to disable the default integrations (see below) but
+/// still wanted to use [`sentry::integrations::debug_images`]:
 ///
 /// ```
 /// # #[cfg(feature = "debug-images")] {
@@ -163,17 +162,17 @@ pub use crate::init::{init, ClientInitGuard};
 ///
 /// The [`ClientOptions::default_integrations`] option is a boolean field that
 /// when enabled will enable all of the default integrations via
-/// [`apply_defaults`] **before** any integrations provided by
+/// [`apply_defaults()`] **before** any integrations provided by
 /// [`ClientOptions::integrations`] are installed. Those interested in a list
 /// of default integrations and how they are applied are advised to visit
-/// [`apply_defaults`].
+/// [`apply_defaults()`]'s implementation.
 ///
 /// [`sentry::integrations::anyhow`]: integrations::anyhow
 /// [`Integration`]: crate::Integration
-/// [`ClientOptions::add_integration`]: crate::ClientOptions::add_integration
+/// [`ClientOptions::add_integration()`]: crate::ClientOptions::add_integration
 /// [`sentry::integrations::debug_images`]: integrations::debug_images
 /// [`ClientOptions::default_integrations`]: crate::ClientOptions::default_integrations
-/// [`apply_defaults`]: ../fn.apply_defaults.html
+/// [`apply_defaults()`]: ../fn.apply_defaults.html
 pub mod integrations {
     #[cfg(feature = "anyhow")]
     #[doc(inline)]
