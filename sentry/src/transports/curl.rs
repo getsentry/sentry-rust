@@ -43,10 +43,10 @@ impl CurlHttpTransport {
 
             match (scheme, &http_proxy, &https_proxy) {
                 (Scheme::Https, _, &Some(ref proxy)) => {
-                    handle.proxy(&proxy).unwrap();
+                    handle.proxy(proxy).unwrap();
                 }
                 (_, &Some(ref proxy), _) => {
-                    handle.proxy(&proxy).unwrap();
+                    handle.proxy(proxy).unwrap();
                 }
                 _ => {}
             }

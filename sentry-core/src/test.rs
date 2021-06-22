@@ -70,7 +70,7 @@ impl TestTransport {
     /// Fetches and clears the contained envelopes.
     pub fn fetch_and_clear_envelopes(&self) -> Vec<Envelope> {
         let mut guard = self.collected.lock().unwrap();
-        std::mem::replace(&mut *guard, vec![])
+        std::mem::take(&mut *guard)
     }
 }
 
