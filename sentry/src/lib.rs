@@ -77,10 +77,6 @@
 //! [`sentry-log`]: https://crates.io/crates/sentry-log
 //! [`sentry-slog`]: https://crates.io/crates/sentry-slog
 //!
-//!
-//! Descriptions of all features, grouped by an arbitrary set of categories, sorted in a similarly
-//! arbitrary order:
-//!
 //! ## Default features
 //! - `backtrace`: Enables backtrace support.
 //! - `contexts`: Enables capturing device, OS, and Rust contexts.
