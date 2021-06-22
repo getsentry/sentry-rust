@@ -12,8 +12,12 @@ Sentry (getsentry.com) client for rust ;)
 edition = "2018"
 autoexamples = true
 
+# To build locally:
+# RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --all-features --open
 [package.metadata.docs.rs]
 all-features = true
+# Defines the configuration attribute `doc_cfg` in order to expose feature-gated docs.
+rustdoc-args = ["--cfg", "doc_cfg"]
 
 [features]
 default = ["backtrace", "contexts", "panic", "transport"]

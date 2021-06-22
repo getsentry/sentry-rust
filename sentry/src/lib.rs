@@ -104,6 +104,10 @@
 #![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
 #![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
 #![warn(missing_docs)]
+// Only enables the `doc_cfg` feature when the `doc_cfg` configuration attribute
+// is defined. Used to expose docs for feature-locked integrations, and other
+// feature-gated documentation.
+#![cfg_attr(doc_cfg, feature(doc_cfg))]
 
 mod defaults;
 mod init;
@@ -171,27 +175,35 @@ pub use crate::init::{init, ClientInitGuard};
 /// [`apply_defaults()`]: ../fn.apply_defaults.html
 pub mod integrations {
     #[cfg(feature = "anyhow")]
+    #[cfg_attr(doc_cfg, doc(cfg(feature = "anyhow")))]
     #[doc(inline)]
     pub use sentry_anyhow as anyhow;
     #[cfg(feature = "backtrace")]
+    #[cfg_attr(doc_cfg, doc(cfg(feature = "backtrace")))]
     #[doc(inline)]
     pub use sentry_backtrace as backtrace;
     #[cfg(feature = "contexts")]
+    #[cfg_attr(doc_cfg, doc(cfg(feature = "contexts")))]
     #[doc(inline)]
     pub use sentry_contexts as contexts;
     #[cfg(feature = "debug-images")]
+    #[cfg_attr(doc_cfg, doc(cfg(feature = "debug_images")))]
     #[doc(inline)]
     pub use sentry_debug_images as debug_images;
     #[cfg(feature = "log")]
+    #[cfg_attr(doc_cfg, doc(cfg(feature = "log")))]
     #[doc(inline)]
     pub use sentry_log as log;
     #[cfg(feature = "panic")]
+    #[cfg_attr(doc_cfg, doc(cfg(feature = "panic")))]
     #[doc(inline)]
     pub use sentry_panic as panic;
     #[cfg(feature = "slog")]
+    #[cfg_attr(doc_cfg, doc(cfg(feature = "slog")))]
     #[doc(inline)]
     pub use sentry_slog as slog;
     #[cfg(feature = "tracing")]
+    #[cfg_attr(doc_cfg, doc(cfg(feature = "tracing")))]
     #[doc(inline)]
     pub use sentry_tracing as tracing;
 }
