@@ -9,7 +9,7 @@ use crate::{sentry_debug, types::Scheme, ClientOptions, Envelope, Transport};
 
 /// A [`Transport`] that sends events via the [`curl`] library.
 ///
-/// This is enabled by the `curl` flag.
+/// This is enabled by the `curl` feature flag.
 pub struct CurlHttpTransport {
     thread: TransportThread,
 }
