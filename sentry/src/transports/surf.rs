@@ -8,8 +8,9 @@ use crate::{sentry_debug, ClientOptions, Envelope, Transport};
 
 /// A [`Transport`] that sends events via the [`surf`] library.
 ///
-/// [`surf`]: https://crates.io/crates/surf
 /// This is enabled by the `surf` feature flag.
+///
+/// [`surf`]: https://crates.io/crates/surf
 #[cfg_attr(doc_cfg, doc(cfg(feature = "surf")))]
 pub struct SurfHttpTransport {
     thread: TransportThread,
