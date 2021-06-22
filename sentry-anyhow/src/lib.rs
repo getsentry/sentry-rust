@@ -66,18 +66,25 @@ pub trait AnyhowHubExt {
 impl AnyhowHubExt for Hub {
     fn capture_anyhow(&self, anyhow_error: &anyhow::Error) -> Uuid {
         let dyn_err: &dyn std::error::Error = anyhow_error.as_ref();
-        let mut event = sentry_core::event_from_error(dyn_err);
 
-        // exception records are sorted in reverse
-        if let Some(exc) = event.exception.iter_mut().last() {
-            let backtrace = anyhow_error.backtrace();
-            exc.stacktrace = sentry_backtrace::parse_stacktrace(&format!("{:#}", backtrace));
+        #[cfg(feature = "backtrace")]
+        {
+            let mut event = sentry_core::event_from_error(dyn_err);
+
+            // exception records are sorted in reverse
+            if let Some(exc) = event.exception.iter_mut().last() {
+                let backtrace = anyhow_error.backtrace();
+                exc.stacktrace = sentry_backtrace::parse_stacktrace(&format!("{:#}", backtrace));
+            }
+
+            self.capture_event(event)
         }
-
-        self.capture_event(event)
+        #[cfg(not(feature = "backtrace"))]
+        self.capture_error(dyn_err)
     }
 }
 
+#[cfg(all(feature = "backtrace", test))]
 #[test]
 fn test_has_backtrace() {
     std::env::set_var("RUST_BACKTRACE", "1");

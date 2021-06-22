@@ -11,10 +11,13 @@ Sentry integration for anyhow.
 """
 edition = "2018"
 
+[features]
+backtrace = ["anyhow/backtrace"]
+
 [dependencies]
 sentry-backtrace = { version = "0.22.0", path = "../sentry-backtrace" }
 sentry-core = { version = "0.22.0", path = "../sentry-core" }
-anyhow = { version = "1.0.39", features = ["backtrace"] }
+anyhow = "1.0.39"
 
 [dev-dependencies]
 sentry = { version = "0.22.0", path = "../sentry", default-features = false, features = ["test"] }
