@@ -34,16 +34,16 @@ impl Integration for ProcessStacktraceIntegration {
     ) -> Option<Event<'static>> {
         for exc in &mut event.exception {
             if let Some(ref mut stacktrace) = exc.stacktrace {
-                process_event_stacktrace(stacktrace, &options);
+                process_event_stacktrace(stacktrace, options);
             }
         }
         for th in &mut event.threads {
             if let Some(ref mut stacktrace) = th.stacktrace {
-                process_event_stacktrace(stacktrace, &options);
+                process_event_stacktrace(stacktrace, options);
             }
         }
         if let Some(ref mut stacktrace) = event.stacktrace {
-            process_event_stacktrace(stacktrace, &options);
+            process_event_stacktrace(stacktrace, options);
         }
         Some(event)
     }

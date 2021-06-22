@@ -168,9 +168,8 @@ fn test_attached_stacktrace() {
 
     assert_eq!(events.len(), 3);
 
-    let stacktraces: Vec<_> = events
+    let stacktraces = events
         .into_iter()
-        .flat_map(|ev| ev.threads.into_iter().filter_map(|thrd| thrd.stacktrace))
-        .collect();
-    assert_eq!(stacktraces.len(), 3);
+        .flat_map(|ev| ev.threads.into_iter().filter_map(|thrd| thrd.stacktrace));
+    assert_eq!(stacktraces.count(), 3);
 }
