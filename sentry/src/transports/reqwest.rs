@@ -10,15 +10,11 @@ use crate::{sentry_debug, ClientOptions, Envelope, Transport};
 ///
 /// When the `transport` feature is enabled this will currently
 /// be the default transport.  This is separately enabled by the
-/// `reqwest` feature flag.
-///
-/// [`reqwest`]: https://crates.io/crates/reqwest
-#[cfg_attr(doc_cfg, doc(cfg(feature = "reqwest")))]
+/// `reqwest` flag.
 pub struct ReqwestHttpTransport {
     thread: TransportThread,
 }
 
-#[cfg_attr(doc_cfg, doc(cfg(feature = "reqwest")))]
 impl ReqwestHttpTransport {
     /// Creates a new Transport.
     pub fn new(options: &ClientOptions) -> Self {
@@ -89,7 +85,6 @@ impl ReqwestHttpTransport {
     }
 }
 
-#[cfg_attr(doc_cfg, doc(cfg(feature = "reqwest")))]
 impl Transport for ReqwestHttpTransport {
     fn send_envelope(&self, envelope: Envelope) {
         self.thread.send(envelope)

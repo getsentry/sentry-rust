@@ -8,15 +8,11 @@ use crate::{sentry_debug, ClientOptions, Envelope, Transport};
 
 /// A [`Transport`] that sends events via the [`surf`] library.
 ///
-/// This is enabled by the `surf` feature flag.
-///
-/// [`surf`]: https://crates.io/crates/surf
-#[cfg_attr(doc_cfg, doc(cfg(feature = "surf")))]
+/// This is enabled by the `surf` flag.
 pub struct SurfHttpTransport {
     thread: TransportThread,
 }
 
-#[cfg_attr(doc_cfg, doc(cfg(feature = "surf")))]
 impl SurfHttpTransport {
     /// Creates a new Transport.
     pub fn new(options: &ClientOptions) -> Self {
@@ -75,7 +71,6 @@ impl SurfHttpTransport {
     }
 }
 
-#[cfg_attr(doc_cfg, doc(cfg(feature = "surf")))]
 impl Transport for SurfHttpTransport {
     fn send_envelope(&self, envelope: Envelope) {
         self.thread.send(envelope)

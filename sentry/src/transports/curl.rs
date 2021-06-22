@@ -9,13 +9,11 @@ use crate::{sentry_debug, types::Scheme, ClientOptions, Envelope, Transport};
 
 /// A [`Transport`] that sends events via the [`curl`] library.
 ///
-/// This is enabled by the `curl` feature flag.
-#[cfg_attr(doc_cfg, doc(cfg(feature = "curl")))]
+/// This is enabled by the `curl` flag.
 pub struct CurlHttpTransport {
     thread: TransportThread,
 }
 
-#[cfg_attr(doc_cfg, doc(cfg(feature = "curl")))]
 impl CurlHttpTransport {
     /// Creates a new Transport.
     pub fn new(options: &ClientOptions) -> Self {
@@ -124,7 +122,6 @@ impl CurlHttpTransport {
     }
 }
 
-#[cfg_attr(doc_cfg, doc(cfg(feature = "curl")))]
 impl Transport for CurlHttpTransport {
     fn send_envelope(&self, envelope: Envelope) {
         self.thread.send(envelope)
