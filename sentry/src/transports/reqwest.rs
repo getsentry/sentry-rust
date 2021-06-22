@@ -13,10 +13,12 @@ use crate::{sentry_debug, ClientOptions, Envelope, Transport};
 /// `reqwest` feature flag.
 ///
 /// [`reqwest`]: https://crates.io/crates/reqwest
+#[cfg_attr(doc_cfg, doc(cfg(feature = "reqwest")))]
 pub struct ReqwestHttpTransport {
     thread: TransportThread,
 }
 
+#[cfg_attr(doc_cfg, doc(cfg(feature = "reqwest")))]
 impl ReqwestHttpTransport {
     /// Creates a new Transport.
     pub fn new(options: &ClientOptions) -> Self {
@@ -87,6 +89,7 @@ impl ReqwestHttpTransport {
     }
 }
 
+#[cfg_attr(doc_cfg, doc(cfg(feature = "reqwest")))]
 impl Transport for ReqwestHttpTransport {
     fn send_envelope(&self, envelope: Envelope) {
         self.thread.send(envelope)

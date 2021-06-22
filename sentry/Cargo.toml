@@ -14,6 +14,8 @@ autoexamples = true
 
 [package.metadata.docs.rs]
 all-features = true
+# defines the configuration attribute `doc_cfg` in order to expose feature-gated docs
+rustdoc-args = ["--cfg", "doc_cfg"]
 
 [features]
 default = ["backtrace", "contexts", "panic", "transport"]
