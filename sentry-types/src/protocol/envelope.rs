@@ -304,8 +304,8 @@ mod test {
         assert_eq!(
             to_str(envelope),
             r#"{"event_id":"22d00b3f-d1b1-4b5d-8d20-49d138cd8a9c"}
-{"type":"transaction","length":216}
-{"event_id":"22d00b3fd1b14b5d8d2049d138cd8a9c","start_timestamp":1595256674.296,"spans":[{"span_id":"d42cee9fc3e74f5cada947ab601a14d2","trace_id":"335e53d614474acc9f89e632b776cc28","start_timestamp":1595256674.296}]}
+{"type":"transaction","length":200}
+{"event_id":"22d00b3fd1b14b5d8d2049d138cd8a9c","start_timestamp":1595256674.296,"spans":[{"span_id":"d42cee9fc3e74f5c","trace_id":"335e53d614474acc9f89e632b776cc28","start_timestamp":1595256674.296}]}
 "#
         )
     }

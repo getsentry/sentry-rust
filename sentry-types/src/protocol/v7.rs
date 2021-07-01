@@ -1259,7 +1259,10 @@ pub struct BrowserContext {
 #[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
 pub struct TraceContext {
     /// The ID of the trace event
-    #[serde(default = "event::default_id", serialize_with = "event::serialize_id")]
+    #[serde(
+        default = "event::default_id",
+        serialize_with = "event::serialize_span_id"
+    )]
     pub span_id: Uuid,
     /// Determines which trace the transaction belongs to.
     #[serde(default = "event::default_id", serialize_with = "event::serialize_id")]
@@ -1304,6 +1307,11 @@ mod event {
 
     pub fn serialize_id<S: Serializer>(uuid: &Uuid, serializer: S) -> Result<S::Ok, S::Error> {
         serializer.serialize_some(&uuid.to_simple_ref().to_string())
+    }
+
+    pub fn serialize_span_id<S: Serializer>(uuid: &Uuid, serializer: S) -> Result<S::Ok, S::Error> {
+        let uuid = uuid.to_simple_ref().to_string();
+        serializer.serialize_some(&uuid[..16])
     }
 
     pub fn default_level() -> Level {
@@ -1520,7 +1528,10 @@ impl<'a> fmt::Display for Event<'a> {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Span {
     /// The ID of the span
-    #[serde(default = "event::default_id", serialize_with = "event::serialize_id")]
+    #[serde(
+        default = "event::default_id",
+        serialize_with = "event::serialize_span_id"
+    )]
     pub span_id: Uuid,
     /// Determines which trace the span belongs to.
     #[serde(default = "event::default_id", serialize_with = "event::serialize_id")]
@@ -1603,7 +1614,7 @@ pub struct Transaction<'a> {
     pub event_id: Uuid,
     /// The transaction name.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
+    pub transaction: Option<String>,
     /// Optional tags to be attached to the event.
     #[serde(default, skip_serializing_if = "Map::is_empty")]
     pub tags: Map<String, String>,
@@ -1633,7 +1644,7 @@ impl<'a> Default for Transaction<'a> {
     fn default() -> Self {
         Transaction {
             event_id: event::default_id(),
-            name: Default::default(),
+            transaction: Default::default(),
             tags: Default::default(),
             sdk: Default::default(),
             platform: event::default_platform(),
@@ -1655,7 +1666,7 @@ impl<'a> Transaction<'a> {
     pub fn into_owned(self) -> Transaction<'static> {
         Transaction {
             event_id: self.event_id,
-            name: self.name,
+            transaction: self.transaction,
             tags: self.tags,
             sdk: self.sdk.map(|x| Cow::Owned(x.into_owned())),
             platform: Cow::Owned(self.platform.into_owned()),
