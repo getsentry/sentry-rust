@@ -1695,8 +1695,12 @@ pub struct Transaction<'a> {
     #[serde(default = "event::default_id", serialize_with = "event::serialize_id")]
     pub event_id: Uuid,
     /// The transaction name.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub transaction: Option<String>,
+    #[serde(
+        rename = "transaction",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub name: Option<String>,
     /// Optional tags to be attached to the event.
     #[serde(default, skip_serializing_if = "Map::is_empty")]
     pub tags: Map<String, String>,
@@ -1726,7 +1730,7 @@ impl<'a> Default for Transaction<'a> {
     fn default() -> Self {
         Transaction {
             event_id: event::default_id(),
-            transaction: Default::default(),
+            name: Default::default(),
             tags: Default::default(),
             sdk: Default::default(),
             platform: event::default_platform(),
@@ -1748,7 +1752,7 @@ impl<'a> Transaction<'a> {
     pub fn into_owned(self) -> Transaction<'static> {
         Transaction {
             event_id: self.event_id,
-            transaction: self.transaction,
+            name: self.name,
             tags: self.tags,
             sdk: self.sdk.map(|x| Cow::Owned(x.into_owned())),
             platform: Cow::Owned(self.platform.into_owned()),
