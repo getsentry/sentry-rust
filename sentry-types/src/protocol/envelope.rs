@@ -285,8 +285,8 @@ mod test {
     #[test]
     fn test_transaction() {
         let event_id = Uuid::parse_str("22d00b3f-d1b1-4b5d-8d20-49d138cd8a9c").unwrap();
-        let span_id = Uuid::parse_str("d42cee9f-c3e7-4f5c-ada9-47ab601a14d2").unwrap();
-        let trace_id = Uuid::parse_str("335e53d6-1447-4acc-9f89-e632b776cc28").unwrap();
+        let span_id = "d42cee9fc3e74f5c".parse().unwrap();
+        let trace_id = "335e53d614474acc9f89e632b776cc28".parse().unwrap();
         let start_timestamp = "2020-07-20T14:51:14.296Z".parse::<DateTime<Utc>>().unwrap();
         let spans = vec![Span {
             span_id,
