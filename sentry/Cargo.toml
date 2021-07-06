@@ -31,6 +31,7 @@ anyhow = ["sentry-anyhow"]
 debug-images = ["sentry-debug-images"]
 log = ["sentry-log"]
 slog = ["sentry-slog"]
+tower = ["sentry-tower"]
 tracing = ["sentry-tracing"]
 # other features
 test = ["sentry-core/test"]
@@ -52,6 +53,7 @@ sentry-debug-images = { version = "0.23.0", path = "../sentry-debug-images", opt
 sentry-log = { version = "0.23.0", path = "../sentry-log", optional = true }
 sentry-panic = { version = "0.23.0", path = "../sentry-panic", optional = true }
 sentry-slog = { version = "0.23.0", path = "../sentry-slog", optional = true }
+sentry-tower = { version = "0.23.0", path = "../sentry-tower", optional = true }
 sentry-tracing = { version = "0.23.0", path = "../sentry-tracing", optional = true }
 log_ = { package = "log", version = "0.4.8", optional = true, features = ["std"] }
 reqwest_ = { package = "reqwest", version = "0.11", optional = true, features = ["blocking", "json"], default-features = false }

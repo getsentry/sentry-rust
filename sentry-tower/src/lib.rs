@@ -1,0 +1,245 @@
+//! Adds support for automatic hub binding for each request recieved by the Tower server (or client,
+//! though usefulness is limited in this case).
+//!
+//! This allows breadcrumbs collected during the request handling to land in a specific hub, and
+//! avoid having them mixed across requests should a new hub be bound at each request.
+//!
+//! # Examples
+//!
+//! ```rust
+//! # use tower::ServiceBuilder;
+//! # use std::time::Duration;
+//! # type Request = String;
+//! use sentry_tower::NewSentryLayer;
+//!
+//! // Compose a Tower service where each request gets its own Sentry hub
+//! let service = ServiceBuilder::new()
+//!     .layer(NewSentryLayer::<Request>::new_from_top())
+//!     .timeout(Duration::from_secs(30))
+//!     .service(tower::service_fn(|req: Request| format!("hello {}", req)));
+//! ```
+//!
+//! More customization can be achieved through the `new` function, such as passing a [`Hub`]
+//! directly.
+//!
+//! ```rust
+//! # use tower::ServiceBuilder;
+//! # use std::{sync::Arc, time::Duration};
+//! # type Request = String;
+//! use sentry::Hub;
+//! use sentry_tower::SentryLayer;
+//!
+//! // Create a hub dedicated to web requests
+//! let hub = Arc::new(Hub::with(|hub| Hub::new_from_top(hub)));
+//!
+//! // Compose a Tower service
+//! let service = ServiceBuilder::new()
+//!     .layer(SentryLayer::<_, _, Request>::new(hub))
+//!     .timeout(Duration::from_secs(30))
+//!     .service(tower::service_fn(|req: Request| format!("hello {}", req)));
+//! ```
+//!
+//! The layer can also accept a closure to return a hub depending on the incoming request.
+//!
+//! ```rust
+//! # use tower::ServiceBuilder;
+//! # use std::{sync::Arc, time::Duration};
+//! # type Request = String;
+//! use sentry::Hub;
+//! use sentry_tower::SentryLayer;
+//!
+//! // Compose a Tower service
+//! let hello = Arc::new(Hub::with(|hub| Hub::new_from_top(hub)));
+//! let other = Arc::new(Hub::with(|hub| Hub::new_from_top(hub)));
+//!
+//! let service = ServiceBuilder::new()
+//!     .layer(SentryLayer::new(|req: &Request| match req.as_str() {
+//!         "hello" => hello.clone(),
+//!         _ => other.clone(),
+//!     }))
+//!     .timeout(Duration::from_secs(30))
+//!     .service(tower::service_fn(|req: Request| format!("{} world", req)));
+//! ```
+
+#![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
+#![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
+#![warn(missing_docs)]
+
+use sentry_core::{Hub, SentryFuture, SentryFutureExt};
+use std::marker::PhantomData;
+use std::sync::Arc;
+use std::task::{Context, Poll};
+use tower_layer::Layer;
+use tower_service::Service;
+
+/// Provides a hub for each request
+pub trait HubProvider<H, Request>
+where
+    H: Into<Arc<Hub>>,
+{
+    /// Returns a hub to be bound to the request
+    fn hub(&self, request: &Request) -> H;
+}
+
+impl<H, F, Request> HubProvider<H, Request> for F
+where
+    F: Fn(&Request) -> H,
+    H: Into<Arc<Hub>>,
+{
+    fn hub(&self, request: &Request) -> H {
+        (self)(request)
+    }
+}
+
+impl<Request> HubProvider<Arc<Hub>, Request> for Arc<Hub> {
+    fn hub(&self, _request: &Request) -> Arc<Hub> {
+        self.clone()
+    }
+}
+
+/// Provides a new hub made from the currently active hub for each request
+#[derive(Clone, Copy)]
+pub struct NewFromTopProvider;
+
+impl<Request> HubProvider<Arc<Hub>, Request> for NewFromTopProvider {
+    fn hub(&self, _request: &Request) -> Arc<Hub> {
+        Hub::with(|hub| Hub::new_from_top(hub)).into()
+    }
+}
+
+/// Tower layer that binds a specific Sentry hub for each request made.
+pub struct SentryLayer<P, H, Request>
+where
+    P: HubProvider<H, Request>,
+    H: Into<Arc<Hub>>,
+{
+    provider: P,
+    _hub: PhantomData<(H, Request)>,
+}
+
+impl<S, P, H, Request> Layer<S> for SentryLayer<P, H, Request>
+where
+    P: HubProvider<H, Request> + Clone,
+    H: Into<Arc<Hub>>,
+{
+    type Service = SentryService<S, P, H, Request>;
+
+    fn layer(&self, service: S) -> Self::Service {
+        SentryService {
+            service,
+            provider: self.provider.clone(),
+            _hub: PhantomData,
+        }
+    }
+}
+
+impl<P, H, Request> Clone for SentryLayer<P, H, Request>
+where
+    P: HubProvider<H, Request> + Clone,
+    H: Into<Arc<Hub>>,
+{
+    fn clone(&self) -> Self {
+        Self {
+            provider: self.provider.clone(),
+            _hub: PhantomData,
+        }
+    }
+}
+
+impl<P, H, Request> SentryLayer<P, H, Request>
+where
+    P: HubProvider<H, Request> + Clone,
+    H: Into<Arc<Hub>>,
+{
+    /// Build a new layer with the given Layer provider
+    pub fn new(provider: P) -> Self {
+        Self {
+            provider,
+            _hub: PhantomData,
+        }
+    }
+}
+
+/// Tower service that binds a specific Sentry hub for each request made.
+pub struct SentryService<S, P, H, Request>
+where
+    P: HubProvider<H, Request>,
+    H: Into<Arc<Hub>>,
+{
+    service: S,
+    provider: P,
+    _hub: PhantomData<(H, Request)>,
+}
+
+impl<S, Request, P, H> Service<Request> for SentryService<S, P, H, Request>
+where
+    S: Service<Request>,
+    P: HubProvider<H, Request>,
+    H: Into<Arc<Hub>>,
+{
+    type Response = S::Response;
+    type Error = S::Error;
+    type Future = SentryFuture<S::Future>;
+
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.service.poll_ready(cx)
+    }
+
+    fn call(&mut self, request: Request) -> Self::Future {
+        let hub = self.provider.hub(&request);
+        self.service.call(request).bind_hub(hub)
+    }
+}
+
+impl<S, P, H, Request> Clone for SentryService<S, P, H, Request>
+where
+    S: Clone,
+    P: HubProvider<H, Request> + Clone,
+    H: Into<Arc<Hub>>,
+{
+    fn clone(&self) -> Self {
+        Self {
+            service: self.service.clone(),
+            provider: self.provider.clone(),
+            _hub: PhantomData,
+        }
+    }
+}
+
+impl<S, P, H, Request> SentryService<S, P, H, Request>
+where
+    P: HubProvider<H, Request> + Clone,
+    H: Into<Arc<Hub>>,
+{
+    /// Wrap a Tower service with a Tower layer that binds a Sentry hub for each request made.
+    pub fn new(provider: P, service: S) -> Self {
+        SentryLayer::<P, H, Request>::new(provider).layer(service)
+    }
+}
+
+/// Tower layer that binds a new Sentry hub for each request made
+pub type NewSentryLayer<Request> = SentryLayer<NewFromTopProvider, Arc<Hub>, Request>;
+
+impl<Request> NewSentryLayer<Request> {
+    /// Create a new Sentry layer that binds a new Sentry hub for each request made
+    pub fn new_from_top() -> Self {
+        Self {
+            provider: NewFromTopProvider,
+            _hub: PhantomData,
+        }
+    }
+}
+
+/// Tower service that binds a new Sentry hub for each request made.
+pub type NewSentryService<S, Request> = SentryService<S, NewFromTopProvider, Arc<Hub>, Request>;
+
+impl<S, Request> NewSentryService<S, Request> {
+    /// Wrap a Tower service with a Tower layer that binds a Sentry hub for each request made.
+    pub fn new_from_top(service: S) -> Self {
+        Self {
+            provider: NewFromTopProvider,
+            service,
+            _hub: PhantomData,
+        }
+    }
+}

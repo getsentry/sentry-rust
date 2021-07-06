@@ -10,6 +10,7 @@ members = [
     "sentry-log",
     "sentry-panic",
     "sentry-slog",
+    "sentry-tower",
     "sentry-tracing",
     "sentry-types",
 ]

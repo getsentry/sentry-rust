@@ -73,9 +73,11 @@
 //! | `rustls`       |         |                |            | `reqwest` must be enabled. `native-tls` must be disabled via `default-features = false`. |
 //! | `curl`         |         |                |            |                                                                                          |
 //! | `surf`         |         |                |            |                                                                                          |
+//! | `tower`        |         | 🔌             |            | Requires extra setup; See [`sentry-tower`]'s documentation.                              |
 //!
 //! [`sentry-log`]: https://crates.io/crates/sentry-log
 //! [`sentry-slog`]: https://crates.io/crates/sentry-slog
+//! [`sentry-tower`]: https://crates.io/crates/sentry-tower
 //!
 //! ## Default features
 //! - `backtrace`: Enables backtrace support.
@@ -101,6 +103,9 @@
 //!   dependencies.
 //! - `curl`: Enables the curl transport.
 //! - `surf`: Enables the surf transport.
+//!
+//! ## Integrations
+//! - `tower`: Enables support for the `tower` crate and those using it.
 #![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
 #![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
 #![warn(missing_docs)]
@@ -202,6 +207,10 @@ pub mod integrations {
     #[cfg_attr(doc_cfg, doc(cfg(feature = "slog")))]
     #[doc(inline)]
     pub use sentry_slog as slog;
+    #[cfg(feature = "tower")]
+    #[cfg_attr(doc_cfg, doc(cfg(feature = "tower")))]
+    #[doc(inline)]
+    pub use sentry_tower as tower;
     #[cfg(feature = "tracing")]
     #[cfg_attr(doc_cfg, doc(cfg(feature = "tracing")))]
     #[doc(inline)]
