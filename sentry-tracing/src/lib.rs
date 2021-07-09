@@ -1,10 +1,12 @@
-//! Adds support for automatic Breadcrumb and Event capturing from tracing
-//! events, similar to the `sentry-log` crate.
+//! Adds support for automatic Breadcrumb, Event and Transaction capturing from
+//! tracing events, similar to the `sentry-log` crate.
 //!
-//! The `tracing` crate is supported in two ways. First, events can be captured
+//! The `tracing` crate is supported in three ways. First, events can be captured
 //! as breadcrumbs for later. Secondly, error events can be captured as events
-//! to Sentry. By default, anything above `Info` is recorded as breadcrumb and
-//! anything above `Error` is captured as error event.
+//! to Sentry. Finally, spans can be recorded as structured transaction events.
+//! By default, events above `Info` are recorded as breadcrumbs, events above
+//! `Error` are captured as error events, and spans above `Info` and recorded
+//! as transactions.
 //!
 //! By using this crate in combination with `tracing-subscriber` and its `log`
 //! integration, `sentry-log` does not need to be used, as logs will be ingested
@@ -35,12 +37,18 @@
 //! records:
 //!
 //! ```rust
+//! use tracing_subscriber::prelude::*;
 //! use sentry_tracing::EventFilter;
 //!
-//! let layer = sentry_tracing::layer().filter(|md| match md.level() {
-//!     &tracing::Level::ERROR => EventFilter::Event,
-//!     _ => EventFilter::Ignore,
-//! });
+//! tracing_subscriber::registry()
+//!     .with(
+//!         sentry_tracing::layer().event_filter(|md| match md.level() {
+//!             &tracing::Level::ERROR => EventFilter::Event,
+//!             _ => EventFilter::Ignore,
+//!         })
+//!     )
+//!     .try_init()
+//!     .unwrap();
 //! ```
 
 #![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
