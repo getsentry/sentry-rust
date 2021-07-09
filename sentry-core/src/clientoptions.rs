@@ -72,6 +72,8 @@ pub struct ClientOptions {
     pub environment: Option<Cow<'static, str>>,
     /// The sample rate for event submission. (0.0 - 1.0, defaults to 1.0)
     pub sample_rate: f32,
+    /// The sample rate for tracing transactions. (0.0 - 1.0, defaults to 0.0)
+    pub traces_sample_rate: f32,
     /// Maximum number of breadcrumbs. (defaults to 100)
     pub max_breadcrumbs: usize,
     /// Attaches stacktraces to messages.
@@ -179,6 +181,7 @@ impl fmt::Debug for ClientOptions {
             .field("release", &self.release)
             .field("environment", &self.environment)
             .field("sample_rate", &self.sample_rate)
+            .field("traces_sample_rate", &self.traces_sample_rate)
             .field("max_breadcrumbs", &self.max_breadcrumbs)
             .field("attach_stacktrace", &self.attach_stacktrace)
             .field("send_default_pii", &self.send_default_pii)
@@ -210,6 +213,7 @@ impl Default for ClientOptions {
             release: None,
             environment: None,
             sample_rate: 1.0,
+            traces_sample_rate: 0.0,
             max_breadcrumbs: 100,
             attach_stacktrace: false,
             send_default_pii: false,
