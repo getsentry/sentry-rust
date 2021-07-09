@@ -337,6 +337,17 @@ impl Client {
             random::<f32>() <= rate
         }
     }
+
+    /// Returns a random boolean with a probability defined
+    /// by the [`ClientOptions`]'s `traces_sample_rate`
+    pub fn sample_traces_should_send(&self) -> bool {
+        let rate = self.options.traces_sample_rate;
+        if rate >= 1.0 {
+            true
+        } else {
+            random::<f32>() <= rate
+        }
+    }
 }
 
 // Make this unwind safe. It's not out of the box because of the

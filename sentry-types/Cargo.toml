@@ -27,3 +27,5 @@ url = { version = "2.1.1", features = ["serde"] }
 chrono = { version = "0.4.13", default-features = false, features = ["clock", "std", "serde"] }
 uuid = { version = "0.8.1", features = ["v4", "serde"] }
 debugid = { version = "0.7.2", features = ["serde"] }
+getrandom = "0.2.3"
+hex = "0.4.3"
