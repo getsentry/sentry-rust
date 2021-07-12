@@ -1597,6 +1597,7 @@ impl fmt::Display for Span {
 
 /// The status of a Span.
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum SpanStatus {
     /// The operation completed successfully.
     #[serde(rename = "ok")]
