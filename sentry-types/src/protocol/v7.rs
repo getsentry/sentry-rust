@@ -7,6 +7,7 @@
 
 use std::borrow::Cow;
 use std::cmp;
+use std::convert::TryFrom;
 use std::fmt;
 use std::iter::FromIterator;
 use std::net::{AddrParseError, IpAddr};
@@ -1255,18 +1256,110 @@ pub struct BrowserContext {
     pub other: Map<String, Value>,
 }
 
+/// Holds the identifier for a Span
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, Eq, PartialEq, Hash)]
+#[serde(try_from = "String", into = "String")]
+pub struct SpanId([u8; 8]);
+
+impl Default for SpanId {
+    fn default() -> Self {
+        let mut buf = [0; 8];
+
+        getrandom::getrandom(&mut buf)
+            .unwrap_or_else(|err| panic!("could not retrieve random bytes for SpanId: {}", err));
+
+        Self(buf)
+    }
+}
+
+impl fmt::Display for SpanId {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "{}", hex::encode(&self.0))
+    }
+}
+
+impl From<SpanId> for String {
+    fn from(span_id: SpanId) -> Self {
+        span_id.to_string()
+    }
+}
+
+impl str::FromStr for SpanId {
+    type Err = hex::FromHexError;
+
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        let mut buf = [0; 8];
+        hex::decode_to_slice(input, &mut buf)?;
+        Ok(Self(buf))
+    }
+}
+
+impl TryFrom<String> for SpanId {
+    type Error = hex::FromHexError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        value.parse()
+    }
+}
+
+/// Holds the identifier for a Trace
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, Eq, PartialEq, Hash)]
+#[serde(try_from = "String", into = "String")]
+pub struct TraceId([u8; 16]);
+
+impl Default for TraceId {
+    fn default() -> Self {
+        let mut buf = [0; 16];
+
+        getrandom::getrandom(&mut buf)
+            .unwrap_or_else(|err| panic!("could not retrieve random bytes for TraceId: {}", err));
+
+        Self(buf)
+    }
+}
+
+impl fmt::Display for TraceId {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "{}", hex::encode(&self.0))
+    }
+}
+
+impl From<TraceId> for String {
+    fn from(trace_id: TraceId) -> Self {
+        trace_id.to_string()
+    }
+}
+
+impl str::FromStr for TraceId {
+    type Err = hex::FromHexError;
+
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        let mut buf = [0; 16];
+        hex::decode_to_slice(input, &mut buf)?;
+        Ok(Self(buf))
+    }
+}
+
+impl TryFrom<String> for TraceId {
+    type Error = hex::FromHexError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        value.parse()
+    }
+}
+
 /// Holds information about a tracing event.
 #[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
 pub struct TraceContext {
     /// The ID of the trace event
-    #[serde(default = "event::default_id", serialize_with = "event::serialize_id")]
-    pub span_id: Uuid,
+    #[serde(default)]
+    pub span_id: SpanId,
     /// Determines which trace the transaction belongs to.
-    #[serde(default = "event::default_id", serialize_with = "event::serialize_id")]
-    pub trace_id: Uuid,
+    #[serde(default)]
+    pub trace_id: TraceId,
     /// Determines the parent of this transaction if any.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub parent_span_id: Option<String>,
+    pub parent_span_id: Option<SpanId>,
     /// Short code identifying the type of operation the transaction is measuring.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub op: Option<String>,
@@ -1520,14 +1613,14 @@ impl<'a> fmt::Display for Event<'a> {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Span {
     /// The ID of the span
-    #[serde(default = "event::default_id", serialize_with = "event::serialize_id")]
-    pub span_id: Uuid,
+    #[serde(default)]
+    pub span_id: SpanId,
     /// Determines which trace the span belongs to.
-    #[serde(default = "event::default_id", serialize_with = "event::serialize_id")]
-    pub trace_id: Uuid,
+    #[serde(default)]
+    pub trace_id: TraceId,
     /// Determines the parent of this span, if any.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub parent_span_id: Option<String>,
+    pub parent_span_id: Option<SpanId>,
     /// Determines whether this span is generated in the same process as its parent, if any.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub same_process_as_parent: Option<bool>,
@@ -1558,8 +1651,8 @@ pub struct Span {
 impl Default for Span {
     fn default() -> Self {
         Span {
-            span_id: event::default_id(),
-            trace_id: event::default_id(),
+            span_id: Default::default(),
+            trace_id: Default::default(),
             timestamp: Default::default(),
             tags: Default::default(),
             start_timestamp: event::default_timestamp(),
@@ -1715,7 +1808,11 @@ pub struct Transaction<'a> {
     #[serde(default = "event::default_id", serialize_with = "event::serialize_id")]
     pub event_id: Uuid,
     /// The transaction name.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "transaction",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub name: Option<String>,
     /// Optional tags to be attached to the event.
     #[serde(default, skip_serializing_if = "Map::is_empty")]
