@@ -1595,6 +1595,11 @@ impl fmt::Display for Span {
     }
 }
 
+/// An error used when parsing `SpanStatus`.
+#[derive(Debug, Error)]
+#[error("invalid status")]
+pub struct ParseStatusError;
+
 /// The status of a Span.
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[non_exhaustive]
@@ -1653,7 +1658,7 @@ pub enum SpanStatus {
 }
 
 impl str::FromStr for SpanStatus {
-    type Err = ParseLevelError;
+    type Err = ParseStatusError;
 
     fn from_str(s: &str) -> Result<SpanStatus, Self::Err> {
         Ok(match s {
@@ -1674,7 +1679,7 @@ impl str::FromStr for SpanStatus {
             "aborted" => SpanStatus::Aborted,
             "out_of_range" => SpanStatus::OutOfRange,
             "data_loss" => SpanStatus::DataLoss,
-            _ => return Err(ParseLevelError),
+            _ => return Err(ParseStatusError),
         })
     }
 }
