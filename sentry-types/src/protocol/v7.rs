@@ -1275,7 +1275,7 @@ pub struct TraceContext {
     pub description: Option<String>,
     /// Describes the status of the span (e.g. `ok`, `cancelled`, etc.)
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub status: Option<String>,
+    pub status: Option<SpanStatus>,
 }
 
 macro_rules! into_context {
@@ -1546,7 +1546,7 @@ pub struct Span {
     pub start_timestamp: DateTime<Utc>,
     /// Describes the status of the span (e.g. `ok`, `cancelled`, etc.)
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub status: Option<String>,
+    pub status: Option<SpanStatus>,
     /// Optional tags to be attached to the span.
     #[serde(default, skip_serializing_if = "Map::is_empty")]
     pub tags: Map<String, String>,
@@ -1592,6 +1592,113 @@ impl fmt::Display for Span {
             "Span(id: {}, ts: {})",
             self.span_id, self.start_timestamp
         )
+    }
+}
+
+/// The status of a Span.
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum SpanStatus {
+    /// The operation completed successfully.
+    #[serde(rename = "ok")]
+    Ok,
+    /// Deadline expired before operation could complete.
+    #[serde(rename = "deadline_exceeded")]
+    DeadlineExceeded,
+    /// 401 Unauthorized (actually does mean unauthenticated according to RFC 7235)
+    #[serde(rename = "unauthenticated")]
+    Unauthenticated,
+    /// 403 Forbidden
+    #[serde(rename = "permission_denied")]
+    PermissionDenied,
+    /// 404 Not Found. Some requested entity (file or directory) was not found.
+    #[serde(rename = "not_found")]
+    NotFound,
+    /// 429 Too Many Requests
+    #[serde(rename = "resource_exhausted")]
+    ResourceExhausted,
+    /// Client specified an invalid argument. 4xx.
+    #[serde(rename = "invalid_argument")]
+    InvalidArgument,
+    /// 501 Not Implemented
+    #[serde(rename = "unimplemented")]
+    Unimplemented,
+    /// 503 Service Unavailable
+    #[serde(rename = "unavailable")]
+    Unavailable,
+    /// Other/generic 5xx.
+    #[serde(rename = "internal_error")]
+    InternalError,
+    /// Unknown. Any non-standard HTTP status code.
+    #[serde(rename = "unknown_error")]
+    UnknownError,
+    /// The operation was cancelled (typically by the user).
+    #[serde(rename = "cancelled")]
+    Cancelled,
+    /// Already exists (409)
+    #[serde(rename = "already_exists")]
+    AlreadyExists,
+    /// Operation was rejected because the system is not in a state required for the operation's
+    #[serde(rename = "failed_precondition")]
+    FailedPrecondition,
+    /// The operation was aborted, typically due to a concurrency issue.
+    #[serde(rename = "aborted")]
+    Aborted,
+    /// Operation was attempted past the valid range.
+    #[serde(rename = "out_of_range")]
+    OutOfRange,
+    /// Unrecoverable data loss or corruption
+    #[serde(rename = "data_loss")]
+    DataLoss,
+}
+
+impl str::FromStr for SpanStatus {
+    type Err = ParseLevelError;
+
+    fn from_str(s: &str) -> Result<SpanStatus, Self::Err> {
+        Ok(match s {
+            "ok" => SpanStatus::Ok,
+            "deadline_exceeded" => SpanStatus::DeadlineExceeded,
+            "unauthenticated" => SpanStatus::Unauthenticated,
+            "permission_denied" => SpanStatus::PermissionDenied,
+            "not_found" => SpanStatus::NotFound,
+            "resource_exhausted" => SpanStatus::ResourceExhausted,
+            "invalid_argument" => SpanStatus::InvalidArgument,
+            "unimplemented" => SpanStatus::Unimplemented,
+            "unavailable" => SpanStatus::Unavailable,
+            "internal_error" => SpanStatus::InternalError,
+            "unknown_error" => SpanStatus::UnknownError,
+            "cancelled" => SpanStatus::Cancelled,
+            "already_exists" => SpanStatus::AlreadyExists,
+            "failed_precondition" => SpanStatus::FailedPrecondition,
+            "aborted" => SpanStatus::Aborted,
+            "out_of_range" => SpanStatus::OutOfRange,
+            "data_loss" => SpanStatus::DataLoss,
+            _ => return Err(ParseLevelError),
+        })
+    }
+}
+
+impl fmt::Display for SpanStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            SpanStatus::Ok => write!(f, "ok"),
+            SpanStatus::DeadlineExceeded => write!(f, "deadline_exceeded"),
+            SpanStatus::Unauthenticated => write!(f, "unauthenticated"),
+            SpanStatus::PermissionDenied => write!(f, "permission_denied"),
+            SpanStatus::NotFound => write!(f, "not_found"),
+            SpanStatus::ResourceExhausted => write!(f, "resource_exhausted"),
+            SpanStatus::InvalidArgument => write!(f, "invalid_argument"),
+            SpanStatus::Unimplemented => write!(f, "unimplemented"),
+            SpanStatus::Unavailable => write!(f, "unavailable"),
+            SpanStatus::InternalError => write!(f, "internal_error"),
+            SpanStatus::UnknownError => write!(f, "unknown_error"),
+            SpanStatus::Cancelled => write!(f, "cancelled"),
+            SpanStatus::AlreadyExists => write!(f, "already_exists"),
+            SpanStatus::FailedPrecondition => write!(f, "failed_precondition"),
+            SpanStatus::Aborted => write!(f, "aborted"),
+            SpanStatus::OutOfRange => write!(f, "out_of_range"),
+            SpanStatus::DataLoss => write!(f, "data_loss"),
+        }
     }
 }
 
