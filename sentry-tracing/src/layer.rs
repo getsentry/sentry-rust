@@ -219,9 +219,9 @@ impl<S> SentryLayer<S> {
         self
     }
 
-    /// Sets a custom span on_close hook.
+    /// Sets a custom span `on_close` hook.
     ///
-    /// The hook is called with [`Timings`] informations when a [`tracing::Span`]
+    /// The hook is called with [`Timings`] information when a [`tracing::Span`]
     /// is closed, and can mutate the associated [`protocol::Span`] accordingly.
     pub fn span_on_close<F>(mut self, on_close: F) -> Self
     where

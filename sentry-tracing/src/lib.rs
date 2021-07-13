@@ -5,7 +5,7 @@
 //! as breadcrumbs for later. Secondly, error events can be captured as events
 //! to Sentry. Finally, spans can be recorded as structured transaction events.
 //! By default, events above `Info` are recorded as breadcrumbs, events above
-//! `Error` are captured as error events, and spans above `Info` and recorded
+//! `Error` are captured as error events, and spans above `Info` are recorded
 //! as transactions.
 //!
 //! By using this crate in combination with `tracing-subscriber` and its `log`
