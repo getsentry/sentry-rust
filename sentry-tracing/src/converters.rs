@@ -122,7 +122,8 @@ where
                 ..TraceContext::default()
             });
 
-            result.contexts.insert(context.type_name().into(), context);
+            result.contexts.insert(String::from("trace"), context);
+
             result.transaction = parent
                 .parent()
                 .into_iter()

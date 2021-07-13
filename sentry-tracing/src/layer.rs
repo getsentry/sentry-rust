@@ -80,7 +80,7 @@ where
     let (description, data) = extract_span_data(attrs);
 
     let trace_id = parent
-        .map(|parent| parent.trace_id.clone())
+        .map(|parent| parent.trace_id)
         .unwrap_or_else(TraceId::default);
 
     protocol::Span {
@@ -127,9 +127,9 @@ where
             span_id: sentry_span.span_id,
             trace_id: sentry_span.trace_id,
             parent_span_id: sentry_span.parent_span_id,
-            op: sentry_span.op.clone(),
-            description: sentry_span.description.clone(),
-            status: sentry_span.status.clone(),
+            op: sentry_span.op,
+            description: sentry_span.description,
+            status: sentry_span.status,
         })),
     );
 
@@ -291,7 +291,10 @@ where
     /// When a new Span gets created, run the filter and initialize the trace extension
     /// if it passes
     fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
-        let span = ctx.span(id).expect("Span not found, this is a bug");
+        let span = match ctx.span(id) {
+            Some(span) => span,
+            None => return,
+        };
 
         if !(self.span_filter)(span.metadata()) {
             return;
@@ -319,9 +322,12 @@ where
     /// From the tracing-subscriber implementation of span timings,
     /// keep track of when the span was last entered
     fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
-        let span = ctx.span(id).expect("Span not found, this is a bug");
-        let mut extensions = span.extensions_mut();
+        let span = match ctx.span(id) {
+            Some(span) => span,
+            None => return,
+        };
 
+        let mut extensions = span.extensions_mut();
         if let Some(timings) = extensions.get_mut::<Trace>() {
             let now = Instant::now();
             timings.idle += (now - timings.last).as_nanos() as u64;
@@ -332,9 +338,12 @@ where
     /// From the tracing-subscriber implementation of span timings,
     /// keep track of when the span was last exited
     fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
-        let span = ctx.span(id).expect("Span not found, this is a bug");
-        let mut extensions = span.extensions_mut();
+        let span = match ctx.span(id) {
+            Some(span) => span,
+            None => return,
+        };
 
+        let mut extensions = span.extensions_mut();
         if let Some(timings) = extensions.get_mut::<Trace>() {
             let now = Instant::now();
             timings.busy += (now - timings.last).as_nanos() as u64;
@@ -347,9 +356,12 @@ where
     /// attach it to a parent span or submit it as a Transaction if
     /// it is a root of the span tree
     fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
-        let span = ctx.span(&id).expect("Span not found, this is a bug");
-        let mut extensions = span.extensions_mut();
+        let span = match ctx.span(&id) {
+            Some(span) => span,
+            None => return,
+        };
 
+        let mut extensions = span.extensions_mut();
         let mut trace = match extensions.remove::<Trace>() {
             Some(trace) => trace,
             None => return,
@@ -384,7 +396,11 @@ where
         // transaction root and submit it to Sentry
         let span = &span;
         Hub::with_active(move |hub| {
-            let client = hub.client().unwrap();
+            let client = match hub.client() {
+                Some(client) => client,
+                None => return,
+            };
+
             if !client.sample_traces_should_send() {
                 return;
             }

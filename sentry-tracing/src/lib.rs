@@ -40,13 +40,13 @@
 //! use tracing_subscriber::prelude::*;
 //! use sentry_tracing::EventFilter;
 //!
+//! let layer = sentry_tracing::layer().event_filter(|md| match md.level() {
+//!     &tracing::Level::ERROR => EventFilter::Event,
+//!     _ => EventFilter::Ignore,
+//! });
+//!
 //! tracing_subscriber::registry()
-//!     .with(
-//!         sentry_tracing::layer().event_filter(|md| match md.level() {
-//!             &tracing::Level::ERROR => EventFilter::Event,
-//!             _ => EventFilter::Ignore,
-//!         })
-//!     )
+//!     .with(layer)
 //!     .try_init()
 //!     .unwrap();
 //! ```
