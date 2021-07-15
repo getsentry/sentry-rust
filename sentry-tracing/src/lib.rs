@@ -24,7 +24,6 @@
 //! #[tokio::main]
 //! async fn main() {
 //!     let _guard = sentry::init(sentry::ClientOptions {
-//!         dsn: "<dsn>".parse().ok(),
 //!         // Set this a to lower value in production
 //!         traces_sample_rate: 1.0,
 //!         ..sentry::ClientOptions::default()
@@ -67,11 +66,16 @@
 //!
 //! ```rust
 //! use sentry_tracing::EventFilter;
+//! use tracing_subscriber::prelude::*;
 //!
-//! let layer = sentry_tracing::layer().filter(|md| match md.level() {
+//! let layer = sentry_tracing::layer().event_filter(|md| match md.level() {
 //!     &tracing::Level::ERROR => EventFilter::Event,
 //!     _ => EventFilter::Ignore,
 //! });
+//!
+//! tracing_subscriber::registry()
+//!     .with(layer)
+//!     .init();
 //! ```
 
 #![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
