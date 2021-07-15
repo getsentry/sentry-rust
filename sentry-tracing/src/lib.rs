@@ -13,42 +13,65 @@
 //! in the tracing system and generate events, thus be relayed to this crate. It
 //! effectively replaces `sentry-log` when tracing is used.
 //!
-//! ## Examples
+//! # Examples
 //!
 //! ```rust
+//! use std::time::Duration;
+//!
+//! use tokio::time::sleep;
 //! use tracing_subscriber::prelude::*;
 //!
-//! tracing_subscriber::registry()
-//!     .with(tracing_subscriber::fmt::layer())
-//!     .with(sentry_tracing::layer())
-//!     .try_init()
-//!     .unwrap();
+//! #[tokio::main]
+//! async fn main() {
+//!     let _guard = sentry::init(sentry::ClientOptions {
+//!         dsn: "<dsn>".parse().ok(),
+//!         // Set this a to lower value in production
+//!         traces_sample_rate: 1.0,
+//!         ..sentry::ClientOptions::default()
+//!     });
 //!
-//! let _sentry = sentry::init(());
+//!     tracing_subscriber::registry()
+//!         .with(tracing_subscriber::fmt::layer())
+//!         .with(sentry_tracing::layer())
+//!         .init();
 //!
-//! tracing::info!("Generates a breadcrumb");
-//! tracing::error!("Generates an event");
-//! // Also works, since log events are ingested by the tracing system
-//! log::info!("Generates a breadcrumb");
-//! log::error!("Generates an event");
+//!     outer().await;
+//! }
+//!
+//! // Functions instrumented by tracing automatically report
+//! // their span as transactions
+//! #[tracing::instrument]
+//! async fn outer() {
+//!     tracing::info!("Generates a breadcrumb");
+//!
+//!     for _ in 0..10 {
+//!         inner().await;
+//!     }
+//!
+//!     tracing::error!("Generates an event");
+//! }
+//!
+//! #[tracing::instrument]
+//! async fn inner() {
+//!     // Also works, since log events are ingested by the tracing system
+//!     log::info!("Generates a breadcrumb");
+//!
+//!     sleep(Duration::from_millis(100)).await;
+//!
+//!     log::error!("Generates an event");
+//! }
 //! ```
 //!
 //! Or one might also set an explicit filter, to customize how to treat log
 //! records:
 //!
 //! ```rust
-//! use tracing_subscriber::prelude::*;
 //! use sentry_tracing::EventFilter;
 //!
-//! let layer = sentry_tracing::layer().event_filter(|md| match md.level() {
+//! let layer = sentry_tracing::layer().filter(|md| match md.level() {
 //!     &tracing::Level::ERROR => EventFilter::Event,
 //!     _ => EventFilter::Ignore,
 //! });
-//!
-//! tracing_subscriber::registry()
-//!     .with(layer)
-//!     .try_init()
-//!     .unwrap();
 //! ```
 
 #![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
