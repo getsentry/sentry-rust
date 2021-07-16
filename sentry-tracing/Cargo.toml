@@ -14,9 +14,10 @@ edition = "2018"
 [dependencies]
 sentry-core = { version = "0.23.0", path = "../sentry-core" }
 tracing-core = "0.1"
-tracing-subscriber = "0.2"
+tracing-subscriber = "0.2.19"
 
 [dev-dependencies]
 log = "0.4"
 sentry = { version = "0.23.0", path = "../sentry", default-features = false, features = ["test"] }
 tracing = "0.1"
+tokio = { version = "1.8", features = ["rt-multi-thread", "macros", "time"] }
