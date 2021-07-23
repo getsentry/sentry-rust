@@ -60,6 +60,43 @@
 //!     .timeout(Duration::from_secs(30))
 //!     .service(tower::service_fn(|req: Request| format!("{} world", req)));
 //! ```
+//!
+//! When using Tonic, the layer can be used directly by the Tonic stack:
+//!
+//! ```rust,no_run
+//! # use anyhow::*;
+//! # use sentry_anyhow::capture_anyhow;
+//! # use tonic::{Request, Response, Status, transport::Server};
+//! # mod hello_world {
+//! #     include!("helloworld.rs");
+//! # }
+//! use sentry_tower::NewSentryLayer;
+//! use hello_world::{*, greeter_server::*};
+//!
+//! struct GreeterService;
+//!
+//! #[tonic::async_trait]
+//! impl Greeter for GreeterService {
+//!     async fn say_hello(&self, req: Request<HelloRequest>) -> Result<Response<HelloReply>, Status> {
+//!         let HelloRequest { name } = req.into_inner();
+//!         if name == "world" {
+//!             capture_anyhow(&anyhow!("Trying to greet a planet"));
+//!             return Err(Status::invalid_argument("Cannot greet a planet"));
+//!         }
+//!         Ok(Response::new(HelloReply { message: format!("Hello {}", name) }))
+//!     }
+//! }
+//!
+//! # #[tokio::main]
+//! # async fn main() -> Result<()> {
+//! Server::builder()
+//!     .layer(NewSentryLayer::new_from_top())
+//!     .add_service(GreeterServer::new(GreeterService))
+//!     .serve("127.0.0.1:50051".parse().unwrap())
+//!     .await?;
+//! #     Ok(())
+//! # }
+//! ```
 
 #![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
 #![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
