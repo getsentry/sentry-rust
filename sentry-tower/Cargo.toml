@@ -1,0 +1,26 @@
+[package]
+name = "sentry-tower"
+version = "0.23.0"
+authors = ["Sentry <hello@sentry.io>"]
+license = "Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/getsentry/sentry-rust"
+homepage = "https://sentry.io/welcome/"
+description = """
+Sentry integration for tower-based crates.
+"""
+edition = "2018"
+
+[dependencies]
+tower-layer = "0.3"
+tower-service = "0.3"
+sentry-core = { version = "0.23.0", path = "../sentry-core", default-features = false, features = ["client"] }
+
+[dev-dependencies]
+anyhow = "1"
+prost = "0.8"
+sentry = { version = "0.23.0", path = "../sentry", default-features = false, features = ["test"] }
+sentry-anyhow = { version = "0.23.0", path = "../sentry-anyhow" }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tonic = { version = "0.5", features = ["transport"] }
+tower = { version = "0.4", features = ["util", "timeout"] }
