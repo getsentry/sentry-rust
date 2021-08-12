@@ -1,4 +1,4 @@
-//! Adds support for automatic hub binding for each request recieved by the Tower server (or client,
+//! Adds support for automatic hub binding for each request received by the Tower server (or client,
 //! though usefulness is limited in this case).
 //!
 //! This allows breadcrumbs collected during the request handling to land in a specific hub, and
@@ -140,6 +140,11 @@ pub struct NewFromTopProvider;
 
 impl<Request> HubProvider<Arc<Hub>, Request> for NewFromTopProvider {
     fn hub(&self, _request: &Request) -> Arc<Hub> {
+        // The Clippy lint here is a falste positive, the suggestion to write
+        // `Hub::with(Hub::new_from_top)` does not compiles:
+        //     143 |         Hub::with(Hub::new_from_top).into()
+        //         |         ^^^^^^^^^ implementation of `std::ops::FnOnce` is not general enough
+        #[allow(clippy::redundant_closure)]
         Hub::with(|hub| Hub::new_from_top(hub)).into()
     }
 }

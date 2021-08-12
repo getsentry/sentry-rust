@@ -29,6 +29,7 @@ fn test_tower_hub() {
         });
         sentry::capture_message("Started service", Level::Info);
 
+        #[allow(clippy::redundant_closure)]
         let hub = Arc::new(Hub::with(|hub| Hub::new_from_top(hub)));
         hub.bind_client(Some(Arc::new(opts.into())));
 

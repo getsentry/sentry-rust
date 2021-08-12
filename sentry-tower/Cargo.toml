@@ -14,12 +14,7 @@ edition = "2018"
 [dependencies]
 tower-layer = "0.3"
 tower-service = "0.3"
-
-[dependencies.sentry-core]
-version = "0.23.0"
-path = "../sentry-core"
-default-features = false
-features = ["client"]
+sentry-core = { version = "0.23.0", path = "../sentry-core", default-features = false, features = ["client"] }
 
 [dev-dependencies]
 anyhow = "1"
