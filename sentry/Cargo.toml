@@ -40,7 +40,8 @@ debug-logs = ["log_", "sentry-core/debug-logs"]
 transport = ["reqwest", "native-tls"]
 reqwest = ["reqwest_", "httpdate"]
 curl = ["curl_", "httpdate", "serde_json"]
-surf = ["surf_", "httpdate"]
+surf-h1 = ["surf_/h1-client", "httpdate"]
+surf = ["surf_/curl-client", "httpdate"]
 native-tls = ["reqwest_/default-tls"]
 rustls = ["reqwest_/rustls-tls"]
 
@@ -58,8 +59,8 @@ sentry-tracing = { version = "0.23.0", path = "../sentry-tracing", optional = tr
 log_ = { package = "log", version = "0.4.8", optional = true, features = ["std"] }
 reqwest_ = { package = "reqwest", version = "0.11", optional = true, features = ["blocking", "json"], default-features = false }
 curl_ = { package = "curl", version = "0.4.25", optional = true }
-surf_ = { package = "surf", version = "2.0.0", optional = true }
 httpdate = { version = "1.0.0", optional = true }
+surf_ = { package = "surf", version = "2.0.0", optional = true, default-features = false }
 serde_json = { version = "1.0.48", optional = true }
 tokio = { version = "1.0", features = ["rt"] }
 
