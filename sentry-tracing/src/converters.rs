@@ -168,17 +168,12 @@ where
         module,
         ..Default::default()
     };
-    let culprit = match (event.metadata().file(), event.metadata().line()) {
-        (Some(f), Some(l)) => Some(format!("{}L{}", f, l)),
-        _ => None,
-    };
     let mut result = Event {
         logger: Some(event.metadata().target().to_owned()),
         level: convert_tracing_level(event.metadata().level()),
         message,
         extra,
         exception: vec![exception].into(),
-        culprit,
         ..Default::default()
     };
 
