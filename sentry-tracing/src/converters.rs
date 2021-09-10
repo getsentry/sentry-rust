@@ -1,4 +1,5 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
+use std::error::Error;
 
 use tracing_core::{
     field::{Field, Visit},
@@ -11,6 +12,7 @@ use sentry_core::protocol::{self, Event, Exception, TraceContext, Value};
 use sentry_core::{Breadcrumb, Level};
 
 use crate::Trace;
+use std::iter::FromIterator;
 
 /// Converts a [`tracing_core::Level`] to a Sentry [`Level`]
 pub fn convert_tracing_level(level: &tracing_core::Level) -> Level {
@@ -78,6 +80,27 @@ impl Visit for BTreeMapRecorder {
     }
     fn record_str(&mut self, field: &Field, value: &str) {
         self.record(field, value);
+    }
+    fn record_error(&mut self, field: &Field, value: &(dyn Error + 'static)) {
+        let value: HashMap<String, Value> = {
+            let mut h: HashMap<String, Value> = HashMap::new();
+            h.insert(
+                "ty".into(),
+                std::any::type_name::<dyn Error>().to_string().into(),
+            );
+            h.insert("value".into(), value.to_string().into());
+            h.insert(
+                "backtrace".into(),
+                value
+                    .source()
+                    .map(|bt| bt.to_string())
+                    .unwrap_or_else(|| String::from("none"))
+                    .into(),
+            );
+            h
+        };
+        let map = protocol::value::Map::from_iter(value.into_iter());
+        self.record(field, Value::Object(map))
     }
 }
 
