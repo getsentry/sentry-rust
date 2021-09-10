@@ -1,13 +1,14 @@
 use std::collections::BTreeMap;
 
-use sentry_core::protocol::{self, Event, TraceContext, Value};
-use sentry_core::{Breadcrumb, Level};
 use tracing_core::{
     field::{Field, Visit},
     span, Subscriber,
 };
 use tracing_subscriber::layer::Context;
 use tracing_subscriber::registry::LookupSpan;
+
+use sentry_core::protocol::{self, Event, Exception, TraceContext, Value};
+use sentry_core::{Breadcrumb, Level};
 
 use crate::Trace;
 
@@ -141,9 +142,66 @@ pub fn exception_from_event<S>(event: &tracing_core::Event, ctx: Context<S>) -> 
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
+    const DEFAULT_EXCEPTION_TYPE: &str = "Unknown";
+    const DEFAULT_ERROR_VALUE_KEY: &str = "error";
+    const DEFAULT_ERROR_TYPE_KEY: &str = "error_kind";
+
     // TODO: Exception records in Sentry need a valid type, value and full stack trace to support
     // proper grouping and issue metadata generation. tracing_core::Record does not contain sufficient
     // information for this. However, it may contain a serialized error which we can parse to emit
     // an exception record.
-    event_from_event(event, ctx)
+    let (message, mut extra) = extract_event_data(event);
+    let ty = extra
+        .remove(DEFAULT_ERROR_TYPE_KEY)
+        .map(|v| v.as_str().map(|s| s.to_owned()))
+        .flatten()
+        .unwrap_or_else(|| String::from(DEFAULT_EXCEPTION_TYPE));
+    let value = extra
+        .remove(DEFAULT_ERROR_VALUE_KEY)
+        .map(|v| v.as_str().map(|s| s.to_owned()))
+        .flatten()
+        .or_else(|| message.clone());
+    let module = event.metadata().module_path().map(|s| s.to_string());
+    let exception = Exception {
+        ty,
+        value,
+        module,
+        ..Default::default()
+    };
+    let culprit = match (event.metadata().file(), event.metadata().line()) {
+        (Some(f), Some(l)) => Some(format!("{}L{}", f, l)),
+        _ => None,
+    };
+    let mut result = Event {
+        logger: Some(event.metadata().target().to_owned()),
+        level: convert_tracing_level(event.metadata().level()),
+        message,
+        extra,
+        exception: vec![exception].into(),
+        culprit,
+        ..Default::default()
+    };
+
+    let parent = event
+        .parent()
+        .and_then(|id| ctx.span(id))
+        .or_else(|| ctx.lookup_current());
+    if let Some(parent) = parent {
+        let extensions = parent.extensions();
+        if let Some(trace) = extensions.get::<Trace>() {
+            let context = protocol::Context::from(TraceContext {
+                span_id: trace.span.span_id,
+                trace_id: trace.span.trace_id,
+                ..TraceContext::default()
+            });
+            result.contexts.insert(String::from("trace"), context);
+            result.transaction = parent
+                .parent()
+                .into_iter()
+                .flat_map(|span| span.scope())
+                .last()
+                .map(|root| root.name().into());
+        }
+    }
+    result
 }
