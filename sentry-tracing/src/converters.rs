@@ -174,14 +174,14 @@ where
 
     let (message, mut visitor) = extract_event_data(event);
 
-    let ty = event.metadata().name().into();
-    let value = visitor
-        .json_values
-        .remove(DEFAULT_ERROR_VALUE_KEY)
-        .map(|v| v.as_str().map(|s| s.to_owned()))
-        .flatten()
-        .or_else(|| message.clone());
     let exception = if visitor.exceptions.is_empty() {
+        let ty = event.metadata().name().into();
+        let value = visitor
+            .json_values
+            .remove(DEFAULT_ERROR_VALUE_KEY)
+            .map(|v| v.as_str().map(|s| s.to_owned()))
+            .flatten()
+            .or_else(|| message.clone());
         vec![Exception {
             ty,
             value,
