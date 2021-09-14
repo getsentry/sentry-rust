@@ -127,7 +127,10 @@ fn add_parent_transaction_to_event<S>(
             let context = protocol::Context::from(TraceContext {
                 span_id: trace.span.span_id,
                 trace_id: trace.span.trace_id,
-                ..TraceContext::default()
+                parent_span_id: trace.span.parent_span_id,
+                op: trace.span.op.clone(),
+                description: trace.span.description.clone(),
+                status: trace.span.status,
             });
 
             sentry_event.contexts.insert(String::from("trace"), context);
