@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Breaking Changes**:
+
+- The `backtrace` feature of `sentry-anyhow` is enabled by default. ([362](https://github.com/getsentry/sentry-rust/pull/362))
+
 ## 0.23.0
 
 **Breaking Changes**:
