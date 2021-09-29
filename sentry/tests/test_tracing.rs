@@ -7,10 +7,9 @@ use tracing_subscriber::prelude::*;
 #[test]
 fn test_tracing() {
     // Don't configure the fmt layer to avoid logging to test output
-    tracing_subscriber::registry()
+    let _dispatcher = tracing_subscriber::registry()
         .with(sentry_tracing::layer())
-        .try_init()
-        .unwrap();
+        .set_default();
 
     let events = sentry::test::with_captured_events(|| {
         sentry::configure_scope(|scope| {
@@ -53,4 +52,36 @@ fn test_tracing() {
         event.breadcrumbs[1].message,
         Some("Hello Logging World!".into())
     );
+}
+
+#[tracing::instrument(fields(span_field))]
+fn function() {
+    tracing::Span::current().record("span_field", &"some data");
+}
+
+#[test]
+fn test_span_record() {
+    let _dispatcher = tracing_subscriber::registry()
+        .with(sentry_tracing::layer())
+        .set_default();
+
+    let options = sentry::ClientOptions{
+        traces_sample_rate: 1.0,
+        ..Default::default()
+    };
+
+    let envelopes = sentry::test::with_captured_envelopes_options(|| {
+        let _span = tracing::span!(tracing::Level::INFO, "span").entered();
+        function();
+    }, options);
+
+    assert_eq!(envelopes.len(), 1);
+
+    let envelope_item = envelopes[0].items().next().unwrap();
+    let ref transaction = match envelope_item {
+        sentry::protocol::EnvelopeItem::Transaction(t) => t,
+        _ => { assert!(false); return; }
+    };
+
+    assert_eq!(transaction.spans[0].data["span_field"].as_str().unwrap(), "some data");
 }

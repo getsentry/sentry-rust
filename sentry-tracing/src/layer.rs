@@ -410,6 +410,27 @@ where
             client.send_envelope(envelope);
         });
     }
+
+    /// Implement the writing of extra data to span
+    fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, S>) {
+        let span = match ctx.span(span) {
+            Some(s) => s,
+            _ => return
+        };
+
+        let mut extensions_holder = span.extensions_mut();
+        let trace = match extensions_holder.get_mut::<Trace>() {
+            Some(t) => t,
+            _ => return
+        };
+
+        let mut data = BTreeMapRecorder::default();
+        values.record(&mut data);
+
+        for (key, value) in data.0 {
+            trace.span.data.insert(key, value);
+        }
+    }
 }
 
 /// Timing informations for a given Span
