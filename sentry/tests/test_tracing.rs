@@ -65,23 +65,32 @@ fn test_span_record() {
         .with(sentry_tracing::layer())
         .set_default();
 
-    let options = sentry::ClientOptions{
+    let options = sentry::ClientOptions {
         traces_sample_rate: 1.0,
         ..Default::default()
     };
 
-    let envelopes = sentry::test::with_captured_envelopes_options(|| {
-        let _span = tracing::span!(tracing::Level::INFO, "span").entered();
-        function();
-    }, options);
+    let envelopes = sentry::test::with_captured_envelopes_options(
+        || {
+            let _span = tracing::span!(tracing::Level::INFO, "span").entered();
+            function();
+        },
+        options,
+    );
 
     assert_eq!(envelopes.len(), 1);
 
     let envelope_item = envelopes[0].items().next().unwrap();
     let ref transaction = match envelope_item {
         sentry::protocol::EnvelopeItem::Transaction(t) => t,
-        _ => { assert!(false); return; }
+        _ => {
+            assert!(false);
+            return;
+        }
     };
 
-    assert_eq!(transaction.spans[0].data["span_field"].as_str().unwrap(), "some data");
+    assert_eq!(
+        transaction.spans[0].data["span_field"].as_str().unwrap(),
+        "some data"
+    );
 }

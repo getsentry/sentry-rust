@@ -415,13 +415,13 @@ where
     fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, S>) {
         let span = match ctx.span(span) {
             Some(s) => s,
-            _ => return
+            _ => return,
         };
 
         let mut extensions_holder = span.extensions_mut();
         let trace = match extensions_holder.get_mut::<Trace>() {
             Some(t) => t,
-            _ => return
+            _ => return,
         };
 
         let mut data = BTreeMapRecorder::default();
