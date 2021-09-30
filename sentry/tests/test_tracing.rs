@@ -83,10 +83,7 @@ fn test_span_record() {
     let envelope_item = envelopes[0].items().next().unwrap();
     let ref transaction = match envelope_item {
         sentry::protocol::EnvelopeItem::Transaction(t) => t,
-        _ => {
-            assert!(false);
-            return;
-        }
+        _ => panic!("expected only a transaction item"),
     };
 
     assert_eq!(
