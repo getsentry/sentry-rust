@@ -14,7 +14,7 @@ use std::net::{AddrParseError, IpAddr};
 use std::ops;
 use std::str;
 
-use ::debugid::DebugId;
+use ::debugid::{CodeId, DebugId};
 use chrono::{DateTime, Utc};
 use serde::Serializer;
 use serde::{Deserialize, Serialize};
@@ -40,7 +40,7 @@ pub mod map {
 
 /// Represents a debug ID.
 pub mod debugid {
-    pub use debugid::{BreakpadFormat, DebugId, ParseDebugIdError};
+    pub use debugid::{BreakpadFormat, CodeId, DebugId, ParseDebugIdError};
 }
 
 /// An arbitrary (JSON) value.
@@ -987,6 +987,13 @@ pub struct SymbolicDebugImage {
     pub image_vmaddr: Addr,
     /// The unique debug id of the image.
     pub id: DebugId,
+
+    /// Identifier of the executable file.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub code_id: Option<CodeId>,
+    /// Name / File of the debug file.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub debug_file: Option<String>,
 }
 
 /// Represents a proguard mapping file reference.

@@ -1,8 +1,7 @@
 use std::env;
 
-use sentry_core::protocol::debugid::DebugId;
 use sentry_core::protocol::{DebugImage, SymbolicDebugImage};
-use sentry_core::types::Uuid;
+use sentry_core::types::{CodeId, DebugId, Uuid};
 
 use findshlibs::{SharedLibrary, SharedLibraryId, TargetSharedLibrary, TARGET_SUPPORTED};
 
@@ -40,9 +39,11 @@ pub fn debug_images() -> Vec<DebugImage> {
     }
 
     TargetSharedLibrary::each(|shlib| {
-        let maybe_debug_id = shlib.id().and_then(|id| match id {
+        let maybe_debug_id = shlib.debug_id().and_then(|id| match id {
             SharedLibraryId::Uuid(bytes) => Some(DebugId::from_uuid(Uuid::from_bytes(bytes))),
             SharedLibraryId::GnuBuildId(ref id) => debug_id_from_build_id(id),
+            SharedLibraryId::PdbSignature(guid, age) => DebugId::from_guid_age(&guid, age).ok(),
+            _ => None,
         });
 
         let debug_id = match maybe_debug_id {
@@ -57,14 +58,19 @@ pub fn debug_images() -> Vec<DebugImage> {
                 .unwrap_or_else(|_| "<main>".to_string());
         }
 
+        let code_id = shlib.id().map(|id| CodeId::new(format!("{}", id)));
+        let debug_name = shlib.debug_name().map(|n| n.to_string_lossy().to_string());
+
         images.push(
             SymbolicDebugImage {
+                id: debug_id,
                 name,
                 arch: None,
                 image_addr: shlib.actual_load_addr().0.into(),
                 image_size: shlib.len() as u64,
                 image_vmaddr: shlib.stated_load_addr().0.into(),
-                id: debug_id,
+                code_id,
+                debug_file: debug_name,
             }
             .into(),
         );
