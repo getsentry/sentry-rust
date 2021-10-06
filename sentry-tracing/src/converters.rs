@@ -54,7 +54,7 @@ pub fn extract_span_data(attrs: &span::Attributes) -> (Option<String>, BTreeMap<
 
 #[derive(Default)]
 /// Records all fields of [`tracing_core::Event`] for easy access
-struct BTreeMapRecorder(pub BTreeMap<String, Value>);
+pub(crate) struct BTreeMapRecorder(pub BTreeMap<String, Value>);
 
 impl BTreeMapRecorder {
     fn record<T: Into<Value>>(&mut self, field: &Field, value: T) {
