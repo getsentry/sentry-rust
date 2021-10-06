@@ -12,6 +12,7 @@ Sentry integration for anyhow.
 edition = "2018"
 
 [features]
+default = ["backtrace"]
 backtrace = ["anyhow/backtrace"]
 
 [dependencies]

@@ -29,6 +29,11 @@
 //! }
 //! ```
 //!
+//! # Features
+//!
+//! The `backtrace` feature will enable the corresponding feature in anyhow and allow you to
+//! capture backtraces with your events.  It is enabled by default.
+//!
 //! [`anyhow::Error`]: https://docs.rs/anyhow/*/anyhow/struct.Error.html
 
 #![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
