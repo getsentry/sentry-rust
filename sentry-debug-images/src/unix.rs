@@ -43,6 +43,7 @@ pub fn debug_images() -> Vec<DebugImage> {
         let maybe_debug_id = shlib.id().and_then(|id| match id {
             SharedLibraryId::Uuid(bytes) => Some(DebugId::from_uuid(Uuid::from_bytes(bytes))),
             SharedLibraryId::GnuBuildId(ref id) => debug_id_from_build_id(id),
+            _ => None,
         });
 
         let debug_id = match maybe_debug_id {
