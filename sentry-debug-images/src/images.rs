@@ -39,7 +39,7 @@ pub fn debug_images() -> Vec<DebugImage> {
     }
 
     TargetSharedLibrary::each(|shlib| {
-        let maybe_debug_id = shlib.id().and_then(|id| match id {
+        let maybe_debug_id = shlib.debug_id().and_then(|id| match id {
             SharedLibraryId::Uuid(bytes) => Some(DebugId::from_uuid(Uuid::from_bytes(bytes))),
             SharedLibraryId::GnuBuildId(ref id) => debug_id_from_build_id(id),
             SharedLibraryId::PdbSignature(guid, age) => DebugId::from_guid_age(&guid, age).ok(),
