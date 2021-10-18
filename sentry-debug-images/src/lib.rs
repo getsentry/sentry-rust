@@ -24,17 +24,8 @@
 #![warn(missing_docs)]
 #![deny(unsafe_code)]
 
-#[cfg(unix)]
-mod unix;
-
-#[cfg(unix)]
-use unix::debug_images;
-
-#[cfg(not(unix))]
-fn debug_images() -> Vec<sentry_core::protocol::DebugImage> {
-    vec![]
-}
-
+mod images;
 mod integration;
 
+use images::debug_images;
 pub use integration::DebugImagesIntegration;

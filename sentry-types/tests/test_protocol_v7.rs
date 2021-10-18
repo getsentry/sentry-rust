@@ -767,6 +767,8 @@ mod test_debug_meta {
                         image_size: 4096,
                         image_vmaddr: 32768.into(),
                         id: "494f3aea-88fa-4296-9644-fa8ef5d139b6-1234".parse().unwrap(),
+                        code_id: None,
+                        debug_file: None,
                     }
                     .into(),
                     v7::ProguardDebugImage {

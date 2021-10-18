@@ -40,7 +40,7 @@ impl Session {
     pub fn from_stack(stack: &StackLayer) -> Option<Self> {
         let client = stack.client.as_ref()?;
         let options = client.options();
-        let user = stack.scope.user.as_ref();
+        let user = stack.scope.user.as_deref();
         let distinct_id = user
             .and_then(|user| {
                 user.id
