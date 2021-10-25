@@ -290,7 +290,7 @@ where
 
     /// When a new Span gets created, run the filter and initialize the trace extension
     /// if it passes
-    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
         let span = match ctx.span(id) {
             Some(span) => span,
             None => return,
