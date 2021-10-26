@@ -55,7 +55,7 @@ pub(crate) fn extract_span_data(
 
 /// Records all fields of [`tracing_core::Event`] for easy access
 #[derive(Default)]
-struct FieldVisitor {
+pub(crate) struct FieldVisitor {
     pub json_values: BTreeMap<String, Value>,
     pub exceptions: Vec<Exception>,
 }
