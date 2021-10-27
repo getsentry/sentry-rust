@@ -74,7 +74,7 @@ log_ = { package = "log", version = "0.4.8", features = ["std"] }
 slog_ = { package = "slog", version = "2.5.2" }
 tower_ = { package = "tower", version = "0.4", features = ["util"] }
 tracing_ = { package = "tracing", version = "0.1" }
-tracing-subscriber = { version = "0.2", features = ["fmt", "tracing-log"] }
+tracing-subscriber = { version = "0.3", features = ["fmt", "tracing-log"] }
 actix-web = { version = "3", default-features = false }
 tokio = { version = "1.0", features = ["macros"] }
 pretty_env_logger = "0.4.0"
