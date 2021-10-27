@@ -4,7 +4,6 @@ artifactProvider:
   name: none
 targets:
   - name: crates
-    noDevDeps: true
   - name: github
   - name: registry
     sdks:
