@@ -12,7 +12,7 @@ pub struct Stack {
     layers: Vec<StackLayer>,
 }
 
-pub type EventProcessor = Box<dyn Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync>;
+pub type EventProcessor = Arc<dyn Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync>;
 
 /// Holds contextual data for the current scope.
 ///
@@ -42,7 +42,7 @@ pub struct Scope {
     pub(crate) extra: Arc<HashMap<String, Value>>,
     pub(crate) tags: Arc<HashMap<String, String>>,
     pub(crate) contexts: Arc<HashMap<String, Context>>,
-    pub(crate) event_processors: Arc<Vec<Arc<EventProcessor>>>,
+    pub(crate) event_processors: Arc<Vec<EventProcessor>>,
     pub(crate) session: Arc<Mutex<Option<Session>>>,
 }
 
@@ -215,10 +215,10 @@ impl Scope {
     }
 
     /// Add an event processor to the scope.
-    pub fn add_event_processor(
-        &mut self,
-        f: Box<dyn Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync>,
-    ) {
+    pub fn add_event_processor<F>(&mut self, f: F)
+    where
+        F: Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync + 'static,
+    {
         Arc::make_mut(&mut self.event_processors).push(Arc::new(f));
     }
 

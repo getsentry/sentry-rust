@@ -214,9 +214,7 @@ where
         let (tx, sentry_req) = sentry_request_from_http(&req, with_pii);
         hub.configure_scope(|scope| {
             scope.set_transaction(tx.as_deref());
-            scope.add_event_processor(Box::new(move |event| {
-                Some(process_event(event, &sentry_req))
-            }))
+            scope.add_event_processor(move |event| Some(process_event(event, &sentry_req)))
         });
 
         let fut = self.service.call(req).bind_hub(hub.clone());

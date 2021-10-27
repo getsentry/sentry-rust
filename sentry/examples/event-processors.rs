@@ -2,14 +2,14 @@ fn main() {
     let _sentry = sentry::init(());
 
     sentry::configure_scope(|scope| {
-        scope.add_event_processor(Box::new(move |mut event| {
+        scope.add_event_processor(|mut event| {
             event.request = Some(sentry::protocol::Request {
                 url: Some("https://example.com/".parse().unwrap()),
                 method: Some("GET".into()),
                 ..Default::default()
             });
             Some(event)
-        }));
+        });
     });
 
     sentry::configure_scope(|scope| {
