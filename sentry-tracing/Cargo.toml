@@ -18,6 +18,6 @@ tracing-subscriber = { version = "0.3.1", default-features = false, features = [
 
 [dev-dependencies]
 log = "0.4"
-sentry = { version = "0.23.0", path = "../sentry", default-features = false, features = ["test"] }
+sentry = { path = "../sentry", default-features = false, features = ["test"] }
 tracing = "0.1"
 tokio = { version = "1.8", features = ["rt-multi-thread", "macros", "time"] }

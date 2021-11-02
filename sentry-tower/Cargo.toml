@@ -19,8 +19,8 @@ sentry-core = { version = "0.23.0", path = "../sentry-core", default-features = 
 [dev-dependencies]
 anyhow = "1"
 prost = "0.8"
-sentry = { version = "0.23.0", path = "../sentry", default-features = false, features = ["test"] }
-sentry-anyhow = { version = "0.23.0", path = "../sentry-anyhow" }
+sentry = { path = "../sentry", default-features = false, features = ["test"] }
+sentry-anyhow = { path = "../sentry-anyhow" }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 tonic = { version = "0.5", features = ["transport"] }
 tower = { version = "0.4", features = ["util", "timeout"] }
