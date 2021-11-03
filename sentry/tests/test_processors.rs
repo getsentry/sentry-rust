@@ -7,13 +7,13 @@ fn test_event_processors() {
     let events = sentry::test::with_captured_events(|| {
         sentry::configure_scope(|scope| {
             scope.set_tag("worker", "worker1");
-            scope.add_event_processor(Box::new(move |mut event| {
+            scope.add_event_processor(|mut event| {
                 event.user = Some(sentry::User {
                     email: Some("foo@example.com".into()),
                     ..Default::default()
                 });
                 Some(event)
-            }));
+            });
         });
         sentry::capture_message("Hello World!", sentry::Level::Warning);
     });
