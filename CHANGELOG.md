@@ -5,6 +5,8 @@
 **Breaking Changes**:
 
 - The `backtrace` feature of `sentry-anyhow` is enabled by default. ([362](https://github.com/getsentry/sentry-rust/pull/362))
+- The `tracing-subscriber` dependency of `sentry-tracing` has been bumped to version `0.3.x`. ([377](https://github.com/getsentry/sentry-rust/pull/377))
+- `Scope::add_event_processor` now takes a generic parameter instead of a boxed function.([380](https://github.com/getsentry/sentry-rust/pull/380))
 
 **Features**:
 
@@ -27,6 +29,7 @@ Features, fixes and improvements in this release have been contributed by:
 - [@Jasper-Bekkers](https://github.com/Jasper-Bekkers)
 - [@danielnelson](https://github.com/danielnelson)
 - [@leops](https://github.com/leops)
+- [@Turbo87](https://github.com/Turbo87)
 
 ## 0.23.0
 
