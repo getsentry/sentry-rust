@@ -6,6 +6,28 @@
 
 - The `backtrace` feature of `sentry-anyhow` is enabled by default. ([362](https://github.com/getsentry/sentry-rust/pull/362))
 
+**Features**:
+
+- Added span/transaction collection to `sentry-tracing`. ([350](https://github.com/getsentry/sentry-rust/pull/350))
+- Added a new crate `sentry-tower` and feature `tower` that enables integration with `tower`. ([356](https://github.com/getsentry/sentry-rust/pull/356))
+- Added a new feature `surf-h1` for using `surf` with the h1 client. ([357](https://github.com/getsentry/sentry-rust/pull/357))
+- Added support for `Span::record` to `sentry-tracing`. ([364](https://github.com/getsentry/sentry-rust/pull/364))
+- Added Windows support for debug images. ([366](https://github.com/getsentry/sentry-rust/pull/366))
+
+**Fixes**:
+
+- The `tokio` dependency is now only required for the `curl`, `reqwest`, and `surf` features. ([363](https://github.com/getsentry/sentry-rust/pull/363))
+
+**Thank you**:
+
+Features, fixes and improvements in this release have been contributed by:
+
+- [@Tuetuopay](https://github.com/Tuetuopay)
+- [@zryambus](https://github.com/zryambus)
+- [@Jasper-Bekkers](https://github.com/Jasper-Bekkers)
+- [@danielnelson](https://github.com/danielnelson)
+- [@leops](https://github.com/leops)
+
 ## 0.23.0
 
 **Breaking Changes**:
