@@ -5,48 +5,60 @@ include!(concat!(env!("OUT_DIR"), "/constants.gen.rs"));
 #[cfg(target_os = "macos")]
 mod model_support {
     use libc::c_void;
-    use regex::Regex;
     use std::ptr;
-
-    lazy_static::lazy_static! {
-        static ref FAMILY_RE: Regex = Regex::new(r#"([a-zA-Z]+)\d"#).unwrap();
-    }
 
     pub fn get_model() -> Option<String> {
         unsafe {
             let mut size = 0;
-            libc::sysctlbyname(
-                "hw.model\x00".as_ptr() as *const i8,
+            let res = libc::sysctlbyname(
+                "hw.model\x00".as_ptr() as _,
                 ptr::null_mut(),
                 &mut size,
                 ptr::null_mut(),
                 0,
             );
+            if res != 0 {
+                return None;
+            }
             let mut buf = vec![0u8; size as usize];
-            libc::sysctlbyname(
-                "hw.model\x00".as_ptr() as *const i8,
+            let res = libc::sysctlbyname(
+                "hw.model\x00".as_ptr() as _,
                 buf.as_mut_ptr() as *mut c_void,
                 &mut size,
                 ptr::null_mut(),
                 0,
             );
+            if res != 0 {
+                return None;
+            }
             Some(
-                String::from_utf8_lossy(if buf.ends_with(b"\x00") {
-                    &buf[..size - 1]
-                } else {
-                    &buf
-                })
-                .to_string(),
+                buf.into_iter()
+                    .take(size)
+                    .take_while(|&c| c != b'\0')
+                    .map(|c| c as char)
+                    .collect(),
             )
         }
     }
 
     pub fn get_family() -> Option<String> {
-        get_model()
-            .as_ref()
-            .and_then(|model| FAMILY_RE.captures(model))
-            .and_then(|m| m.get(1))
-            .map(|group| group.as_str().to_string())
+        get_model().map(|mut s| {
+            let len = s
+                .as_bytes()
+                .iter()
+                .take_while(|c| c.is_ascii_alphabetic())
+                .count();
+            s.truncate(len);
+            s
+        })
+    }
+
+    #[test]
+    fn test_macos_hw_model() {
+        let m = get_model().unwrap();
+        assert!(m.chars().all(|c| c != '\0'));
+        let f = get_family().unwrap();
+        assert!(f.chars().all(|c| !c.is_digit(10)));
     }
 }
 
