@@ -76,6 +76,7 @@ pub use crate::futures::{SentryFuture, SentryFutureExt};
 pub use crate::hub::Hub;
 pub use crate::integration::Integration;
 pub use crate::intodsn::IntoDsn;
+pub use crate::performance::start_transaction;
 pub use crate::scope::{Scope, ScopeGuard};
 pub use crate::transport::{Transport, TransportFactory};
 

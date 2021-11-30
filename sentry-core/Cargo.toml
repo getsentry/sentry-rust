@@ -39,7 +39,7 @@ log_ = { package = "log", version = "0.4.8", optional = true, features = ["std"]
 # Because we re-export all the public API in `sentry`, we actually run all the
 # doctests using the `sentry` crate. This also takes care of the doctest
 # limitation documented in https://github.com/rust-lang/rust/issues/45599.
-sentry = { path = "../sentry", default-features = false, features = ["test"] }
+sentry = { path = "../sentry", default-features = false, features = ["test", "transport"] }
 thiserror = "1.0.15"
 anyhow = "1.0.30"
 tokio = { version = "1.0", features = ["rt", "rt-multi-thread", "macros"] }
