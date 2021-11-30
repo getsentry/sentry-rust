@@ -63,6 +63,7 @@ mod futures;
 mod hub;
 mod integration;
 mod intodsn;
+mod performance;
 mod scope;
 mod transport;
 
