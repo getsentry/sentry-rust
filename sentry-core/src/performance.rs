@@ -10,8 +10,8 @@ const MAX_SPANS: usize = 1_000;
 
 // global API:
 
-pub fn start_transaction() -> Transaction {
-    Transaction::new()
+pub fn start_transaction(name: &str, op: &str) -> Transaction {
+    Transaction::new(name, op)
 }
 
 pub fn start_span() -> Span {
@@ -39,12 +39,14 @@ pub struct Transaction {
 
 impl Transaction {
     #[must_use = "a transaction must be explicitly closed via `finish()`"]
-    pub fn new() -> Self {
-        Self::continue_from_headers([])
+    pub fn new(name: &str, op: &str) -> Self {
+        Self::continue_from_headers(name, op, [])
     }
 
     #[must_use = "a transaction must be explicitly closed via `finish()`"]
     pub fn continue_from_headers<'a, I: IntoIterator<Item = (&'a str, &'a str)>>(
+        name: &str,
+        op: &str,
         headers: I,
     ) -> Self {
         let mut trace = None;
@@ -62,10 +64,12 @@ impl Transaction {
         let context = protocol::TraceContext {
             trace_id,
             parent_span_id,
+            op: Some(op.into()),
             ..Default::default()
         };
 
         let transaction = Mutex::new(protocol::Transaction {
+            name: Some(name.to_owned()),
             ..Default::default()
         });
 
@@ -98,10 +102,11 @@ impl Transaction {
     }
 
     #[must_use = "a span must be explicitly closed via `finish()`"]
-    pub fn start_child(&self) -> Span {
+    pub fn start_child(&self, op: &str) -> Span {
         let span = protocol::Span {
             trace_id: self.inner.context.trace_id,
             parent_span_id: Some(self.inner.context.span_id),
+            op: Some(op.into()),
             ..Default::default()
         };
         Span {
@@ -135,10 +140,11 @@ impl Span {
     }
 
     #[must_use = "a span must be explicitly closed via `finish()`"]
-    pub fn start_child(&self) -> Span {
+    pub fn start_child(&self, op: &str) -> Span {
         let span = protocol::Span {
             trace_id: self.span.trace_id,
             parent_span_id: Some(self.span.span_id),
+            op: Some(op.into()),
             ..Default::default()
         };
         Span {
