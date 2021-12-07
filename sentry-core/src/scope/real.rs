@@ -32,7 +32,7 @@ pub type EventProcessor = Arc<dyn Fn(Event<'static>) -> Option<Event<'static>> +
 ///
 /// [`add_breadcrumb`]: fn.add_breadcrumb.html
 /// [`configure_scope`]: fn.configure_scope.html
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Scope {
     pub(crate) level: Option<Level>,
     pub(crate) fingerprint: Option<Arc<[Cow<'static, str>]>>,
@@ -60,23 +60,6 @@ impl fmt::Debug for Scope {
             .field("event_processors", &self.event_processors.len())
             .field("session", &self.session)
             .finish()
-    }
-}
-
-impl Default for Scope {
-    fn default() -> Scope {
-        Scope {
-            level: None,
-            fingerprint: None,
-            transaction: None,
-            breadcrumbs: Default::default(),
-            user: None,
-            extra: Default::default(),
-            tags: Default::default(),
-            contexts: Default::default(),
-            event_processors: Default::default(),
-            session: Default::default(),
-        }
     }
 }
 

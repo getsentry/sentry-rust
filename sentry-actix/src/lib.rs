@@ -419,7 +419,7 @@ mod tests {
     async fn test_client_errors_discarded() {
         let events = sentry::test::with_captured_events(|| {
             block_on(async {
-                let service = || HttpResponse::NotFound();
+                let service = HttpResponse::NotFound;
 
                 let mut app = init_service(
                     App::new()
