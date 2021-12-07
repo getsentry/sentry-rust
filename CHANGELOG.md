@@ -19,6 +19,7 @@
 **Fixes**:
 
 - The `tokio` dependency is now only required for the `curl`, `reqwest`, and `surf` features. ([363](https://github.com/getsentry/sentry-rust/pull/363))
+- Use the correct `module_base` for Windows images. ([387](https://github.com/getsentry/sentry-rust/pull/387))
 
 **Thank you**:
 
