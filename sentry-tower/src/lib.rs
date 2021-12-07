@@ -64,7 +64,7 @@
 //! When using Tonic, the layer can be used directly by the Tonic stack:
 //!
 //! ```rust,no_run
-//! # use anyhow::*;
+//! # use anyhow::{anyhow, Result};
 //! # use sentry_anyhow::capture_anyhow;
 //! # use tonic::{Request, Response, Status, transport::Server};
 //! # mod hello_world {

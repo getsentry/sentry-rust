@@ -10,6 +10,7 @@ use super::v7::{Attachment, Event, SessionAggregates, SessionUpdate, Transaction
 /// for more details.
 #[derive(Clone, Debug, PartialEq)]
 #[non_exhaustive]
+#[allow(clippy::large_enum_variant)]
 pub enum EnvelopeItem {
     /// An Event Item.
     ///
