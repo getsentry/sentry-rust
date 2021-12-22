@@ -19,13 +19,6 @@ impl Hub {
     pub fn start_transaction(&self, ctx: TransactionContext) -> Transaction {
         Transaction::new(self.client(), ctx)
     }
-
-    // oh well, its on the hub, not on the scope -_-
-    pub fn get_span(&self) -> Option<TransactionOrSpan> {
-        with_client_impl! {{
-            self.with_current_scope(|scope| scope.span.as_ref().as_ref().cloned())
-        }}
-    }
 }
 
 // "Context" Types:

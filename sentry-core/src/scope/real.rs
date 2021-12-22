@@ -269,6 +269,10 @@ impl Scope {
         self.span = Arc::new(span);
     }
 
+    pub fn get_span(&self) -> Option<TransactionOrSpan> {
+        self.span.as_ref().clone()
+    }
+
     pub(crate) fn update_session_from_event(&self, event: &Event<'static>) {
         if let Some(session) = self.session.lock().unwrap().as_mut() {
             session.update_from_event(event);

@@ -17,7 +17,7 @@ fn main() {
 
     thread::sleep(Duration::from_millis(50));
 
-    let headers = match sentry::Hub::current().get_span() {
+    let headers = match sentry::configure_scope(|scope| scope.get_span()) {
         Some(span) => vec![span.iter_headers().next().unwrap()],
         None => vec![],
     };
