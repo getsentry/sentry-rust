@@ -1,49 +1,43 @@
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::sync::Weak;
 
 use crate::protocol;
-
-use crate::Hub;
+use crate::{Client, Hub, Scope};
 
 const MAX_SPANS: usize = 1_000;
 
 // global API:
 
-pub fn start_transaction(name: &str, op: &str) -> Transaction {
-    Transaction::new(name, op)
-}
-
-pub fn start_span() -> Span {
-    todo!()
+pub fn start_transaction(ctx: TransactionContext) -> Transaction {
+    let client = Hub::with_active(|hub| hub.client());
+    Transaction::new(client, ctx)
 }
 
 // Hub API:
 
 impl Hub {
-    pub fn start_transaction() -> Transaction {
-        todo!()
+    pub fn start_transaction(&self, ctx: TransactionContext) -> Transaction {
+        Transaction::new(self.client(), ctx)
     }
 }
 
-// global API types:
+// "Context" Types:
 
-struct TransactionInner {
-    context: protocol::TraceContext,
-    transaction: Mutex<protocol::Transaction<'static>>,
+#[derive(Debug)]
+pub struct TransactionContext {
+    name: String,
+    op: String,
+    trace_id: protocol::TraceId,
+    parent_span_id: Option<protocol::SpanId>,
 }
 
-pub struct Transaction {
-    inner: Arc<TransactionInner>,
-}
-
-impl Transaction {
-    #[must_use = "a transaction must be explicitly closed via `finish()`"]
+impl TransactionContext {
+    #[must_use = "this must be used with `start_transaction`"]
     pub fn new(name: &str, op: &str) -> Self {
         Self::continue_from_headers(name, op, [])
     }
 
-    #[must_use = "a transaction must be explicitly closed via `finish()`"]
+    #[must_use = "this must be used with `start_transaction`"]
     pub fn continue_from_headers<'a, I: IntoIterator<Item = (&'a str, &'a str)>>(
         name: &str,
         op: &str,
@@ -61,37 +55,100 @@ impl Transaction {
             None => (protocol::TraceId::default(), None),
         };
 
-        let context = protocol::TraceContext {
+        Self {
+            name: name.into(),
+            op: op.into(),
             trace_id,
             parent_span_id,
-            op: Some(op.into()),
+        }
+    }
+}
+
+// global API types:
+
+#[derive(Debug)]
+pub enum TransactionOrSpan {
+    Transaction(Transaction),
+    Span(Span),
+}
+
+impl TransactionOrSpan {
+    #[must_use = "a span must be explicitly closed via `finish()`"]
+    pub fn start_child(&self, op: &str) -> Span {
+        match self {
+            TransactionOrSpan::Transaction(transaction) => transaction.start_child(op),
+            TransactionOrSpan::Span(span) => span.start_child(op),
+        }
+    }
+
+    pub(crate) fn apply_to_event(&self, event: &mut protocol::Event<'_>) {
+        if event.contexts.contains_key("trace") {
+            return;
+        }
+
+        let context = match self {
+            TransactionOrSpan::Transaction(transaction) => {
+                transaction.inner.lock().unwrap().context.clone()
+            }
+            TransactionOrSpan::Span(span) => protocol::TraceContext {
+                span_id: span.span.span_id,
+                trace_id: span.span.trace_id,
+                ..Default::default()
+            },
+        };
+        event.contexts.insert("trace".into(), context.into());
+    }
+}
+
+#[derive(Debug)]
+struct TransactionInner {
+    client: Option<Arc<Client>>,
+    context: protocol::TraceContext,
+    transaction: Option<protocol::Transaction<'static>>,
+}
+
+type TransactionArc = Arc<Mutex<TransactionInner>>;
+
+#[derive(Debug)]
+pub struct Transaction {
+    inner: TransactionArc,
+}
+
+impl Transaction {
+    fn new(client: Option<Arc<Client>>, ctx: TransactionContext) -> Self {
+        let context = protocol::TraceContext {
+            trace_id: ctx.trace_id,
+            parent_span_id: ctx.parent_span_id,
+            op: Some(ctx.op),
             ..Default::default()
         };
 
-        let transaction = Mutex::new(protocol::Transaction {
-            name: Some(name.to_owned()),
-            ..Default::default()
-        });
+        let transaction = if client.is_some() {
+            Some(protocol::Transaction {
+                name: Some(ctx.name),
+                ..Default::default()
+            })
+        } else {
+            None
+        };
 
         Self {
-            inner: Arc::new(TransactionInner {
+            inner: Arc::new(Mutex::new(TransactionInner {
+                client,
                 context,
                 transaction,
-            }),
+            })),
         }
     }
 
     pub fn finish(self) {
-        // TODO: maybe we should hold onto a ref of the client directly?
-        if let Some(client) = Hub::current().client() {
-            // NOTE: we expect this to always succeed, since all other places
-            // use weak references (well, except if you are inside a `Span::finish`)
-            if let Ok(inner) = Arc::try_unwrap(self.inner) {
-                let mut transaction = inner.transaction.into_inner().unwrap();
+        let mut inner = self.inner.lock().unwrap();
+        if let Some(mut transaction) = inner.transaction.take() {
+            if let Some(client) = inner.client.take() {
                 transaction.finish();
                 transaction
                     .contexts
-                    .insert("trace".into(), inner.context.into());
+                    .insert("trace".into(), inner.context.clone().into());
 
                 let mut envelope = protocol::Envelope::new();
                 envelope.add_item(transaction);
@@ -103,21 +160,23 @@ impl Transaction {
 
     #[must_use = "a span must be explicitly closed via `finish()`"]
     pub fn start_child(&self, op: &str) -> Span {
+        let inner = self.inner.lock().unwrap();
         let span = protocol::Span {
-            trace_id: self.inner.context.trace_id,
-            parent_span_id: Some(self.inner.context.span_id),
+            trace_id: inner.context.trace_id,
+            parent_span_id: Some(inner.context.span_id),
             op: Some(op.into()),
             ..Default::default()
         };
         Span {
-            transaction: Arc::downgrade(&self.inner),
+            transaction: Arc::clone(&self.inner),
             span,
         }
     }
 }
 
+#[derive(Debug)]
 pub struct Span {
-    transaction: Weak<TransactionInner>,
+    transaction: TransactionArc,
     span: protocol::Span,
 }
 
@@ -131,8 +190,8 @@ impl Span {
 
     pub fn finish(mut self) {
         self.span.finish();
-        if let Some(transaction) = self.transaction.upgrade() {
-            let mut transaction = transaction.transaction.lock().unwrap();
+        let mut inner = self.transaction.lock().unwrap();
+        if let Some(transaction) = inner.transaction.as_mut() {
             if transaction.spans.len() <= MAX_SPANS {
                 transaction.spans.push(self.span);
             }

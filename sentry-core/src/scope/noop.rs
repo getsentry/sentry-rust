@@ -108,4 +108,8 @@ impl Scope {
         let _event = event;
         minimal_unreachable!();
     }
+
+    pub fn set_span(&mut self) {
+        minimal_unreachable!();
+    }
 }
