@@ -265,8 +265,8 @@ impl Scope {
         Some(event)
     }
 
-    pub fn set_span(&mut self) {
-        // self.
+    pub fn set_span(&mut self, span: Option<TransactionOrSpan>) {
+        self.span = Arc::new(span);
     }
 
     pub(crate) fn update_session_from_event(&self, event: &Event<'static>) {

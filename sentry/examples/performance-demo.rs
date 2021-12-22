@@ -34,6 +34,13 @@ fn main() {
     thread::sleep(Duration::from_millis(100));
 
     let span2 = span1.start_child("span2");
+    sentry::configure_scope(|scope| {
+        scope.set_span(Some(sentry::TransactionOrSpan::Span(span2.clone())))
+    });
+    sentry::capture_message(
+        "A message that should have a trace context",
+        sentry::Level::Info,
+    );
     thread::sleep(Duration::from_millis(200));
     span2.finish();
 

@@ -109,7 +109,7 @@ struct TransactionInner {
 
 type TransactionArc = Arc<Mutex<TransactionInner>>;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Transaction {
     inner: TransactionArc,
 }
@@ -174,7 +174,7 @@ impl Transaction {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Span {
     transaction: TransactionArc,
     span: protocol::Span,
