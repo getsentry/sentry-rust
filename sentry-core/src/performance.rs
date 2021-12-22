@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use crate::protocol;
-use crate::{Client, Hub, Scope};
+use crate::{Client, Hub};
 
 const MAX_SPANS: usize = 1_000;
 
@@ -18,6 +18,13 @@ pub fn start_transaction(ctx: TransactionContext) -> Transaction {
 impl Hub {
     pub fn start_transaction(&self, ctx: TransactionContext) -> Transaction {
         Transaction::new(self.client(), ctx)
+    }
+
+    // oh well, its on the hub, not on the scope -_-
+    pub fn get_span(&self) -> Option<TransactionOrSpan> {
+        with_client_impl! {{
+            self.with_current_scope(|scope| scope.span.as_ref().as_ref().cloned())
+        }}
     }
 }
 
@@ -66,13 +73,32 @@ impl TransactionContext {
 
 // global API types:
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum TransactionOrSpan {
     Transaction(Transaction),
     Span(Span),
 }
 
+impl From<Transaction> for TransactionOrSpan {
+    fn from(transaction: Transaction) -> Self {
+        Self::Transaction(transaction)
+    }
+}
+
+impl From<Span> for TransactionOrSpan {
+    fn from(span: Span) -> Self {
+        Self::Span(span)
+    }
+}
+
 impl TransactionOrSpan {
+    pub fn iter_headers(&self) -> TraceHeadersIter {
+        match self {
+            TransactionOrSpan::Transaction(transaction) => transaction.iter_headers(),
+            TransactionOrSpan::Span(span) => span.iter_headers(),
+        }
+    }
+
     #[must_use = "a span must be explicitly closed via `finish()`"]
     pub fn start_child(&self, op: &str) -> Span {
         match self {
@@ -138,6 +164,14 @@ impl Transaction {
                 context,
                 transaction,
             })),
+        }
+    }
+
+    pub fn iter_headers(&self) -> TraceHeadersIter {
+        let inner = self.inner.lock().unwrap();
+        let trace = SentryTrace(inner.context.trace_id, inner.context.span_id, None);
+        TraceHeadersIter {
+            sentry_trace: Some(trace.to_string()),
         }
     }
 
