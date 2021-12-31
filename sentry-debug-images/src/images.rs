@@ -61,14 +61,27 @@ pub fn debug_images() -> Vec<DebugImage> {
         let code_id = shlib.id().map(|id| CodeId::new(format!("{}", id)));
         let debug_name = shlib.debug_name().map(|n| n.to_string_lossy().to_string());
 
+        // For windows, the `virtual_memory_bias` actually returns the real
+        // `module_base`, which is the address that sentry uses for symbolication.
+        // Going via the segments means that the `image_addr` would be offset in
+        // a way that symbolication yields wrong results.
+        let (image_addr, image_vmaddr) = if cfg!(windows) {
+            (shlib.virtual_memory_bias().0.into(), 0.into())
+        } else {
+            (
+                shlib.actual_load_addr().0.into(),
+                shlib.stated_load_addr().0.into(),
+            )
+        };
+
         images.push(
             SymbolicDebugImage {
                 id: debug_id,
                 name,
                 arch: None,
-                image_addr: shlib.actual_load_addr().0.into(),
+                image_addr,
                 image_size: shlib.len() as u64,
-                image_vmaddr: shlib.stated_load_addr().0.into(),
+                image_vmaddr,
                 code_id,
                 debug_file: debug_name,
             }
