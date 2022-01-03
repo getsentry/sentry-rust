@@ -144,6 +144,8 @@ where
     }
 }
 
+type EventMapper<S> = Box<dyn Fn(&Event, Context<'_, S>) -> EventMapping + Send + Sync>;
+
 type SpanMapper<S> = Box<
     dyn Fn(&SpanRef<S>, Option<&protocol::Span>, &span::Attributes) -> protocol::Span + Send + Sync,
 >;
@@ -159,7 +161,7 @@ type TransactionMapper<S> = Box<
 /// Provides a tracing layer that dispatches events to sentry
 pub struct SentryLayer<S> {
     event_filter: Box<dyn Fn(&Metadata) -> EventFilter + Send + Sync>,
-    event_mapper: Option<Box<dyn Fn(&Event) -> EventMapping + Send + Sync>>,
+    event_mapper: Option<EventMapper<S>>,
 
     span_filter: Box<dyn Fn(&Metadata) -> bool + Send + Sync>,
     span_mapper: SpanMapper<S>,
@@ -186,7 +188,7 @@ impl<S> SentryLayer<S> {
     /// [`Event`]s.
     pub fn event_mapper<F>(mut self, mapper: F) -> Self
     where
-        F: Fn(&Event) -> EventMapping + Send + Sync + 'static,
+        F: Fn(&Event, Context<'_, S>) -> EventMapping + Send + Sync + 'static,
     {
         self.event_mapper = Some(Box::new(mapper));
         self
@@ -270,7 +272,7 @@ where
 {
     fn on_event(&self, event: &Event, ctx: Context<'_, S>) {
         let item = match &self.event_mapper {
-            Some(mapper) => mapper(event),
+            Some(mapper) => mapper(event, ctx),
             None => match (self.event_filter)(event.metadata()) {
                 EventFilter::Ignore => EventMapping::Ignore,
                 EventFilter::Breadcrumb => EventMapping::Breadcrumb(breadcrumb_from_event(event)),
