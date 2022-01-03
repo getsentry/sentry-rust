@@ -8,6 +8,12 @@ const MAX_SPANS: usize = 1_000;
 
 // global API:
 
+/// Start a new Performance Monitoring Transaction.
+///
+/// The transaction needs to be explicitly finished via [`Transaction::finish`],
+/// otherwise it will be discarded.
+/// The transaction itself also represents the root span in the span hierarchy.
+/// Child spans can be started with the [`Transaction::start_child`] method.
 pub fn start_transaction(ctx: TransactionContext) -> Transaction {
     let client = Hub::with_active(|hub| hub.client());
     Transaction::new(client, ctx)
@@ -16,6 +22,9 @@ pub fn start_transaction(ctx: TransactionContext) -> Transaction {
 // Hub API:
 
 impl Hub {
+    /// Start a new Performance Monitoring Transaction.
+    ///
+    /// See the global [`start_transaction`] for more documentation.
     pub fn start_transaction(&self, ctx: TransactionContext) -> Transaction {
         Transaction::new(self.client(), ctx)
     }
@@ -23,6 +32,10 @@ impl Hub {
 
 // "Context" Types:
 
+/// The Transaction Context used to start a new Performance Monitoring Transaction.
+///
+/// The Transaction Context defines the metadata for a Performance Monitoring
+/// Transaction, and also the connection point for distributed tracing.
 #[derive(Debug)]
 pub struct TransactionContext {
     name: String,
@@ -32,11 +45,24 @@ pub struct TransactionContext {
 }
 
 impl TransactionContext {
+    /// Creates a new Transaction Context with the given `name` and `op`.
+    ///
+    /// See <https://docs.sentry.io/platforms/native/enriching-events/transaction-name/>
+    /// for an explanation of a Transaction's `name`, and
+    /// <https://develop.sentry.dev/sdk/performance/span-operations/> for conventions
+    /// around an `operation`'s value.
+    ///
+    /// See also the [`TransactionContext::continue_from_headers`] function that
+    /// can be used for distributed tracing.
     #[must_use = "this must be used with `start_transaction`"]
     pub fn new(name: &str, op: &str) -> Self {
         Self::continue_from_headers(name, op, [])
     }
 
+    /// Creates a new Transaction Context based on the distributed tracing `headers`.
+    ///
+    /// The `headers` in particular need to include the `sentry-trace` header,
+    /// which is used to associate the transaction with a distributed trace.
     #[must_use = "this must be used with `start_transaction`"]
     pub fn continue_from_headers<'a, I: IntoIterator<Item = (&'a str, &'a str)>>(
         name: &str,
@@ -62,13 +88,18 @@ impl TransactionContext {
             parent_span_id,
         }
     }
+
+    // TODO: `sampled` flag
 }
 
 // global API types:
 
+/// A wrapper that groups a [`Transaction`] and a [`Span`] together.
 #[derive(Clone, Debug)]
 pub enum TransactionOrSpan {
+    /// A [`Transaction`].
     Transaction(Transaction),
+    /// A [`Span`].
     Span(Span),
 }
 
@@ -85,6 +116,7 @@ impl From<Span> for TransactionOrSpan {
 }
 
 impl TransactionOrSpan {
+    /// Returns the headers needed for distributed tracing.
     pub fn iter_headers(&self) -> TraceHeadersIter {
         match self {
             TransactionOrSpan::Transaction(transaction) => transaction.iter_headers(),
@@ -92,11 +124,15 @@ impl TransactionOrSpan {
         }
     }
 
+    /// Starts a new child Span with the given `op` and `description`.
+    ///
+    /// The span must be explicitly finished via [`Span::finish`], as it will
+    /// otherwise not be sent to Sentry.
     #[must_use = "a span must be explicitly closed via `finish()`"]
-    pub fn start_child(&self, op: &str) -> Span {
+    pub fn start_child(&self, op: &str, description: &str) -> Span {
         match self {
-            TransactionOrSpan::Transaction(transaction) => transaction.start_child(op),
-            TransactionOrSpan::Span(span) => span.start_child(op),
+            TransactionOrSpan::Transaction(transaction) => transaction.start_child(op, description),
+            TransactionOrSpan::Span(span) => span.start_child(op, description),
         }
     }
 
@@ -128,6 +164,11 @@ struct TransactionInner {
 
 type TransactionArc = Arc<Mutex<TransactionInner>>;
 
+/// A running Performance Monitoring Transaction.
+///
+/// The transaction needs to be explicitly finished via [`Transaction::finish`],
+/// otherwise neither the transaction nor any of its child spans will be sent
+/// to Sentry.
 #[derive(Clone, Debug)]
 pub struct Transaction {
     inner: TransactionArc,
@@ -160,6 +201,7 @@ impl Transaction {
         }
     }
 
+    /// Returns the headers needed for distributed tracing.
     pub fn iter_headers(&self) -> TraceHeadersIter {
         let inner = self.inner.lock().unwrap();
         let trace = SentryTrace(inner.context.trace_id, inner.context.span_id, None);
@@ -168,6 +210,10 @@ impl Transaction {
         }
     }
 
+    /// Finishes the Transaction.
+    ///
+    /// This records the end timestamp and sends the transaction together with
+    /// all finished child spans to Sentry.
     pub fn finish(self) {
         let mut inner = self.inner.lock().unwrap();
         if let Some(mut transaction) = inner.transaction.take() {
@@ -185,13 +231,17 @@ impl Transaction {
         }
     }
 
+    /// Starts a new child Span with the given `op` and `description`.
+    ///
+    /// The span must be explicitly finished via [`Span::finish`].
     #[must_use = "a span must be explicitly closed via `finish()`"]
-    pub fn start_child(&self, op: &str) -> Span {
+    pub fn start_child(&self, op: &str, description: &str) -> Span {
         let inner = self.inner.lock().unwrap();
         let span = protocol::Span {
             trace_id: inner.context.trace_id,
             parent_span_id: Some(inner.context.span_id),
             op: Some(op.into()),
+            description: Some(description.into()),
             ..Default::default()
         };
         Span {
@@ -201,6 +251,10 @@ impl Transaction {
     }
 }
 
+/// A running Performance Monitoring Span.
+///
+/// The span needs to be explicitly finished via [`Span::finish`], otherwise it
+/// will not be sent to Sentry.
 #[derive(Clone, Debug)]
 pub struct Span {
     transaction: TransactionArc,
@@ -208,6 +262,7 @@ pub struct Span {
 }
 
 impl Span {
+    /// Returns the headers needed for distributed tracing.
     pub fn iter_headers(&self) -> TraceHeadersIter {
         let trace = SentryTrace(self.span.trace_id, self.span.span_id, None);
         TraceHeadersIter {
@@ -215,6 +270,10 @@ impl Span {
         }
     }
 
+    /// Finishes the Span.
+    ///
+    /// This will record the end timestamp and add the span to the transaction
+    /// in which it was started.
     pub fn finish(mut self) {
         self.span.finish();
         let mut inner = self.transaction.lock().unwrap();
@@ -225,12 +284,16 @@ impl Span {
         }
     }
 
+    /// Starts a new child Span with the given `op` and `description`.
+    ///
+    /// The span must be explicitly finished via [`Span::finish`].
     #[must_use = "a span must be explicitly closed via `finish()`"]
-    pub fn start_child(&self, op: &str) -> Span {
+    pub fn start_child(&self, op: &str, description: &str) -> Span {
         let span = protocol::Span {
             trace_id: self.span.trace_id,
             parent_span_id: Some(self.span.span_id),
             op: Some(op.into()),
+            description: Some(description.into()),
             ..Default::default()
         };
         Span {
@@ -240,6 +303,10 @@ impl Span {
     }
 }
 
+/// An Iterator over HTTP header names and values needed for distributed tracing.
+///
+/// This currently only yields the `sentry-trace` header, but other headers
+/// may be added in the future.
 pub struct TraceHeadersIter {
     sentry_trace: Option<String>,
 }
