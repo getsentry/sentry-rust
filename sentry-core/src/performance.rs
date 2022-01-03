@@ -42,6 +42,7 @@ pub struct TransactionContext {
     op: String,
     trace_id: protocol::TraceId,
     parent_span_id: Option<protocol::SpanId>,
+    sampled: Option<bool>,
 }
 
 impl TransactionContext {
@@ -76,9 +77,9 @@ impl TransactionContext {
             }
         }
 
-        let (trace_id, parent_span_id) = match trace {
-            Some(trace) => (trace.0, Some(trace.1)),
-            None => (protocol::TraceId::default(), None),
+        let (trace_id, parent_span_id, sampled) = match trace {
+            Some(trace) => (trace.0, Some(trace.1), trace.2),
+            None => (protocol::TraceId::default(), None, None),
         };
 
         Self {
@@ -86,10 +87,17 @@ impl TransactionContext {
             op: op.into(),
             trace_id,
             parent_span_id,
+            sampled,
         }
     }
 
-    // TODO: `sampled` flag
+    /// Set the sampling decision for this Transaction.
+    ///
+    /// This can be either an explicit boolean flag, or [`None`], which will fall
+    /// back to use the configured `traces_sample_rate` option.
+    pub fn set_sampled(&mut self, sampled: impl Into<Option<bool>>) {
+        self.sampled = sampled.into();
+    }
 }
 
 // global API types:
@@ -169,6 +177,7 @@ impl TransactionOrSpan {
 #[derive(Debug)]
 struct TransactionInner {
     client: Option<Arc<Client>>,
+    sampled: bool,
     context: protocol::TraceContext,
     transaction: Option<protocol::Transaction<'static>>,
 }
@@ -186,7 +195,7 @@ pub struct Transaction {
 }
 
 impl Transaction {
-    fn new(client: Option<Arc<Client>>, ctx: TransactionContext) -> Self {
+    fn new(mut client: Option<Arc<Client>>, ctx: TransactionContext) -> Self {
         let context = protocol::TraceContext {
             trace_id: ctx.trace_id,
             parent_span_id: ctx.parent_span_id,
@@ -194,18 +203,29 @@ impl Transaction {
             ..Default::default()
         };
 
-        let transaction = if client.is_some() {
-            Some(protocol::Transaction {
-                name: Some(ctx.name),
-                ..Default::default()
-            })
-        } else {
-            None
+        let (sampled, mut transaction) = match client.as_ref() {
+            Some(client) => (
+                ctx.sampled
+                    .unwrap_or_else(|| client.sample_traces_should_send()),
+                Some(protocol::Transaction {
+                    name: Some(ctx.name),
+                    ..Default::default()
+                }),
+            ),
+            None => (ctx.sampled.unwrap_or(false), None),
         };
+
+        // throw away the transaction here, which means there is nothing to send
+        // on `finish`.
+        if !sampled {
+            transaction = None;
+            client = None;
+        }
 
         Self {
             inner: Arc::new(Mutex::new(TransactionInner {
                 client,
+                sampled,
                 context,
                 transaction,
             })),
@@ -215,7 +235,11 @@ impl Transaction {
     /// Returns the headers needed for distributed tracing.
     pub fn iter_headers(&self) -> TraceHeadersIter {
         let inner = self.inner.lock().unwrap();
-        let trace = SentryTrace(inner.context.trace_id, inner.context.span_id, None);
+        let trace = SentryTrace(
+            inner.context.trace_id,
+            inner.context.span_id,
+            Some(inner.sampled),
+        );
         TraceHeadersIter {
             sentry_trace: Some(trace.to_string()),
         }
@@ -233,6 +257,8 @@ impl Transaction {
                 transaction
                     .contexts
                     .insert("trace".into(), inner.context.clone().into());
+
+                // TODO: apply the scope to the transaction, whatever that means
 
                 let mut envelope = protocol::Envelope::new();
                 envelope.add_item(transaction);
@@ -261,6 +287,7 @@ impl Transaction {
         };
         Span {
             transaction: Arc::clone(&self.inner),
+            sampled: inner.sampled,
             span,
         }
     }
@@ -273,13 +300,14 @@ impl Transaction {
 #[derive(Clone, Debug)]
 pub struct Span {
     transaction: TransactionArc,
+    sampled: bool,
     span: protocol::Span,
 }
 
 impl Span {
     /// Returns the headers needed for distributed tracing.
     pub fn iter_headers(&self) -> TraceHeadersIter {
-        let trace = SentryTrace(self.span.trace_id, self.span.span_id, None);
+        let trace = SentryTrace(self.span.trace_id, self.span.span_id, Some(self.sampled));
         TraceHeadersIter {
             sentry_trace: Some(trace.to_string()),
         }
@@ -317,6 +345,7 @@ impl Span {
         };
         Span {
             transaction: self.transaction.clone(),
+            sampled: self.sampled,
             span,
         }
     }

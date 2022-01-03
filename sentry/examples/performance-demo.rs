@@ -5,6 +5,8 @@ use std::time::Duration;
 fn main() {
     let _sentry = sentry::init(sentry::ClientOptions {
         release: sentry::release_name!(),
+        traces_sample_rate: 1.0,
+        debug: true,
         ..Default::default()
     });
 
