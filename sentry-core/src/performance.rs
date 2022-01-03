@@ -57,7 +57,7 @@ impl TransactionContext {
     /// can be used for distributed tracing.
     #[must_use = "this must be used with `start_transaction`"]
     pub fn new(name: &str, op: &str) -> Self {
-        Self::continue_from_headers(name, op, [])
+        Self::continue_from_headers(name, op, vec![])
     }
 
     /// Creates a new Transaction Context based on the distributed tracing `headers`.
