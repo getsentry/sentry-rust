@@ -124,6 +124,10 @@ jobs:
 
       - run: make testfast
 
+  # Code coverage instrumentation is current broken because Rust nightly seems
+  # to generate broken profraw files that fail processing with LLVMs tools:
+  # `malformed instrumentation profile data: insufficient padding`
+  # The last known good nightly was 2021-08-20
   codecov:
     name: Code Coverage
     runs-on: ubuntu-latest
@@ -135,7 +139,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly
+          toolchain: nightly-2021-08-20
           components: llvm-tools-preview
           override: true
 
