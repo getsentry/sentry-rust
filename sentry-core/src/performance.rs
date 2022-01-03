@@ -153,6 +153,17 @@ impl TransactionOrSpan {
         };
         event.contexts.insert("trace".into(), context.into());
     }
+
+    /// Finishes the Transaction/Span.
+    ///
+    /// This records the end timestamp and either sends the inner [`Transaction`]
+    /// directly to Sentry, or adds the [`Span`] to its transaction.
+    pub fn finish(self) {
+        match self {
+            TransactionOrSpan::Transaction(transaction) => transaction.finish(),
+            TransactionOrSpan::Span(span) => span.finish(),
+        }
+    }
 }
 
 #[derive(Debug)]

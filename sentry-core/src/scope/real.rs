@@ -265,10 +265,12 @@ impl Scope {
         Some(event)
     }
 
+    /// Set the given [`TransactionOrSpan`] as the active span for this scope.
     pub fn set_span(&mut self, span: Option<TransactionOrSpan>) {
         self.span = Arc::new(span);
     }
 
+    /// Returns the currently active span.
     pub fn get_span(&self) -> Option<TransactionOrSpan> {
         self.span.as_ref().clone()
     }
