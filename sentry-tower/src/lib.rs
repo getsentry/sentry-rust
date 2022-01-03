@@ -102,12 +102,16 @@
 #![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
 #![warn(missing_docs)]
 
-use sentry_core::{Hub, SentryFuture, SentryFutureExt};
 use std::marker::PhantomData;
 use std::sync::Arc;
 use std::task::{Context, Poll};
+
+use sentry_core::{Hub, SentryFuture, SentryFutureExt};
 use tower_layer::Layer;
 use tower_service::Service;
+
+#[cfg(feature = "http")]
+mod http;
 
 /// Provides a hub for each request
 pub trait HubProvider<H, Request>
@@ -140,7 +144,7 @@ pub struct NewFromTopProvider;
 
 impl<Request> HubProvider<Arc<Hub>, Request> for NewFromTopProvider {
     fn hub(&self, _request: &Request) -> Arc<Hub> {
-        // The Clippy lint here is a falste positive, the suggestion to write
+        // The Clippy lint here is a false positive, the suggestion to write
         // `Hub::with(Hub::new_from_top)` does not compiles:
         //     143 |         Hub::with(Hub::new_from_top).into()
         //         |         ^^^^^^^^^ implementation of `std::ops::FnOnce` is not general enough
