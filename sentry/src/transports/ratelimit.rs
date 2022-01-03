@@ -1,7 +1,8 @@
 use httpdate::parse_http_date;
 use std::time::{Duration, SystemTime};
 
-// TODO: maybe move this someplace where we can filter an `Envelope`s items.
+use crate::protocol::EnvelopeItem;
+use crate::Envelope;
 
 /// A Utility that helps with rate limiting sentry requests.
 #[derive(Debug, Default)]
@@ -82,11 +83,29 @@ impl RateLimiter {
         }?;
         time_left.duration_since(SystemTime::now()).ok()
     }
+
+    /// Filters the [`Envelope`] according to the current rate limits.
+    ///
+    /// Returns [`None`] if all the envelope items were filtered out.
+    pub fn filter_envelope(&self, envelope: Envelope) -> Option<Envelope> {
+        envelope.filter(|item| {
+            self.is_disabled(match item {
+                EnvelopeItem::Event(_) => RateLimitingCategory::Error,
+                EnvelopeItem::SessionUpdate(_) | EnvelopeItem::SessionAggregates(_) => {
+                    RateLimitingCategory::Session
+                }
+                EnvelopeItem::Transaction(_) => RateLimitingCategory::Transaction,
+                // NOTE: it seems like we don't have a category for attachments?
+                // EnvelopeItem::Attachment(_)
+                _ => RateLimitingCategory::Any,
+            })
+            .is_none()
+        })
+    }
 }
 
 /// The Category of payload that a Rate Limit refers to.
 #[non_exhaustive]
-#[allow(dead_code)]
 pub enum RateLimitingCategory {
     /// Rate Limit for any kind of payload.
     Any,
