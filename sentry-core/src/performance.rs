@@ -252,7 +252,11 @@ impl Transaction {
             trace_id: inner.context.trace_id,
             parent_span_id: Some(inner.context.span_id),
             op: Some(op.into()),
-            description: Some(description.into()),
+            description: if description.is_empty() {
+                None
+            } else {
+                Some(description.into())
+            },
             ..Default::default()
         };
         Span {
@@ -304,7 +308,11 @@ impl Span {
             trace_id: self.span.trace_id,
             parent_span_id: Some(self.span.span_id),
             op: Some(op.into()),
-            description: Some(description.into()),
+            description: if description.is_empty() {
+                None
+            } else {
+                Some(description.into())
+            },
             ..Default::default()
         };
         Span {

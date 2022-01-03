@@ -21,7 +21,7 @@ fn main() {
 }
 
 fn main_span1() {
-    wrap_in_span("default", "span1", || {
+    wrap_in_span("span1", "", || {
         thread::sleep(Duration::from_millis(50));
 
         let headers = match sentry::configure_scope(|scope| scope.get_span()) {
@@ -51,13 +51,13 @@ fn main_span1() {
 }
 
 fn thread_span1() {
-    wrap_in_span("default", "span1", || {
+    wrap_in_span("span1", "", || {
         thread::sleep(Duration::from_millis(200));
     })
 }
 
 fn main_span2() {
-    wrap_in_span("default", "span2", || {
+    wrap_in_span("span2", "", || {
         sentry::capture_message(
             "A message that should have a trace context",
             sentry::Level::Info,
