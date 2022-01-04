@@ -140,14 +140,14 @@ impl Envelope {
             .next()
     }
 
-    /// Filters the Envelope according to the predicate.
+    /// Filters the Envelope's [`EnvelopeItem`]s based on a predicate,
+    /// and returns a new Envelope containing only the filtered items.
     ///
-    /// Only keeps the [`EnvelopeItem`]s for which the predicate return `true`.
-    /// Additionally, [`Attachment`]s are only kept if the envelope contains
-    /// an [`Event`] or [`Transaction`].
+    /// Retains the [`EnvelopeItem`]s for which the predicate returns `true`.
+    /// Additionally, [`EnvelopeItem::Attachment`]s are only kept if the Envelope
+    /// contains an [`EnvelopeItem::Event`] or [`EnvelopeItem::Transaction`].
     ///
-    /// Returns the filtered envelope, or [`None`] if the envelope would remain
-    /// empty.
+    /// [`None`] is returned if no items remain in the Envelope after filtering.
     pub fn filter<P>(self, mut predicate: P) -> Option<Self>
     where
         P: FnMut(&EnvelopeItem) -> bool,
