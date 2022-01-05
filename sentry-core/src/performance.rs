@@ -91,6 +91,40 @@ impl TransactionContext {
         }
     }
 
+    /// Creates a new Transaction Context based on an existing Span.
+    ///
+    /// This should be used when an independent computation is spawned on another
+    /// thread and should be connected to the calling thread via a distributed
+    /// tracing transaction.
+    pub fn continue_from_span(name: &str, op: &str, span: Option<TransactionOrSpan>) -> Self {
+        let span = match span {
+            Some(span) => span,
+            None => return Self::new(name, op),
+        };
+
+        let (trace_id, parent_span_id, sampled) = match span {
+            TransactionOrSpan::Transaction(transaction) => {
+                let inner = transaction.inner.lock().unwrap();
+                (
+                    inner.context.trace_id,
+                    inner.context.span_id,
+                    Some(inner.sampled),
+                )
+            }
+            TransactionOrSpan::Span(span) => {
+                (span.span.trace_id, span.span.span_id, Some(span.sampled))
+            }
+        };
+
+        Self {
+            name: name.into(),
+            op: op.into(),
+            trace_id,
+            parent_span_id: Some(parent_span_id),
+            sampled,
+        }
+    }
+
     /// Set the sampling decision for this Transaction.
     ///
     /// This can be either an explicit boolean flag, or [`None`], which will fall

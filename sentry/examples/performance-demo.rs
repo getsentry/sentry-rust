@@ -26,17 +26,13 @@ fn main_span1() {
     wrap_in_span("span1", "", || {
         thread::sleep(Duration::from_millis(50));
 
-        let headers = match sentry::configure_scope(|scope| scope.get_span()) {
-            Some(span) => vec![span.iter_headers().next().unwrap()],
-            None => vec![],
-        };
+        let transaction_ctx = sentry::TransactionContext::continue_from_span(
+            "background transaction",
+            "root span",
+            sentry::configure_scope(|scope| scope.get_span()),
+        );
         thread::spawn(move || {
-            let transaction =
-                sentry::start_transaction(sentry::TransactionContext::continue_from_headers(
-                    "background transaction",
-                    "root span",
-                    headers.iter().map(|(k, v)| (*k, v.as_str())),
-                ));
+            let transaction = sentry::start_transaction(transaction_ctx);
             sentry::configure_scope(|scope| scope.set_span(Some(transaction.clone().into())));
 
             thread::sleep(Duration::from_millis(50));
