@@ -1,7 +1,8 @@
 use httpdate::parse_http_date;
 use std::time::{Duration, SystemTime};
 
-// TODO: maybe move this someplace where we can filter an `Envelope`s items.
+use crate::protocol::EnvelopeItem;
+use crate::Envelope;
 
 /// A Utility that helps with rate limiting sentry requests.
 #[derive(Debug, Default)]
@@ -10,6 +11,7 @@ pub struct RateLimiter {
     error: Option<SystemTime>,
     session: Option<SystemTime>,
     transaction: Option<SystemTime>,
+    attachment: Option<SystemTime>,
 }
 
 impl RateLimiter {
@@ -55,6 +57,7 @@ impl RateLimiter {
                     "error" => self.error = new_time,
                     "session" => self.session = new_time,
                     "transaction" => self.transaction = new_time,
+                    "attachment" => self.attachment = new_time,
                     _ => {}
                 }
             }
@@ -66,7 +69,10 @@ impl RateLimiter {
         }
     }
 
-    /// Query the RateLimiter for a certain category of event.
+    /// Query the RateLimiter if a certain category of event is currently rate limited.
+    ///
+    /// If the given category is rate limited, it will return the remaining
+    /// [`Duration`] for which it is.
     pub fn is_disabled(&self, category: RateLimitingCategory) -> Option<Duration> {
         if let Some(ts) = self.global {
             let time_left = ts.duration_since(SystemTime::now()).ok();
@@ -79,14 +85,38 @@ impl RateLimiter {
             RateLimitingCategory::Error => self.error,
             RateLimitingCategory::Session => self.session,
             RateLimitingCategory::Transaction => self.transaction,
+            RateLimitingCategory::Attachment => self.attachment,
         }?;
         time_left.duration_since(SystemTime::now()).ok()
+    }
+
+    /// Query the RateLimiter for a certain category of event.
+    ///
+    /// Returns `true` if the category is *not* rate limited and should be sent.
+    pub fn is_enabled(&self, category: RateLimitingCategory) -> bool {
+        self.is_disabled(category).is_none()
+    }
+
+    /// Filters the [`Envelope`] according to the current rate limits.
+    ///
+    /// Returns [`None`] if all the envelope items were filtered out.
+    pub fn filter_envelope(&self, envelope: Envelope) -> Option<Envelope> {
+        envelope.filter(|item| {
+            self.is_enabled(match item {
+                EnvelopeItem::Event(_) => RateLimitingCategory::Error,
+                EnvelopeItem::SessionUpdate(_) | EnvelopeItem::SessionAggregates(_) => {
+                    RateLimitingCategory::Session
+                }
+                EnvelopeItem::Transaction(_) => RateLimitingCategory::Transaction,
+                EnvelopeItem::Attachment(_) => RateLimitingCategory::Attachment,
+                _ => RateLimitingCategory::Any,
+            })
+        })
     }
 }
 
 /// The Category of payload that a Rate Limit refers to.
 #[non_exhaustive]
-#[allow(dead_code)]
 pub enum RateLimitingCategory {
     /// Rate Limit for any kind of payload.
     Any,
@@ -96,6 +126,8 @@ pub enum RateLimitingCategory {
     Session,
     /// Rate Limit pertaining to Transactions.
     Transaction,
+    /// Rate Limit pertaining to Attachments.
+    Attachment,
 }
 
 #[cfg(test)]

@@ -140,6 +140,40 @@ impl Envelope {
             .next()
     }
 
+    /// Filters the Envelope's [`EnvelopeItem`]s based on a predicate,
+    /// and returns a new Envelope containing only the filtered items.
+    ///
+    /// Retains the [`EnvelopeItem`]s for which the predicate returns `true`.
+    /// Additionally, [`EnvelopeItem::Attachment`]s are only kept if the Envelope
+    /// contains an [`EnvelopeItem::Event`] or [`EnvelopeItem::Transaction`].
+    ///
+    /// [`None`] is returned if no items remain in the Envelope after filtering.
+    pub fn filter<P>(self, mut predicate: P) -> Option<Self>
+    where
+        P: FnMut(&EnvelopeItem) -> bool,
+    {
+        let mut filtered = Envelope::new();
+        for item in self.items {
+            if predicate(&item) {
+                filtered.add_item(item);
+            }
+        }
+
+        // filter again, removing attachments which do not make any sense without
+        // an event/transaction
+        if filtered.uuid().is_none() {
+            filtered
+                .items
+                .retain(|item| !matches!(item, EnvelopeItem::Attachment(..)))
+        }
+
+        if filtered.items.is_empty() {
+            None
+        } else {
+            Some(filtered)
+        }
+    }
+
     /// Serialize the Envelope into the given [`Write`].
     ///
     /// [`Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
