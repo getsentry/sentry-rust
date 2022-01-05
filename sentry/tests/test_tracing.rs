@@ -54,40 +54,40 @@ fn test_tracing() {
     );
 }
 
-#[tracing::instrument(fields(span_field))]
-fn function() {
-    tracing::Span::current().record("span_field", &"some data");
-}
+// #[tracing::instrument(fields(span_field))]
+// fn function() {
+//     tracing::Span::current().record("span_field", &"some data");
+// }
 
-#[test]
-fn test_span_record() {
-    let _dispatcher = tracing_subscriber::registry()
-        .with(sentry_tracing::layer())
-        .set_default();
+// #[test]
+// fn test_span_record() {
+//     let _dispatcher = tracing_subscriber::registry()
+//         .with(sentry_tracing::layer())
+//         .set_default();
 
-    let options = sentry::ClientOptions {
-        traces_sample_rate: 1.0,
-        ..Default::default()
-    };
+//     let options = sentry::ClientOptions {
+//         traces_sample_rate: 1.0,
+//         ..Default::default()
+//     };
 
-    let envelopes = sentry::test::with_captured_envelopes_options(
-        || {
-            let _span = tracing::span!(tracing::Level::INFO, "span").entered();
-            function();
-        },
-        options,
-    );
+//     let envelopes = sentry::test::with_captured_envelopes_options(
+//         || {
+//             let _span = tracing::span!(tracing::Level::INFO, "span").entered();
+//             function();
+//         },
+//         options,
+//     );
 
-    assert_eq!(envelopes.len(), 1);
+//     assert_eq!(envelopes.len(), 1);
 
-    let envelope_item = envelopes[0].items().next().unwrap();
-    let transaction = match envelope_item {
-        sentry::protocol::EnvelopeItem::Transaction(t) => t,
-        _ => panic!("expected only a transaction item"),
-    };
+//     let envelope_item = envelopes[0].items().next().unwrap();
+//     let transaction = match envelope_item {
+//         sentry::protocol::EnvelopeItem::Transaction(t) => t,
+//         _ => panic!("expected only a transaction item"),
+//     };
 
-    assert_eq!(
-        transaction.spans[0].data["span_field"].as_str().unwrap(),
-        "some data"
-    );
-}
+//     assert_eq!(
+//         transaction.spans[0].data["span_field"].as_str().unwrap(),
+//         "some data"
+//     );
+// }
