@@ -143,7 +143,7 @@ jobs:
 
       - uses: taiki-e/install-action@cargo-llvm-cov
 
-      - run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+      - run: cargo llvm-cov --all-features --workspace --doctests --lcov --output-path lcov.info
 
       - uses: codecov/codecov-action@e156083f13aff6830c92fc5faa23505779fbf649
         with:
