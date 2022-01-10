@@ -1,11 +1,8 @@
 use std::future::Future;
-use std::iter::FromIterator;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
 use http_::Request;
-use sentry_core::protocol::value::Map as ValueMap;
-use sentry_core::protocol::{Map as SentryMap, Value};
 use tower_layer::Layer;
 use tower_service::Service;
 
