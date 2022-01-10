@@ -63,6 +63,7 @@ mod futures;
 mod hub;
 mod integration;
 mod intodsn;
+mod performance;
 mod scope;
 mod transport;
 
@@ -75,6 +76,7 @@ pub use crate::futures::{SentryFuture, SentryFutureExt};
 pub use crate::hub::Hub;
 pub use crate::integration::Integration;
 pub use crate::intodsn::IntoDsn;
+pub use crate::performance::*;
 pub use crate::scope::{Scope, ScopeGuard};
 pub use crate::transport::{Transport, TransportFactory};
 
