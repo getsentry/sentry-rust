@@ -122,9 +122,11 @@ where
                 let headers = request.headers().into_iter().flat_map(|(header, value)| {
                     value.to_str().ok().map(|value| (header.as_str(), value))
                 });
+                let tx_name = format!("{} {}", request.method(), request.uri().path());
                 let tx_ctx = sentry_core::TransactionContext::continue_from_headers(
-                    // TODO: whats the name here?
-                    "", "http", headers,
+                    &tx_name,
+                    "http.server",
+                    headers,
                 );
                 let transaction: sentry_core::TransactionOrSpan =
                     sentry_core::start_transaction(tx_ctx).into();
