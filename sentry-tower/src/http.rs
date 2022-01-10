@@ -99,26 +99,27 @@ where
 
     fn call(&mut self, request: Request<Body>) -> Self::Future {
         let transaction = sentry_core::configure_scope(|scope| {
-            // https://develop.sentry.dev/sdk/event-payloads/request/
-            let mut ctx = SentryMap::new();
-
-            ctx.insert(
-                "method".into(),
-                Value::String(format!("{}", request.method())),
-            );
-            ctx.insert("url".into(), Value::String(format!("{}", request.uri())));
-
-            // headers
-            let headers =
-                ValueMap::from_iter(request.headers().into_iter().map(|(header, value)| {
-                    (
-                        header.to_string(),
-                        value.to_str().unwrap_or("<Opaque header value>").into(),
-                    )
-                }));
-            ctx.insert("headers".into(), headers.into());
-
-            scope.set_context("request", sentry_core::protocol::Context::Other(ctx));
+            let sentry_req = sentry_core::protocol::Request {
+                method: Some(request.method().to_string()),
+                url: request.uri().to_string().parse().ok(),
+                headers: request
+                    .headers()
+                    .into_iter()
+                    .map(|(header, value)| {
+                        (
+                            header.to_string(),
+                            value.to_str().unwrap_or_default().into(),
+                        )
+                    })
+                    .collect(),
+                ..Default::default()
+            };
+            scope.add_event_processor(move |mut event| {
+                if event.request.is_none() {
+                    event.request = Some(sentry_req.clone());
+                }
+                Some(event)
+            });
 
             if self.start_transaction {
                 let headers = request.headers().into_iter().flat_map(|(header, value)| {
