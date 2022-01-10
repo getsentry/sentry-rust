@@ -1,45 +1,82 @@
-use std::collections::BTreeMap;
 use std::future::Future;
+use std::iter::FromIterator;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
+use http_::Request;
+use sentry_core::protocol::value::Map as ValueMap;
+use sentry_core::protocol::{Map as SentryMap, Value};
 use tower_layer::Layer;
 use tower_service::Service;
 
-#[derive(Clone)]
-pub struct SentryHttpLayer;
+/// Tower Layer that logs Http Request Headers.
+///
+/// The Layer can also optionally start a new performance monitoring transaction
+/// based on incoming distributed tracing headers.
+#[derive(Clone, Default)]
+pub struct SentryHttpLayer {
+    start_transaction: bool,
+}
 
+impl SentryHttpLayer {
+    /// Creates a new Layer that only logs Request Headers.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Creates a new Layer that also starts a new performance monitoring transaction.
+    pub fn with_transaction() -> Self {
+        Self {
+            start_transaction: true,
+        }
+    }
+}
+
+/// Tower Service that logs Http Request Headers.
+///
+/// The Service can also optionally start a new performance monitoring transaction
+/// based on incoming distributed tracing headers.
 #[derive(Clone)]
 pub struct SentryHttpService<S> {
     service: S,
+    start_transaction: bool,
 }
 
 impl<S> Layer<S> for SentryHttpLayer {
     type Service = SentryHttpService<S>;
 
     fn layer(&self, service: S) -> Self::Service {
-        Self::Service { service }
+        Self::Service {
+            service,
+            start_transaction: self.start_transaction,
+        }
     }
 }
 
+/// The Future returned from [`SentryHttpService`]
+#[pin_project::pin_project]
 pub struct SentryHttpFuture<F> {
-    transaction: Option<sentry_core::Transaction>,
+    transaction: Option<(
+        sentry_core::TransactionOrSpan,
+        Option<sentry_core::TransactionOrSpan>,
+    )>,
+    #[pin]
     future: F,
 }
 
-impl Future for SentryHttpFuture<F>
+impl<F> Future for SentryHttpFuture<F>
 where
     F: Future,
 {
     type Output = F::Output;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        // https://doc.rust-lang.org/std/pin/index.html#pinning-is-structural-for-field
-        let future = unsafe { self.map_unchecked_mut(|s| &mut s.future) };
-        match future.poll(cx) {
+        let slf = self.project();
+        match slf.future.poll(cx) {
             Poll::Ready(res) => {
-                if let Some(transaction) = self.transaction.take() {
+                if let Some((transaction, parent_span)) = slf.transaction.take() {
                     transaction.finish();
+                    sentry_core::configure_scope(|scope| scope.set_span(parent_span));
                 }
                 Poll::Ready(res)
             }
@@ -61,39 +98,44 @@ where
     }
 
     fn call(&mut self, request: Request<Body>) -> Self::Future {
-        let transaction = sentry::configure_scope(|scope| {
+        let transaction = sentry_core::configure_scope(|scope| {
             // https://develop.sentry.dev/sdk/event-payloads/request/
-            let mut ctx = BTreeMap::new();
+            let mut ctx = SentryMap::new();
 
-            // TODO: method, url, query_string
+            ctx.insert(
+                "method".into(),
+                Value::String(format!("{}", request.method())),
+            );
+            ctx.insert("url".into(), Value::String(format!("{}", request.uri())));
 
             // headers
-            let mut headers = BTreeMap::new();
-            for (header, value) in request.headers() {
-                headers.insert(
-                    header.to_string(),
-                    value.to_str().unwrap_or("<Opaque header value>").into(),
-                );
-            }
-            ctx.insert("headers".into(), headers);
+            let headers =
+                ValueMap::from_iter(request.headers().into_iter().map(|(header, value)| {
+                    (
+                        header.to_string(),
+                        value.to_str().unwrap_or("<Opaque header value>").into(),
+                    )
+                }));
+            ctx.insert("headers".into(), headers.into());
 
             scope.set_context("request", sentry_core::protocol::Context::Other(ctx));
 
-            // TODO: maybe make transaction creation optional?
-            let transaction = if true {
+            if self.start_transaction {
+                let headers = request.headers().into_iter().flat_map(|(header, value)| {
+                    value.to_str().ok().map(|value| (header.as_str(), value))
+                });
                 let tx_ctx = sentry_core::TransactionContext::continue_from_headers(
                     // TODO: whats the name here?
-                    "",
-                    "http",
-                    request.headers(),
+                    "", "http", headers,
                 );
-                Some(sentry_core::start_transaction(tx_ctx))
+                let transaction: sentry_core::TransactionOrSpan =
+                    sentry_core::start_transaction(tx_ctx).into();
+                let parent_span = scope.get_span();
+                scope.set_span(Some(transaction.clone()));
+                Some((transaction, parent_span))
             } else {
                 None
-            };
-
-            scope.set_span(transaction.clone());
-            transaction
+            }
         });
 
         SentryHttpFuture {

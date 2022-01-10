@@ -112,6 +112,8 @@ use tower_service::Service;
 
 #[cfg(feature = "http")]
 mod http;
+#[cfg(feature = "http")]
+pub use http::*;
 
 /// Provides a hub for each request
 pub trait HubProvider<H, Request>
