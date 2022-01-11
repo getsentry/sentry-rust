@@ -8,8 +8,9 @@ use tower_service::Service;
 
 /// Tower Layer that logs Http Request Headers.
 ///
-/// The Layer can also optionally start a new performance monitoring transaction
-/// based on incoming distributed tracing headers.
+/// The Service created by this Layer can also optionally start a new
+/// performance monitoring transaction for each incoming request,
+/// continuing the trace based on incoming distributed tracing headers.
 #[derive(Clone, Default)]
 pub struct SentryHttpLayer {
     start_transaction: bool,
@@ -21,7 +22,8 @@ impl SentryHttpLayer {
         Self::default()
     }
 
-    /// Creates a new Layer that also starts a new performance monitoring transaction.
+    /// Creates a new Layer which starts a new performance monitoring transaction
+    /// for each incoming request.
     pub fn with_transaction() -> Self {
         Self {
             start_transaction: true,
@@ -32,7 +34,8 @@ impl SentryHttpLayer {
 /// Tower Service that logs Http Request Headers.
 ///
 /// The Service can also optionally start a new performance monitoring transaction
-/// based on incoming distributed tracing headers.
+/// for each incoming request, continuing the trace based on incoming
+/// distributed tracing headers.
 #[derive(Clone)]
 pub struct SentryHttpService<S> {
     service: S,
@@ -50,7 +53,7 @@ impl<S> Layer<S> for SentryHttpLayer {
     }
 }
 
-/// The Future returned from [`SentryHttpService`]
+/// The Future returned from [`SentryHttpService`].
 #[pin_project::pin_project]
 pub struct SentryHttpFuture<F> {
     transaction: Option<(
