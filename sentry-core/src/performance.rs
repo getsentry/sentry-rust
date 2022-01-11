@@ -112,7 +112,9 @@ impl TransactionContext {
                 )
             }
             TransactionOrSpan::Span(span) => {
-                (span.span.trace_id, span.span.span_id, Some(span.sampled))
+                let sampled = span.sampled;
+                let span = span.span.lock().unwrap();
+                (span.trace_id, span.span_id, Some(sampled))
             }
         };
 
@@ -158,6 +160,14 @@ impl From<Span> for TransactionOrSpan {
 }
 
 impl TransactionOrSpan {
+    /// Set some extra information to be sent with this Transaction/Span.
+    pub fn set_data(&self, key: &str, value: protocol::Value) {
+        match self {
+            TransactionOrSpan::Transaction(transaction) => transaction.set_data(key, value),
+            TransactionOrSpan::Span(span) => span.set_data(key, value),
+        }
+    }
+
     /// Returns the headers needed for distributed tracing.
     pub fn iter_headers(&self) -> TraceHeadersIter {
         match self {
@@ -187,11 +197,14 @@ impl TransactionOrSpan {
             TransactionOrSpan::Transaction(transaction) => {
                 transaction.inner.lock().unwrap().context.clone()
             }
-            TransactionOrSpan::Span(span) => protocol::TraceContext {
-                span_id: span.span.span_id,
-                trace_id: span.span.trace_id,
-                ..Default::default()
-            },
+            TransactionOrSpan::Span(span) => {
+                let span = span.span.lock().unwrap();
+                protocol::TraceContext {
+                    span_id: span.span_id,
+                    trace_id: span.trace_id,
+                    ..Default::default()
+                }
+            }
         };
         event.contexts.insert("trace".into(), context.into());
     }
@@ -266,6 +279,14 @@ impl Transaction {
         }
     }
 
+    /// Set some extra information to be sent with this Transaction.
+    pub fn set_data(&self, key: &str, value: protocol::Value) {
+        let mut inner = self.inner.lock().unwrap();
+        if let Some(transaction) = inner.transaction.as_mut() {
+            transaction.extra.insert(key.into(), value);
+        }
+    }
+
     /// Returns the headers needed for distributed tracing.
     pub fn iter_headers(&self) -> TraceHeadersIter {
         let inner = self.inner.lock().unwrap();
@@ -326,7 +347,7 @@ impl Transaction {
         Span {
             transaction: Arc::clone(&self.inner),
             sampled: inner.sampled,
-            span,
+            span: Arc::new(Mutex::new(span)),
         }
     }
 }
@@ -339,13 +360,22 @@ impl Transaction {
 pub struct Span {
     transaction: TransactionArc,
     sampled: bool,
-    span: protocol::Span,
+    span: SpanArc,
 }
 
+type SpanArc = Arc<Mutex<protocol::Span>>;
+
 impl Span {
+    /// Set some extra information to be sent with this Transaction.
+    pub fn set_data(&self, key: &str, value: protocol::Value) {
+        let mut span = self.span.lock().unwrap();
+        span.data.insert(key.into(), value);
+    }
+
     /// Returns the headers needed for distributed tracing.
     pub fn iter_headers(&self) -> TraceHeadersIter {
-        let trace = SentryTrace(self.span.trace_id, self.span.span_id, Some(self.sampled));
+        let span = self.span.lock().unwrap();
+        let trace = SentryTrace(span.trace_id, span.span_id, Some(self.sampled));
         TraceHeadersIter {
             sentry_trace: Some(trace.to_string()),
         }
@@ -355,12 +385,17 @@ impl Span {
     ///
     /// This will record the end timestamp and add the span to the transaction
     /// in which it was started.
-    pub fn finish(mut self) {
-        self.span.finish();
+    pub fn finish(self) {
+        let mut span = self.span.lock().unwrap();
+        if span.timestamp.is_some() {
+            // the span was already finished
+            return;
+        }
+        span.finish();
         let mut inner = self.transaction.lock().unwrap();
         if let Some(transaction) = inner.transaction.as_mut() {
             if transaction.spans.len() <= MAX_SPANS {
-                transaction.spans.push(self.span);
+                transaction.spans.push(span.clone());
             }
         }
     }
@@ -370,9 +405,10 @@ impl Span {
     /// The span must be explicitly finished via [`Span::finish`].
     #[must_use = "a span must be explicitly closed via `finish()`"]
     pub fn start_child(&self, op: &str, description: &str) -> Span {
+        let span = self.span.lock().unwrap();
         let span = protocol::Span {
-            trace_id: self.span.trace_id,
-            parent_span_id: Some(self.span.span_id),
+            trace_id: span.trace_id,
+            parent_span_id: Some(span.span_id),
             op: Some(op.into()),
             description: if description.is_empty() {
                 None
@@ -384,7 +420,7 @@ impl Span {
         Span {
             transaction: self.transaction.clone(),
             sampled: self.sampled,
-            span,
+            span: Arc::new(Mutex::new(span)),
         }
     }
 }

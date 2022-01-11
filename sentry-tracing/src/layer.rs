@@ -201,27 +201,26 @@ where
         sentry_core::configure_scope(|scope| scope.set_span(parent_sentry_span));
     }
 
-    // TODO: figure out how to actually add data to the span
-    // /// Implement the writing of extra data to span
-    // fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, S>) {
-    //     let span = match ctx.span(span) {
-    //         Some(s) => s,
-    //         _ => return,
-    //     };
+    /// Implement the writing of extra data to span
+    fn on_record(&self, span: &span::Id, values: &span::Record<'_>, ctx: Context<'_, S>) {
+        let span = match ctx.span(span) {
+            Some(s) => s,
+            _ => return,
+        };
 
-    //     let mut extensions_holder = span.extensions_mut();
-    //     let span = match extensions_holder.get_mut::<SentrySpanData>() {
-    //         Some(t) => t.sentry_span,
-    //         _ => return,
-    //     };
+        let mut extensions = span.extensions_mut();
+        let span = match extensions.get_mut::<SentrySpanData>() {
+            Some(t) => &t.sentry_span,
+            _ => return,
+        };
 
-    //     let mut data = BTreeMapRecorder::default();
-    //     values.record(&mut data);
+        let mut data = BTreeMapRecorder::default();
+        values.record(&mut data);
 
-    //     for (key, value) in data.0 {
-    //         span.span.data.insert(key, value);
-    //     }
-    // }
+        for (key, value) in data.0 {
+            span.set_data(&key, value);
+        }
+    }
 }
 
 /// Creates a default Sentry layer
