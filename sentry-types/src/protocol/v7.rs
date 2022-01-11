@@ -46,7 +46,7 @@ pub mod debugid {
 /// An arbitrary (JSON) value.
 pub use self::value::Value;
 
-/// The internally useed map type.
+/// The internally used map type.
 pub use self::map::Map;
 
 /// A wrapper type for collections with attached meta data.
