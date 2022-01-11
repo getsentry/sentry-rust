@@ -293,6 +293,10 @@ impl Transaction {
                     .insert("trace".into(), inner.context.clone().into());
 
                 // TODO: apply the scope to the transaction, whatever that means
+                let opts = client.options();
+                transaction.release = opts.release.clone();
+                transaction.environment = opts.environment.clone();
+                transaction.sdk = Some(std::borrow::Cow::Owned(client.sdk_info.clone()));
 
                 let mut envelope = protocol::Envelope::new();
                 envelope.add_item(transaction);

@@ -45,7 +45,7 @@ pub struct Client {
     transport: TransportArc,
     session_flusher: RwLock<Option<SessionFlusher>>,
     integrations: Vec<(TypeId, Arc<dyn Integration>)>,
-    sdk_info: ClientSdkInfo,
+    pub(crate) sdk_info: ClientSdkInfo,
 }
 
 impl fmt::Debug for Client {
