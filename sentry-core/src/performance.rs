@@ -283,7 +283,7 @@ impl Transaction {
     pub fn set_data(&self, key: &str, value: protocol::Value) {
         let mut inner = self.inner.lock().unwrap();
         if let Some(transaction) = inner.transaction.as_mut() {
-            transaction.extra.insert(key.into(), value);
+            transaction.data.insert(key.into(), value);
         }
     }
 

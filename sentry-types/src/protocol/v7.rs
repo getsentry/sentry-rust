@@ -1832,7 +1832,7 @@ pub struct Transaction<'a> {
     pub tags: Map<String, String>,
     /// Optional extra information to be sent with the event.
     #[serde(default, skip_serializing_if = "Map::is_empty")]
-    pub extra: Map<String, Value>,
+    pub data: Map<String, Value>,
     /// SDK metadata
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sdk: Option<Cow<'a, ClientSdkInfo>>,
@@ -1861,7 +1861,7 @@ impl<'a> Default for Transaction<'a> {
             event_id: event::default_id(),
             name: Default::default(),
             tags: Default::default(),
-            extra: Default::default(),
+            data: Default::default(),
             release: Default::default(),
             environment: Default::default(),
             sdk: Default::default(),
@@ -1886,7 +1886,7 @@ impl<'a> Transaction<'a> {
             event_id: self.event_id,
             name: self.name,
             tags: self.tags,
-            extra: self.extra,
+            data: self.data,
             release: self.release.map(|x| Cow::Owned(x.into_owned())),
             environment: self.environment.map(|x| Cow::Owned(x.into_owned())),
             sdk: self.sdk.map(|x| Cow::Owned(x.into_owned())),
