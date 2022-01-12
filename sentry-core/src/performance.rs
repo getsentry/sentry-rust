@@ -1,8 +1,7 @@
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use crate::protocol;
-use crate::{Client, Hub};
+use crate::{protocol, Client, Hub};
 
 const MAX_SPANS: usize = 1_000;
 
@@ -168,6 +167,22 @@ impl TransactionOrSpan {
         }
     }
 
+    /// Set the status of the Transaction/Span.
+    pub fn get_status(&self) -> Option<protocol::SpanStatus> {
+        match self {
+            TransactionOrSpan::Transaction(transaction) => transaction.get_status(),
+            TransactionOrSpan::Span(span) => span.get_status(),
+        }
+    }
+
+    /// Set the status of the Transaction/Span.
+    pub fn set_status(&self, status: protocol::SpanStatus) {
+        match self {
+            TransactionOrSpan::Transaction(transaction) => transaction.set_status(status),
+            TransactionOrSpan::Span(span) => span.set_status(status),
+        }
+    }
+
     /// Returns the headers needed for distributed tracing.
     pub fn iter_headers(&self) -> TraceHeadersIter {
         match self {
@@ -287,6 +302,20 @@ impl Transaction {
         }
     }
 
+    /// Get the status of the Transaction.
+    pub fn get_status(&self) -> Option<protocol::SpanStatus> {
+        let inner = self.inner.lock().unwrap();
+        inner.transaction.as_ref().and_then(|tx| tx.status)
+    }
+
+    /// Set the status of the Transaction.
+    pub fn set_status(&self, status: protocol::SpanStatus) {
+        let mut inner = self.inner.lock().unwrap();
+        if let Some(transaction) = inner.transaction.as_mut() {
+            transaction.status = Some(status);
+        }
+    }
+
     /// Returns the headers needed for distributed tracing.
     pub fn iter_headers(&self) -> TraceHeadersIter {
         let inner = self.inner.lock().unwrap();
@@ -370,6 +399,18 @@ impl Span {
     pub fn set_data(&self, key: &str, value: protocol::Value) {
         let mut span = self.span.lock().unwrap();
         span.data.insert(key.into(), value);
+    }
+
+    /// Get the status of the Span.
+    pub fn get_status(&self) -> Option<protocol::SpanStatus> {
+        let span = self.span.lock().unwrap();
+        span.status
+    }
+
+    /// Set the status of the Span.
+    pub fn set_status(&self, status: protocol::SpanStatus) {
+        let mut span = self.span.lock().unwrap();
+        span.status = Some(status);
     }
 
     /// Returns the headers needed for distributed tracing.

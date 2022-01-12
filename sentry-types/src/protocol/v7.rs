@@ -1848,6 +1848,9 @@ pub struct Transaction<'a> {
     /// The start time of the transaction.
     #[serde(default = "event::default_timestamp", with = "ts_seconds_float")]
     pub start_timestamp: DateTime<Utc>,
+    /// Describes the status of the span (e.g. `ok`, `cancelled`, etc.)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub status: Option<SpanStatus>,
     /// The collection of finished spans part of this transaction.
     pub spans: Vec<Span>,
     /// Optional contexts.
@@ -1868,6 +1871,7 @@ impl<'a> Default for Transaction<'a> {
             platform: event::default_platform(),
             timestamp: Default::default(),
             start_timestamp: event::default_timestamp(),
+            status: Default::default(),
             spans: Default::default(),
             contexts: Default::default(),
         }
@@ -1893,6 +1897,7 @@ impl<'a> Transaction<'a> {
             platform: Cow::Owned(self.platform.into_owned()),
             timestamp: self.timestamp,
             start_timestamp: self.start_timestamp,
+            status: self.status,
             spans: self.spans,
             contexts: self.contexts,
         }
