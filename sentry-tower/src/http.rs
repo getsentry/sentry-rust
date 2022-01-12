@@ -2,7 +2,8 @@ use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-use http_::Request;
+use http_::{Request, Response, StatusCode};
+use sentry_core::protocol;
 use tower_layer::Layer;
 use tower_service::Service;
 
@@ -64,9 +65,9 @@ pub struct SentryHttpFuture<F> {
     future: F,
 }
 
-impl<F> Future for SentryHttpFuture<F>
+impl<F, ResBody, Error> Future for SentryHttpFuture<F>
 where
-    F: Future,
+    F: Future<Output = Result<Response<ResBody>, Error>>,
 {
     type Output = F::Output;
 
@@ -75,6 +76,13 @@ where
         match slf.future.poll(cx) {
             Poll::Ready(res) => {
                 if let Some((transaction, parent_span)) = slf.transaction.take() {
+                    if transaction.get_status().is_none() {
+                        let status = match &res {
+                            Ok(res) => map_status(res.status()),
+                            Err(_) => protocol::SpanStatus::UnknownError,
+                        };
+                        transaction.set_status(status);
+                    }
                     transaction.finish();
                     sentry_core::configure_scope(|scope| scope.set_span(parent_span));
                 }
@@ -85,9 +93,9 @@ where
     }
 }
 
-impl<S, Body> Service<Request<Body>> for SentryHttpService<S>
+impl<S, ReqBody, ResBody> Service<Request<ReqBody>> for SentryHttpService<S>
 where
-    S: Service<Request<Body>>,
+    S: Service<Request<ReqBody>, Response = Response<ResBody>>,
 {
     type Response = S::Response;
     type Error = S::Error;
@@ -97,7 +105,7 @@ where
         self.service.poll_ready(cx)
     }
 
-    fn call(&mut self, request: Request<Body>) -> Self::Future {
+    fn call(&mut self, request: Request<ReqBody>) -> Self::Future {
         let transaction = sentry_core::configure_scope(|scope| {
             let sentry_req = sentry_core::protocol::Request {
                 method: Some(request.method().to_string()),
@@ -145,5 +153,21 @@ where
             transaction,
             future: self.service.call(request),
         }
+    }
+}
+
+fn map_status(status: StatusCode) -> protocol::SpanStatus {
+    match status {
+        StatusCode::UNAUTHORIZED => protocol::SpanStatus::Unauthenticated,
+        StatusCode::FORBIDDEN => protocol::SpanStatus::PermissionDenied,
+        StatusCode::NOT_FOUND => protocol::SpanStatus::NotFound,
+        StatusCode::TOO_MANY_REQUESTS => protocol::SpanStatus::ResourceExhausted,
+        status if status.is_client_error() => protocol::SpanStatus::InvalidArgument,
+        StatusCode::NOT_IMPLEMENTED => protocol::SpanStatus::Unimplemented,
+        StatusCode::SERVICE_UNAVAILABLE => protocol::SpanStatus::Unavailable,
+        status if status.is_server_error() => protocol::SpanStatus::InternalError,
+        StatusCode::CONFLICT => protocol::SpanStatus::AlreadyExists,
+        status if status.is_success() => protocol::SpanStatus::Ok,
+        _ => protocol::SpanStatus::UnknownError,
     }
 }
