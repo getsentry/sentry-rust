@@ -1832,7 +1832,7 @@ pub struct Transaction<'a> {
     pub tags: Map<String, String>,
     /// Optional extra information to be sent with the event.
     #[serde(default, skip_serializing_if = "Map::is_empty")]
-    pub data: Map<String, Value>,
+    pub extra: Map<String, Value>,
     /// SDK metadata
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sdk: Option<Cow<'a, ClientSdkInfo>>,
@@ -1848,9 +1848,6 @@ pub struct Transaction<'a> {
     /// The start time of the transaction.
     #[serde(default = "event::default_timestamp", with = "ts_seconds_float")]
     pub start_timestamp: DateTime<Utc>,
-    /// Describes the status of the span (e.g. `ok`, `cancelled`, etc.)
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub status: Option<SpanStatus>,
     /// The collection of finished spans part of this transaction.
     pub spans: Vec<Span>,
     /// Optional contexts.
@@ -1864,14 +1861,13 @@ impl<'a> Default for Transaction<'a> {
             event_id: event::default_id(),
             name: Default::default(),
             tags: Default::default(),
-            data: Default::default(),
+            extra: Default::default(),
             release: Default::default(),
             environment: Default::default(),
             sdk: Default::default(),
             platform: event::default_platform(),
             timestamp: Default::default(),
             start_timestamp: event::default_timestamp(),
-            status: Default::default(),
             spans: Default::default(),
             contexts: Default::default(),
         }
@@ -1890,14 +1886,13 @@ impl<'a> Transaction<'a> {
             event_id: self.event_id,
             name: self.name,
             tags: self.tags,
-            data: self.data,
+            extra: self.extra,
             release: self.release.map(|x| Cow::Owned(x.into_owned())),
             environment: self.environment.map(|x| Cow::Owned(x.into_owned())),
             sdk: self.sdk.map(|x| Cow::Owned(x.into_owned())),
             platform: Cow::Owned(self.platform.into_owned()),
             timestamp: self.timestamp,
             start_timestamp: self.start_timestamp,
-            status: self.status,
             spans: self.spans,
             contexts: self.contexts,
         }
