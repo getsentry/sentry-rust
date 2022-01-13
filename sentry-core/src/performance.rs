@@ -298,22 +298,20 @@ impl Transaction {
     pub fn set_data(&self, key: &str, value: protocol::Value) {
         let mut inner = self.inner.lock().unwrap();
         if let Some(transaction) = inner.transaction.as_mut() {
-            transaction.data.insert(key.into(), value);
+            transaction.extra.insert(key.into(), value);
         }
     }
 
     /// Get the status of the Transaction.
     pub fn get_status(&self) -> Option<protocol::SpanStatus> {
         let inner = self.inner.lock().unwrap();
-        inner.transaction.as_ref().and_then(|tx| tx.status)
+        inner.context.status
     }
 
     /// Set the status of the Transaction.
     pub fn set_status(&self, status: protocol::SpanStatus) {
         let mut inner = self.inner.lock().unwrap();
-        if let Some(transaction) = inner.transaction.as_mut() {
-            transaction.status = Some(status);
-        }
+        inner.context.status = Some(status);
     }
 
     /// Returns the headers needed for distributed tracing.
