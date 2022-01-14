@@ -974,24 +974,39 @@ pub struct AppleDebugImage {
 /// Represents a symbolic debug image.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct SymbolicDebugImage {
-    /// The name of the debug image (usually filename)
+    /// Path and name of the image file (required).
+    ///
+    /// The absolute path to the dynamic library or executable. This helps to locate the file if it is missing on Sentry.
+    /// This is also called `code_file`.
     pub name: String,
     /// The optional CPU architecture of the debug image.
     pub arch: Option<String>,
-    /// The starting address of the image.
+    /// Starting memory address of the image (required).
+    ///
+    /// Memory address, at which the image is mounted in the virtual address space of the process.
     pub image_addr: Addr,
-    /// The size of the image in bytes.
+    /// Size of the image in bytes (required).
+    ///
+    /// The size of the image in virtual memory.
     pub image_size: u64,
-    /// The address where the image is loaded at runtime.
+    /// Loading address in virtual memory.
+    ///
+    /// Preferred load address of the image in virtual memory, as declared in the headers of the
+    /// image. When loading an image, the operating system may still choose to place it at a
+    /// different address.
+    ///
+    /// Symbols and addresses in the native image are always relative to the start of the image and do not consider the preferred load address. It is merely a hint to the loader.
     #[serde(default, skip_serializing_if = "Addr::is_null")]
     pub image_vmaddr: Addr,
-    /// The unique debug id of the image.
+    /// Unique debug identifier of the image.
+    ///
+    /// This is also called `debug_id`.
     pub id: DebugId,
 
-    /// Identifier of the executable file.
+    /// Optional identifier of the code file.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub code_id: Option<CodeId>,
-    /// Name / File of the debug file.
+    /// Path and name of the debug companion file.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub debug_file: Option<String>,
 }
