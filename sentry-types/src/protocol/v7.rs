@@ -1627,7 +1627,12 @@ impl<'a> Event<'a> {
 
 impl<'a> fmt::Display for Event<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Event(id: {}, ts: {:?})", self.event_id, self.timestamp)
+        write!(
+            f,
+            "Event(id: {}, ts: {})",
+            self.event_id,
+            crate::utils::to_rfc3339(&self.timestamp)
+        )
     }
 }
 
@@ -1708,8 +1713,9 @@ impl fmt::Display for Span {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "Span(id: {}, ts: {:?})",
-            self.span_id, self.start_timestamp
+            "Span(id: {}, ts: {})",
+            self.span_id,
+            crate::utils::to_rfc3339(&self.start_timestamp)
         )
     }
 }
@@ -1931,8 +1937,9 @@ impl<'a> fmt::Display for Transaction<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "Transaction(id: {}, ts: {:?})",
-            self.event_id, self.start_timestamp
+            "Transaction(id: {}, ts: {})",
+            self.event_id,
+            crate::utils::to_rfc3339(&self.start_timestamp)
         )
     }
 }

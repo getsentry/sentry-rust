@@ -1,4 +1,8 @@
+use std::convert::{TryFrom, TryInto};
 use std::time::{Duration, SystemTime};
+
+use time::format_description::well_known::Rfc3339;
+use time::OffsetDateTime;
 
 /// Converts a `SystemTime` object into a float timestamp.
 pub fn datetime_to_timestamp(st: &SystemTime) -> f64 {
@@ -13,14 +17,21 @@ pub fn timestamp_to_datetime(ts: f64) -> Option<SystemTime> {
     SystemTime::UNIX_EPOCH.checked_add(duration)
 }
 
+pub fn to_rfc3339(st: &SystemTime) -> String {
+    st.duration_since(SystemTime::UNIX_EPOCH)
+        .ok()
+        .and_then(|duration| TryFrom::try_from(duration).ok())
+        .and_then(|duration| OffsetDateTime::UNIX_EPOCH.checked_add(duration))
+        .and_then(|dt| dt.format(&Rfc3339).ok())
+        .unwrap_or_default()
+}
+
 pub mod ts_seconds_float {
-    use std::convert::TryInto;
     use std::fmt;
-    use std::time::{Duration, SystemTime};
 
     use serde::{de, ser};
 
-    use super::timestamp_to_datetime;
+    use super::*;
 
     pub fn deserialize<'de, D>(d: D) -> Result<SystemTime, D::Error>
     where
@@ -101,13 +112,11 @@ pub mod ts_seconds_float {
 }
 
 pub mod ts_rfc3339 {
-    use std::convert::TryFrom;
     use std::fmt;
-    use std::time::{Duration, SystemTime};
 
     use serde::{de, ser};
-    use time::format_description::well_known::Rfc3339;
-    use time::OffsetDateTime;
+
+    use super::*;
 
     pub fn deserialize<'de, D>(d: D) -> Result<SystemTime, D::Error>
     where
@@ -161,11 +170,9 @@ pub mod ts_rfc3339 {
 }
 
 pub mod ts_rfc3339_opt {
-    use std::time::SystemTime;
-
     use serde::{de, ser};
 
-    use super::ts_rfc3339;
+    use super::*;
 
     pub fn deserialize<'de, D>(d: D) -> Result<Option<SystemTime>, D::Error>
     where

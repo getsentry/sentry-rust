@@ -67,7 +67,7 @@ mod test_event {
         };
         assert_eq!(
             event.to_string(),
-            "Event(id: d43e86c9-6e42-4a93-a4fb-da156dd17341, ts: SystemTime { intervals: 131585767200000000 })"
+            "Event(id: d43e86c9-6e42-4a93-a4fb-da156dd17341, ts: 2017-12-24T08:12:00Z)"
         );
     }
 
