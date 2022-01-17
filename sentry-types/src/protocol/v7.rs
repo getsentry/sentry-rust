@@ -1425,7 +1425,7 @@ mod event {
     }
 
     pub fn is_default_fingerprint(fp: &[Cow<'_, str>]) -> bool {
-        fp.len() == 1 && ((&fp)[0] == "{{ default }}" || (&fp)[0] == "{{default}}")
+        fp.len() == 1 && ((fp)[0] == "{{ default }}" || (fp)[0] == "{{default}}")
     }
 
     pub fn default_timestamp() -> DateTime<Utc> {

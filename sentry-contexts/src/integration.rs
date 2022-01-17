@@ -46,17 +46,20 @@ impl ContextIntegration {
     }
 
     /// Add `os` context, enabled by default.
+    #[must_use]
     pub fn add_os(mut self, add_os: bool) -> Self {
         self.add_os = add_os;
         self
     }
     /// Add `rust` context, enabled by default.
+    #[must_use]
     pub fn add_rust(mut self, add_rust: bool) -> Self {
         self.add_rust = add_rust;
         self
     }
 
     /// Add `device` context, enabled by default.
+    #[must_use]
     pub fn add_device(mut self, add_device: bool) -> Self {
         self.add_device = add_device;
         self

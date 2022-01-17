@@ -156,6 +156,7 @@ impl ClientOptions {
     /// let options = sentry::ClientOptions::new().add_integration(MyIntegration);
     /// assert_eq!(options.integrations.len(), 1);
     /// ```
+    #[must_use]
     pub fn add_integration<I: Integration>(mut self, integration: I) -> Self {
         self.integrations.push(Arc::new(integration));
         self

@@ -89,18 +89,21 @@ impl SentryBuilder {
     }
 
     /// Reconfigures the middleware so that it uses a specific hub instead of the default one.
+    #[must_use]
     pub fn with_hub(mut self, hub: Arc<Hub>) -> Self {
         self.middleware.hub = Some(hub);
         self
     }
 
     /// Reconfigures the middleware so that it uses a specific hub instead of the default one.
+    #[must_use]
     pub fn with_default_hub(mut self) -> Self {
         self.middleware.hub = None;
         self
     }
 
     /// If configured the sentry id is attached to a X-Sentry-Event header.
+    #[must_use]
     pub fn emit_header(mut self, val: bool) -> Self {
         self.middleware.emit_header = val;
         self
@@ -109,6 +112,7 @@ impl SentryBuilder {
     /// Enables or disables error reporting.
     ///
     /// The default is to report all errors.
+    #[must_use]
     pub fn capture_server_errors(mut self, val: bool) -> Self {
         self.middleware.capture_server_errors = val;
         self

@@ -90,16 +90,15 @@ pub fn apply_defaults(mut opts: ClientOptions) -> ClientOptions {
         opts.release = env::var("SENTRY_RELEASE").ok().map(Cow::Owned);
     }
     if opts.environment.is_none() {
-        opts.environment = env::var("SENTRY_ENVIRONMENT")
-            .ok()
-            .map(Cow::Owned)
-            .or_else(|| {
-                Some(Cow::Borrowed(if cfg!(debug_assertions) {
+        opts.environment =
+            env::var("SENTRY_ENVIRONMENT")
+                .ok()
+                .map(Cow::Owned)
+                .or(Some(Cow::Borrowed(if cfg!(debug_assertions) {
                     "development"
                 } else {
                     "production"
-                }))
-            });
+                })));
     }
     if opts.http_proxy.is_none() {
         opts.http_proxy = std::env::var("HTTP_PROXY")

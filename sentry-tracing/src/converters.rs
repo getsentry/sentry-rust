@@ -27,8 +27,7 @@ pub fn extract_event_data(
     let message = data
         .0
         .remove("message")
-        .map(|v| v.as_str().map(|s| s.to_owned()))
-        .flatten();
+        .and_then(|v| v.as_str().map(|s| s.to_owned()));
 
     (message, data.0)
 }
@@ -42,8 +41,7 @@ pub fn extract_span_data(attrs: &span::Attributes) -> (Option<String>, BTreeMap<
     let message = data
         .0
         .remove("message")
-        .map(|v| v.as_str().map(|s| s.to_owned()))
-        .flatten();
+        .and_then(|v| v.as_str().map(|s| s.to_owned()));
 
     (message, data.0)
 }
