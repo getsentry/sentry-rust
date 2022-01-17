@@ -64,6 +64,7 @@ impl<D: Drain> SentryDrain<D> {
     ///
     /// The filter classifies how sentry should handle [`Record`]s based on
     /// their [`slog::Level`].
+    #[must_use]
     pub fn filter<F>(mut self, filter: F) -> Self
     where
         F: Fn(slog::Level) -> LevelFilter + Send + Sync + 'static,
@@ -87,6 +88,7 @@ impl<D: Drain> SentryDrain<D> {
     ///     _ => RecordMapping::Breadcrumb(breadcrumb_from_record(record, kv)),
     /// });
     /// ```
+    #[must_use]
     pub fn mapper<M>(mut self, mapper: M) -> Self
     where
         M: Fn(&Record, &OwnedKVList) -> RecordMapping + Send + Sync + 'static,

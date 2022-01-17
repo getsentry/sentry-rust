@@ -8,6 +8,7 @@
 - The `tracing-subscriber` dependency of `sentry-tracing` has been bumped to version `0.3.x`. ([#377](https://github.com/getsentry/sentry-rust/pull/377))
 - `Scope::add_event_processor` now takes a generic parameter instead of a boxed function.([#380](https://github.com/getsentry/sentry-rust/pull/380))
 - The new performance monitoring APIs required changes to a few `protocol` types.
+- A few more constructors are now decorated with `#[must_use]`.
 
 **Features**:
 

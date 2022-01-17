@@ -30,7 +30,7 @@ pub fn parse_crate_name(func_name: &str) -> Option<String> {
 }
 
 pub fn filename(s: &str) -> &str {
-    s.rsplitn(2, &['/', '\\'][..]).next().unwrap()
+    s.rsplit(&['/', '\\'][..]).next().unwrap()
 }
 
 pub fn strip_symbol(s: &str) -> &str {

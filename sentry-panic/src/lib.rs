@@ -92,6 +92,7 @@ impl PanicIntegration {
     }
 
     /// Registers a new extractor.
+    #[must_use]
     pub fn add_extractor<F>(mut self, f: F) -> Self
     where
         F: Fn(&PanicInfo<'_>) -> Option<Event<'static>> + Send + Sync + 'static,

@@ -68,6 +68,7 @@ impl<S> SentryLayer<S> {
     ///
     /// The filter classifies how sentry should handle [`Event`]s based
     /// on their [`Metadata`].
+    #[must_use]
     pub fn event_filter<F>(mut self, filter: F) -> Self
     where
         F: Fn(&Metadata) -> EventFilter + Send + Sync + 'static,
@@ -80,6 +81,7 @@ impl<S> SentryLayer<S> {
     ///
     /// The mapper is responsible for creating either breadcrumbs or events from
     /// [`Event`]s.
+    #[must_use]
     pub fn event_mapper<F>(mut self, mapper: F) -> Self
     where
         F: Fn(&Event, Context<'_, S>) -> EventMapping + Send + Sync + 'static,
@@ -92,6 +94,7 @@ impl<S> SentryLayer<S> {
     ///
     /// The filter classifies whether sentry should handle [`tracing::Span`]s based
     /// on their [`Metadata`].
+    #[must_use]
     pub fn span_filter<F>(mut self, filter: F) -> Self
     where
         F: Fn(&Metadata) -> bool + Send + Sync + 'static,
