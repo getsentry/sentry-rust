@@ -2,11 +2,13 @@ use std::borrow::Cow;
 use std::fmt;
 use std::net::IpAddr;
 use std::str;
+use std::time::SystemTime;
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
+
+use crate::utils::{ts_rfc3339, ts_rfc3339_opt};
 
 /// The Status of a Release Health Session.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
@@ -102,12 +104,16 @@ pub struct SessionUpdate<'a> {
     pub sequence: Option<u64>,
 
     /// The timestamp of when the session change event was created.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub timestamp: Option<DateTime<Utc>>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "ts_rfc3339_opt"
+    )]
+    pub timestamp: Option<SystemTime>,
 
     /// The timestamp of when the session itself started.
-    #[serde(default = "Utc::now")]
-    pub started: DateTime<Utc>,
+    #[serde(default = "SystemTime::now", with = "ts_rfc3339")]
+    pub started: SystemTime,
 
     /// A flag that indicates that this is the initial transmission of the session.
     #[serde(default, skip_serializing_if = "is_false")]
@@ -139,7 +145,8 @@ fn is_zero(val: &u32) -> bool {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct SessionAggregateItem {
     /// The timestamp of when the session itself started.
-    pub started: DateTime<Utc>,
+    #[serde(with = "ts_rfc3339")]
+    pub started: SystemTime,
     /// The distinct identifier.
     #[serde(rename = "did", default, skip_serializing_if = "Option::is_none")]
     pub distinct_id: Option<String>,

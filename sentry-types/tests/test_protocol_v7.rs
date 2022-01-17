@@ -1,5 +1,6 @@
-use chrono::{DateTime, TimeZone, Utc};
 use std::borrow::Cow;
+use std::convert::TryFrom;
+use std::time::{Duration, SystemTime};
 use uuid::Uuid;
 
 use sentry_types::protocol::v7;
@@ -8,8 +9,29 @@ fn event_id() -> Uuid {
     "d43e86c9-6e42-4a93-a4fb-da156dd17341".parse().unwrap()
 }
 
-fn event_time() -> DateTime<Utc> {
-    Utc.ymd(2017, 12, 24).and_hms(8, 12, 0)
+fn event_time() -> SystemTime {
+    systime(2017, 12, 24, 8, 12, 0, 0)
+}
+
+fn systime(
+    year: i32,
+    month: u8,
+    day: u8,
+    hour: u8,
+    minute: u8,
+    second: u8,
+    millisecond: u16,
+) -> SystemTime {
+    let month = time::Month::try_from(month).unwrap();
+    let date = time::Date::from_calendar_date(year, month, day).unwrap();
+    let date = date
+        .with_hms_milli(hour, minute, second, millisecond)
+        .unwrap()
+        .assume_utc();
+    let secs = date.unix_timestamp() as u64;
+    let nanos = date.nanosecond();
+    let duration = Duration::new(secs, nanos);
+    SystemTime::UNIX_EPOCH.checked_add(duration).unwrap()
 }
 
 fn reserialize(event: &v7::Event<'_>) -> v7::Event<'static> {
@@ -45,7 +67,7 @@ mod test_event {
         };
         assert_eq!(
             event.to_string(),
-            "Event(id: d43e86c9-6e42-4a93-a4fb-da156dd17341, ts: 2017-12-24 08:12:00 UTC)"
+            "Event(id: d43e86c9-6e42-4a93-a4fb-da156dd17341, ts: SystemTime { intervals: 131585767200000000 })"
         );
     }
 
@@ -279,7 +301,6 @@ fn test_modules() {
 
 mod test_timestamp {
     use super::*;
-    use chrono::TimeZone;
 
     #[test]
     fn test_timestamp_utc() {
@@ -304,7 +325,7 @@ mod test_timestamp {
     fn test_timestamp_float() {
         let event = v7::Event {
             event_id: event_id(),
-            timestamp: Utc.ymd(2017, 12, 24).and_hms_milli(8, 12, 0, 500),
+            timestamp: systime(2017, 12, 24, 8, 12, 0, 500),
             ..Default::default()
         };
 
@@ -1137,7 +1158,7 @@ mod test_contexts {
                         free_storage: Some(31_994_734_592),
                         external_storage_size: Some(2_097_152),
                         external_free_storage: Some(2_097_152),
-                        boot_time: Some("2018-02-08T12:52:12Z".parse().unwrap()),
+                        boot_time: Some(systime(2018, 2, 8, 12, 52, 12, 0)),
                         timezone: Some("Europe/Vienna".into()),
                         other: Default::default(),
                     }
@@ -1205,7 +1226,7 @@ mod test_contexts {
                 m.insert(
                     "app".into(),
                     v7::AppContext {
-                        app_start_time: Some("2018-02-08T22:21:57Z".parse().unwrap()),
+                        app_start_time: Some(systime(2018, 2, 8, 22, 21, 57, 0)),
                         device_app_hash: Some("4c793e3776474877ae30618378e9662a".into()),
                         build_type: Some("testflight".into()),
                         app_identifier: Some("foo.bar.baz".into()),

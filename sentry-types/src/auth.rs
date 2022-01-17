@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 use std::fmt;
 use std::str::FromStr;
+use std::time::SystemTime;
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use url::form_urlencoded;
@@ -29,7 +29,7 @@ pub enum ParseAuthError {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Auth {
     #[serde(skip)]
-    timestamp: Option<DateTime<Utc>>,
+    timestamp: Option<SystemTime>,
     #[serde(rename = "sentry_client")]
     client: Option<String>,
     #[serde(rename = "sentry_version")]
@@ -60,11 +60,7 @@ impl Auth {
             let value = value.into();
             match key.as_ref() {
                 "sentry_timestamp" => {
-                    let timestamp = value
-                        .parse()
-                        .ok()
-                        .and_then(|ts| timestamp_to_datetime(ts).single())
-                        .or_else(|| value.parse().ok());
+                    let timestamp = value.parse().ok().and_then(timestamp_to_datetime);
 
                     rv.timestamp = timestamp;
                 }
@@ -100,8 +96,8 @@ impl Auth {
         Auth::from_pairs(form_urlencoded::parse(qs))
     }
 
-    /// Returns the unix timestamp the client defined
-    pub fn timestamp(&self) -> Option<DateTime<Utc>> {
+    /// Returns the timestamp the client defined
+    pub fn timestamp(&self) -> Option<SystemTime> {
         self.timestamp
     }
 
@@ -179,7 +175,7 @@ impl FromStr for Auth {
 
 pub(crate) fn auth_from_dsn_and_client(dsn: &Dsn, client: Option<&str>) -> Auth {
     Auth {
-        timestamp: Some(Utc::now()),
+        timestamp: Some(SystemTime::now()),
         client: client.map(|x| x.to_string()),
         version: protocol::LATEST,
         key: dsn.public_key().to_string(),

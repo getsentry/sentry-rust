@@ -13,16 +13,16 @@ use std::iter::FromIterator;
 use std::net::{AddrParseError, IpAddr};
 use std::ops;
 use std::str;
+use std::time::SystemTime;
 
 use ::debugid::{CodeId, DebugId};
-use chrono::{DateTime, Utc};
 use serde::Serializer;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use url::Url;
 use uuid::Uuid;
 
-use crate::utils::ts_seconds_float;
+use crate::utils::{ts_rfc3339_opt, ts_seconds_float};
 
 pub use super::attachment::*;
 pub use super::envelope::*;
@@ -726,10 +726,6 @@ impl_str_serde!(Level);
 mod breadcrumb {
     use super::*;
 
-    pub fn default_timestamp() -> DateTime<Utc> {
-        Utc::now()
-    }
-
     pub fn default_type() -> String {
         "default".to_string()
     }
@@ -747,8 +743,8 @@ mod breadcrumb {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Breadcrumb {
     /// The timestamp of the breadcrumb.  This is required.
-    #[serde(default = "breadcrumb::default_timestamp", with = "ts_seconds_float")]
-    pub timestamp: DateTime<Utc>,
+    #[serde(default = "SystemTime::now", with = "ts_seconds_float")]
+    pub timestamp: SystemTime,
     /// The type of the breadcrumb.
     #[serde(
         rename = "type",
@@ -777,7 +773,7 @@ pub struct Breadcrumb {
 impl Default for Breadcrumb {
     fn default() -> Breadcrumb {
         Breadcrumb {
-            timestamp: breadcrumb::default_timestamp(),
+            timestamp: SystemTime::now(),
             ty: breadcrumb::default_type(),
             category: Default::default(),
             level: breadcrumb::default_level(),
@@ -1188,8 +1184,12 @@ pub struct DeviceContext {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub external_free_storage: Option<u64>,
     /// Optionally an indicator when the device was booted.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub boot_time: Option<DateTime<Utc>>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "ts_rfc3339_opt"
+    )]
+    pub boot_time: Option<SystemTime>,
     /// The timezone of the device.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timezone: Option<String>,
@@ -1239,8 +1239,12 @@ pub struct RuntimeContext {
 #[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
 pub struct AppContext {
     /// Optional start time of the app.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub app_start_time: Option<DateTime<Utc>>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "ts_rfc3339_opt"
+    )]
+    pub app_start_time: Option<SystemTime>,
     /// Optional device app hash (app specific device ID)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub device_app_hash: Option<String>,
@@ -1442,10 +1446,6 @@ mod event {
     pub fn is_default_fingerprint(fp: &[Cow<'_, str>]) -> bool {
         fp.len() == 1 && ((fp)[0] == "{{ default }}" || (fp)[0] == "{{default}}")
     }
-
-    pub fn default_timestamp() -> DateTime<Utc> {
-        Utc::now()
-    }
 }
 
 /// Represents a full event for Sentry.
@@ -1494,8 +1494,8 @@ pub struct Event<'a> {
     /// The timestamp of when the event was created.
     ///
     /// This can be set to `None` in which case the server will set a timestamp.
-    #[serde(default = "event::default_timestamp", with = "ts_seconds_float")]
-    pub timestamp: DateTime<Utc>,
+    #[serde(default = "SystemTime::now", with = "ts_seconds_float")]
+    pub timestamp: SystemTime,
     /// Optionally the server (or device) name of this event.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub server_name: Option<Cow<'a, str>>,
@@ -1559,7 +1559,7 @@ impl<'a> Default for Event<'a> {
             logger: Default::default(),
             modules: Default::default(),
             platform: event::default_platform(),
-            timestamp: event::default_timestamp(),
+            timestamp: SystemTime::now(),
             server_name: Default::default(),
             release: Default::default(),
             dist: Default::default(),
@@ -1627,7 +1627,7 @@ impl<'a> Event<'a> {
 
 impl<'a> fmt::Display for Event<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Event(id: {}, ts: {})", self.event_id, self.timestamp)
+        write!(f, "Event(id: {}, ts: {:?})", self.event_id, self.timestamp)
     }
 }
 
@@ -1654,11 +1654,15 @@ pub struct Span {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     /// The timestamp at the measuring of the span finished.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub timestamp: Option<DateTime<Utc>>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "ts_rfc3339_opt"
+    )]
+    pub timestamp: Option<SystemTime>,
     /// The timestamp at the measuring of the span started.
-    #[serde(default = "event::default_timestamp", with = "ts_seconds_float")]
-    pub start_timestamp: DateTime<Utc>,
+    #[serde(default = "SystemTime::now", with = "ts_seconds_float")]
+    pub start_timestamp: SystemTime,
     /// Describes the status of the span (e.g. `ok`, `cancelled`, etc.)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status: Option<SpanStatus>,
@@ -1677,7 +1681,7 @@ impl Default for Span {
             trace_id: Default::default(),
             timestamp: Default::default(),
             tags: Default::default(),
-            start_timestamp: event::default_timestamp(),
+            start_timestamp: SystemTime::now(),
             description: Default::default(),
             status: Default::default(),
             parent_span_id: Default::default(),
@@ -1696,7 +1700,7 @@ impl Span {
 
     /// Finalizes the span.
     pub fn finish(&mut self) {
-        self.timestamp = Some(Utc::now());
+        self.timestamp = Some(SystemTime::now());
     }
 }
 
@@ -1704,7 +1708,7 @@ impl fmt::Display for Span {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "Span(id: {}, ts: {})",
+            "Span(id: {}, ts: {:?})",
             self.span_id, self.start_timestamp
         )
     }
@@ -1858,11 +1862,15 @@ pub struct Transaction<'a> {
     )]
     pub platform: Cow<'a, str>,
     /// The end time of the transaction.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub timestamp: Option<DateTime<Utc>>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "ts_rfc3339_opt"
+    )]
+    pub timestamp: Option<SystemTime>,
     /// The start time of the transaction.
-    #[serde(default = "event::default_timestamp", with = "ts_seconds_float")]
-    pub start_timestamp: DateTime<Utc>,
+    #[serde(default = "SystemTime::now", with = "ts_seconds_float")]
+    pub start_timestamp: SystemTime,
     /// The collection of finished spans part of this transaction.
     pub spans: Vec<Span>,
     /// Optional contexts.
@@ -1882,7 +1890,7 @@ impl<'a> Default for Transaction<'a> {
             sdk: Default::default(),
             platform: event::default_platform(),
             timestamp: Default::default(),
-            start_timestamp: event::default_timestamp(),
+            start_timestamp: SystemTime::now(),
             spans: Default::default(),
             contexts: Default::default(),
         }
@@ -1915,7 +1923,7 @@ impl<'a> Transaction<'a> {
 
     /// Finalizes the transaction to be dispatched.
     pub fn finish(&mut self) {
-        self.timestamp = Some(Utc::now());
+        self.timestamp = Some(SystemTime::now());
     }
 }
 
@@ -1923,7 +1931,7 @@ impl<'a> fmt::Display for Transaction<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "Transaction(id: {}, ts: {})",
+            "Transaction(id: {}, ts: {:?})",
             self.event_id, self.start_timestamp
         )
     }
