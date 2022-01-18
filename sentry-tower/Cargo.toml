@@ -11,9 +11,14 @@ Sentry integration for tower-based crates.
 """
 edition = "2018"
 
+[features]
+http = ["http_", "pin-project"]
+
 [dependencies]
 tower-layer = "0.3"
 tower-service = "0.3"
+http_ = { package = "http", version = "0.2.6", optional = true }
+pin-project = { version = "1.0.10", optional = true }
 sentry-core = { version = "0.23.0", path = "../sentry-core", default-features = false, features = ["client"] }
 
 [dev-dependencies]

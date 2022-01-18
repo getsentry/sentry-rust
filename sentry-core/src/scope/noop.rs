@@ -108,4 +108,14 @@ impl Scope {
         let _event = event;
         minimal_unreachable!();
     }
+
+    /// Set the given [`TransactionOrSpan`] as the active span for this scope.
+    pub fn set_span(&mut self, span: Option<TransactionOrSpan>) {
+        minimal_unreachable!();
+    }
+
+    /// Returns the currently active span.
+    pub fn get_span(&self) -> Option<TransactionOrSpan> {
+        None
+    }
 }

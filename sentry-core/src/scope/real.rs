@@ -3,6 +3,7 @@ use std::collections::{HashMap, VecDeque};
 use std::fmt;
 use std::sync::{Arc, Mutex, PoisonError, RwLock};
 
+use crate::performance::TransactionOrSpan;
 use crate::protocol::{Breadcrumb, Context, Event, Level, User, Value};
 use crate::session::Session;
 use crate::Client;
@@ -44,6 +45,7 @@ pub struct Scope {
     pub(crate) contexts: Arc<HashMap<String, Context>>,
     pub(crate) event_processors: Arc<Vec<EventProcessor>>,
     pub(crate) session: Arc<Mutex<Option<Session>>>,
+    pub(crate) span: Arc<Option<TransactionOrSpan>>,
 }
 
 impl fmt::Debug for Scope {
@@ -231,6 +233,10 @@ impl Scope {
                 .map(|(k, v)| (k.to_owned(), v.to_owned())),
         );
 
+        if let Some(span) = self.span.as_ref() {
+            span.apply_to_event(&mut event);
+        }
+
         if event.transaction.is_none() {
             if let Some(txn) = self.transaction.as_deref() {
                 event.transaction = Some(txn.to_owned());
@@ -257,6 +263,16 @@ impl Scope {
         }
 
         Some(event)
+    }
+
+    /// Set the given [`TransactionOrSpan`] as the active span for this scope.
+    pub fn set_span(&mut self, span: Option<TransactionOrSpan>) {
+        self.span = Arc::new(span);
+    }
+
+    /// Returns the currently active span.
+    pub fn get_span(&self) -> Option<TransactionOrSpan> {
+        self.span.as_ref().clone()
     }
 
     pub(crate) fn update_session_from_event(&self, event: &Event<'static>) {

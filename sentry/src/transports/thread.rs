@@ -58,13 +58,20 @@ impl TransportThread {
                         };
 
                         if let Some(time_left) =  rl.is_disabled(RateLimitingCategory::Any) {
-                                sentry_debug!(
-                                    "Skipping event send because we're disabled due to rate limits for {}s",
-                                    time_left.as_secs()
-                                );
-                                continue;
-                            }
-                            rl = send(envelope, rl).await;
+                            sentry_debug!(
+                                "Skipping event send because we're disabled due to rate limits for {}s",
+                                time_left.as_secs()
+                            );
+                            continue;
+                        }
+                        match rl.filter_envelope(envelope) {
+                            Some(envelope) => {
+                                rl = send(envelope, rl).await;
+                            },
+                            None => {
+                                sentry_debug!("Envelope was discarded due to per-item rate limits");
+                            },
+                        };
                     }
                 })
             })

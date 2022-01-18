@@ -1,15 +1,11 @@
 use std::collections::BTreeMap;
 
-use sentry_core::protocol::{self, Event, TraceContext, Value};
+use sentry_core::protocol::{Event, Value};
 use sentry_core::{Breadcrumb, Level};
-use tracing_core::{
-    field::{Field, Visit},
-    span, Subscriber,
-};
+use tracing_core::field::{Field, Visit};
+use tracing_core::{span, Subscriber};
 use tracing_subscriber::layer::Context;
 use tracing_subscriber::registry::LookupSpan;
-
-use crate::Trace;
 
 /// Converts a [`tracing_core::Level`] to a Sentry [`Level`]
 pub fn convert_tracing_level(level: &tracing_core::Level) -> Level {
@@ -31,8 +27,7 @@ pub fn extract_event_data(
     let message = data
         .0
         .remove("message")
-        .map(|v| v.as_str().map(|s| s.to_owned()))
-        .flatten();
+        .and_then(|v| v.as_str().map(|s| s.to_owned()));
 
     (message, data.0)
 }
@@ -46,8 +41,7 @@ pub fn extract_span_data(attrs: &span::Attributes) -> (Option<String>, BTreeMap<
     let message = data
         .0
         .remove("message")
-        .map(|v| v.as_str().map(|s| s.to_owned()))
-        .flatten();
+        .and_then(|v| v.as_str().map(|s| s.to_owned()));
 
     (message, data.0)
 }
@@ -94,46 +88,19 @@ pub fn breadcrumb_from_event(event: &tracing_core::Event) -> Breadcrumb {
 }
 
 /// Creates an [`Event`] from a given [`tracing_core::Event`]
-pub fn event_from_event<S>(event: &tracing_core::Event, ctx: Context<S>) -> Event<'static>
+pub fn event_from_event<S>(event: &tracing_core::Event, _ctx: Context<S>) -> Event<'static>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
     let (message, extra) = extract_event_data(event);
 
-    let mut result = Event {
+    Event {
         logger: Some(event.metadata().target().to_owned()),
         level: convert_tracing_level(event.metadata().level()),
         message,
         extra,
         ..Default::default()
-    };
-
-    let parent = event
-        .parent()
-        .and_then(|id| ctx.span(id))
-        .or_else(|| ctx.lookup_current());
-
-    if let Some(parent) = parent {
-        let extensions = parent.extensions();
-        if let Some(trace) = extensions.get::<Trace>() {
-            let context = protocol::Context::from(TraceContext {
-                span_id: trace.span.span_id,
-                trace_id: trace.span.trace_id,
-                ..TraceContext::default()
-            });
-
-            result.contexts.insert(String::from("trace"), context);
-
-            result.transaction = parent
-                .parent()
-                .into_iter()
-                .flat_map(|span| span.scope())
-                .last()
-                .map(|root| root.name().into());
-        }
     }
-
-    result
 }
 
 /// Creates an exception [`Event`] from a given [`tracing_core::Event`]

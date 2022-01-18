@@ -46,7 +46,7 @@ pub mod debugid {
 /// An arbitrary (JSON) value.
 pub use self::value::Value;
 
-/// The internally useed map type.
+/// The internally used map type.
 pub use self::map::Map;
 
 /// A wrapper type for collections with attached meta data.
@@ -1425,7 +1425,7 @@ mod event {
     }
 
     pub fn is_default_fingerprint(fp: &[Cow<'_, str>]) -> bool {
-        fp.len() == 1 && ((&fp)[0] == "{{ default }}" || (&fp)[0] == "{{default}}")
+        fp.len() == 1 && ((fp)[0] == "{{ default }}" || (fp)[0] == "{{default}}")
     }
 
     pub fn default_timestamp() -> DateTime<Utc> {
@@ -1821,9 +1821,18 @@ pub struct Transaction<'a> {
         skip_serializing_if = "Option::is_none"
     )]
     pub name: Option<String>,
+    /// A release identifier.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub release: Option<Cow<'a, str>>,
+    /// An optional environment identifier.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub environment: Option<Cow<'a, str>>,
     /// Optional tags to be attached to the event.
     #[serde(default, skip_serializing_if = "Map::is_empty")]
     pub tags: Map<String, String>,
+    /// Optional extra information to be sent with the event.
+    #[serde(default, skip_serializing_if = "Map::is_empty")]
+    pub extra: Map<String, Value>,
     /// SDK metadata
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sdk: Option<Cow<'a, ClientSdkInfo>>,
@@ -1852,6 +1861,9 @@ impl<'a> Default for Transaction<'a> {
             event_id: event::default_id(),
             name: Default::default(),
             tags: Default::default(),
+            extra: Default::default(),
+            release: Default::default(),
+            environment: Default::default(),
             sdk: Default::default(),
             platform: event::default_platform(),
             timestamp: Default::default(),
@@ -1874,6 +1886,9 @@ impl<'a> Transaction<'a> {
             event_id: self.event_id,
             name: self.name,
             tags: self.tags,
+            extra: self.extra,
+            release: self.release.map(|x| Cow::Owned(x.into_owned())),
+            environment: self.environment.map(|x| Cow::Owned(x.into_owned())),
             sdk: self.sdk.map(|x| Cow::Owned(x.into_owned())),
             platform: Cow::Owned(self.platform.into_owned()),
             timestamp: self.timestamp,

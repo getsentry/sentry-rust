@@ -17,6 +17,7 @@ impl DebugImagesIntegration {
     /// Sets a custom filter function.
     ///
     /// The filter specified which [`Event`]s should get debug images.
+    #[must_use]
     pub fn filter<F>(mut self, filter: F) -> Self
     where
         F: Fn(&Event<'_>) -> bool + Send + Sync + 'static,

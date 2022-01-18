@@ -73,7 +73,7 @@ impl Auth {
                 }
                 "sentry_version" => {
                     rv.version = value
-                        .splitn(2, '.')
+                        .split('.')
                         .next()
                         .and_then(|v| v.parse().ok())
                         .ok_or(ParseAuthError::InvalidVersion)?;

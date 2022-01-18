@@ -98,6 +98,7 @@ impl<L: log::Log> SentryLogger<L> {
     ///
     /// The filter classifies how sentry should handle [`Record`]s based on
     /// their [`log::Metadata`].
+    #[must_use]
     pub fn filter<F>(mut self, filter: F) -> Self
     where
         F: Fn(&log::Metadata<'_>) -> LogFilter + Send + Sync + 'static,
@@ -110,6 +111,7 @@ impl<L: log::Log> SentryLogger<L> {
     ///
     /// The mapper is responsible for creating either breadcrumbs or events
     /// from [`Record`]s.
+    #[must_use]
     pub fn mapper<M>(mut self, mapper: M) -> Self
     where
         M: Fn(&Record<'_>) -> RecordMapping + Send + Sync + 'static,
