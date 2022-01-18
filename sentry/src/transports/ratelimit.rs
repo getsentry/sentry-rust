@@ -23,16 +23,14 @@ impl RateLimiter {
     /// Updates the RateLimiter with information from a `Retry-After` header.
     pub fn update_from_retry_after(&mut self, header: &str) {
         let new_time = if let Ok(value) = header.parse::<f64>() {
-            Some(SystemTime::now() + Duration::from_secs(value.ceil() as u64))
+            SystemTime::now() + Duration::from_secs(value.ceil() as u64)
         } else if let Ok(value) = parse_http_date(header) {
-            Some(value)
+            value
         } else {
-            None
+            SystemTime::now() + Duration::from_secs(60)
         };
 
-        if new_time.is_some() {
-            self.global = new_time;
-        }
+        self.global = Some(new_time);
     }
 
     /// Updates the RateLimiter with information from a `X-Sentry-Rate-Limits` header.
@@ -67,6 +65,11 @@ impl RateLimiter {
         for group in header.split(',') {
             parse_group(group.trim());
         }
+    }
+
+    /// Updates the RateLimiter in response to a `429` status code.
+    pub fn update_from_429(&mut self) {
+        self.global = Some(SystemTime::now() + Duration::from_secs(60));
     }
 
     /// Query the RateLimiter if a certain category of event is currently rate limited.

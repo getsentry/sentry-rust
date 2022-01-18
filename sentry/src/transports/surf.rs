@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use surf_::{http::headers as SurfHeaders, Client as SurfClient};
+use surf_::{http::headers as SurfHeaders, Client as SurfClient, StatusCode};
 
 use super::thread::TransportThread;
 
@@ -42,16 +42,17 @@ impl SurfHttpTransport {
             async move {
                 match request.await {
                     Ok(mut response) => {
-                        if let Some(retry_after) = response
-                            .header(SurfHeaders::RETRY_AFTER)
-                            .map(|x| x.as_str())
-                        {
-                            rl.update_from_retry_after(retry_after);
-                        }
                         if let Some(sentry_header) =
                             response.header("x-sentry-rate-limits").map(|x| x.as_str())
                         {
                             rl.update_from_retry_after(sentry_header);
+                        } else if let Some(retry_after) = response
+                            .header(SurfHeaders::RETRY_AFTER)
+                            .map(|x| x.as_str())
+                        {
+                            rl.update_from_retry_after(retry_after);
+                        } else if response.status() == StatusCode::TooManyRequests {
+                            rl.update_from_429();
                         }
 
                         match response.body_string().await {

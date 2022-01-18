@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use reqwest_::{header as ReqwestHeaders, Client as ReqwestClient, Proxy};
+use reqwest_::{header as ReqwestHeaders, Client as ReqwestClient, Proxy, StatusCode};
 
 use super::thread::TransportThread;
 
@@ -56,18 +56,21 @@ impl ReqwestHttpTransport {
                 match request.send().await {
                     Ok(response) => {
                         let headers = response.headers();
-                        if let Some(retry_after) = headers
-                            .get(ReqwestHeaders::RETRY_AFTER)
-                            .and_then(|x| x.to_str().ok())
-                        {
-                            rl.update_from_retry_after(retry_after);
-                        }
+
                         if let Some(sentry_header) = headers
                             .get("x-sentry-rate-limits")
                             .and_then(|x| x.to_str().ok())
                         {
                             rl.update_from_sentry_header(sentry_header);
+                        } else if let Some(retry_after) = headers
+                            .get(ReqwestHeaders::RETRY_AFTER)
+                            .and_then(|x| x.to_str().ok())
+                        {
+                            rl.update_from_retry_after(retry_after);
+                        } else if response.status() == StatusCode::TOO_MANY_REQUESTS {
+                            rl.update_from_429();
                         }
+
                         match response.text().await {
                             Err(err) => {
                                 sentry_debug!("Failed to read sentry response: {}", err);
