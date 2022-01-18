@@ -107,12 +107,13 @@ impl CurlHttpTransport {
             }
 
             match handle.response_code() {
-                Ok(_) => {
-                    if let Some(retry_after) = retry_after {
-                        rl.update_from_retry_after(&retry_after);
-                    }
+                Ok(response_code) => {
                     if let Some(sentry_header) = sentry_header {
                         rl.update_from_sentry_header(&sentry_header);
+                    } else if let Some(retry_after) = retry_after {
+                        rl.update_from_retry_after(&retry_after);
+                    } else if response_code == 429 {
+                        rl.update_from_429();
                     }
                 }
                 Err(err) => {
