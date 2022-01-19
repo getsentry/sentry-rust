@@ -124,6 +124,10 @@ jobs:
 
       - run: make testfast
 
+  # Code coverage instrumentation is current broken in recent Rust nightlies,
+  # as they fail processing with the following error:
+  # `Failed to load coverage: Truncated coverage data`
+  # https://github.com/taiki-e/cargo-llvm-cov/issues/128
   codecov:
     name: Code Coverage
     runs-on: ubuntu-latest
@@ -135,7 +139,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly
+          toolchain: nightly-2022-01-14
           components: llvm-tools-preview
           override: true
 
@@ -145,6 +149,13 @@ jobs:
         with:
           args: --workspace --all-features
 
+      # Or maybe switch to `cargo-llvm-cov` later once its doctests are fixed
+
+      #- uses: taiki-e/install-action@cargo-llvm-cov
+
+      #- run: cargo llvm-cov --all-features --workspace --doctests --lcov --output-path lcov.info
+
       - uses: codecov/codecov-action@e156083f13aff6830c92fc5faa23505779fbf649
         with:
           directory: coverage
+          #files: lcov.info
