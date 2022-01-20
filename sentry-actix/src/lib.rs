@@ -235,7 +235,7 @@ where
 
         let (mut tx, sentry_req) = sentry_request_from_http(&req, with_pii);
 
-        let transaction = inner.start_transaction.then(|| {
+        let transaction = if inner.start_transaction {
             let name = std::mem::take(&mut tx)
                 .unwrap_or_else(|| format!("{} {}", req.method(), req.uri()));
 
@@ -249,7 +249,9 @@ where
                 headers,
             );
             hub.start_transaction(ctx)
-        });
+        } else {
+            None
+        };
 
         let parent_span = hub.configure_scope(|scope| {
             let parent_span = scope.get_span();
