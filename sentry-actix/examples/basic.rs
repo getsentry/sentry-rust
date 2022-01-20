@@ -20,10 +20,12 @@ async fn captures_message(_req: HttpRequest) -> Result<String, Error> {
     Ok("Hello World".into())
 }
 
+// cargo run -p sentry-actix --example basic
 #[actix_web::main]
 async fn main() -> io::Result<()> {
     let _guard = sentry::init(sentry::ClientOptions {
         auto_session_tracking: true,
+        traces_sample_rate: 1.0,
         session_mode: sentry::SessionMode::Request,
         ..Default::default()
     });
@@ -35,7 +37,7 @@ async fn main() -> io::Result<()> {
 
     HttpServer::new(|| {
         App::new()
-            .wrap(sentry_actix::Sentry::new())
+            .wrap(sentry_actix::Sentry::with_transaction())
             .service(healthy)
             .service(errors)
             .service(captures_message)
