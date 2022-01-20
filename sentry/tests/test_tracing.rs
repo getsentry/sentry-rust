@@ -21,9 +21,13 @@ fn test_tracing() {
 
         log::info!("Hello Logging World!");
         log::error!("Shit's on fire yo");
+
+        let err = "NaN".parse::<usize>().unwrap_err();
+        let err: &dyn std::error::Error = &err;
+        tracing::error!(err);
     });
 
-    assert_eq!(events.len(), 2);
+    assert_eq!(events.len(), 3);
     let mut events = events.into_iter();
 
     let event = events.next().unwrap();
@@ -51,6 +55,14 @@ fn test_tracing() {
     assert_eq!(
         event.breadcrumbs[1].message,
         Some("Hello Logging World!".into())
+    );
+
+    let event = events.next().unwrap();
+    assert!(!event.exception.is_empty());
+    assert_eq!(event.exception[0].ty, "ParseIntError");
+    assert_eq!(
+        event.exception[0].value,
+        Some("invalid digit found in string".into())
     );
 }
 

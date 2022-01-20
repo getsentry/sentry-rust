@@ -1,14 +1,15 @@
 use std::collections::BTreeMap;
+use std::error::Error;
 
-use sentry_core::protocol::{Event, Value};
-use sentry_core::{Breadcrumb, Level};
+use sentry_core::protocol::{Event, Exception, Value};
+use sentry_core::{event_from_error, Breadcrumb, Level};
 use tracing_core::field::{Field, Visit};
 use tracing_core::{span, Subscriber};
 use tracing_subscriber::layer::Context;
 use tracing_subscriber::registry::LookupSpan;
 
 /// Converts a [`tracing_core::Level`] to a Sentry [`Level`]
-pub fn convert_tracing_level(level: &tracing_core::Level) -> Level {
+fn convert_tracing_level(level: &tracing_core::Level) -> Level {
     match level {
         &tracing_core::Level::TRACE | &tracing_core::Level::DEBUG => Level::Debug,
         &tracing_core::Level::INFO => Level::Info,
@@ -18,71 +19,86 @@ pub fn convert_tracing_level(level: &tracing_core::Level) -> Level {
 }
 
 /// Extracts the message and metadata from an event
-pub fn extract_event_data(
-    event: &tracing_core::Event,
-) -> (Option<String>, BTreeMap<String, Value>) {
+fn extract_event_data(event: &tracing_core::Event) -> (Option<String>, FieldVisitor) {
     // Find message of the event, if any
-    let mut data = BTreeMapRecorder::default();
-    event.record(&mut data);
-    let message = data
-        .0
+    let mut visitor = FieldVisitor::default();
+    event.record(&mut visitor);
+    let message = visitor
+        .json_values
         .remove("message")
         .and_then(|v| v.as_str().map(|s| s.to_owned()));
 
-    (message, data.0)
+    (message, visitor)
 }
 
 /// Extracts the message and metadata from a span
-pub fn extract_span_data(attrs: &span::Attributes) -> (Option<String>, BTreeMap<String, Value>) {
-    let mut data = BTreeMapRecorder::default();
+pub(crate) fn extract_span_data(
+    attrs: &span::Attributes,
+) -> (Option<String>, BTreeMap<String, Value>) {
+    let mut data = FieldVisitor::default();
     attrs.record(&mut data);
 
     // Find message of the span, if any
     let message = data
-        .0
+        .json_values
         .remove("message")
         .and_then(|v| v.as_str().map(|s| s.to_owned()));
 
-    (message, data.0)
+    (message, data.json_values)
 }
 
-#[derive(Default)]
 /// Records all fields of [`tracing_core::Event`] for easy access
-pub(crate) struct BTreeMapRecorder(pub BTreeMap<String, Value>);
+#[derive(Default)]
+pub(crate) struct FieldVisitor {
+    pub json_values: BTreeMap<String, Value>,
+    pub exceptions: Vec<Exception>,
+}
 
-impl BTreeMapRecorder {
+impl FieldVisitor {
     fn record<T: Into<Value>>(&mut self, field: &Field, value: T) {
-        self.0.insert(field.name().to_owned(), value.into());
+        self.json_values
+            .insert(field.name().to_owned(), value.into());
     }
 }
 
-impl Visit for BTreeMapRecorder {
-    fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
-        self.record(field, format!("{:?}", value));
-    }
+impl Visit for FieldVisitor {
     fn record_i64(&mut self, field: &Field, value: i64) {
         self.record(field, value);
     }
+
     fn record_u64(&mut self, field: &Field, value: u64) {
         self.record(field, value);
     }
+
     fn record_bool(&mut self, field: &Field, value: bool) {
         self.record(field, value);
     }
+
     fn record_str(&mut self, field: &Field, value: &str) {
         self.record(field, value);
+    }
+
+    fn record_error(&mut self, _field: &Field, value: &(dyn Error + 'static)) {
+        let event = event_from_error(value);
+        for exception in event.exception {
+            self.exceptions.push(exception);
+        }
+    }
+
+    fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
+        self.record(field, format!("{:?}", value));
     }
 }
 
 /// Creates a [`Breadcrumb`] from a given [`tracing_core::Event`]
 pub fn breadcrumb_from_event(event: &tracing_core::Event) -> Breadcrumb {
-    let (message, data) = extract_event_data(event);
+    let (message, visitor) = extract_event_data(event);
     Breadcrumb {
         category: Some(event.metadata().target().to_owned()),
         ty: "log".into(),
         level: convert_tracing_level(event.metadata().level()),
         message,
-        data,
+        data: visitor.json_values,
         ..Default::default()
     }
 }
@@ -92,19 +108,19 @@ pub fn event_from_event<S>(event: &tracing_core::Event, _ctx: Context<S>) -> Eve
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
-    let (message, extra) = extract_event_data(event);
+    let (message, visitor) = extract_event_data(event);
 
     Event {
         logger: Some(event.metadata().target().to_owned()),
         level: convert_tracing_level(event.metadata().level()),
         message,
-        extra,
+        extra: visitor.json_values,
         ..Default::default()
     }
 }
 
 /// Creates an exception [`Event`] from a given [`tracing_core::Event`]
-pub fn exception_from_event<S>(event: &tracing_core::Event, ctx: Context<S>) -> Event<'static>
+pub fn exception_from_event<S>(event: &tracing_core::Event, _ctx: Context<S>) -> Event<'static>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
@@ -112,5 +128,35 @@ where
     // proper grouping and issue metadata generation. tracing_core::Record does not contain sufficient
     // information for this. However, it may contain a serialized error which we can parse to emit
     // an exception record.
-    event_from_event(event, ctx)
+    const DEFAULT_ERROR_VALUE_KEY: &str = "error";
+
+    let (message, mut visitor) = extract_event_data(event);
+
+    let exception = if visitor.exceptions.is_empty() {
+        let ty = event.metadata().name().into();
+        let value = visitor
+            .json_values
+            .remove(DEFAULT_ERROR_VALUE_KEY)
+            .map(|v| v.as_str().map(|s| s.to_owned()))
+            .flatten()
+            .or_else(|| message.clone());
+        vec![Exception {
+            ty,
+            value,
+            module: event.metadata().module_path().map(String::from),
+            stacktrace: sentry_backtrace::current_stacktrace(),
+            ..Default::default()
+        }]
+    } else {
+        visitor.exceptions
+    }
+    .into();
+    Event {
+        logger: Some(event.metadata().target().to_owned()),
+        level: convert_tracing_level(event.metadata().level()),
+        message,
+        extra: visitor.json_values,
+        exception,
+        ..Default::default()
+    }
 }

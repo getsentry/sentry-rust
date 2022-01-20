@@ -217,10 +217,10 @@ where
             _ => return,
         };
 
-        let mut data = BTreeMapRecorder::default();
+        let mut data = FieldVisitor::default();
         values.record(&mut data);
 
-        for (key, value) in data.0 {
+        for (key, value) in data.json_values {
             span.set_data(&key, value);
         }
     }
