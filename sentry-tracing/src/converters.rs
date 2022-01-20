@@ -144,7 +144,6 @@ where
             ty,
             value,
             module: event.metadata().module_path().map(String::from),
-            stacktrace: sentry_backtrace::current_stacktrace(),
             ..Default::default()
         }]
     } else {
