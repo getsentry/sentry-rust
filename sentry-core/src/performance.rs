@@ -71,7 +71,7 @@ impl TransactionContext {
     ) -> Self {
         let mut trace = None;
         for (k, v) in headers.into_iter() {
-            if k == "sentry-trace" {
+            if k.eq_ignore_ascii_case("sentry-trace") {
                 trace = parse_sentry_trace(v);
             }
         }
