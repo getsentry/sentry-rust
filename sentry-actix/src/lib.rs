@@ -70,11 +70,12 @@ use std::pin::Pin;
 use std::sync::Arc;
 
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
+use actix_web::http::StatusCode;
 use actix_web::Error;
 use futures_util::future::{ok, Future, Ready};
 use futures_util::FutureExt;
 
-use sentry_core::protocol::{ClientSdkPackage, Event, Request};
+use sentry_core::protocol::{self, ClientSdkPackage, Event, Request};
 use sentry_core::{Hub, SentryFutureExt};
 
 /// A helper construct that can be used to reconfigure and build the middleware.
@@ -86,6 +87,13 @@ impl SentryBuilder {
     /// Finishes the building and returns a middleware
     pub fn finish(self) -> Sentry {
         self.middleware
+    }
+
+    /// Tells the middleware to start a new performance monitoring transaction for each request.
+    #[must_use]
+    pub fn start_transaction(mut self, start_transaction: bool) -> Self {
+        self.middleware.start_transaction = start_transaction;
+        self
     }
 
     /// Reconfigures the middleware so that it uses a specific hub instead of the default one.
@@ -125,6 +133,7 @@ pub struct Sentry {
     hub: Option<Arc<Hub>>,
     emit_header: bool,
     capture_server_errors: bool,
+    start_transaction: bool,
 }
 
 impl Sentry {
@@ -134,6 +143,15 @@ impl Sentry {
             hub: None,
             emit_header: false,
             capture_server_errors: true,
+            start_transaction: false,
+        }
+    }
+
+    /// Creates a new sentry middleware which starts a new performance monitoring transaction for each request.
+    pub fn with_transaction() -> Sentry {
+        Sentry {
+            start_transaction: true,
+            ..Sentry::default()
         }
     }
 
@@ -215,10 +233,35 @@ where
             .as_ref()
             .map_or(false, |client| client.options().send_default_pii);
 
-        let (tx, sentry_req) = sentry_request_from_http(&req, with_pii);
-        hub.configure_scope(|scope| {
-            scope.set_transaction(tx.as_deref());
-            scope.add_event_processor(move |event| Some(process_event(event, &sentry_req)))
+        let (mut tx, sentry_req) = sentry_request_from_http(&req, with_pii);
+
+        let transaction = if inner.start_transaction {
+            let name = std::mem::take(&mut tx)
+                .unwrap_or_else(|| format!("{} {}", req.method(), req.uri()));
+
+            let headers = req.headers().iter().flat_map(|(header, value)| {
+                value.to_str().ok().map(|value| (header.as_str(), value))
+            });
+
+            let ctx = sentry_core::TransactionContext::continue_from_headers(
+                &name,
+                "http.server",
+                headers,
+            );
+            Some(hub.start_transaction(ctx))
+        } else {
+            None
+        };
+
+        let parent_span = hub.configure_scope(|scope| {
+            let parent_span = scope.get_span();
+            if let Some(transaction) = transaction.as_ref() {
+                scope.set_span(Some(transaction.clone().into()));
+            } else {
+                scope.set_transaction(tx.as_deref());
+            }
+            scope.add_event_processor(move |event| Some(process_event(event, &sentry_req)));
+            parent_span
         });
 
         let fut = self.service.call(req).bind_hub(hub.clone());
@@ -230,6 +273,15 @@ where
                 Err(e) => {
                     if inner.capture_server_errors {
                         hub.capture_error(&e);
+                    }
+
+                    if let Some(transaction) = transaction {
+                        if transaction.get_status().is_none() {
+                            let status = protocol::SpanStatus::UnknownError;
+                            transaction.set_status(status);
+                        }
+                        transaction.finish();
+                        hub.configure_scope(|scope| scope.set_span(parent_span));
                     }
                     return Err(e);
                 }
@@ -249,9 +301,34 @@ where
                 }
             }
 
+            if let Some(transaction) = transaction {
+                if transaction.get_status().is_none() {
+                    let status = map_status(res.status());
+                    transaction.set_status(status);
+                }
+                transaction.finish();
+                hub.configure_scope(|scope| scope.set_span(parent_span));
+            }
+
             Ok(res)
         }
         .boxed_local()
+    }
+}
+
+fn map_status(status: StatusCode) -> protocol::SpanStatus {
+    match status {
+        StatusCode::UNAUTHORIZED => protocol::SpanStatus::Unauthenticated,
+        StatusCode::FORBIDDEN => protocol::SpanStatus::PermissionDenied,
+        StatusCode::NOT_FOUND => protocol::SpanStatus::NotFound,
+        StatusCode::TOO_MANY_REQUESTS => protocol::SpanStatus::ResourceExhausted,
+        status if status.is_client_error() => protocol::SpanStatus::InvalidArgument,
+        StatusCode::NOT_IMPLEMENTED => protocol::SpanStatus::Unimplemented,
+        StatusCode::SERVICE_UNAVAILABLE => protocol::SpanStatus::Unavailable,
+        status if status.is_server_error() => protocol::SpanStatus::InternalError,
+        StatusCode::CONFLICT => protocol::SpanStatus::AlreadyExists,
+        status if status.is_success() => protocol::SpanStatus::Ok,
+        _ => protocol::SpanStatus::UnknownError,
     }
 }
 
