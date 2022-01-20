@@ -248,7 +248,7 @@ where
                 "http.server",
                 headers,
             );
-            hub.start_transaction(ctx)
+            Some(hub.start_transaction(ctx))
         } else {
             None
         };
