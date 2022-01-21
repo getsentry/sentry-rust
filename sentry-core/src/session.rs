@@ -5,9 +5,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::thread::JoinHandle;
-use std::time::{Duration, Instant};
-
-use chrono::{Duration as ChronoDuration, DurationRound};
+use std::time::{Duration, Instant, SystemTime};
 
 use crate::client::TransportArc;
 use crate::clientoptions::SessionMode;
@@ -16,7 +14,7 @@ use crate::protocol::{
     SessionStatus, SessionUpdate,
 };
 use crate::scope::StackLayer;
-use crate::types::{DateTime, Utc, Uuid};
+use crate::types::Uuid;
 use crate::{Client, Envelope};
 
 #[derive(Clone, Debug)]
@@ -56,7 +54,7 @@ impl Session {
                 distinct_id,
                 sequence: None,
                 timestamp: None,
-                started: Utc::now(),
+                started: SystemTime::now(),
                 init: true,
                 duration: None,
                 status: SessionStatus::Ok,
@@ -164,7 +162,7 @@ impl From<AggregatedSessions> for EnvelopeItem {
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 struct AggregationKey {
-    started: DateTime<Utc>,
+    started: SystemTime,
     distinct_id: Option<String>,
 }
 
@@ -257,9 +255,13 @@ impl SessionFlusher {
             attributes: session_update.attributes.clone(),
         });
 
-        let started = session_update
+        let duration = session_update
             .started
-            .duration_trunc(ChronoDuration::minutes(1))
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap();
+        let duration = (duration.as_secs() / 60) * 60;
+        let started = SystemTime::UNIX_EPOCH
+            .checked_add(Duration::from_secs(duration))
             .unwrap();
 
         let key = AggregationKey {

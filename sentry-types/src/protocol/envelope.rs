@@ -250,7 +250,10 @@ impl From<Transaction<'static>> for Envelope {
 
 #[cfg(test)]
 mod test {
-    use chrono::{DateTime, Utc};
+    use std::time::{Duration, SystemTime};
+
+    use time::format_description::well_known::Rfc3339;
+    use time::OffsetDateTime;
 
     use super::*;
     use crate::protocol::v7::{SessionAttributes, SessionStatus, Span};
@@ -261,6 +264,14 @@ mod test {
         String::from_utf8_lossy(&vec).to_string()
     }
 
+    fn timestamp(s: &str) -> SystemTime {
+        let dt = OffsetDateTime::parse(s, &Rfc3339).unwrap();
+        let secs = dt.unix_timestamp() as u64;
+        let nanos = dt.nanosecond();
+        let duration = Duration::new(secs, nanos);
+        SystemTime::UNIX_EPOCH.checked_add(duration).unwrap()
+    }
+
     #[test]
     fn test_empty() {
         assert_eq!(to_str(Envelope::new()), "{}\n");
@@ -269,7 +280,7 @@ mod test {
     #[test]
     fn test_event() {
         let event_id = Uuid::parse_str("22d00b3f-d1b1-4b5d-8d20-49d138cd8a9c").unwrap();
-        let timestamp = "2020-07-20T14:51:14.296Z".parse::<DateTime<Utc>>().unwrap();
+        let timestamp = timestamp("2020-07-20T14:51:14.296Z");
         let event = Event {
             event_id,
             timestamp,
@@ -288,7 +299,7 @@ mod test {
     #[test]
     fn test_session() {
         let session_id = Uuid::parse_str("22d00b3f-d1b1-4b5d-8d20-49d138cd8a9c").unwrap();
-        let started = "2020-07-20T14:51:14.296Z".parse::<DateTime<Utc>>().unwrap();
+        let started = timestamp("2020-07-20T14:51:14.296Z");
         let session = SessionUpdate {
             session_id,
             distinct_id: Some("foo@bar.baz".to_owned()),
@@ -322,7 +333,7 @@ mod test {
         let event_id = Uuid::parse_str("22d00b3f-d1b1-4b5d-8d20-49d138cd8a9c").unwrap();
         let span_id = "d42cee9fc3e74f5c".parse().unwrap();
         let trace_id = "335e53d614474acc9f89e632b776cc28".parse().unwrap();
-        let start_timestamp = "2020-07-20T14:51:14.296Z".parse::<DateTime<Utc>>().unwrap();
+        let start_timestamp = timestamp("2020-07-20T14:51:14.296Z");
         let spans = vec![Span {
             span_id,
             trace_id,

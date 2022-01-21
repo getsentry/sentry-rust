@@ -1,6 +1,6 @@
 use std::collections::HashMap;
+use std::time::{Duration, SystemTime};
 
-use chrono::{TimeZone, Utc};
 use sentry_types::{protocol, Auth, Dsn};
 
 #[test]
@@ -14,7 +14,7 @@ fn test_auth_parsing() {
         .unwrap();
     assert_eq!(
         auth.timestamp(),
-        Some(Utc.ymd(2012, 2, 1).and_hms_milli(0, 14, 46, 500))
+        SystemTime::UNIX_EPOCH.checked_add(Duration::from_secs_f64(1328055286.5))
     );
     assert_eq!(auth.client_agent(), Some("raven-python/42"));
     assert_eq!(auth.version(), 6);
