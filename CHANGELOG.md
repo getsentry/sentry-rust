@@ -4,26 +4,30 @@
 
 **Breaking Changes**:
 
+- The minium supported Rust version was bumped to **1.51.0** due to requirements from dependencies.
 - The `backtrace` feature of `sentry-anyhow` is enabled by default. ([#362](https://github.com/getsentry/sentry-rust/pull/362))
 - The `tracing-subscriber` dependency of `sentry-tracing` has been bumped to version `0.3.x`. ([#377](https://github.com/getsentry/sentry-rust/pull/377))
 - `Scope::add_event_processor` now takes a generic parameter instead of a boxed function.([#380](https://github.com/getsentry/sentry-rust/pull/380))
 - The new performance monitoring APIs required changes to a few `protocol` types.
 - A few more constructors are now decorated with `#[must_use]`.
+- Usage of `chrono` in public API types was removed in favor of `SystemTime`. ([#409](https://github.com/getsentry/sentry-rust/pull/409))
 
 **Features**:
 
 - Added manual APIs for performance monitoring and span/transaction collection. ([#395](https://github.com/getsentry/sentry-rust/pull/395))
 - Added span/transaction collection to `sentry-tracing`. ([#350](https://github.com/getsentry/sentry-rust/pull/350), [#400](https://github.com/getsentry/sentry-rust/pull/400))
 - Added a new crate `sentry-tower` and feature `tower` that enables integration with `tower`. ([#356](https://github.com/getsentry/sentry-rust/pull/356))
-- The new `sentry-tower` crate has a `http` feature which can be used to log request details and start
-  new performance monitoring spans based on incoming distributed tracing headers. ([#397](https://github.com/getsentry/sentry-rust/pull/397))
+- The new `sentry-tower` crate has a `http` feature which can be used to log request details and start new performance monitoring spans based on incoming distributed tracing headers. ([#397](https://github.com/getsentry/sentry-rust/pull/397))
+- Similarly, the `sentry-actix` integration also has the ability to start new performance monitoring spans based on incoming distributed tracing headers. ([#411](https://github.com/getsentry/sentry-rust/pull/411))
 - Added a new feature `surf-h1` for using `surf` with the h1 client. ([#357](https://github.com/getsentry/sentry-rust/pull/357))
 - Added support for `Span::record` to `sentry-tracing`. ([#364](https://github.com/getsentry/sentry-rust/pull/364))
+- Errors captured in the `tracing` integration are being reported as sentry Exceptions. ([#412](https://github.com/getsentry/sentry-rust/pull/412))
 - Added Windows support for debug images. ([#366](https://github.com/getsentry/sentry-rust/pull/366))
 
 **Fixes**:
 
 - The `tokio` dependency is now only required for the `curl`, `reqwest`, and `surf` features. ([#363](https://github.com/getsentry/sentry-rust/pull/363))
+- The rate limiting implementation was updated to follow the expected behavior. ([#410](https://github.com/getsentry/sentry-rust/pull/410))
 
 **Thank you**:
 
@@ -36,6 +40,7 @@ Features, fixes and improvements in this release have been contributed by:
 - [@leops](https://github.com/leops)
 - [@Turbo87](https://github.com/Turbo87)
 - [@DmitrySamoylov](https://github.com/DmitrySamoylov)
+- [@seanpianka](https://github.com/seanpianka)
 
 ## 0.23.0
 
