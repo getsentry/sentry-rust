@@ -6,7 +6,7 @@
 
 # Sentry Rust SDK: sentry-panic
 
-The Sentry Panic handler Integration.
+The Sentry Panic handler integration.
 
 The `PanicIntegration`, which is enabled by default in `sentry`, installs a
 panic handler that will automatically dispatch all errors to Sentry that

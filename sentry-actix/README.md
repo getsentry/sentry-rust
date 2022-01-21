@@ -17,11 +17,9 @@ such as breadcrumbs do not work unless you bind the actix hub.
 ## Example
 
 ```rust
-use std::env;
 use std::io;
 
 use actix_web::{get, App, Error, HttpRequest, HttpServer};
-use sentry::Level;
 
 #[get("/")]
 async fn failing(_req: HttpRequest) -> Result<String, Error> {
@@ -31,7 +29,7 @@ async fn failing(_req: HttpRequest) -> Result<String, Error> {
 #[actix_web::main]
 async fn main() -> io::Result<()> {
     let _guard = sentry::init(());
-    env::set_var("RUST_BACKTRACE", "1");
+    std::env::set_var("RUST_BACKTRACE", "1");
 
     HttpServer::new(|| {
         App::new()
@@ -46,14 +44,27 @@ async fn main() -> io::Result<()> {
 }
 ```
 
-## Reusing the Hub
+## Using Release Health
 
-This integration will automatically update the current Hub instance. For example,
-the following will capture a message in the current request's Hub:
+The actix middleware will automatically start a new session for each request
+when `auto_session_tracking` is enabled and the client is configured to
+use `SessionMode::Request`.
 
 ```rust
-use sentry::Level;
-sentry::capture_message("Something is not well", Level::Warning);
+let _sentry = sentry::init(sentry::ClientOptions {
+    session_mode: sentry::SessionMode::Request,
+    auto_session_tracking: true,
+    ..Default::default()
+});
+```
+
+## Reusing the Hub
+
+This integration will automatically create a new per-request Hub from the main Hub, and update the
+current Hub instance. For example, the following will capture a message in the current request's Hub:
+
+```rust
+sentry::capture_message("Something is not well", sentry::Level::Warning);
 ```
 
 ## Resources
