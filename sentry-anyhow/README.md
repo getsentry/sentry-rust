@@ -1,4 +1,10 @@
-# sentry-anyhow
+<p align="center">
+    <a href="https://sentry.io" target="_blank" align="center">
+        <img src="https://sentry-brand.storage.googleapis.com/sentry-logo-black.png" width="280">
+    </a>
+</p>
+
+# Sentry Rust SDK: sentry-anyhow
 
 Adds support for capturing Sentry errors from [`anyhow::Error`].
 
@@ -36,11 +42,11 @@ if let Err(err) = function_that_might_fail() {
 The `backtrace` feature will enable the corresponding feature in anyhow and allow you to
 capture backtraces with your events.  It is enabled by default.
 
-## Resources
-
-- [Discord](https://discord.gg/ez5KZN7) server for project discussions.
-- Follow [@getsentry](https://twitter.com/getsentry) on Twitter for updates.
-
 [`anyhow::Error`]: https://docs.rs/anyhow/*/anyhow/struct.Error.html
 
+## Resources
+
 License: Apache-2.0
+
+- [Discord](https://discord.gg/ez5KZN7) server for project discussions.
+- Follow [@getsentry](https://twitter.com/getsentry) on Twitter for updates
