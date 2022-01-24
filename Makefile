@@ -68,7 +68,7 @@ check-default-features:
 
 check-no-default-features:
 	@echo 'NO DEFAULT FEATURES'
-	@cd sentry && RUSTFLAGS=-Dwarnings cargo check --no-default-features
+	@cd sentry-core && RUSTFLAGS=-Dwarnings cargo check --no-default-features
 .PHONY: check-no-default-features
 
 check-panic:

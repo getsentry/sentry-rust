@@ -1,6 +1,7 @@
 use std::fmt;
 
 use crate::protocol::{Context, Event, Level, User, Value};
+use crate::TransactionOrSpan;
 
 /// A minimal API scope guard.
 ///
@@ -111,6 +112,7 @@ impl Scope {
 
     /// Set the given [`TransactionOrSpan`] as the active span for this scope.
     pub fn set_span(&mut self, span: Option<TransactionOrSpan>) {
+        let _ = span;
         minimal_unreachable!();
     }
 
