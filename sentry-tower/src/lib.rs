@@ -110,8 +110,9 @@
 //!
 //! ```rust
 //! # #[cfg(feature = "http")] {
+//! # type Request = http_::Request<String>;
 //! let layer = tower::ServiceBuilder::new()
-//!     .layer(sentry_tower::NewSentryLayer::new_from_top())
+//!     .layer(sentry_tower::NewSentryLayer::<Request>::new_from_top())
 //!     .layer(sentry_tower::SentryHttpLayer::with_transaction());
 //! # }
 //! ```
