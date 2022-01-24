@@ -1,8 +1,12 @@
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use crate::{protocol, Client, Hub};
+use crate::{protocol, Hub};
 
+#[cfg(feature = "client")]
+use crate::Client;
+
+#[cfg(feature = "client")]
 const MAX_SPANS: usize = 1_000;
 
 // global API:
@@ -14,8 +18,15 @@ const MAX_SPANS: usize = 1_000;
 /// The transaction itself also represents the root span in the span hierarchy.
 /// Child spans can be started with the [`Transaction::start_child`] method.
 pub fn start_transaction(ctx: TransactionContext) -> Transaction {
-    let client = Hub::with_active(|hub| hub.client());
-    Transaction::new(client, ctx)
+    #[cfg(feature = "client")]
+    {
+        let client = Hub::with_active(|hub| hub.client());
+        Transaction::new(client, ctx)
+    }
+    #[cfg(not(feature = "client"))]
+    {
+        Transaction::new_noop(ctx)
+    }
 }
 
 // Hub API:
@@ -25,7 +36,14 @@ impl Hub {
     ///
     /// See the global [`start_transaction`] for more documentation.
     pub fn start_transaction(&self, ctx: TransactionContext) -> Transaction {
-        Transaction::new(self.client(), ctx)
+        #[cfg(feature = "client")]
+        {
+            Transaction::new(self.client(), ctx)
+        }
+        #[cfg(not(feature = "client"))]
+        {
+            Transaction::new_noop(ctx)
+        }
     }
 }
 
@@ -37,6 +55,7 @@ impl Hub {
 /// Transaction, and also the connection point for distributed tracing.
 #[derive(Debug)]
 pub struct TransactionContext {
+    #[cfg_attr(not(feature = "client"), allow(dead_code))]
     name: String,
     op: String,
     trace_id: protocol::TraceId,
@@ -203,6 +222,7 @@ impl TransactionOrSpan {
         }
     }
 
+    #[cfg(feature = "client")]
     pub(crate) fn apply_to_event(&self, event: &mut protocol::Event<'_>) {
         if event.contexts.contains_key("trace") {
             return;
@@ -238,6 +258,7 @@ impl TransactionOrSpan {
 
 #[derive(Debug)]
 struct TransactionInner {
+    #[cfg(feature = "client")]
     client: Option<Arc<Client>>,
     sampled: bool,
     context: protocol::TraceContext,
@@ -257,6 +278,7 @@ pub struct Transaction {
 }
 
 impl Transaction {
+    #[cfg(feature = "client")]
     fn new(mut client: Option<Arc<Client>>, ctx: TransactionContext) -> Self {
         let context = protocol::TraceContext {
             trace_id: ctx.trace_id,
@@ -290,6 +312,25 @@ impl Transaction {
                 sampled,
                 context,
                 transaction,
+            })),
+        }
+    }
+
+    #[cfg(not(feature = "client"))]
+    fn new_noop(ctx: TransactionContext) -> Self {
+        let context = protocol::TraceContext {
+            trace_id: ctx.trace_id,
+            parent_span_id: ctx.parent_span_id,
+            op: Some(ctx.op),
+            ..Default::default()
+        };
+        let sampled = ctx.sampled.unwrap_or(false);
+
+        Self {
+            inner: Arc::new(Mutex::new(TransactionInner {
+                sampled,
+                context,
+                transaction: None,
             })),
         }
     }
@@ -332,26 +373,28 @@ impl Transaction {
     /// This records the end timestamp and sends the transaction together with
     /// all finished child spans to Sentry.
     pub fn finish(self) {
-        let mut inner = self.inner.lock().unwrap();
-        if let Some(mut transaction) = inner.transaction.take() {
-            if let Some(client) = inner.client.take() {
-                transaction.finish();
-                transaction
-                    .contexts
-                    .insert("trace".into(), inner.context.clone().into());
+        with_client_impl! {{
+            let mut inner = self.inner.lock().unwrap();
+            if let Some(mut transaction) = inner.transaction.take() {
+                if let Some(client) = inner.client.take() {
+                    transaction.finish();
+                    transaction
+                        .contexts
+                        .insert("trace".into(), inner.context.clone().into());
 
-                // TODO: apply the scope to the transaction, whatever that means
-                let opts = client.options();
-                transaction.release = opts.release.clone();
-                transaction.environment = opts.environment.clone();
-                transaction.sdk = Some(std::borrow::Cow::Owned(client.sdk_info.clone()));
+                    // TODO: apply the scope to the transaction, whatever that means
+                    let opts = client.options();
+                    transaction.release = opts.release.clone();
+                    transaction.environment = opts.environment.clone();
+                    transaction.sdk = Some(std::borrow::Cow::Owned(client.sdk_info.clone()));
 
-                let mut envelope = protocol::Envelope::new();
-                envelope.add_item(transaction);
+                    let mut envelope = protocol::Envelope::new();
+                    envelope.add_item(transaction);
 
-                client.send_envelope(envelope)
+                    client.send_envelope(envelope)
+                }
             }
-        }
+        }}
     }
 
     /// Starts a new child Span with the given `op` and `description`.
@@ -425,18 +468,20 @@ impl Span {
     /// This will record the end timestamp and add the span to the transaction
     /// in which it was started.
     pub fn finish(self) {
-        let mut span = self.span.lock().unwrap();
-        if span.timestamp.is_some() {
-            // the span was already finished
-            return;
-        }
-        span.finish();
-        let mut inner = self.transaction.lock().unwrap();
-        if let Some(transaction) = inner.transaction.as_mut() {
-            if transaction.spans.len() <= MAX_SPANS {
-                transaction.spans.push(span.clone());
+        with_client_impl! {{
+            let mut span = self.span.lock().unwrap();
+            if span.timestamp.is_some() {
+                // the span was already finished
+                return;
             }
-        }
+            span.finish();
+            let mut inner = self.transaction.lock().unwrap();
+            if let Some(transaction) = inner.transaction.as_mut() {
+                if transaction.spans.len() <= MAX_SPANS {
+                    transaction.spans.push(span.clone());
+                }
+            }
+        }}
     }
 
     /// Starts a new child Span with the given `op` and `description`.
@@ -510,11 +555,12 @@ impl std::fmt::Display for SentryTrace {
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use super::*;
 
     #[test]
     fn parses_sentry_trace() {
-        use std::str::FromStr;
         let trace_id = protocol::TraceId::from_str("09e04486820349518ac7b5d2adbf6ba5").unwrap();
         let parent_trace_id = protocol::SpanId::from_str("9cf635fa5b870b3a").unwrap();
 
@@ -527,5 +573,23 @@ mod tests {
         let trace = SentryTrace(Default::default(), Default::default(), None);
         let parsed = parse_sentry_trace(&format!("{}", trace));
         assert_eq!(parsed, Some(trace));
+    }
+
+    #[test]
+    fn disabled_forwards_trace_id() {
+        let headers = [(
+            "SenTrY-TRAce",
+            "09e04486820349518ac7b5d2adbf6ba5-9cf635fa5b870b3a-1",
+        )];
+        let ctx = TransactionContext::continue_from_headers("noop", "noop", headers);
+        let trx = start_transaction(ctx);
+
+        let span = trx.start_child("noop", "noop");
+
+        let header = span.iter_headers().next().unwrap().1;
+        let parsed = parse_sentry_trace(&header).unwrap();
+
+        assert_eq!(&parsed.0.to_string(), "09e04486820349518ac7b5d2adbf6ba5");
+        assert_eq!(parsed.2, Some(true));
     }
 }
