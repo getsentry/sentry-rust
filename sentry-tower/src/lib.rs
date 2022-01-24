@@ -253,8 +253,9 @@ where
     }
 
     fn call(&mut self, request: Request) -> Self::Future {
-        let hub = self.provider.hub(&request);
-        self.service.call(request).bind_hub(hub)
+        let hub = self.provider.hub(&request).into();
+        let fut = Hub::run(hub.clone(), || self.service.call(request));
+        fut.bind_hub(hub)
     }
 }
 
