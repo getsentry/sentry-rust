@@ -97,6 +97,24 @@
 //! #     Ok(())
 //! # }
 //! ```
+//!
+//! ## Usage with `tower-http`
+//!
+//! The `http` feature offers another layer which will attach request details
+//! onto captured events, and optionally start a new performance monitoring
+//! transaction based on the incoming HTTP headers.
+//!
+//! When combining both layers, take care of the ordering of both. For example
+//! with [`tower::ServiceBuilder`], always define the `Hub` layer before the `Http`
+//! one, like so:
+//!
+//! ```rust
+//! # #[cfg(feature = "http")] {
+//! let layer = tower::ServiceBuilder::new()
+//!     .layer(sentry_tower::NewSentryLayer::new_from_top())
+//!     .layer(sentry_tower::SentryHttpLayer::with_transaction());
+//! # }
+//! ```
 
 #![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
 #![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
