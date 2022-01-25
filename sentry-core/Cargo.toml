@@ -1,6 +1,6 @@
 [package]
 name = "sentry-core"
-version = "0.24.1"
+version = "0.24.2"
 authors = ["Sentry <hello@sentry.io>"]
 license = "Apache-2.0"
 readme = "README.md"
@@ -27,7 +27,7 @@ debug-logs = ["log_"]
 test = ["client"]
 
 [dependencies]
-sentry-types = { version = "0.24.1", path = "../sentry-types" }
+sentry-types = { version = "0.24.2", path = "../sentry-types" }
 serde = { version = "1.0.104", features = ["derive"] }
 lazy_static = "1.4.0"
 rand = { version = "0.8.1", optional = true }
