@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**:
+
+- Make sure `sentry-core` compiler without the `client` feature. ([#416](https://github.com/getsentry/sentry-rust/pull/416))
+- Fix incorrect wrapping of Service Futures in `sentry-tower` that could lead to memory leaks combined with the Http Service. ([#417](https://github.com/getsentry/sentry-rust/pull/417))
+
 ## 0.24.1
 
 **Breaking Changes**:
