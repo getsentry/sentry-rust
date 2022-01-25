@@ -46,13 +46,13 @@ functionality.
 [Sentry]: https://sentry.io/
 [`sentry`]: https://crates.io/crates/sentry
 [Unified API]: https://develop.sentry.dev/sdk/unified-api/
-[`Client`]: https://docs.rs/sentry-core/0.24.1/sentry_core/struct.Client.html
-[`Hub`]: https://docs.rs/sentry-core/0.24.1/sentry_core/struct.Hub.html
-[`Scope`]: https://docs.rs/sentry-core/0.24.1/sentry_core/struct.Scope.html
-[`Integration`]: https://docs.rs/sentry-core/0.24.1/sentry_core/trait.Integration.html
-[`Transport`]: https://docs.rs/sentry-core/0.24.1/sentry_core/trait.Transport.html
-[`TransportFactory`]: https://docs.rs/sentry-core/0.24.1/sentry_core/trait.TransportFactory.html
-[`test`]: https://docs.rs/sentry-core/0.24.1/sentry_core/test/index.html
+[`Client`]: https://docs.rs/sentry-core/0.24.2/sentry_core/struct.Client.html
+[`Hub`]: https://docs.rs/sentry-core/0.24.2/sentry_core/struct.Hub.html
+[`Scope`]: https://docs.rs/sentry-core/0.24.2/sentry_core/struct.Scope.html
+[`Integration`]: https://docs.rs/sentry-core/0.24.2/sentry_core/trait.Integration.html
+[`Transport`]: https://docs.rs/sentry-core/0.24.2/sentry_core/trait.Transport.html
+[`TransportFactory`]: https://docs.rs/sentry-core/0.24.2/sentry_core/trait.TransportFactory.html
+[`test`]: https://docs.rs/sentry-core/0.24.2/sentry_core/test/index.html
 
 ## Resources
 

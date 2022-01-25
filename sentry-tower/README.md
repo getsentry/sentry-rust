@@ -87,6 +87,22 @@ Server::builder()
     .await?;
 ```
 
+### Usage with `tower-http`
+
+The `http` feature offers another layer which will attach request details
+onto captured events, and optionally start a new performance monitoring
+transaction based on the incoming HTTP headers.
+
+When combining both layers, take care of the ordering of both. For example
+with [`tower::ServiceBuilder`], always define the `Hub` layer before the `Http`
+one, like so:
+
+```rust
+let layer = tower::ServiceBuilder::new()
+    .layer(sentry_tower::NewSentryLayer::<Request>::new_from_top())
+    .layer(sentry_tower::SentryHttpLayer::with_transaction());
+```
+
 ## Resources
 
 License: Apache-2.0
