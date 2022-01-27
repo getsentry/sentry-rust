@@ -63,7 +63,6 @@ impl CurlHttpTransport {
             let mut headers = curl::easy::List::new();
             headers.append(&format!("X-Sentry-Auth: {}", auth)).unwrap();
             headers.append("Expect:").unwrap();
-            headers.append("Content-Type: application/json").unwrap();
             handle.http_headers(headers).unwrap();
             handle.upload(true).unwrap();
             handle.in_filesize(body.get_ref().len() as u64).unwrap();
