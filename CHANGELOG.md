@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**:
+
+- Remove unused `serde_json` feature from `curl` dependency. ([#420](http://github.com/getsentry/sentry-rust/pull/420))
+
+**Thank you**:
+
+Features, fixes and improvements in this release have been contributed by:
+
+- [@MarijnS95](https://github.com/MarijnS95)
+
 ## 0.24.2
 
 **Fixes**:
