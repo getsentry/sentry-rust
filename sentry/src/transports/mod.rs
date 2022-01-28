@@ -6,20 +6,12 @@
 use crate::{ClientOptions, Transport, TransportFactory};
 use std::sync::Arc;
 
-#[cfg(any(
-    feature = "reqwest",
-    feature = "curl",
-    feature = "surf",
-    feature = "ureq"
-))]
+#[cfg(feature = "httpdate")]
 mod ratelimit;
-#[cfg(any(
-    feature = "reqwest",
-    feature = "curl",
-    feature = "surf",
-    feature = "ureq"
-))]
+#[cfg(any(feature = "curl", feature = "ureq"))]
 mod thread;
+#[cfg(any(feature = "reqwest", feature = "surf",))]
+mod tokio_thread;
 
 #[cfg(feature = "reqwest")]
 mod reqwest;

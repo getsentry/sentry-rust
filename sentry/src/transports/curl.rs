@@ -39,7 +39,7 @@ impl CurlHttpTransport {
         let scheme = dsn.scheme();
 
         let mut handle = client;
-        let thread = TransportThread::new(move |envelope, mut rl| {
+        let thread = TransportThread::new(move |envelope, rl| {
             handle.reset();
             handle.url(&url).unwrap();
             handle.custom_request("POST").unwrap();
@@ -119,7 +119,6 @@ impl CurlHttpTransport {
                     sentry_debug!("Failed to send envelope: {}", err);
                 }
             }
-            async move { rl }
         });
         Self { thread }
     }
