@@ -20,11 +20,9 @@ pub struct TransportThread {
 }
 
 impl TransportThread {
-    pub fn new<SendFn, SendFuture>(mut send: SendFn) -> Self
+    pub fn new<SendFn>(mut send: SendFn) -> Self
     where
-        SendFn: FnMut(Envelope, RateLimiter) -> SendFuture + Send + 'static,
-        // NOTE: returning RateLimiter here, otherwise we are in borrow hell
-        SendFuture: std::future::Future<Output = RateLimiter>,
+        SendFn: FnMut(Envelope, &mut RateLimiter) + Send + 'static,
     {
         let (sender, receiver) = sync_channel(30);
         let shutdown = Arc::new(AtomicBool::new(false));
@@ -32,48 +30,39 @@ impl TransportThread {
         let handle = thread::Builder::new()
             .name("sentry-transport".into())
             .spawn(move || {
-                // create a runtime on the transport thread
-                let rt = tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .unwrap();
-
                 let mut rl = RateLimiter::new();
 
-                // and block on an async fn in this runtime/thread
-                rt.block_on(async move {
-                    for task in receiver.into_iter() {
-                        if shutdown_worker.load(Ordering::SeqCst) {
-                            return;
-                        }
-                        let envelope = match task {
-                            Task::SendEnvelope(envelope) => envelope,
-                            Task::Flush(sender) => {
-                                sender.send(()).ok();
-                                continue;
-                            }
-                            Task::Shutdown => {
-                                return;
-                            }
-                        };
-
-                        if let Some(time_left) =  rl.is_disabled(RateLimitingCategory::Any) {
-                            sentry_debug!(
-                                "Skipping event send because we're disabled due to rate limits for {}s",
-                                time_left.as_secs()
-                            );
+                for task in receiver.into_iter() {
+                    if shutdown_worker.load(Ordering::SeqCst) {
+                        return;
+                    }
+                    let envelope = match task {
+                        Task::SendEnvelope(envelope) => envelope,
+                        Task::Flush(sender) => {
+                            sender.send(()).ok();
                             continue;
                         }
-                        match rl.filter_envelope(envelope) {
-                            Some(envelope) => {
-                                rl = send(envelope, rl).await;
-                            },
-                            None => {
-                                sentry_debug!("Envelope was discarded due to per-item rate limits");
-                            },
-                        };
+                        Task::Shutdown => {
+                            return;
+                        }
+                    };
+
+                    if let Some(time_left) = rl.is_disabled(RateLimitingCategory::Any) {
+                        sentry_debug!(
+                            "Skipping event send because we're disabled due to rate limits for {}s",
+                            time_left.as_secs()
+                        );
+                        continue;
                     }
-                })
+                    match rl.filter_envelope(envelope) {
+                        Some(envelope) => {
+                            send(envelope, &mut rl);
+                        }
+                        None => {
+                            sentry_debug!("Envelope was discarded due to per-item rate limits");
+                        }
+                    };
+                }
             })
             .ok();
 

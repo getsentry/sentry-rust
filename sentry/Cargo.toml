@@ -39,13 +39,13 @@ debug-logs = ["log_", "sentry-core/debug-logs"]
 # transports
 transport = ["reqwest", "native-tls"]
 reqwest = ["reqwest_", "httpdate", "tokio"]
-curl = ["curl_", "httpdate", "tokio"]
+curl = ["curl_", "httpdate"]
 surf-h1 = ["surf_/h1-client", "httpdate"]
 surf = ["surf_/curl-client", "httpdate", "tokio"]
 native-tls = ["reqwest_/default-tls"]
 rustls = ["reqwest_/rustls-tls"]
-ureq = ["ureq_/tls", "httpdate", "tokio"]
-ureq-native-tls = ["ureq_/native-tls", "httpdate", "tokio"]
+ureq = ["ureq_/tls", "httpdate"]
+ureq-native-tls = ["ureq_/native-tls", "httpdate"]
 
 [dependencies]
 sentry-core = { version = "0.24.2", path = "../sentry-core", features = ["client"] }

@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use reqwest_::{header as ReqwestHeaders, Client as ReqwestClient, Proxy, StatusCode};
 
-use super::thread::TransportThread;
+use super::tokio_thread::TransportThread;
 
 use crate::{sentry_debug, ClientOptions, Envelope, Transport};
 
