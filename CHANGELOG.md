@@ -5,6 +5,7 @@
 **Fixes**:
 
 - Remove unused `serde_json` feature from `curl` dependency. ([#420](http://github.com/getsentry/sentry-rust/pull/420))
+- `sentry-tracing`: When converting a `tracing` event to a `sentry` event, don't create an exception if the original event doesn't have one ([#423](https://github.com/getsentry/sentry-rust/pull/423))
 
 **Thank you**:
 
