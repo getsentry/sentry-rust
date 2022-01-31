@@ -128,34 +128,13 @@ where
     // proper grouping and issue metadata generation. tracing_core::Record does not contain sufficient
     // information for this. However, it may contain a serialized error which we can parse to emit
     // an exception record.
-    const DEFAULT_ERROR_VALUE_KEY: &str = "error";
-
-    let (message, mut visitor) = extract_event_data(event);
-
-    let exception = if visitor.exceptions.is_empty() {
-        let ty = event.metadata().name().into();
-        let value = visitor
-            .json_values
-            .remove(DEFAULT_ERROR_VALUE_KEY)
-            .map(|v| v.as_str().map(|s| s.to_owned()))
-            .flatten()
-            .or_else(|| message.clone());
-        vec![Exception {
-            ty,
-            value,
-            module: event.metadata().module_path().map(String::from),
-            ..Default::default()
-        }]
-    } else {
-        visitor.exceptions
-    }
-    .into();
+    let (message, visitor) = extract_event_data(event);
     Event {
         logger: Some(event.metadata().target().to_owned()),
         level: convert_tracing_level(event.metadata().level()),
         message,
         extra: visitor.json_values,
-        exception,
+        exception: visitor.exceptions.into(),
         ..Default::default()
     }
 }
