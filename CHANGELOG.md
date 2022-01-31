@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+**Features**:
+
+- Added `ureq` transport support ([#419](https://github.com/getsentry/sentry-rust/pull/419))
+
 **Fixes**:
 
 - Remove unused `serde_json` feature from `curl` dependency. ([#420](http://github.com/getsentry/sentry-rust/pull/420))
