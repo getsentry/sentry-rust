@@ -4,7 +4,8 @@
 
 **Features**:
 
-- Added `ureq` transport support ([#419](https://github.com/getsentry/sentry-rust/pull/419))
+- Added `ureq` transport support. ([#419](https://github.com/getsentry/sentry-rust/pull/419))
+- Added `GpuContext` to the `Context`. ([#428](https://github.com/getsentry/sentry-rust/pull/428))
 
 **Fixes**:
 
