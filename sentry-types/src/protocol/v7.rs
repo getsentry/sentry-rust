@@ -1105,6 +1105,8 @@ pub enum Context {
     Browser(Box<BrowserContext>),
     /// Tracing data.
     Trace(Box<TraceContext>),
+    /// GPU data
+    Gpu(Box<GpuContext>),
     /// Generic other context data.
     #[serde(rename = "unknown")]
     Other(Map<String, Value>),
@@ -1120,6 +1122,7 @@ impl Context {
             Context::App(..) => "app",
             Context::Browser(..) => "browser",
             Context::Trace(..) => "trace",
+            Context::Gpu(..) => "gpu",
             Context::Other(..) => "unknown",
         }
     }
@@ -1282,6 +1285,62 @@ pub struct BrowserContext {
     pub other: Map<String, Value>,
 }
 
+/// GPU context describes the GPU of the device.
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Default)]
+pub struct GpuContext {
+    /// The name of the graphics device.
+    pub name: String,
+    /// The Version of the graphics device.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
+    /// The version of the graphic device driver.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub driver_version: Option<String>,
+    /// The PCI identifier of the graphics device.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    /// The PCI vendor identifier of the graphics device.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vendor_id: Option<String>,
+    /// The vendor name as reported by the graphics device.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vendor_name: Option<String>,
+    /// The total GPU memory available in Megabytes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub memory_size: Option<u32>,
+    /// The device low-level API type. Examples: "Apple Metal" or "Direct3D11"
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub api_type: Option<String>,
+    /// Whether the GPU has multi-threaded rendering or not.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub multi_threaded_rendering: Option<bool>,
+    /// The Non-Power-Of-Two-Support support.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub npot_support: Option<bool>,
+    /// Largest size of a texture that is supported by the graphics hardware.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_texture_size: Option<u32>,
+    /// Approximate "shader capability" level of the graphics device. For example,
+    /// `Shader Model 2.0, OpenGL ES 3.0, Metal / OpenGL ES 3.1, 27 (unknown)`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub graphics_shader_level: Option<String>,
+    /// Is GPU draw call instancing supported?
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub supports_draw_call_instancing: Option<bool>,
+    /// Is ray tracing available on the device?
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub supports_ray_tracing: Option<bool>,
+    /// Are compute shaders available on the device?
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub supports_compute_shaders: Option<bool>,
+    /// Are geometry shaders available on the device?
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub supports_geometry_shaders: Option<bool>,
+    /// Additional arbitrary fields for forwards compatibility.
+    #[serde(flatten)]
+    pub other: Map<String, Value>,
+}
+
 /// Holds the identifier for a Span
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, Eq, PartialEq, Hash)]
 #[serde(try_from = "String", into = "String")]
@@ -1413,6 +1472,7 @@ into_context!(Os, OsContext);
 into_context!(Runtime, RuntimeContext);
 into_context!(Browser, BrowserContext);
 into_context!(Trace, TraceContext);
+into_context!(Gpu, GpuContext);
 
 mod event {
     use super::*;
