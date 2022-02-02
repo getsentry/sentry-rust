@@ -1286,7 +1286,7 @@ pub struct BrowserContext {
 }
 
 /// GPU context describes the GPU of the device.
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
 pub struct GpuContext {
     /// The name of the graphics device.
     pub name: String,
