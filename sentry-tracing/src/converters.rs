@@ -120,10 +120,12 @@ fn contexts_from_event(
     }
 
     let mut context = BTreeMap::new();
-    context.insert(
-        "Rust Tracing Tags".to_string(),
-        sentry_core::protocol::Context::Other(event_tags),
-    );
+    if !event_tags.is_empty() {
+        context.insert(
+            "Rust Tracing Tags".to_string(),
+            sentry_core::protocol::Context::Other(event_tags),
+        );
+    }
     if !location_map.is_empty() {
         context.insert(
             "Rust Tracing Location".to_string(),
