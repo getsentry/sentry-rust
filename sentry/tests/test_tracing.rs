@@ -1,6 +1,7 @@
 #![cfg(feature = "test")]
 
 use log_ as log;
+use sentry::protocol::{Context, Value};
 use tracing_ as tracing;
 use tracing_subscriber::prelude::*;
 
@@ -17,14 +18,14 @@ fn test_tracing() {
         });
 
         tracing::info!("Hello Tracing World!");
-        tracing::error!("Shit's on fire yo");
+        tracing::error!(tagname = "tagvalue", "Shit's on fire yo");
 
         log::info!("Hello Logging World!");
         log::error!("Shit's on fire yo");
 
         let err = "NaN".parse::<usize>().unwrap_err();
         let err: &dyn std::error::Error = &err;
-        tracing::error!(err);
+        tracing::error!(err, tagname = "tagvalue");
     });
 
     assert_eq!(events.len(), 3);
@@ -40,6 +41,21 @@ fn test_tracing() {
         event.breadcrumbs[0].message,
         Some("Hello Tracing World!".into())
     );
+    match event.contexts.get("Rust Tracing Tags").unwrap() {
+        Context::Other(tags) => {
+            let value = Value::String("tagvalue".to_string());
+            assert_eq!(*tags.get("tagname").unwrap(), value);
+        }
+        _ => panic!("Wrong context type"),
+    }
+    match event.contexts.get("Rust Tracing Location").unwrap() {
+        Context::Other(tags) => {
+            assert!(matches!(tags.get("module_path").unwrap(), Value::String(_)));
+            assert!(matches!(tags.get("file").unwrap(), Value::String(_)));
+            assert!(matches!(tags.get("line").unwrap(), Value::Number(_)));
+        }
+        _ => panic!("Wrong context type"),
+    }
 
     let event = events.next().unwrap();
     assert_eq!(event.tags["worker"], "worker1");
@@ -64,6 +80,21 @@ fn test_tracing() {
         event.exception[0].value,
         Some("invalid digit found in string".into())
     );
+    match event.contexts.get("Rust Tracing Tags").unwrap() {
+        Context::Other(tags) => {
+            let value = Value::String("tagvalue".to_string());
+            assert_eq!(*tags.get("tagname").unwrap(), value);
+        }
+        _ => panic!("Wrong context type"),
+    }
+    match event.contexts.get("Rust Tracing Location").unwrap() {
+        Context::Other(tags) => {
+            assert!(matches!(tags.get("module_path").unwrap(), Value::String(_)));
+            assert!(matches!(tags.get("file").unwrap(), Value::String(_)));
+            assert!(matches!(tags.get("line").unwrap(), Value::Number(_)));
+        }
+        _ => panic!("Wrong context type"),
+    }
 }
 
 #[tracing::instrument(fields(span_field))]

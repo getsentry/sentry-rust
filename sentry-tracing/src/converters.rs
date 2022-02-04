@@ -103,6 +103,38 @@ pub fn breadcrumb_from_event(event: &tracing_core::Event) -> Breadcrumb {
     }
 }
 
+fn contexts_from_event(
+    event: &tracing_core::Event,
+    event_tags: BTreeMap<String, Value>,
+) -> BTreeMap<String, sentry_core::protocol::Context> {
+    let event_meta = event.metadata();
+    let mut location_map = BTreeMap::new();
+    if let Some(module_path) = event_meta.module_path() {
+        location_map.insert("module_path".to_string(), module_path.into());
+    }
+    if let Some(file) = event_meta.file() {
+        location_map.insert("file".to_string(), file.into());
+    }
+    if let Some(line) = event_meta.line() {
+        location_map.insert("line".to_string(), line.into());
+    }
+
+    let mut context = BTreeMap::new();
+    if !event_tags.is_empty() {
+        context.insert(
+            "Rust Tracing Tags".to_string(),
+            sentry_core::protocol::Context::Other(event_tags),
+        );
+    }
+    if !location_map.is_empty() {
+        context.insert(
+            "Rust Tracing Location".to_string(),
+            sentry_core::protocol::Context::Other(location_map),
+        );
+    }
+    context
+}
+
 /// Creates an [`Event`] from a given [`tracing_core::Event`]
 pub fn event_from_event<S>(event: &tracing_core::Event, _ctx: Context<S>) -> Event<'static>
 where
@@ -114,7 +146,7 @@ where
         logger: Some(event.metadata().target().to_owned()),
         level: convert_tracing_level(event.metadata().level()),
         message,
-        extra: visitor.json_values,
+        contexts: contexts_from_event(event, visitor.json_values),
         ..Default::default()
     }
 }
@@ -133,8 +165,8 @@ where
         logger: Some(event.metadata().target().to_owned()),
         level: convert_tracing_level(event.metadata().level()),
         message,
-        extra: visitor.json_values,
         exception: visitor.exceptions.into(),
+        contexts: contexts_from_event(event, visitor.json_values),
         ..Default::default()
     }
 }
