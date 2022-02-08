@@ -200,7 +200,7 @@ where
             Ok(v) => v,
             Err(e) => {
                 let e: Error = e.into();
-                panic!(e)
+                panic!("{}", e)
             }
         }
     }
