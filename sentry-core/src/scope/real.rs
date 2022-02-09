@@ -226,9 +226,17 @@ impl Scope {
         }
 
         event.breadcrumbs.extend(self.breadcrumbs.iter().cloned());
-        event.extra.extend(self.extra.iter().cloned());
-        event.tags.extend(self.tags.iter().cloned());
-        event.contexts.extend(self.contexts.iter().cloned());
+        event
+            .extra
+            .extend(self.extra.iter().map(|(k, v)| (k.to_owned(), v.to_owned())));
+        event
+            .tags
+            .extend(self.tags.iter().map(|(k, v)| (k.to_owned(), v.to_owned())));
+        event.contexts.extend(
+            self.contexts
+                .iter()
+                .map(|(k, v)| (k.to_owned(), v.to_owned())),
+        );
 
         if event.transaction.is_none() {
             if let Some(ref txn) = self.transaction {
