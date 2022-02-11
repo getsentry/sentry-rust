@@ -257,12 +257,12 @@ impl TransactionOrSpan {
 }
 
 #[derive(Debug)]
-struct TransactionInner {
+pub(crate) struct TransactionInner {
     #[cfg(feature = "client")]
     client: Option<Arc<Client>>,
     sampled: bool,
     context: protocol::TraceContext,
-    transaction: Option<protocol::Transaction<'static>>,
+    pub(crate) transaction: Option<protocol::Transaction<'static>>,
 }
 
 type TransactionArc = Arc<Mutex<TransactionInner>>;
@@ -274,7 +274,7 @@ type TransactionArc = Arc<Mutex<TransactionInner>>;
 /// to Sentry.
 #[derive(Clone, Debug)]
 pub struct Transaction {
-    inner: TransactionArc,
+    pub(crate) inner: TransactionArc,
 }
 
 impl Transaction {
@@ -428,7 +428,7 @@ impl Transaction {
 /// will not be sent to Sentry.
 #[derive(Clone, Debug)]
 pub struct Span {
-    transaction: TransactionArc,
+    pub(crate) transaction: TransactionArc,
     sampled: bool,
     span: SpanArc,
 }

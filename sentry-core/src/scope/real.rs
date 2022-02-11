@@ -160,6 +160,17 @@ impl Scope {
     /// Sets the transaction.
     pub fn set_transaction(&mut self, transaction: Option<&str>) {
         self.transaction = transaction.map(Arc::from);
+        if let Some(name) = transaction {
+            let trx = match self.span.as_ref() {
+                Some(TransactionOrSpan::Span(span)) => &span.transaction,
+                Some(TransactionOrSpan::Transaction(trx)) => &trx.inner,
+                _ => return,
+            };
+
+            if let Some(trx) = trx.lock().unwrap().transaction.as_mut() {
+                trx.name = Some(name.into());
+            }
+        }
     }
 
     /// Sets the user for the current scope.
