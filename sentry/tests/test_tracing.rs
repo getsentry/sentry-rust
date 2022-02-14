@@ -134,3 +134,34 @@ fn test_span_record() {
         "some data"
     );
 }
+
+#[test]
+fn test_set_transaction() {
+    let options = sentry::ClientOptions {
+        traces_sample_rate: 1.0,
+        ..Default::default()
+    };
+
+    let envelopes = sentry::test::with_captured_envelopes_options(
+        || {
+            let ctx = sentry::TransactionContext::new("old name", "ye, whatever");
+            let trx = sentry::start_transaction(ctx);
+            sentry::configure_scope(|scope| scope.set_span(Some(trx.clone().into())));
+
+            sentry::configure_scope(|scope| scope.set_transaction(Some("new name")));
+
+            trx.finish();
+        },
+        options,
+    );
+
+    assert_eq!(envelopes.len(), 1);
+
+    let envelope_item = envelopes[0].items().next().unwrap();
+    let transaction = match envelope_item {
+        sentry::protocol::EnvelopeItem::Transaction(t) => t,
+        _ => panic!("expected only a transaction item"),
+    };
+
+    assert_eq!(transaction.name.as_deref().unwrap(), "new name");
+}
