@@ -11,6 +11,7 @@ jobs:
   weekly-clippy-beta:
     name: Clippy Beta
     runs-on: ubuntu-latest
+    if: github.repository_owner == 'getsentry'
 
     steps:
       - uses: actions/checkout@v2
@@ -35,6 +36,7 @@ jobs:
   weekly-audit:
     name: Audit
     runs-on: ubuntu-latest
+    if: github.repository_owner == 'getsentry'
 
     steps:
       - uses: actions/checkout@v2
