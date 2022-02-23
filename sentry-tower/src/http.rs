@@ -12,6 +12,12 @@ use tower_service::Service;
 /// The Service created by this Layer can also optionally start a new
 /// performance monitoring transaction for each incoming request,
 /// continuing the trace based on incoming distributed tracing headers.
+///
+/// The created transaction will automatically use the request URI as its name.
+/// This is sometimes not desirable in case the request URI contains unique IDs
+/// or similar. In this case, users should manually override the transaction name
+/// in the request handler using the [`Scope::set_transaction`](sentry_core::Scope::set_transaction)
+/// method.
 #[derive(Clone, Default)]
 pub struct SentryHttpLayer {
     start_transaction: bool,
