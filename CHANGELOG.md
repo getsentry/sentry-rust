@@ -4,6 +4,7 @@
 
 **Breaking Changes**:
 
+- The minium supported Rust version was bumped to **1.54.0** due to requirements from dependencies.
 - Updated the `sentry-actix` integration to `actix-web@4`. ([#437](https://github.com/getsentry/sentry-rust/pull/437))
 
 **Features**:
