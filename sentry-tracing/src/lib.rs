@@ -73,9 +73,7 @@
 //!     _ => EventFilter::Ignore,
 //! });
 //!
-//! tracing_subscriber::registry()
-//!     .with(layer)
-//!     .init();
+//! tracing_subscriber::registry().with(layer).init();
 //! ```
 
 #![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]

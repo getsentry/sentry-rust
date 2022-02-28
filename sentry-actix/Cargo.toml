@@ -17,6 +17,7 @@ futures-util = { version = "0.3.5", default-features = false }
 sentry-core = { version = "0.24.3", path = "../sentry-core", default-features = false, features = ["client"] }
 
 [dev-dependencies]
-actix-rt = "2.1.0"
+actix-web = { version = "4" }
 futures = "0.3"
 sentry = { path = "../sentry", features = ["test"] }
+tokio = { version = "1.0", features = ["full"] }

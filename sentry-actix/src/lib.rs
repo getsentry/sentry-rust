@@ -18,21 +18,26 @@
 //!     Err(io::Error::new(io::ErrorKind::Other, "An error happens here").into())
 //! }
 //!
-//! #[actix_web::main]
-//! async fn main() -> io::Result<()> {
-//!     let _guard = sentry::init(());
+//! fn main() -> io::Result<()> {
+//!     let _guard = sentry::init(sentry::ClientOptions {
+//!         release: sentry::release_name!(),
+//!         ..Default::default()
+//!     });
 //!     std::env::set_var("RUST_BACKTRACE", "1");
 //!
-//!     HttpServer::new(|| {
-//!         App::new()
-//!             .wrap(sentry_actix::Sentry::new())
-//!             .service(failing)
+//!     let runtime = tokio::runtime::Builder::new_multi_thread()
+//!         .enable_all()
+//!         .build()?;
+//!     runtime.block_on(async move {
+//!         HttpServer::new(|| {
+//!             App::new()
+//!                 .wrap(sentry_actix::Sentry::new())
+//!                 .service(failing)
+//!         })
+//!         .bind("127.0.0.1:3001")?
+//!         .run()
+//!         .await
 //!     })
-//!     .bind("127.0.0.1:3001")?
-//!     .run()
-//!     .await?;
-//!
-//!     Ok(())
 //! }
 //! ```
 //!
@@ -44,6 +49,7 @@
 //!
 //! ```
 //! let _sentry = sentry::init(sentry::ClientOptions {
+//!     release: sentry::release_name!(),
 //!     session_mode: sentry::SessionMode::Request,
 //!     auto_session_tracking: true,
 //!     ..Default::default()
@@ -410,7 +416,7 @@ mod tests {
     }
 
     /// Test explicit events sent to the current Hub inside an Actix service.
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_explicit_events() {
         let events = sentry::test::with_captured_events(|| {
             block_on(async {
@@ -453,7 +459,7 @@ mod tests {
     }
 
     /// Ensures errors returned in the Actix service trigger an event.
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_response_errors() {
         let events = sentry::test::with_captured_events(|| {
             block_on(async {
@@ -494,7 +500,7 @@ mod tests {
     }
 
     /// Ensures client errors (4xx) are not captured.
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_client_errors_discarded() {
         let events = sentry::test::with_captured_events(|| {
             block_on(async {
@@ -517,7 +523,7 @@ mod tests {
     }
 
     /// Ensures transaction name can be overridden in handler scope.
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_override_transaction_name() {
         let events = sentry::test::with_captured_events(|| {
             block_on(async {
@@ -552,7 +558,7 @@ mod tests {
         assert_eq!(request.method, Some("GET".into()));
     }
 
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_track_session() {
         let envelopes = sentry::test::with_captured_envelopes_options(
             || {

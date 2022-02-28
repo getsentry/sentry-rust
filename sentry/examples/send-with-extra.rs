@@ -1,5 +1,9 @@
 fn main() {
-    let _sentry = sentry::init(());
+    let _sentry = sentry::init(sentry::ClientOptions {
+        release: sentry::release_name!(),
+        debug: true,
+        ..Default::default()
+    });
 
     sentry::with_scope(
         |scope| {

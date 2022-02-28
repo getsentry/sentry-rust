@@ -8,6 +8,7 @@ fn execute() -> anyhow::Result<usize> {
 fn main() {
     let _sentry = sentry::init(sentry::ClientOptions {
         release: sentry::release_name!(),
+        debug: true,
         ..Default::default()
     });
 

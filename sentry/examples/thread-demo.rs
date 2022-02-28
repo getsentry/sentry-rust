@@ -10,6 +10,7 @@ fn main() {
     // the hub from here.
     let _sentry = sentry::init(sentry::ClientOptions {
         release: sentry::release_name!(),
+        debug: true,
         ..Default::default()
     });
 

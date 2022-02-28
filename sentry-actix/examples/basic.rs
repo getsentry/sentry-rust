@@ -21,30 +21,35 @@ async fn captures_message(_req: HttpRequest) -> Result<String, Error> {
 }
 
 // cargo run -p sentry-actix --example basic
-#[actix_web::main]
-async fn main() -> io::Result<()> {
+fn main() -> io::Result<()> {
     let _guard = sentry::init(sentry::ClientOptions {
+        release: sentry::release_name!(),
         auto_session_tracking: true,
         traces_sample_rate: 1.0,
         session_mode: sentry::SessionMode::Request,
+        debug: true,
         ..Default::default()
     });
     env::set_var("RUST_BACKTRACE", "1");
 
-    let addr = "127.0.0.1:3001";
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()?;
 
-    println!("Starting server on http://{}", addr);
+    runtime.block_on(async move {
+        let addr = "127.0.0.1:3001";
 
-    HttpServer::new(|| {
-        App::new()
-            .wrap(sentry_actix::Sentry::with_transaction())
-            .service(healthy)
-            .service(errors)
-            .service(captures_message)
+        println!("Starting server on http://{}", addr);
+
+        HttpServer::new(|| {
+            App::new()
+                .wrap(sentry_actix::Sentry::with_transaction())
+                .service(healthy)
+                .service(errors)
+                .service(captures_message)
+        })
+        .bind(addr)?
+        .run()
+        .await
     })
-    .bind(addr)?
-    .run()
-    .await?;
-
-    Ok(())
 }
