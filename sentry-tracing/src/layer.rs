@@ -164,26 +164,23 @@ where
 
         let (description, _data) = extract_span_data(attrs);
         let op = span.name();
-        let description = description.as_deref().unwrap_or("");
 
         // Spans don't always have a description, this ensures our data is not empty,
         // therefore the Sentry UI will be a lot more valuable for navigating spans.
-        let transaction_name = if description.is_empty() {
+        let description = description.unwrap_or_else(|| {
             let target = span.metadata().target();
             if target.is_empty() {
                 op.to_string()
             } else {
                 format!("{}::{}", target, op)
             }
-        } else {
-            description.to_string()
-        };
+        });
 
         let parent_sentry_span = sentry_core::configure_scope(|s| s.get_span());
         let sentry_span: sentry_core::TransactionOrSpan = match &parent_sentry_span {
-            Some(parent) => parent.start_child(op, &transaction_name).into(),
+            Some(parent) => parent.start_child(op, &description).into(),
             None => {
-                let ctx = sentry_core::TransactionContext::new(&transaction_name, op);
+                let ctx = sentry_core::TransactionContext::new(&description, op);
                 sentry_core::start_transaction(ctx).into()
             }
         };
