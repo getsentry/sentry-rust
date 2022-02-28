@@ -19,6 +19,7 @@
 Features, fixes and improvements in this release have been contributed by:
 
 - [@jessfraz](https://github.com/jessfraz)
+- [@fourbytes](https://github.com/fourbytes)
 
 ## 0.24.3
 
