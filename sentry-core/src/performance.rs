@@ -202,6 +202,14 @@ impl TransactionOrSpan {
         }
     }
 
+    /// Set the HTTP request information for this Transaction/Span.
+    pub fn set_request(&self, request: protocol::Request) {
+        match self {
+            TransactionOrSpan::Transaction(transaction) => transaction.set_request(request),
+            TransactionOrSpan::Span(span) => span.set_request(request),
+        }
+    }
+
     /// Returns the headers needed for distributed tracing.
     pub fn iter_headers(&self) -> TraceHeadersIter {
         match self {
@@ -355,6 +363,14 @@ impl Transaction {
         inner.context.status = Some(status);
     }
 
+    /// Set the HTTP request information for this Transaction.
+    pub fn set_request(&self, request: protocol::Request) {
+        let mut inner = self.inner.lock().unwrap();
+        if let Some(transaction) = inner.transaction.as_mut() {
+            transaction.request = Some(request);
+        }
+    }
+
     /// Returns the headers needed for distributed tracing.
     pub fn iter_headers(&self) -> TraceHeadersIter {
         let inner = self.inner.lock().unwrap();
@@ -452,6 +468,12 @@ impl Span {
     pub fn set_status(&self, status: protocol::SpanStatus) {
         let mut span = self.span.lock().unwrap();
         span.status = Some(status);
+    }
+
+    /// Set the HTTP request information for this Span.
+    pub fn set_request(&self, request: protocol::Request) {
+        let mut span = self.span.lock().unwrap();
+        span.request = Some(request);
     }
 
     /// Returns the headers needed for distributed tracing.

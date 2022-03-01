@@ -15,7 +15,7 @@ use std::ops;
 use std::str;
 use std::time::SystemTime;
 
-use ::debugid::{CodeId, DebugId};
+use self::debugid::{CodeId, DebugId};
 use serde::Serializer;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -1737,6 +1737,9 @@ pub struct Span {
     /// Optional extra information to be sent with the span.
     #[serde(default, skip_serializing_if = "Map::is_empty")]
     pub data: Map<String, Value>,
+    /// Optionally HTTP request data to be sent along.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub request: Option<Request>,
 }
 
 impl Default for Span {
@@ -1753,6 +1756,7 @@ impl Default for Span {
             same_process_as_parent: Default::default(),
             op: Default::default(),
             data: Default::default(),
+            request: Default::default(),
         }
     }
 }
@@ -1942,6 +1946,9 @@ pub struct Transaction<'a> {
     /// Optional contexts.
     #[serde(default, skip_serializing_if = "Map::is_empty")]
     pub contexts: Map<String, Context>,
+    /// Optionally HTTP request data to be sent along.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub request: Option<Request>,
 }
 
 impl<'a> Default for Transaction<'a> {
@@ -1959,6 +1966,7 @@ impl<'a> Default for Transaction<'a> {
             start_timestamp: SystemTime::now(),
             spans: Default::default(),
             contexts: Default::default(),
+            request: Default::default(),
         }
     }
 }
@@ -1984,6 +1992,7 @@ impl<'a> Transaction<'a> {
             start_timestamp: self.start_timestamp,
             spans: self.spans,
             contexts: self.contexts,
+            request: self.request,
         }
     }
 
