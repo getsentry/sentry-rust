@@ -482,7 +482,7 @@ impl Span {
         }
         if let Some(data) = request.data {
             if let Ok(data) = serde_json::from_str::<serde_json::Value>(&data) {
-                span.data.insert("data".into(), data.into());
+                span.data.insert("data".into(), data);
             } else {
                 span.data.insert("data".into(), data.into());
             }
@@ -495,12 +495,12 @@ impl Span {
         }
         if !request.headers.is_empty() {
             if let Ok(headers) = serde_json::to_value(request.headers) {
-                span.data.insert("headers".into(), headers.into());
+                span.data.insert("headers".into(), headers);
             }
         }
         if !request.env.is_empty() {
             if let Ok(env) = serde_json::to_value(request.env) {
-                span.data.insert("env".into(), env.into());
+                span.data.insert("env".into(), env);
             }
         }
     }
