@@ -1,6 +1,6 @@
 [package]
 name = "sentry-log"
-version = "0.24.3"
+version = "0.25.0"
 authors = ["Sentry <hello@sentry.io>"]
 license = "Apache-2.0"
 readme = "README.md"
@@ -12,7 +12,7 @@ Sentry integration for log and env_logger crates.
 edition = "2018"
 
 [dependencies]
-sentry-core = { version = "0.24.3", path = "../sentry-core" }
+sentry-core = { version = "0.25.0", path = "../sentry-core" }
 log = { version = "0.4.8", features = ["std"] }
 
 [dev-dependencies]

@@ -63,20 +63,25 @@ let service = ServiceBuilder::new()
 When using Tonic, the layer can be used directly by the Tonic stack:
 
 ```rust
+use hello_world::{greeter_server::*, *};
 use sentry_tower::NewSentryLayer;
-use hello_world::{*, greeter_server::*};
 
 struct GreeterService;
 
 #[tonic::async_trait]
 impl Greeter for GreeterService {
-    async fn say_hello(&self, req: Request<HelloRequest>) -> Result<Response<HelloReply>, Status> {
+    async fn say_hello(
+        &self,
+        req: Request<HelloRequest>,
+    ) -> Result<Response<HelloReply>, Status> {
         let HelloRequest { name } = req.into_inner();
         if name == "world" {
             capture_anyhow(&anyhow!("Trying to greet a planet"));
             return Err(Status::invalid_argument("Cannot greet a planet"));
         }
-        Ok(Response::new(HelloReply { message: format!("Hello {}", name) }))
+        Ok(Response::new(HelloReply {
+            message: format!("Hello {}", name),
+        }))
     }
 }
 
@@ -92,6 +97,12 @@ Server::builder()
 The `http` feature offers another layer which will attach request details
 onto captured events, and optionally start a new performance monitoring
 transaction based on the incoming HTTP headers.
+
+The created transaction will automatically use the request URI as its name.
+This is sometimes not desirable in case the request URI contains unique IDs
+or similar. In this case, users should manually override the transaction name
+in the request handler using the [`Scope::set_transaction`](https://docs.rs/sentry-tower/0.25.0/sentry_tower/sentry_core::Scope::set_transaction)
+method.
 
 When combining both layers, take care of the ordering of both. For example
 with [`tower::ServiceBuilder`], always define the `Hub` layer before the `Http`

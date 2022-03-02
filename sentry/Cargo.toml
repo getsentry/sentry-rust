@@ -1,6 +1,6 @@
 [package]
 name = "sentry"
-version = "0.24.3"
+version = "0.25.0"
 authors = ["Sentry <hello@sentry.io>"]
 license = "Apache-2.0"
 readme = "README.md"
@@ -48,16 +48,16 @@ ureq = ["ureq_/tls", "httpdate"]
 ureq-native-tls = ["ureq_/native-tls", "httpdate"]
 
 [dependencies]
-sentry-core = { version = "0.24.3", path = "../sentry-core", features = ["client"] }
-sentry-anyhow = { version = "0.24.3", path = "../sentry-anyhow", optional = true }
-sentry-backtrace = { version = "0.24.3", path = "../sentry-backtrace", optional = true }
-sentry-contexts = { version = "0.24.3", path = "../sentry-contexts", optional = true }
-sentry-debug-images = { version = "0.24.3", path = "../sentry-debug-images", optional = true }
-sentry-log = { version = "0.24.3", path = "../sentry-log", optional = true }
-sentry-panic = { version = "0.24.3", path = "../sentry-panic", optional = true }
-sentry-slog = { version = "0.24.3", path = "../sentry-slog", optional = true }
-sentry-tower = { version = "0.24.3", path = "../sentry-tower", optional = true }
-sentry-tracing = { version = "0.24.3", path = "../sentry-tracing", optional = true }
+sentry-core = { version = "0.25.0", path = "../sentry-core", features = ["client"] }
+sentry-anyhow = { version = "0.25.0", path = "../sentry-anyhow", optional = true }
+sentry-backtrace = { version = "0.25.0", path = "../sentry-backtrace", optional = true }
+sentry-contexts = { version = "0.25.0", path = "../sentry-contexts", optional = true }
+sentry-debug-images = { version = "0.25.0", path = "../sentry-debug-images", optional = true }
+sentry-log = { version = "0.25.0", path = "../sentry-log", optional = true }
+sentry-panic = { version = "0.25.0", path = "../sentry-panic", optional = true }
+sentry-slog = { version = "0.25.0", path = "../sentry-slog", optional = true }
+sentry-tower = { version = "0.25.0", path = "../sentry-tower", optional = true }
+sentry-tracing = { version = "0.25.0", path = "../sentry-tracing", optional = true }
 log_ = { package = "log", version = "0.4.8", optional = true, features = ["std"] }
 reqwest_ = { package = "reqwest", version = "0.11", optional = true, features = ["blocking", "json"], default-features = false }
 curl_ = { package = "curl", version = "0.4.25", optional = true }
