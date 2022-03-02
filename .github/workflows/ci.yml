@@ -94,14 +94,14 @@ jobs:
           command: test
           args: --workspace --all-features
 
-  fast-MSRV:
+  MSRV:
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         rust: [1.54.0]
 
-    name: Check / Test MSRV ${{ matrix.rust }} on ${{ matrix.os }}
+    name: Check / Test MSRV on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
 
     env:
