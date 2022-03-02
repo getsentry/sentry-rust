@@ -43,8 +43,8 @@ impl Session {
             .and_then(|user| {
                 user.id
                     .as_ref()
-                    .or_else(|| user.email.as_ref())
-                    .or_else(|| user.username.as_ref())
+                    .or(user.email.as_ref())
+                    .or(user.username.as_ref())
             })
             .cloned();
         Some(Self {

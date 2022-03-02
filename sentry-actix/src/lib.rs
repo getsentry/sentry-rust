@@ -18,21 +18,26 @@
 //!     Err(io::Error::new(io::ErrorKind::Other, "An error happens here").into())
 //! }
 //!
-//! #[actix_web::main]
-//! async fn main() -> io::Result<()> {
-//!     let _guard = sentry::init(());
+//! fn main() -> io::Result<()> {
+//!     let _guard = sentry::init(sentry::ClientOptions {
+//!         release: sentry::release_name!(),
+//!         ..Default::default()
+//!     });
 //!     std::env::set_var("RUST_BACKTRACE", "1");
 //!
-//!     HttpServer::new(|| {
-//!         App::new()
-//!             .wrap(sentry_actix::Sentry::new())
-//!             .service(failing)
+//!     let runtime = tokio::runtime::Builder::new_multi_thread()
+//!         .enable_all()
+//!         .build()?;
+//!     runtime.block_on(async move {
+//!         HttpServer::new(|| {
+//!             App::new()
+//!                 .wrap(sentry_actix::Sentry::new())
+//!                 .service(failing)
+//!         })
+//!         .bind("127.0.0.1:3001")?
+//!         .run()
+//!         .await
 //!     })
-//!     .bind("127.0.0.1:3001")?
-//!     .run()
-//!     .await?;
-//!
-//!     Ok(())
 //! }
 //! ```
 //!
@@ -44,6 +49,7 @@
 //!
 //! ```
 //! let _sentry = sentry::init(sentry::ClientOptions {
+//!     release: sentry::release_name!(),
 //!     session_mode: sentry::SessionMode::Request,
 //!     auto_session_tracking: true,
 //!     ..Default::default()
@@ -172,12 +178,11 @@ impl Default for Sentry {
     }
 }
 
-impl<S, B> Transform<S> for Sentry
+impl<S, B> Transform<S, ServiceRequest> for Sentry
 where
-    S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
     S::Future: 'static,
 {
-    type Request = ServiceRequest;
     type Response = ServiceResponse<B>;
     type Error = Error;
     type Transform = SentryMiddleware<S>;
@@ -198,24 +203,23 @@ pub struct SentryMiddleware<S> {
     inner: Sentry,
 }
 
-impl<S, B> Service for SentryMiddleware<S>
+impl<S, B> Service<ServiceRequest> for SentryMiddleware<S>
 where
-    S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
     S::Future: 'static,
 {
-    type Request = ServiceRequest;
     type Response = ServiceResponse<B>;
     type Error = Error;
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>>>>;
 
     fn poll_ready(
-        &mut self,
+        &self,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Result<(), Self::Error>> {
         self.service.poll_ready(cx)
     }
 
-    fn call(&mut self, req: ServiceRequest) -> Self::Future {
+    fn call(&self, req: ServiceRequest) -> Self::Future {
         let inner = self.inner.clone();
         let hub = Arc::new(Hub::new_from_top(
             inner.hub.clone().unwrap_or_else(Hub::main),
@@ -412,7 +416,7 @@ mod tests {
     }
 
     /// Test explicit events sent to the current Hub inside an Actix service.
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_explicit_events() {
         let events = sentry::test::with_captured_events(|| {
             block_on(async {
@@ -428,7 +432,7 @@ mod tests {
                     HttpResponse::Ok()
                 };
 
-                let mut app = init_service(
+                let app = init_service(
                     App::new()
                         .wrap(Sentry::builder().with_hub(Hub::current()).finish())
                         .service(web::resource("/test").to(service)),
@@ -438,7 +442,7 @@ mod tests {
                 // Call the service twice (sequentially) to ensure the middleware isn't sticky
                 for _ in 0..2 {
                     let req = TestRequest::get().uri("/test").to_request();
-                    let res = call_service(&mut app, req).await;
+                    let res = call_service(&app, req).await;
                     assert!(res.status().is_success());
                 }
             })
@@ -455,7 +459,7 @@ mod tests {
     }
 
     /// Ensures errors returned in the Actix service trigger an event.
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_response_errors() {
         let events = sentry::test::with_captured_events(|| {
             block_on(async {
@@ -467,7 +471,7 @@ mod tests {
                     Err(io::Error::new(io::ErrorKind::Other, "Test Error").into())
                 }
 
-                let mut app = init_service(
+                let app = init_service(
                     App::new()
                         .wrap(Sentry::builder().with_hub(Hub::current()).finish())
                         .service(failing),
@@ -477,7 +481,7 @@ mod tests {
                 // Call the service twice (sequentially) to ensure the middleware isn't sticky
                 for _ in 0..2 {
                     let req = TestRequest::get().uri("/test").to_request();
-                    let res = call_service(&mut app, req).await;
+                    let res = call_service(&app, req).await;
                     assert!(res.status().is_server_error());
                 }
             })
@@ -496,13 +500,13 @@ mod tests {
     }
 
     /// Ensures client errors (4xx) are not captured.
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_client_errors_discarded() {
         let events = sentry::test::with_captured_events(|| {
             block_on(async {
                 let service = HttpResponse::NotFound;
 
-                let mut app = init_service(
+                let app = init_service(
                     App::new()
                         .wrap(Sentry::builder().with_hub(Hub::current()).finish())
                         .service(web::resource("/test").to(service)),
@@ -510,7 +514,7 @@ mod tests {
                 .await;
 
                 let req = TestRequest::get().uri("/test").to_request();
-                let res = call_service(&mut app, req).await;
+                let res = call_service(&app, req).await;
                 assert!(res.status().is_client_error());
             })
         });
@@ -519,7 +523,7 @@ mod tests {
     }
 
     /// Ensures transaction name can be overridden in handler scope.
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_override_transaction_name() {
         let events = sentry::test::with_captured_events(|| {
             block_on(async {
@@ -530,7 +534,7 @@ mod tests {
                     Err(io::Error::new(io::ErrorKind::Other, "Test Error").into())
                 }
 
-                let mut app = init_service(
+                let app = init_service(
                     App::new()
                         .wrap(Sentry::builder().with_hub(Hub::current()).finish())
                         .service(original_transaction),
@@ -538,7 +542,7 @@ mod tests {
                 .await;
 
                 let req = TestRequest::get().uri("/test").to_request();
-                let res = call_service(&mut app, req).await;
+                let res = call_service(&app, req).await;
                 assert!(res.status().is_server_error());
             })
         });
@@ -554,7 +558,7 @@ mod tests {
         assert_eq!(request.method, Some("GET".into()));
     }
 
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_track_session() {
         let envelopes = sentry::test::with_captured_envelopes_options(
             || {
@@ -566,11 +570,11 @@ mod tests {
 
                     let middleware = Sentry::builder().with_hub(Hub::current()).finish();
 
-                    let mut app = init_service(App::new().wrap(middleware).service(hello)).await;
+                    let app = init_service(App::new().wrap(middleware).service(hello)).await;
 
                     for _ in 0..5 {
                         let req = TestRequest::get().uri("/").to_request();
-                        call_service(&mut app, req).await;
+                        call_service(&app, req).await;
                     }
                 })
             },

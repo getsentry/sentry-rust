@@ -70,20 +70,25 @@
 //! # mod hello_world {
 //! #     include!("helloworld.rs");
 //! # }
+//! use hello_world::{greeter_server::*, *};
 //! use sentry_tower::NewSentryLayer;
-//! use hello_world::{*, greeter_server::*};
 //!
 //! struct GreeterService;
 //!
 //! #[tonic::async_trait]
 //! impl Greeter for GreeterService {
-//!     async fn say_hello(&self, req: Request<HelloRequest>) -> Result<Response<HelloReply>, Status> {
+//!     async fn say_hello(
+//!         &self,
+//!         req: Request<HelloRequest>,
+//!     ) -> Result<Response<HelloReply>, Status> {
 //!         let HelloRequest { name } = req.into_inner();
 //!         if name == "world" {
 //!             capture_anyhow(&anyhow!("Trying to greet a planet"));
 //!             return Err(Status::invalid_argument("Cannot greet a planet"));
 //!         }
-//!         Ok(Response::new(HelloReply { message: format!("Hello {}", name) }))
+//!         Ok(Response::new(HelloReply {
+//!             message: format!("Hello {}", name),
+//!         }))
 //!     }
 //! }
 //!

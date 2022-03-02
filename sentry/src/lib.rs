@@ -156,13 +156,14 @@ pub use crate::init::{init, ClientInitGuard};
 ///
 /// ```
 /// # #[cfg(feature = "debug-images")] {
-/// use sentry::ClientOptions;
 /// use sentry::integrations::debug_images::DebugImagesIntegration;
+/// use sentry::ClientOptions;
 ///
 /// let options = ClientOptions {
 ///     default_integrations: false,
 ///     ..Default::default()
-/// }.add_integration(DebugImagesIntegration::new());
+/// }
+/// .add_integration(DebugImagesIntegration::new());
 /// let _guard = sentry::init(options);
 /// # }
 /// ```

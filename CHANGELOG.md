@@ -1,5 +1,27 @@
 # Changelog
 
+## Unreleased
+
+**Breaking Changes**:
+
+- The minium supported Rust version was bumped to **1.54.0** due to requirements from dependencies.
+- Updated the `sentry-actix` integration to `actix-web@4`. ([#437](https://github.com/getsentry/sentry-rust/pull/437))
+
+**Features**:
+
+- Calling `Scope::set_transaction` will override the Transaction name of any currently running performance monitoring transaction. ([#433](https://github.com/getsentry/sentry-rust/pull/433))
+
+**Fixes**:
+
+- Make sure Spans/Transactions have a meaningful/non-empty name. ([#434](https://github.com/getsentry/sentry-rust/pull/434))
+
+**Thank you**:
+
+Features, fixes and improvements in this release have been contributed by:
+
+- [@jessfraz](https://github.com/jessfraz)
+- [@fourbytes](https://github.com/fourbytes)
+
 ## 0.24.3
 
 **Features**:
