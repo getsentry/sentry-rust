@@ -26,21 +26,26 @@ async fn failing(_req: HttpRequest) -> Result<String, Error> {
     Err(io::Error::new(io::ErrorKind::Other, "An error happens here").into())
 }
 
-#[actix_web::main]
-async fn main() -> io::Result<()> {
-    let _guard = sentry::init(());
+fn main() -> io::Result<()> {
+    let _guard = sentry::init(sentry::ClientOptions {
+        release: sentry::release_name!(),
+        ..Default::default()
+    });
     std::env::set_var("RUST_BACKTRACE", "1");
 
-    HttpServer::new(|| {
-        App::new()
-            .wrap(sentry_actix::Sentry::new())
-            .service(failing)
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()?;
+    runtime.block_on(async move {
+        HttpServer::new(|| {
+            App::new()
+                .wrap(sentry_actix::Sentry::new())
+                .service(failing)
+        })
+        .bind("127.0.0.1:3001")?
+        .run()
+        .await
     })
-    .bind("127.0.0.1:3001")?
-    .run()
-    .await?;
-
-    Ok(())
 }
 ```
 
@@ -52,6 +57,7 @@ use `SessionMode::Request`.
 
 ```rust
 let _sentry = sentry::init(sentry::ClientOptions {
+    release: sentry::release_name!(),
     session_mode: sentry::SessionMode::Request,
     auto_session_tracking: true,
     ..Default::default()

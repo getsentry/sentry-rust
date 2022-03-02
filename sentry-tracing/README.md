@@ -81,9 +81,7 @@ let layer = sentry_tracing::layer().event_filter(|md| match md.level() {
     _ => EventFilter::Ignore,
 });
 
-tracing_subscriber::registry()
-    .with(layer)
-    .init();
+tracing_subscriber::registry().with(layer).init();
 ```
 
 ## Resources
