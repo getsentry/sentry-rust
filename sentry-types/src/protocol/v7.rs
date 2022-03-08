@@ -1737,9 +1737,6 @@ pub struct Span {
     /// Optional extra information to be sent with the span.
     #[serde(default, skip_serializing_if = "Map::is_empty")]
     pub data: Map<String, Value>,
-    /// Optionally HTTP request data to be sent along.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub request: Option<Request>,
 }
 
 impl Default for Span {
@@ -1756,7 +1753,6 @@ impl Default for Span {
             same_process_as_parent: Default::default(),
             op: Default::default(),
             data: Default::default(),
-            request: Default::default(),
         }
     }
 }
