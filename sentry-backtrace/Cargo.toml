@@ -15,4 +15,4 @@ edition = "2018"
 sentry-core = { version = "0.25.0", path = "../sentry-core" }
 lazy_static = "1.4.0"
 backtrace = "0.3.44"
-regex = "1.3.4"
+regex = "1.5.5"
