@@ -202,6 +202,14 @@ impl TransactionOrSpan {
         }
     }
 
+    /// Set the HTTP request information for this Transaction/Span.
+    pub fn set_request(&self, request: protocol::Request) {
+        match self {
+            TransactionOrSpan::Transaction(transaction) => transaction.set_request(request),
+            TransactionOrSpan::Span(span) => span.set_request(request),
+        }
+    }
+
     /// Returns the headers needed for distributed tracing.
     pub fn iter_headers(&self) -> TraceHeadersIter {
         match self {
@@ -355,6 +363,14 @@ impl Transaction {
         inner.context.status = Some(status);
     }
 
+    /// Set the HTTP request information for this Transaction.
+    pub fn set_request(&self, request: protocol::Request) {
+        let mut inner = self.inner.lock().unwrap();
+        if let Some(transaction) = inner.transaction.as_mut() {
+            transaction.request = Some(request);
+        }
+    }
+
     /// Returns the headers needed for distributed tracing.
     pub fn iter_headers(&self) -> TraceHeadersIter {
         let inner = self.inner.lock().unwrap();
@@ -452,6 +468,41 @@ impl Span {
     pub fn set_status(&self, status: protocol::SpanStatus) {
         let mut span = self.span.lock().unwrap();
         span.status = Some(status);
+    }
+
+    /// Set the HTTP request information for this Span.
+    pub fn set_request(&self, request: protocol::Request) {
+        let mut span = self.span.lock().unwrap();
+        // Extract values from the request to be used as data in the span.
+        if let Some(method) = request.method {
+            span.data.insert("method".into(), method.into());
+        }
+        if let Some(url) = request.url {
+            span.data.insert("url".into(), url.to_string().into());
+        }
+        if let Some(data) = request.data {
+            if let Ok(data) = serde_json::from_str::<serde_json::Value>(&data) {
+                span.data.insert("data".into(), data);
+            } else {
+                span.data.insert("data".into(), data.into());
+            }
+        }
+        if let Some(query_string) = request.query_string {
+            span.data.insert("query_string".into(), query_string.into());
+        }
+        if let Some(cookies) = request.cookies {
+            span.data.insert("cookies".into(), cookies.into());
+        }
+        if !request.headers.is_empty() {
+            if let Ok(headers) = serde_json::to_value(request.headers) {
+                span.data.insert("headers".into(), headers);
+            }
+        }
+        if !request.env.is_empty() {
+            if let Ok(env) = serde_json::to_value(request.env) {
+                span.data.insert("env".into(), env);
+            }
+        }
     }
 
     /// Returns the headers needed for distributed tracing.

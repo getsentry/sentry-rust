@@ -1,6 +1,8 @@
 use std::thread;
 use std::time::Duration;
 
+use sentry::protocol::Request;
+
 // cargo run --example performance-demo
 fn main() {
     let _sentry = sentry::init(sentry::ClientOptions {
@@ -12,6 +14,12 @@ fn main() {
 
     let transaction =
         sentry::start_transaction(sentry::TransactionContext::new("transaction", "root span"));
+    let tx_request = Request {
+        url: Some("https://honk.beep".parse().unwrap()),
+        method: Some("GET".to_string()),
+        ..Request::default()
+    };
+    transaction.set_request(tx_request);
     sentry::configure_scope(|scope| scope.set_span(Some(transaction.clone().into())));
 
     main_span1();
@@ -76,6 +84,12 @@ where
             sentry::start_transaction(ctx).into()
         }
     };
+    let span_request = Request {
+        url: Some("https://beep.beep".parse().unwrap()),
+        method: Some("GET".to_string()),
+        ..Request::default()
+    };
+    span1.set_request(span_request);
     sentry::configure_scope(|scope| scope.set_span(Some(span1.clone())));
 
     let rv = f();
