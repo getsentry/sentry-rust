@@ -1,7 +1,7 @@
 #![cfg(feature = "test")]
 
 use log_ as log;
-use sentry::protocol::{Context, Value};
+use sentry::protocol::{Context, Request, Value};
 use tracing_ as tracing;
 use tracing_subscriber::prelude::*;
 
@@ -146,6 +146,13 @@ fn test_set_transaction() {
         || {
             let ctx = sentry::TransactionContext::new("old name", "ye, whatever");
             let trx = sentry::start_transaction(ctx);
+            let request = Request {
+                url: Some("https://honk.beep".parse().unwrap()),
+                method: Some("GET".to_string()),
+                ..Request::default()
+            };
+            trx.set_request(request);
+
             sentry::configure_scope(|scope| scope.set_span(Some(trx.clone().into())));
 
             sentry::configure_scope(|scope| scope.set_transaction(Some("new name")));
@@ -164,4 +171,5 @@ fn test_set_transaction() {
     };
 
     assert_eq!(transaction.name.as_deref().unwrap(), "new name");
+    assert!(transaction.request.is_some());
 }
