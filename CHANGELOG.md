@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+**Features**:
+
+- Request data can now be attached to Transactions and Spans via `set_transaction`. ([#439](https://github.com/getsentry/sentry-rust/pull/439))
+
+**Thank you**:
+
+Features, fixes and improvements in this release have been contributed by:
+
+- [@jessfraz](https://github.com/jessfraz)
+
 ## 0.25.0
 
 **Breaking Changes**:
