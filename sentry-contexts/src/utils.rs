@@ -5,13 +5,18 @@ include!(concat!(env!("OUT_DIR"), "/constants.gen.rs"));
 #[cfg(target_os = "macos")]
 mod model_support {
     use libc::c_void;
+    use std::ffi::CString;
     use std::ptr;
 
-    pub fn get_model() -> Option<String> {
+    fn sysctlbyname_call(name: &str) -> Option<String> {
         unsafe {
+            let c_name = match CString::new(name) {
+                Ok(name) => name.into_bytes_with_nul(),
+                Err(_e) => return None,
+            };
             let mut size = 0;
             let res = libc::sysctlbyname(
-                "hw.model\x00".as_ptr() as _,
+                c_name.as_ptr() as _,
                 ptr::null_mut(),
                 &mut size,
                 ptr::null_mut(),
@@ -20,9 +25,10 @@ mod model_support {
             if res != 0 {
                 return None;
             }
+
             let mut buf = vec![0u8; size as usize];
             let res = libc::sysctlbyname(
-                "hw.model\x00".as_ptr() as _,
+                c_name.as_ptr() as _,
                 buf.as_mut_ptr() as *mut c_void,
                 &mut size,
                 ptr::null_mut(),
@@ -31,6 +37,7 @@ mod model_support {
             if res != 0 {
                 return None;
             }
+
             Some(
                 buf.into_iter()
                     .take(size)
@@ -39,6 +46,10 @@ mod model_support {
                     .collect(),
             )
         }
+    }
+
+    pub fn get_model() -> Option<String> {
+        sysctlbyname_call("hw.model")
     }
 
     pub fn get_family() -> Option<String> {
