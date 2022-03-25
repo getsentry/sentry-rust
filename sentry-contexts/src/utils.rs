@@ -52,6 +52,14 @@ mod model_support {
         sysctlbyname_call("hw.model")
     }
 
+    pub fn get_macos_version() -> Option<String> {
+        sysctlbyname_call("kern.osproductversion")
+    }
+
+    pub fn get_macos_build() -> Option<String> {
+        sysctlbyname_call("kern.osversion")
+    }
+
     pub fn get_family() -> Option<String> {
         get_model().map(|mut s| {
             let len = s
@@ -71,6 +79,14 @@ mod model_support {
         let f = get_family().unwrap();
         assert!(f.chars().all(|c| !c.is_digit(10)));
     }
+
+    #[test]
+    fn test_macos_version_and_build() {
+        let v = get_macos_version().unwrap();
+        assert!(v.chars().all(|c| c.is_digit(10) || c == '.'));
+        let b = get_macos_build().unwrap();
+        assert!(b.chars().all(|c| c.is_ascii_alphabetic() || c.is_digit(10)));
+    }
 }
 
 #[cfg(not(target_os = "macos"))]
@@ -80,6 +96,14 @@ mod model_support {
     }
 
     pub fn get_family() -> Option<String> {
+        None
+    }
+
+    pub fn get_macos_version() -> Option<String> {
+        None
+    }
+
+    pub fn get_macos_build() -> Option<String> {
         None
     }
 }
