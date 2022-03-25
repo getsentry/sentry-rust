@@ -53,7 +53,12 @@ mod model_support {
     }
 
     pub fn get_macos_version() -> Option<String> {
-        sysctlbyname_call("kern.osproductversion")
+        let version = sysctlbyname_call("kern.osproductversion")?;
+        let dot_count = version.split(".").count() - 1;
+        if dot_count < 2 {
+            return Some(version + ".0");
+        }
+        Some(version)
     }
 
     pub fn get_macos_build() -> Option<String> {
@@ -84,6 +89,8 @@ mod model_support {
     fn test_macos_version_and_build() {
         let v = get_macos_version().unwrap();
         assert!(v.chars().all(|c| c.is_digit(10) || c == '.'));
+        let dot_count = v.split(".").count() - 1;
+        assert_eq!(dot_count, 2);
         let b = get_macos_build().unwrap();
         assert!(b.chars().all(|c| c.is_ascii_alphabetic() || c.is_digit(10)));
     }
