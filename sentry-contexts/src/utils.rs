@@ -119,15 +119,31 @@ pub fn os_context() -> Option<Context> {
     {
         use uname::uname;
         if let Ok(info) = uname() {
-            Some(
-                OsContext {
-                    name: Some(info.sysname),
-                    kernel_version: Some(info.version),
-                    version: Some(info.release),
-                    ..Default::default()
-                }
-                .into(),
-            )
+            #[cfg(target_os = "macos")]
+            {
+                Some(
+                    OsContext {
+                        name: Some("macOS".into()),
+                        kernel_version: Some(info.version),
+                        version: model_support::get_macos_version(),
+                        build: model_support::get_macos_build(),
+                        ..Default::default()
+                    }
+                    .into(),
+                )
+            }
+            #[cfg(not(target_os = "macos"))]
+            {
+                Some(
+                    OsContext {
+                        name: Some(info.sysname),
+                        kernel_version: Some(info.version),
+                        version: Some(info.release),
+                        ..Default::default()
+                    }
+                    .into(),
+                )
+            }
         } else {
             None
         }
