@@ -71,3 +71,11 @@ fn test_concurrent_init() {
     .join()
     .unwrap();
 }
+
+#[test]
+fn test_invalid_proxy() {
+    let _guard = sentry::init(sentry::ClientOptions {
+        https_proxy: Some("".into()),
+        ..Default::default()
+    });
+}
