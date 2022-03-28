@@ -105,14 +105,6 @@ mod model_support {
     pub fn get_family() -> Option<String> {
         None
     }
-
-    pub fn get_macos_version() -> Option<String> {
-        None
-    }
-
-    pub fn get_macos_build() -> Option<String> {
-        None
-    }
 }
 
 /// Returns the server name (hostname) if available.
