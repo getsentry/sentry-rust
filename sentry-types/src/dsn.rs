@@ -140,8 +140,8 @@ impl Dsn {
     }
 
     /// Returns the project_id
-    pub fn project_id(&self) -> ProjectId {
-        self.project_id
+    pub fn project_id(&self) -> &ProjectId {
+        &self.project_id
     }
 }
 
@@ -237,7 +237,7 @@ mod test {
         assert_eq!(dsn.host(), "domain");
         assert_eq!(dsn.port(), 8888);
         assert_eq!(dsn.path(), "/");
-        assert_eq!(dsn.project_id(), ProjectId::new(23));
+        assert_eq!(dsn.project_id(), &ProjectId::new(23));
         assert_eq!(url, dsn.to_string());
     }
 

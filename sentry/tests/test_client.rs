@@ -11,7 +11,7 @@ fn test_into_client() {
         assert_eq!(dsn.public_key(), "public");
         assert_eq!(dsn.host(), "example.com");
         assert_eq!(dsn.scheme(), sentry::types::Scheme::Https);
-        assert_eq!(dsn.project_id().value(), 42);
+        assert_eq!(dsn.project_id().value(), Some(42));
     }
 
     let c: sentry::Client = sentry::Client::from_config((
@@ -26,7 +26,7 @@ fn test_into_client() {
         assert_eq!(dsn.public_key(), "public");
         assert_eq!(dsn.host(), "example.com");
         assert_eq!(dsn.scheme(), sentry::types::Scheme::Https);
-        assert_eq!(dsn.project_id().value(), 42);
+        assert_eq!(dsn.project_id().value(), Some(42));
         assert_eq!(&c.options().release.as_ref().unwrap(), &"foo@1.0");
     }
 

@@ -17,26 +17,28 @@ pub enum ParseProjectIdError {
 }
 
 /// Represents a project ID.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash, Deserialize, Serialize)]
-pub struct ProjectId(u64);
+#[derive(Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash, Deserialize, Serialize)]
+#[serde(into = "u64", from = "u64")]
+pub struct ProjectId(String);
 
 impl ProjectId {
     /// Creates a new project ID from its numeric value.
     #[inline]
     pub fn new(id: u64) -> Self {
-        Self(id)
+        Self(id.to_string())
     }
 
-    /// Returns the numeric value of this project id.
+    /// Returns the numeric value of this project id. None is returned if a
+    /// valid could not be parsed from the project id.
     #[inline]
-    pub fn value(self) -> u64 {
-        self.0
+    pub fn value(&self) -> Option<u64> {
+        self.0.parse::<u64>().ok()
     }
 }
 
 impl fmt::Display for ProjectId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.value())
+        write!(f, "{}", self.0)
     }
 }
 
@@ -89,6 +91,18 @@ impl FromStr for ProjectId {
         match s.parse::<u64>() {
             Ok(val) => Ok(ProjectId::new(val)),
             Err(_) => Err(ParseProjectIdError::InvalidValue),
+        }
+    }
+}
+
+// Combined with the serde into/from annotation, this allows the project ID to
+// continue being serialized and deserialized as a u64 until other parts of
+// sentry add in full support for project strings.
+impl From<ProjectId> for u64 {
+    fn from(pid: ProjectId) -> Self {
+        match pid.value() {
+            Some(val) => val,
+            None => u64::MAX,
         }
     }
 }
