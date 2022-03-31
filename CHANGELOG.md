@@ -5,6 +5,7 @@
 **Features**:
 
 - Request data can now be attached to Transactions and Spans via `set_transaction`. ([#439](https://github.com/getsentry/sentry-rust/pull/439))
+- macOS versions are now reported instead of the Darwin kernel version. ([#451](https://github.com/getsentry/sentry-rust/pull/451))
 
 **Thank you**:
 
