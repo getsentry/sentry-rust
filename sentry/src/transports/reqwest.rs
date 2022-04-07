@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use reqwest_::{header as ReqwestHeaders, Client as ReqwestClient, Proxy, StatusCode};
+use reqwest::{header as ReqwestHeaders, Client as ReqwestClient, Proxy, StatusCode};
 
 use super::tokio_thread::TransportThread;
 
@@ -11,8 +11,6 @@ use crate::{sentry_debug, ClientOptions, Envelope, Transport};
 /// When the `transport` feature is enabled this will currently
 /// be the default transport.  This is separately enabled by the
 /// `reqwest` feature flag.
-///
-/// [`reqwest`]: reqwest_
 #[cfg_attr(doc_cfg, doc(cfg(feature = "reqwest")))]
 pub struct ReqwestHttpTransport {
     thread: TransportThread,
@@ -31,7 +29,7 @@ impl ReqwestHttpTransport {
 
     fn new_internal(options: &ClientOptions, client: Option<ReqwestClient>) -> Self {
         let client = client.unwrap_or_else(|| {
-            let mut builder = reqwest_::Client::builder();
+            let mut builder = reqwest::Client::builder();
             if options.accept_invalid_certs {
                 builder = builder.danger_accept_invalid_certs(true);
             }

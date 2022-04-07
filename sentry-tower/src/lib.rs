@@ -121,7 +121,7 @@
 //!
 //! ```rust
 //! # #[cfg(feature = "http")] {
-//! # type Request = http_::Request<String>;
+//! # type Request = http::Request<String>;
 //! let layer = tower::ServiceBuilder::new()
 //!     .layer(sentry_tower::NewSentryLayer::<Request>::new_from_top())
 //!     .layer(sentry_tower::SentryHttpLayer::with_transaction());
@@ -145,7 +145,7 @@ use tower_service::Service;
 #[cfg(feature = "http")]
 mod http;
 #[cfg(feature = "http")]
-pub use http::*;
+pub use crate::http::*;
 
 /// Provides a hub for each request
 pub trait HubProvider<H, Request>

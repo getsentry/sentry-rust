@@ -1,5 +1,4 @@
 use log::{debug, error, info, warn};
-use log_ as log;
 
 fn main() {
     init_log();

@@ -143,8 +143,6 @@ fn test_reentrant_configure_scope() {
 
 #[test]
 fn test_attached_stacktrace() {
-    use log_ as log;
-
     let logger = sentry_log::SentryLogger::new();
 
     log::set_boxed_logger(Box::new(logger))

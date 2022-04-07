@@ -1,5 +1,3 @@
-use anyhow_ as anyhow;
-
 fn execute() -> anyhow::Result<usize> {
     let parsed = "NaN".parse()?;
     Ok(parsed)

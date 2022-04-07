@@ -8,7 +8,7 @@ use sentry::{
     ClientOptions, Hub,
 };
 use sentry_tower::SentryLayer;
-use tower_::{ServiceBuilder, ServiceExt};
+use tower::{ServiceBuilder, ServiceExt};
 
 #[test]
 fn test_tower_hub() {

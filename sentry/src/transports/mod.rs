@@ -16,22 +16,22 @@ mod tokio_thread;
 #[cfg(feature = "reqwest")]
 mod reqwest;
 #[cfg(feature = "reqwest")]
-pub use reqwest::ReqwestHttpTransport;
+pub use self::reqwest::ReqwestHttpTransport;
 
 #[cfg(feature = "curl")]
 mod curl;
 #[cfg(feature = "curl")]
-pub use curl::CurlHttpTransport;
+pub use self::curl::CurlHttpTransport;
 
 #[cfg(feature = "surf")]
 mod surf;
 #[cfg(feature = "surf")]
-pub use surf::SurfHttpTransport;
+pub use self::surf::SurfHttpTransport;
 
 #[cfg(feature = "ureq")]
 mod ureq;
 #[cfg(feature = "ureq")]
-pub use ureq::UreqHttpTransport;
+pub use self::ureq::UreqHttpTransport;
 
 #[cfg(feature = "reqwest")]
 type DefaultTransport = ReqwestHttpTransport;

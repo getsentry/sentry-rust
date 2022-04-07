@@ -197,10 +197,10 @@ pub fn device_context() -> Context {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     #[cfg(windows)]
     #[test]
     fn windows_os_version_not_empty() {
+        use super::*;
         let context = os_context();
         match context {
             Some(Context::Os(os_context)) => {
