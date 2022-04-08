@@ -59,12 +59,8 @@ pub fn capture_anyhow(e: &anyhow::Error) -> Uuid {
 }
 
 /// Hub extension methods for working with [`anyhow`].
-///
-/// [`anyhow`]: https://docs.rs/anyhow
 pub trait AnyhowHubExt {
     /// Captures an [`anyhow::Error`] on a specific hub.
-    ///
-    /// [`anyhow::Error`]: https://docs.rs/anyhow/*/anyhow/struct.Error.html
     fn capture_anyhow(&self, e: &anyhow::Error) -> Uuid;
 }
 
