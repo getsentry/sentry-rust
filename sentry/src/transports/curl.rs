@@ -10,8 +10,6 @@ use crate::{sentry_debug, types::Scheme, ClientOptions, Envelope, Transport};
 /// A [`Transport`] that sends events via the [`curl`] library.
 ///
 /// This is enabled by the `curl` feature flag.
-///
-/// [`curl`]: https://crates.io/crates/curl
 #[cfg_attr(doc_cfg, doc(cfg(feature = "curl")))]
 pub struct CurlHttpTransport {
     thread: TransportThread,

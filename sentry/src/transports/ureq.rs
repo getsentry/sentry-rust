@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-#[cfg(fdoc)]
+#[cfg(doc)]
 use ureq_ as ureq;
 use ureq_::{Agent, AgentBuilder, Proxy};
 
@@ -11,8 +11,6 @@ use crate::{sentry_debug, types::Scheme, ClientOptions, Envelope, Transport};
 /// A [`Transport`] that sends events via the [`ureq`] library.
 ///
 /// This is enabled by the `ureq` feature flag.
-///
-/// [`ureq`]: https://crates.io/crates/ureq
 #[cfg_attr(doc_cfg, doc(cfg(feature = "ureq")))]
 pub struct UreqHttpTransport {
     thread: TransportThread,
