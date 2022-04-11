@@ -26,6 +26,9 @@ fn extract_event_data(event: &tracing_core::Event) -> (Option<String>, FieldVisi
     let message = visitor
         .json_values
         .remove("message")
+        // When #[instrument(err)] is used the event does not have a message attached to it.
+        // the error message is attached to the field "error".
+        .or_else(|| visitor.json_values.remove("error"))
         .and_then(|v| v.as_str().map(|s| s.to_owned()));
 
     (message, visitor)

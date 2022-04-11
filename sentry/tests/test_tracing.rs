@@ -12,6 +12,11 @@ fn test_tracing() {
         .with(sentry_tracing::layer())
         .set_default();
 
+    #[tracing::instrument(err)]
+    fn fn_errors() -> Result<(), Box<dyn std::error::Error>> {
+        Err("I'm broken!".into())
+    }
+
     let events = sentry::test::with_captured_events(|| {
         sentry::configure_scope(|scope| {
             scope.set_tag("worker", "worker1");
@@ -26,9 +31,10 @@ fn test_tracing() {
         let err = "NaN".parse::<usize>().unwrap_err();
         let err: &dyn std::error::Error = &err;
         tracing::error!(err, tagname = "tagvalue");
+        let _ = fn_errors();
     });
 
-    assert_eq!(events.len(), 3);
+    assert_eq!(events.len(), 4);
     let mut events = events.into_iter();
 
     let event = events.next().unwrap();
@@ -95,6 +101,9 @@ fn test_tracing() {
         }
         _ => panic!("Wrong context type"),
     }
+
+    let event = events.next().unwrap();
+    assert_eq!(event.message, Some("I'm broken!".to_string()));
 }
 
 #[tracing::instrument(fields(span_field))]
