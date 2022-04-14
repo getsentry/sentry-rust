@@ -1,8 +1,75 @@
-use std::io::Write;
+use std::{io::Write, path::Path};
 
+use serde::Deserialize;
+use thiserror::Error;
 use uuid::Uuid;
 
-use super::v7::{Attachment, Event, SessionAggregates, SessionUpdate, Transaction};
+use super::{
+    attachment::AttachmentType,
+    v7::{Attachment, Event, SessionAggregates, SessionUpdate, Transaction},
+};
+
+/// Raised if a envelope cannot be parsed from a given input.
+#[derive(Debug, Error)]
+pub enum EnvelopeError {
+    /// Unexpected end of file
+    #[error("unexpected end of file")]
+    UnexpectedEof,
+    /// Missing envelope header
+    #[error("missing envelope header")]
+    MissingHeader,
+    /// Missing item header
+    #[error("missing item header")]
+    MissingItemHeader,
+    /// Missing newline after header or payload
+    #[error("missing newline after header or payload")]
+    MissingNewline,
+    /// Invalid envelope header
+    #[error("invalid envelope header")]
+    InvalidHeader(#[source] serde_json::Error),
+    /// Invalid item header
+    #[error("invalid item header")]
+    InvalidItemHeader(#[source] serde_json::Error),
+    /// Invalid item payload
+    #[error("invalid item payload")]
+    InvalidItemPayload(#[source] serde_json::Error),
+}
+
+#[derive(Deserialize)]
+struct EnvelopeHeader {
+    event_id: Option<Uuid>,
+}
+
+/// An Envelope Item Type.
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize)]
+enum EnvelopeItemType {
+    /// An Event Item type.
+    #[serde(rename = "event")]
+    Event,
+    /// A Session Item type.
+    #[serde(rename = "session")]
+    SessionUpdate,
+    /// A Session Aggregates Item type.
+    #[serde(rename = "sessions")]
+    SessionAggregates,
+    /// A Transaction Item type.
+    #[serde(rename = "transaction")]
+    Transaction,
+    /// An Attachment Item type.
+    #[serde(rename = "attachment")]
+    Attachment,
+}
+
+/// An Envelope Item Header.
+#[derive(Clone, Debug, Deserialize)]
+struct EnvelopeItemHeader {
+    r#type: EnvelopeItemType,
+    length: Option<usize>,
+    // Fields below apply only to Attachment Item type
+    filename: Option<String>,
+    attachment_type: Option<AttachmentType>,
+    content_type: Option<String>,
+}
 
 /// An Envelope Item.
 ///
@@ -236,6 +303,127 @@ impl Envelope {
 
         Ok(())
     }
+
+    /// Creates a new Envelope from slice.
+    pub fn from_slice(slice: &[u8]) -> Result<Envelope, EnvelopeError> {
+        let (header, offset) = Self::parse_header(slice)?;
+        let items = Self::parse_items(slice, offset)?;
+
+        let mut envelope = Envelope {
+            event_id: header.event_id,
+            ..Default::default()
+        };
+
+        for item in items {
+            envelope.add_item(item);
+        }
+
+        Ok(envelope)
+    }
+
+    /// Creates a new Envelope from path.
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Envelope, EnvelopeError> {
+        let bytes = std::fs::read(path).map_err(|_| EnvelopeError::UnexpectedEof)?;
+        Envelope::from_slice(&bytes)
+    }
+
+    fn parse_header(slice: &[u8]) -> Result<(EnvelopeHeader, usize), EnvelopeError> {
+        let mut stream = serde_json::Deserializer::from_slice(slice).into_iter();
+
+        let header: EnvelopeHeader = match stream.next() {
+            None => return Err(EnvelopeError::MissingHeader),
+            Some(Err(error)) => return Err(EnvelopeError::InvalidHeader(error)),
+            Some(Ok(header)) => header,
+        };
+
+        // Each header is terminated by a UNIX newline.
+        Self::require_termination(slice, stream.byte_offset())?;
+
+        Ok((header, stream.byte_offset() + 1))
+    }
+
+    fn parse_items(slice: &[u8], mut offset: usize) -> Result<Vec<EnvelopeItem>, EnvelopeError> {
+        let mut items = Vec::new();
+
+        while offset < slice.len() {
+            let bytes = slice
+                .get(offset..)
+                .ok_or(EnvelopeError::MissingItemHeader)?;
+            let (item, item_size) = Self::parse_item(bytes)?;
+            offset += item_size;
+            items.push(item);
+        }
+
+        Ok(items)
+    }
+
+    fn parse_item(slice: &[u8]) -> Result<(EnvelopeItem, usize), EnvelopeError> {
+        let mut stream = serde_json::Deserializer::from_slice(slice).into_iter();
+
+        let header: EnvelopeItemHeader = match stream.next() {
+            None => return Err(EnvelopeError::UnexpectedEof),
+            Some(Err(error)) => return Err(EnvelopeError::InvalidItemHeader(error)),
+            Some(Ok(header)) => header,
+        };
+
+        // Each header is terminated by a UNIX newline.
+        let header_end = stream.byte_offset();
+        Self::require_termination(slice, header_end)?;
+
+        // The last header does not require a trailing newline, so `payload_start` may point
+        // past the end of the buffer.
+        let payload_start = std::cmp::min(header_end + 1, slice.len());
+        let payload_end = match header.length {
+            Some(len) => {
+                let payload_end = payload_start + len as usize;
+                if slice.len() < payload_end {
+                    return Err(EnvelopeError::UnexpectedEof);
+                }
+
+                // Each payload is terminated by a UNIX newline.
+                Self::require_termination(slice, payload_end)?;
+                payload_end
+            }
+            None => match slice.get(payload_start..) {
+                Some(range) => match range.iter().position(|&b| b == b'\n') {
+                    Some(relative_end) => payload_start + relative_end,
+                    None => slice.len(),
+                },
+                None => slice.len(),
+            },
+        };
+
+        let payload = slice.get(payload_start..payload_end).unwrap();
+
+        let item = match header.r#type {
+            EnvelopeItemType::Event => serde_json::from_slice(payload).map(EnvelopeItem::Event),
+            EnvelopeItemType::Transaction => {
+                serde_json::from_slice(payload).map(EnvelopeItem::Transaction)
+            }
+            EnvelopeItemType::SessionUpdate => {
+                serde_json::from_slice(payload).map(EnvelopeItem::SessionUpdate)
+            }
+            EnvelopeItemType::SessionAggregates => {
+                serde_json::from_slice(payload).map(EnvelopeItem::SessionAggregates)
+            }
+            EnvelopeItemType::Attachment => Ok(EnvelopeItem::Attachment(Attachment {
+                buffer: payload.to_owned(),
+                filename: header.filename.unwrap_or_default(),
+                content_type: header.content_type,
+                ty: header.attachment_type,
+            })),
+        }
+        .map_err(EnvelopeError::InvalidItemPayload)?;
+
+        Ok((item, payload_end + 1))
+    }
+
+    fn require_termination(slice: &[u8], offset: usize) -> Result<(), EnvelopeError> {
+        match slice.get(offset) {
+            Some(&b'\n') | None => Ok(()),
+            Some(_) => Err(EnvelopeError::MissingNewline),
+        }
+    }
 }
 
 impl From<Event<'static>> for Envelope {
@@ -256,13 +444,14 @@ impl From<Transaction<'static>> for Envelope {
 
 #[cfg(test)]
 mod test {
+    use std::str::FromStr;
     use std::time::{Duration, SystemTime};
 
     use time::format_description::well_known::Rfc3339;
     use time::OffsetDateTime;
 
     use super::*;
-    use crate::protocol::v7::{SessionAttributes, SessionStatus, Span};
+    use crate::protocol::v7::{Level, SessionAttributes, SessionStatus, Span};
 
     fn to_str(envelope: Envelope) -> String {
         let mut vec = Vec::new();
@@ -388,5 +577,236 @@ mod test {
 some content
 "#
         )
+    }
+
+    #[test]
+    fn test_deserialize_envelope_empty() {
+        // Without terminating newline after header
+        let bytes = b"{\"event_id\":\"9ec79c33ec9942ab8353589fcb2e04dc\"}";
+        let envelope = Envelope::from_slice(bytes).unwrap();
+
+        let event_id = Uuid::from_str("9ec79c33ec9942ab8353589fcb2e04dc").unwrap();
+        assert_eq!(envelope.event_id, Some(event_id));
+        assert_eq!(envelope.items().count(), 0);
+    }
+
+    #[test]
+    fn test_deserialize_envelope_empty_newline() {
+        // With terminating newline after header
+        let bytes = b"{\"event_id\":\"9ec79c33ec9942ab8353589fcb2e04dc\"}\n";
+        let envelope = Envelope::from_slice(bytes).unwrap();
+        assert_eq!(envelope.items().count(), 0);
+    }
+
+    #[test]
+    fn test_deserialize_envelope_empty_item_newline() {
+        // With terminating newline after item payload
+        let bytes = b"\
+             {\"event_id\":\"9ec79c33ec9942ab8353589fcb2e04dc\"}\n\
+             {\"type\":\"attachment\",\"length\":0}\n\
+             \n\
+             {\"type\":\"attachment\",\"length\":0}\n\
+             ";
+
+        let envelope = Envelope::from_slice(bytes).unwrap();
+        assert_eq!(envelope.items().count(), 2);
+
+        let mut items = envelope.items();
+
+        if let EnvelopeItem::Attachment(attachment) = items.next().unwrap() {
+            assert_eq!(attachment.buffer.len(), 0);
+        } else {
+            panic!("invalid item type");
+        }
+
+        if let EnvelopeItem::Attachment(attachment) = items.next().unwrap() {
+            assert_eq!(attachment.buffer.len(), 0);
+        } else {
+            panic!("invalid item type");
+        }
+    }
+
+    #[test]
+    fn test_deserialize_envelope_empty_item_eof() {
+        // With terminating newline after item payload
+        let bytes = b"\
+             {\"event_id\":\"9ec79c33ec9942ab8353589fcb2e04dc\"}\n\
+             {\"type\":\"attachment\",\"length\":0}\n\
+             \n\
+             {\"type\":\"attachment\",\"length\":0}\
+             ";
+
+        let envelope = Envelope::from_slice(bytes).unwrap();
+        assert_eq!(envelope.items().count(), 2);
+
+        let mut items = envelope.items();
+
+        if let EnvelopeItem::Attachment(attachment) = items.next().unwrap() {
+            assert_eq!(attachment.buffer.len(), 0);
+        } else {
+            panic!("invalid item type");
+        }
+
+        if let EnvelopeItem::Attachment(attachment) = items.next().unwrap() {
+            assert_eq!(attachment.buffer.len(), 0);
+        } else {
+            panic!("invalid item type");
+        }
+    }
+
+    #[test]
+    fn test_deserialize_envelope_implicit_length() {
+        // With terminating newline after item payload
+        let bytes = b"\
+             {\"event_id\":\"9ec79c33ec9942ab8353589fcb2e04dc\"}\n\
+             {\"type\":\"attachment\"}\n\
+             helloworld\n\
+             ";
+
+        let envelope = Envelope::from_slice(bytes).unwrap();
+        assert_eq!(envelope.items().count(), 1);
+
+        let mut items = envelope.items();
+
+        if let EnvelopeItem::Attachment(attachment) = items.next().unwrap() {
+            assert_eq!(attachment.buffer.len(), 10);
+        } else {
+            panic!("invalid item type");
+        }
+    }
+
+    #[test]
+    fn test_deserialize_envelope_implicit_length_eof() {
+        // With item ending the envelope
+        let bytes = b"\
+             {\"event_id\":\"9ec79c33ec9942ab8353589fcb2e04dc\"}\n\
+             {\"type\":\"attachment\"}\n\
+             helloworld\
+             ";
+
+        let envelope = Envelope::from_slice(bytes).unwrap();
+        assert_eq!(envelope.items().count(), 1);
+
+        let mut items = envelope.items();
+
+        if let EnvelopeItem::Attachment(attachment) = items.next().unwrap() {
+            assert_eq!(attachment.buffer.len(), 10);
+        } else {
+            panic!("invalid item type");
+        }
+    }
+
+    #[test]
+    fn test_deserialize_envelope_implicit_length_empty_eof() {
+        // Empty item with implicit length ending the envelope
+        let bytes = b"\
+             {\"event_id\":\"9ec79c33ec9942ab8353589fcb2e04dc\"}\n\
+             {\"type\":\"attachment\"}\
+             ";
+
+        let envelope = Envelope::from_slice(bytes).unwrap();
+        assert_eq!(envelope.items().count(), 1);
+
+        let mut items = envelope.items();
+
+        if let EnvelopeItem::Attachment(attachment) = items.next().unwrap() {
+            assert_eq!(attachment.buffer.len(), 0);
+        } else {
+            panic!("invalid item type");
+        }
+    }
+
+    #[test]
+    fn test_deserialize_envelope_multiple_items() {
+        // With terminating newline
+        let bytes = b"\
+            {\"event_id\":\"9ec79c33ec9942ab8353589fcb2e04dc\"}\n\
+            {\"type\":\"attachment\",\"length\":10,\"content_type\":\"text/plain\",\"filename\":\"hello.txt\"}\n\
+            \xef\xbb\xbfHello\r\n\n\
+            {\"type\":\"event\",\"length\":41,\"content_type\":\"application/json\",\"filename\":\"application.log\"}\n\
+            {\"message\":\"hello world\",\"level\":\"error\"}\n\
+            ";
+
+        let envelope = Envelope::from_slice(bytes).unwrap();
+        assert_eq!(envelope.items().count(), 2);
+
+        let mut items = envelope.items();
+
+        if let EnvelopeItem::Attachment(attachment) = items.next().unwrap() {
+            assert_eq!(attachment.buffer.len(), 10);
+            assert_eq!(attachment.buffer, b"\xef\xbb\xbfHello\r\n");
+            assert_eq!(attachment.filename, "hello.txt");
+            assert_eq!(attachment.content_type, Some("text/plain".to_string()));
+        } else {
+            panic!("invalid item type");
+        }
+
+        if let EnvelopeItem::Event(event) = items.next().unwrap() {
+            assert_eq!(event.message, Some("hello world".to_string()));
+            assert_eq!(event.level, Level::Error);
+        } else {
+            panic!("invalid item type");
+        }
+    }
+
+    // Test all possible item types in a single envelope
+    #[test]
+    fn test_deserialize_serialized() {
+        // Event
+        let event = Event {
+            event_id: Uuid::parse_str("22d00b3f-d1b1-4b5d-8d20-49d138cd8a9c").unwrap(),
+            timestamp: timestamp("2020-07-20T14:51:14.296Z"),
+            ..Default::default()
+        };
+
+        // Transaction
+        let transaction = Transaction {
+            event_id: Uuid::parse_str("22d00b3f-d1b1-4b5d-8d20-49d138cd8a9d").unwrap(),
+            start_timestamp: timestamp("2020-07-20T14:51:14.296Z"),
+            spans: vec![Span {
+                span_id: "d42cee9fc3e74f5c".parse().unwrap(),
+                trace_id: "335e53d614474acc9f89e632b776cc28".parse().unwrap(),
+                start_timestamp: timestamp("2020-07-20T14:51:14.296Z"),
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+
+        // Session
+        let session = SessionUpdate {
+            session_id: Uuid::parse_str("22d00b3f-d1b1-4b5d-8d20-49d138cd8a9c").unwrap(),
+            distinct_id: Some("foo@bar.baz".to_owned()),
+            sequence: None,
+            timestamp: None,
+            started: timestamp("2020-07-20T14:51:14.296Z"),
+            init: true,
+            duration: Some(1.234),
+            status: SessionStatus::Ok,
+            errors: 123,
+            attributes: SessionAttributes {
+                release: "foo-bar@1.2.3".into(),
+                environment: Some("production".into()),
+                ip_address: None,
+                user_agent: None,
+            },
+        };
+
+        // Attachment
+        let attachment = Attachment {
+            buffer: "some content".as_bytes().to_vec(),
+            filename: "file.txt".to_string(),
+            ..Default::default()
+        };
+
+        let mut envelope: Envelope = Envelope::new();
+
+        envelope.add_item(event);
+        envelope.add_item(transaction);
+        envelope.add_item(session);
+        envelope.add_item(attachment);
+
+        let serialized = to_str(envelope);
+        let deserialized = Envelope::from_slice(serialized.as_bytes()).unwrap();
+        assert_eq!(serialized, to_str(deserialized))
     }
 }
