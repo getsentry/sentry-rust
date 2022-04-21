@@ -299,7 +299,7 @@ where
                     if inner.emit_header {
                         res.response_mut().headers_mut().insert(
                             "x-sentry-event".parse().unwrap(),
-                            event_id.to_simple_ref().to_string().parse().unwrap(),
+                            event_id.simple().to_string().parse().unwrap(),
                         );
                     }
                 }
