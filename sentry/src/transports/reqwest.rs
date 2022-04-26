@@ -33,10 +33,24 @@ impl ReqwestHttpTransport {
         let client = client.unwrap_or_else(|| {
             let mut builder = reqwest_::Client::builder();
             if let Some(url) = options.http_proxy.as_ref() {
-                builder = builder.proxy(Proxy::http(url.as_ref()).unwrap());
+                match Proxy::http(url.as_ref()) {
+                    Ok(proxy) => {
+                        builder = builder.proxy(proxy);
+                    }
+                    Err(err) => {
+                        sentry_debug!("invalid proxy: {:?}", err);
+                    }
+                }
             };
             if let Some(url) = options.https_proxy.as_ref() {
-                builder = builder.proxy(Proxy::https(url.as_ref()).unwrap());
+                match Proxy::https(url.as_ref()) {
+                    Ok(proxy) => {
+                        builder = builder.proxy(proxy);
+                    }
+                    Err(err) => {
+                        sentry_debug!("invalid proxy: {:?}", err);
+                    }
+                }
             };
             builder.build().unwrap()
         });

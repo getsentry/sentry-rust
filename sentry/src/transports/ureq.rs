@@ -34,12 +34,22 @@ impl UreqHttpTransport {
             let mut builder = AgentBuilder::new();
 
             match (scheme, &options.http_proxy, &options.https_proxy) {
-                (Scheme::Https, _, &Some(ref proxy)) => {
-                    builder = builder.proxy(Proxy::new(proxy).unwrap());
-                }
-                (_, &Some(ref proxy), _) => {
-                    builder = builder.proxy(Proxy::new(proxy).unwrap());
-                }
+                (Scheme::Https, _, &Some(ref proxy)) => match Proxy::new(proxy) {
+                    Ok(proxy) => {
+                        builder = builder.proxy(proxy);
+                    }
+                    Err(err) => {
+                        sentry_debug!("invalid proxy: {:?}", err);
+                    }
+                },
+                (_, &Some(ref proxy), _) => match Proxy::new(proxy) {
+                    Ok(proxy) => {
+                        builder = builder.proxy(proxy);
+                    }
+                    Err(err) => {
+                        sentry_debug!("invalid proxy: {:?}", err);
+                    }
+                },
                 _ => {}
             }
 
