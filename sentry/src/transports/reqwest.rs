@@ -12,7 +12,7 @@ use crate::{sentry_debug, ClientOptions, Envelope, Transport};
 /// be the default transport.  This is separately enabled by the
 /// `reqwest` feature flag.
 ///
-/// [`reqwest`]: https://crates.io/crates/reqwest
+/// [`reqwest`]: reqwest_
 #[cfg_attr(doc_cfg, doc(cfg(feature = "reqwest")))]
 pub struct ReqwestHttpTransport {
     thread: TransportThread,

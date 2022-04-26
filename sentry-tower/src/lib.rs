@@ -127,6 +127,8 @@
 //!     .layer(sentry_tower::SentryHttpLayer::with_transaction());
 //! # }
 //! ```
+//!
+//! [`tower::ServiceBuilder`]: https://docs.rs/tower/latest/tower/struct.ServiceBuilder.html
 
 #![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
 #![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
