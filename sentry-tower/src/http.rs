@@ -2,7 +2,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-use http_::{Request, Response, StatusCode};
+use http_::{header, Request, Response, StatusCode};
 use sentry_core::protocol;
 use tower_layer::Layer;
 use tower_service::Service;
@@ -136,7 +136,7 @@ where
     fn call(&mut self, request: Request<ReqBody>) -> Self::Future {
         let sentry_req = sentry_core::protocol::Request {
             method: Some(request.method().to_string()),
-            url: request.uri().to_string().parse().ok(),
+            url: get_url_from_request(&request),
             headers: request
                 .headers()
                 .into_iter()
@@ -185,4 +185,14 @@ fn map_status(status: StatusCode) -> protocol::SpanStatus {
         status if status.is_success() => protocol::SpanStatus::Ok,
         _ => protocol::SpanStatus::UnknownError,
     }
+}
+
+fn get_url_from_request<B>(request: &Request<B>) -> Option<url::Url> {
+    format!(
+        "http://{}{}",
+        request.headers().get(header::HOST)?.to_str().ok()?,
+        request.uri()
+    )
+    .parse()
+    .ok()
 }
