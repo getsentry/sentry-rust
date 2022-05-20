@@ -10,8 +10,6 @@ use crate::{sentry_debug, types::Scheme, ClientOptions, Envelope, Transport};
 /// A [`Transport`] that sends events via the [`curl`] library.
 ///
 /// This is enabled by the `curl` feature flag.
-///
-/// [`curl`]: https://crates.io/crates/curl
 #[cfg_attr(doc_cfg, doc(cfg(feature = "curl")))]
 pub struct CurlHttpTransport {
     thread: TransportThread,
@@ -46,10 +44,14 @@ impl CurlHttpTransport {
 
             match (scheme, &http_proxy, &https_proxy) {
                 (Scheme::Https, _, &Some(ref proxy)) => {
-                    handle.proxy(proxy).unwrap();
+                    if let Err(err) = handle.proxy(proxy) {
+                        sentry_debug!("invalid proxy: {:?}", err);
+                    }
                 }
                 (_, &Some(ref proxy), _) => {
-                    handle.proxy(proxy).unwrap();
+                    if let Err(err) = handle.proxy(proxy) {
+                        sentry_debug!("invalid proxy: {:?}", err);
+                    }
                 }
                 _ => {}
             }

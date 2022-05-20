@@ -5,17 +5,17 @@ use std::sync::Arc;
 
 #[test]
 fn test_into_client() {
-    let c: sentry::Client = sentry::Client::from_config("https://public@example.com/42");
+    let c: sentry::Client = sentry::Client::from_config("https://public@example.com/42%21");
     {
         let dsn = c.dsn().unwrap();
         assert_eq!(dsn.public_key(), "public");
         assert_eq!(dsn.host(), "example.com");
         assert_eq!(dsn.scheme(), sentry::types::Scheme::Https);
-        assert_eq!(dsn.project_id().value(), 42);
+        assert_eq!(dsn.project_id().value(), "42%21");
     }
 
     let c: sentry::Client = sentry::Client::from_config((
-        "https://public@example.com/42",
+        "https://public@example.com/42%21",
         sentry::ClientOptions {
             release: Some("foo@1.0".into()),
             ..Default::default()
@@ -26,7 +26,7 @@ fn test_into_client() {
         assert_eq!(dsn.public_key(), "public");
         assert_eq!(dsn.host(), "example.com");
         assert_eq!(dsn.scheme(), sentry::types::Scheme::Https);
-        assert_eq!(dsn.project_id().value(), 42);
+        assert_eq!(dsn.project_id().value(), "42%21");
         assert_eq!(&c.options().release.as_ref().unwrap(), &"foo@1.0");
     }
 
@@ -70,4 +70,12 @@ fn test_concurrent_init() {
     })
     .join()
     .unwrap();
+}
+
+#[test]
+fn test_invalid_proxy() {
+    let _guard = sentry::init(sentry::ClientOptions {
+        https_proxy: Some("".into()),
+        ..Default::default()
+    });
 }

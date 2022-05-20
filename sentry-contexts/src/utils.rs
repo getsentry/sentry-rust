@@ -5,13 +5,18 @@ include!(concat!(env!("OUT_DIR"), "/constants.gen.rs"));
 #[cfg(target_os = "macos")]
 mod model_support {
     use libc::c_void;
+    use std::ffi::CString;
     use std::ptr;
 
-    pub fn get_model() -> Option<String> {
+    fn sysctlbyname_call(name: &str) -> Option<String> {
         unsafe {
+            let c_name = match CString::new(name) {
+                Ok(name) => name.into_bytes_with_nul(),
+                Err(_e) => return None,
+            };
             let mut size = 0;
             let res = libc::sysctlbyname(
-                "hw.model\x00".as_ptr() as _,
+                c_name.as_ptr() as _,
                 ptr::null_mut(),
                 &mut size,
                 ptr::null_mut(),
@@ -20,9 +25,10 @@ mod model_support {
             if res != 0 {
                 return None;
             }
+
             let mut buf = vec![0u8; size as usize];
             let res = libc::sysctlbyname(
-                "hw.model\x00".as_ptr() as _,
+                c_name.as_ptr() as _,
                 buf.as_mut_ptr() as *mut c_void,
                 &mut size,
                 ptr::null_mut(),
@@ -31,6 +37,7 @@ mod model_support {
             if res != 0 {
                 return None;
             }
+
             Some(
                 buf.into_iter()
                     .take(size)
@@ -39,6 +46,23 @@ mod model_support {
                     .collect(),
             )
         }
+    }
+
+    pub fn get_model() -> Option<String> {
+        sysctlbyname_call("hw.model")
+    }
+
+    pub fn get_macos_version() -> Option<String> {
+        let version = sysctlbyname_call("kern.osproductversion")?;
+        let dot_count = version.split(".").count() - 1;
+        if dot_count < 2 {
+            return Some(version + ".0");
+        }
+        Some(version)
+    }
+
+    pub fn get_macos_build() -> Option<String> {
+        sysctlbyname_call("kern.osversion")
     }
 
     pub fn get_family() -> Option<String> {
@@ -59,6 +83,16 @@ mod model_support {
         assert!(m.chars().all(|c| c != '\0'));
         let f = get_family().unwrap();
         assert!(f.chars().all(|c| !c.is_digit(10)));
+    }
+
+    #[test]
+    fn test_macos_version_and_build() {
+        let v = get_macos_version().unwrap();
+        assert!(v.chars().all(|c| c.is_digit(10) || c == '.'));
+        let dot_count = v.split(".").count() - 1;
+        assert_eq!(dot_count, 2);
+        let b = get_macos_build().unwrap();
+        assert!(b.chars().all(|c| c.is_ascii_alphabetic() || c.is_digit(10)));
     }
 }
 
@@ -84,15 +118,31 @@ pub fn os_context() -> Option<Context> {
     {
         use uname::uname;
         if let Ok(info) = uname() {
-            Some(
-                OsContext {
-                    name: Some(info.sysname),
-                    kernel_version: Some(info.version),
-                    version: Some(info.release),
-                    ..Default::default()
-                }
-                .into(),
-            )
+            #[cfg(target_os = "macos")]
+            {
+                Some(
+                    OsContext {
+                        name: Some("macOS".into()),
+                        kernel_version: Some(info.version),
+                        version: model_support::get_macos_version(),
+                        build: model_support::get_macos_build(),
+                        ..Default::default()
+                    }
+                    .into(),
+                )
+            }
+            #[cfg(not(target_os = "macos"))]
+            {
+                Some(
+                    OsContext {
+                        name: Some(info.sysname),
+                        kernel_version: Some(info.version),
+                        version: Some(info.release),
+                        ..Default::default()
+                    }
+                    .into(),
+                )
+            }
         } else {
             None
         }

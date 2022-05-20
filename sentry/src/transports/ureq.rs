@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-#[cfg(fdoc)]
+#[cfg(doc)]
 use ureq_ as ureq;
 use ureq_::{Agent, AgentBuilder, Proxy};
 
@@ -11,8 +11,6 @@ use crate::{sentry_debug, types::Scheme, ClientOptions, Envelope, Transport};
 /// A [`Transport`] that sends events via the [`ureq`] library.
 ///
 /// This is enabled by the `ureq` feature flag.
-///
-/// [`ureq`]: https://crates.io/crates/ureq
 #[cfg_attr(doc_cfg, doc(cfg(feature = "ureq")))]
 pub struct UreqHttpTransport {
     thread: TransportThread,
@@ -36,12 +34,22 @@ impl UreqHttpTransport {
             let mut builder = AgentBuilder::new();
 
             match (scheme, &options.http_proxy, &options.https_proxy) {
-                (Scheme::Https, _, &Some(ref proxy)) => {
-                    builder = builder.proxy(Proxy::new(proxy).unwrap());
-                }
-                (_, &Some(ref proxy), _) => {
-                    builder = builder.proxy(Proxy::new(proxy).unwrap());
-                }
+                (Scheme::Https, _, &Some(ref proxy)) => match Proxy::new(proxy) {
+                    Ok(proxy) => {
+                        builder = builder.proxy(proxy);
+                    }
+                    Err(err) => {
+                        sentry_debug!("invalid proxy: {:?}", err);
+                    }
+                },
+                (_, &Some(ref proxy), _) => match Proxy::new(proxy) {
+                    Ok(proxy) => {
+                        builder = builder.proxy(proxy);
+                    }
+                    Err(err) => {
+                        sentry_debug!("invalid proxy: {:?}", err);
+                    }
+                },
                 _ => {}
             }
 

@@ -1,8 +1,9 @@
+use std::convert::TryInto;
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-use http_::{Request, Response, StatusCode};
+use http_::{header, uri, Request, Response, StatusCode};
 use sentry_core::protocol;
 use tower_layer::Layer;
 use tower_service::Service;
@@ -136,7 +137,7 @@ where
     fn call(&mut self, request: Request<ReqBody>) -> Self::Future {
         let sentry_req = sentry_core::protocol::Request {
             method: Some(request.method().to_string()),
-            url: request.uri().to_string().parse().ok(),
+            url: get_url_from_request(&request),
             headers: request
                 .headers()
                 .into_iter()
@@ -185,4 +186,16 @@ fn map_status(status: StatusCode) -> protocol::SpanStatus {
         status if status.is_success() => protocol::SpanStatus::Ok,
         _ => protocol::SpanStatus::UnknownError,
     }
+}
+
+fn get_url_from_request<B>(request: &Request<B>) -> Option<url::Url> {
+    let uri = request.uri().clone();
+    let mut uri_parts = uri.into_parts();
+    uri_parts.scheme.get_or_insert(uri::Scheme::HTTP);
+    if uri_parts.authority.is_none() {
+        let host = request.headers().get(header::HOST)?.as_bytes();
+        uri_parts.authority = Some(host.try_into().ok()?);
+    }
+    let uri = uri::Uri::from_parts(uri_parts).ok()?;
+    uri.to_string().parse().ok()
 }

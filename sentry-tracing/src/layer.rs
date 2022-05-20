@@ -94,6 +94,8 @@ impl<S> SentryLayer<S> {
     ///
     /// The filter classifies whether sentry should handle [`tracing::Span`]s based
     /// on their [`Metadata`].
+    ///
+    /// [`tracing::Span`]: https://docs.rs/tracing/latest/tracing/struct.Span.html
     #[must_use]
     pub fn span_filter<F>(mut self, filter: F) -> Self
     where

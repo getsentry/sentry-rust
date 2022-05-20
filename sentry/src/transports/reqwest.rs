@@ -12,7 +12,7 @@ use crate::{sentry_debug, ClientOptions, Envelope, Transport};
 /// be the default transport.  This is separately enabled by the
 /// `reqwest` feature flag.
 ///
-/// [`reqwest`]: https://crates.io/crates/reqwest
+/// [`reqwest`]: reqwest_
 #[cfg_attr(doc_cfg, doc(cfg(feature = "reqwest")))]
 pub struct ReqwestHttpTransport {
     thread: TransportThread,
@@ -33,10 +33,24 @@ impl ReqwestHttpTransport {
         let client = client.unwrap_or_else(|| {
             let mut builder = reqwest_::Client::builder();
             if let Some(url) = options.http_proxy.as_ref() {
-                builder = builder.proxy(Proxy::http(url.as_ref()).unwrap());
+                match Proxy::http(url.as_ref()) {
+                    Ok(proxy) => {
+                        builder = builder.proxy(proxy);
+                    }
+                    Err(err) => {
+                        sentry_debug!("invalid proxy: {:?}", err);
+                    }
+                }
             };
             if let Some(url) = options.https_proxy.as_ref() {
-                builder = builder.proxy(Proxy::https(url.as_ref()).unwrap());
+                match Proxy::https(url.as_ref()) {
+                    Ok(proxy) => {
+                        builder = builder.proxy(proxy);
+                    }
+                    Err(err) => {
+                        sentry_debug!("invalid proxy: {:?}", err);
+                    }
+                }
             };
             builder.build().unwrap()
         });

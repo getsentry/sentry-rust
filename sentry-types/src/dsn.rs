@@ -140,8 +140,8 @@ impl Dsn {
     }
 
     /// Returns the project_id
-    pub fn project_id(&self) -> ProjectId {
-        self.project_id
+    pub fn project_id(&self) -> &ProjectId {
+        &self.project_id
     }
 }
 
@@ -229,7 +229,7 @@ mod test {
 
     #[test]
     fn test_dsn_parsing() {
-        let url = "https://username:password@domain:8888/23";
+        let url = "https://username:password@domain:8888/23%21";
         let dsn = url.parse::<Dsn>().unwrap();
         assert_eq!(dsn.scheme(), Scheme::Https);
         assert_eq!(dsn.public_key(), "username");
@@ -237,7 +237,7 @@ mod test {
         assert_eq!(dsn.host(), "domain");
         assert_eq!(dsn.port(), 8888);
         assert_eq!(dsn.path(), "/");
-        assert_eq!(dsn.project_id(), ProjectId::new(23));
+        assert_eq!(dsn.project_id(), &ProjectId::new("23%21"));
         assert_eq!(url, dsn.to_string());
     }
 
@@ -303,9 +303,18 @@ mod test {
     }
 
     #[test]
-    #[should_panic(expected = "InvalidProjectId")]
+    fn test_dsn_non_integer_project_id() {
+        let url = "https://username:password@domain:8888/abc123youandme%21%21";
+        let dsn = url.parse::<Dsn>().unwrap();
+        assert_eq!(dsn.project_id(), &ProjectId::new("abc123youandme%21%21"));
+    }
+
+    #[test]
     fn test_dsn_more_than_one_non_integer_path() {
-        Dsn::from_str("http://username:@domain:8888/path/path2").unwrap();
+        let url = "http://username:@domain:8888/pathone/pathtwo/pid";
+        let dsn = url.parse::<Dsn>().unwrap();
+        assert_eq!(dsn.project_id(), &ProjectId::new("pid"));
+        assert_eq!(dsn.path(), "/pathone/pathtwo/");
     }
 
     #[test]
