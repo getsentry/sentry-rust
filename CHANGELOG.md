@@ -2,16 +2,38 @@
 
 ## Unreleased
 
+**Breaking Changes**:
+
+- Updated the `debugid` and `uuid` dependencies to versions `0.8.0` and `1.0.0` respectively.
+
 **Features**:
 
 - Request data can now be attached to Transactions and Spans via `set_transaction`. ([#439](https://github.com/getsentry/sentry-rust/pull/439))
 - macOS versions are now reported instead of the Darwin kernel version. ([#451](https://github.com/getsentry/sentry-rust/pull/451))
+- Support capturing the error of functions instrumented with `#[instrument(err)]`. ([#453](https://github.com/getsentry/sentry-rust/pull/453))
+- Support capturing span data of instrumented functions. ([#445](https://github.com/getsentry/sentry-rust/pull/445))
+- Expose the `debug_images` function from `sentry-debug-images`.
+
+**Fixes**:
+
+- Generate a more correct request URL in the `sentry-tower` integration. ([#460](https://github.com/getsentry/sentry-rust/pull/460))
+- Do not `panic` on invalid `HTTP(S)_PROXY` env. ([#450](https://github.com/getsentry/sentry-rust/pull/450))
+
+**Internal**:
+
+- Project Ids in DSN are treated as opaque strings. ([#452](https://github.com/getsentry/sentry-rust/pull/452))
 
 **Thank you**:
 
 Features, fixes and improvements in this release have been contributed by:
 
 - [@jessfraz](https://github.com/jessfraz)
+- [@hannes-vernooij](https://github.com/hannes-vernooij)
+- [@rajivshah3](https://github.com/rajivshah3)
+- [@MarijnS95](https://github.com/MarijnS95)
+- [@kvnvelasco](https://github.com/kvnvelasco)
+- [@poliorcetics](https://github.com/poliorcetics)
+- [@pbzweihander](https://github.com/pbzweihander)
 
 ## 0.25.0
 
