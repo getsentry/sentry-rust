@@ -3,9 +3,6 @@
 //! The [`DebugImagesIntegration`] adds metadata about the loaded shared
 //! libraries to Sentry [`Event`]s.
 //!
-//! This Integration only works on Unix-like OSes right now. Support for Windows
-//! will be added in the future.
-//!
 //! # Configuration
 //!
 //! The integration by default attaches this information to all [`Event`]s, but
@@ -27,5 +24,5 @@
 mod images;
 mod integration;
 
-use images::debug_images;
+pub use images::debug_images;
 pub use integration::DebugImagesIntegration;

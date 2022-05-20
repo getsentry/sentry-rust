@@ -32,6 +32,7 @@ fn debug_id_from_build_id(build_id: &[u8]) -> Option<DebugId> {
     Uuid::from_slice(&data).map(DebugId::from_uuid).ok()
 }
 
+/// Returns the list of loaded libraries/images.
 pub fn debug_images() -> Vec<DebugImage> {
     let mut images = vec![];
     if !TARGET_SUPPORTED {
