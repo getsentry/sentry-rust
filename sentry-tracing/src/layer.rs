@@ -164,7 +164,7 @@ where
             return;
         }
 
-        let (description, _data) = extract_span_data(attrs);
+        let (description, data) = extract_span_data(attrs);
         let op = span.name();
 
         // Spans don't always have a description, this ensures our data is not empty,
@@ -186,6 +186,12 @@ where
                 sentry_core::start_transaction(ctx).into()
             }
         };
+        // Add the data from the original span to the sentry span.
+        // This comes from typically the `fields` in `tracing::instrument`.
+        for (key, value) in data {
+            sentry_span.set_data(&key, value);
+        }
+
         sentry_core::configure_scope(|scope| scope.set_span(Some(sentry_span.clone())));
 
         let mut extensions = span.extensions_mut();
