@@ -11,9 +11,6 @@ The Sentry Debug Images integration.
 The [`DebugImagesIntegration`] adds metadata about the loaded shared
 libraries to Sentry [`Event`]s.
 
-This Integration only works on Unix-like OSes right now. Support for Windows
-will be added in the future.
-
 ## Configuration
 
 The integration by default attaches this information to all [`Event`]s, but
@@ -25,7 +22,7 @@ let integration = sentry_debug_images::DebugImagesIntegration::new()
     .filter(|event| event.level >= Level::Warning);
 ```
 
-[`Event`]: https://docs.rs/sentry-debug-images/0.25.0/sentry_debug-images/sentry_core::protocol::Event
+[`Event`]: https://docs.rs/sentry-debug-images/0.26.0/sentry_debug-images/sentry_core::protocol::Event
 
 ## Resources
 
