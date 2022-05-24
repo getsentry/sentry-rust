@@ -65,6 +65,12 @@ impl From<Transaction<'static>> for EnvelopeItem {
     }
 }
 
+impl From<Attachment> for EnvelopeItem {
+    fn from(attachment: Attachment) -> Self {
+        EnvelopeItem::Attachment(attachment)
+    }
+}
+
 /// An Iterator over the items of an Envelope.
 #[derive(Clone)]
 pub struct EnvelopeItemIter<'s> {

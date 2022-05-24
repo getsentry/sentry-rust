@@ -44,6 +44,8 @@ pub struct Attachment {
     pub buffer: Vec<u8>,
     /// The filename of the attachment.
     pub filename: String,
+    /// The Content Type of the attachment
+    pub content_type: Option<String>,
     /// The special type of this attachment.
     pub ty: Option<AttachmentType>,
 }
@@ -56,10 +58,14 @@ impl Attachment {
     {
         writeln!(
             writer,
-            r#"{{"type":"attachment","length":{length},"filename":"{filename}","attachment_type":"{at}"}}"#,
+            r#"{{"type":"attachment","length":{length},"filename":"{filename}","attachment_type":"{at}","content_type":"{ct}"}}"#,
             filename = self.filename,
             length = self.buffer.len(),
-            at = self.ty.unwrap_or_default().as_str()
+            at = self.ty.unwrap_or_default().as_str(),
+            ct = self
+                .content_type
+                .as_ref()
+                .unwrap_or(&"application/octet-stream".to_string())
         )?;
 
         writer.write_all(&self.buffer)?;
