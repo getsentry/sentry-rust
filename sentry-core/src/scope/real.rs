@@ -4,7 +4,7 @@ use std::fmt;
 use std::sync::{Arc, Mutex, PoisonError, RwLock};
 
 use crate::performance::TransactionOrSpan;
-use crate::protocol::{Breadcrumb, Context, Event, Level, User, Value};
+use crate::protocol::{Attachment, Breadcrumb, Context, Event, Level, User, Value};
 use crate::session::Session;
 use crate::Client;
 
@@ -46,6 +46,7 @@ pub struct Scope {
     pub(crate) event_processors: Arc<Vec<EventProcessor>>,
     pub(crate) session: Arc<Mutex<Option<Session>>>,
     pub(crate) span: Arc<Option<TransactionOrSpan>>,
+    pub(crate) attachments: Arc<Vec<Attachment>>,
 }
 
 impl fmt::Debug for Scope {
@@ -216,6 +217,16 @@ impl Scope {
         F: Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync + 'static,
     {
         Arc::make_mut(&mut self.event_processors).push(Arc::new(f));
+    }
+
+    /// Adds an attachment to the scope
+    pub fn add_attachment(&mut self, attachment: Attachment) {
+        Arc::make_mut(&mut self.attachments).push(attachment);
+    }
+
+    /// Clears attachments from the scope
+    pub fn clear_attachments(&mut self) {
+        Arc::make_mut(&mut self.attachments).clear();
     }
 
     /// Applies the contained scoped data to fill an event.

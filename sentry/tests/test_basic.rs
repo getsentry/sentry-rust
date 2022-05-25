@@ -3,6 +3,7 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
+use sentry::protocol::{Attachment, EnvelopeItem};
 use sentry::types::Uuid;
 
 #[test]
@@ -172,4 +173,31 @@ fn test_attached_stacktrace() {
         .into_iter()
         .flat_map(|ev| ev.threads.into_iter().filter_map(|thrd| thrd.stacktrace));
     assert_eq!(stacktraces.count(), 3);
+}
+
+#[test]
+fn test_attachment_sent_from_scope() {
+    let envelopes = sentry::test::with_captured_envelopes(|| {
+        sentry::with_scope(
+            |scope| {
+                scope.add_attachment(Attachment {
+                    buffer: vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
+                    filename: "test-file.bin".to_string(),
+                    ..Default::default()
+                })
+            },
+            || sentry::capture_message("test", sentry::Level::Error),
+        );
+    });
+
+    assert_eq!(envelopes.len(), 1);
+
+    let items = envelopes[0].items().collect::<Vec<_>>();
+
+    assert_eq!(items.len(), 2);
+    assert!(matches!(items[1],
+        EnvelopeItem::Attachment(attachment)
+        if attachment.filename == *"test-file.bin"
+        && attachment.buffer == vec![1, 2, 3, 4, 5, 6, 7, 8, 9]
+    ));
 }

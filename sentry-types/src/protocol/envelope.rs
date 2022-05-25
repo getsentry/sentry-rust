@@ -65,6 +65,12 @@ impl From<Transaction<'static>> for EnvelopeItem {
     }
 }
 
+impl From<Attachment> for EnvelopeItem {
+    fn from(attachment: Attachment) -> Self {
+        EnvelopeItem::Attachment(attachment)
+    }
+}
+
 /// An Iterator over the items of an Envelope.
 #[derive(Clone)]
 pub struct EnvelopeItemIter<'s> {
@@ -352,6 +358,34 @@ mod test {
             r#"{"event_id":"22d00b3f-d1b1-4b5d-8d20-49d138cd8a9c"}
 {"type":"transaction","length":200}
 {"event_id":"22d00b3fd1b14b5d8d2049d138cd8a9c","start_timestamp":1595256674.296,"spans":[{"span_id":"d42cee9fc3e74f5c","trace_id":"335e53d614474acc9f89e632b776cc28","start_timestamp":1595256674.296}]}
+"#
+        )
+    }
+
+    #[test]
+    fn test_event_with_attachment() {
+        let event_id = Uuid::parse_str("22d00b3f-d1b1-4b5d-8d20-49d138cd8a9c").unwrap();
+        let timestamp = timestamp("2020-07-20T14:51:14.296Z");
+        let event = Event {
+            event_id,
+            timestamp,
+            ..Default::default()
+        };
+        let mut envelope: Envelope = event.into();
+
+        envelope.add_item(Attachment {
+            buffer: "some content".as_bytes().to_vec(),
+            filename: "file.txt".to_string(),
+            ..Default::default()
+        });
+
+        assert_eq!(
+            to_str(envelope),
+            r#"{"event_id":"22d00b3f-d1b1-4b5d-8d20-49d138cd8a9c"}
+{"type":"event","length":74}
+{"event_id":"22d00b3fd1b14b5d8d2049d138cd8a9c","timestamp":1595256674.296}
+{"type":"attachment","length":12,"filename":"file.txt","attachment_type":"event.attachment","content_type":"application/octet-stream"}
+some content
 "#
         )
     }

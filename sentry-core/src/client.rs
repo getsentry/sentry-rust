@@ -278,6 +278,13 @@ impl Client {
                         envelope.add_item(session_item);
                     }
                 }
+
+                if let Some(scope) = scope {
+                    for attachment in scope.attachments.iter().cloned() {
+                        envelope.add_item(attachment);
+                    }
+                }
+
                 transport.send_envelope(envelope);
                 return event_id;
             }
