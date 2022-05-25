@@ -3,6 +3,7 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
+use sentry::protocol::{Attachment, EnvelopeItem};
 use sentry::types::Uuid;
 
 #[test]
@@ -172,4 +173,56 @@ fn test_attached_stacktrace() {
         .into_iter()
         .flat_map(|ev| ev.threads.into_iter().filter_map(|thrd| thrd.stacktrace));
     assert_eq!(stacktraces.count(), 3);
+}
+
+#[test]
+fn test_attachment_sent_from_scope() {
+    struct TestTransport(Arc<AtomicUsize>);
+
+    impl sentry::Transport for TestTransport {
+        fn send_envelope(&self, envelope: sentry::Envelope) {
+            for item in envelope.items() {
+                if let EnvelopeItem::Attachment(attachment) = item {
+                    assert_eq!(attachment.filename, "test-file.txt");
+                    assert_eq!(attachment.buffer, vec![1, 2, 3, 4, 5, 6, 7, 8, 9]);
+                    self.0.fetch_add(1, Ordering::SeqCst);
+                }
+            }
+        }
+    }
+
+    let events = Arc::new(AtomicUsize::new(0));
+
+    let events_for_options = events.clone();
+    let options = sentry::ClientOptions {
+        dsn: "http://foo@example.com/42".parse().ok(),
+        transport: Some(Arc::new(
+            move |opts: &sentry::ClientOptions| -> Arc<dyn sentry::Transport> {
+                assert_eq!(opts.dsn.as_ref().unwrap().host(), "example.com");
+                Arc::new(TestTransport(events_for_options.clone()))
+            },
+        )),
+        ..Default::default()
+    };
+
+    sentry::Hub::run(
+        Arc::new(sentry::Hub::new(
+            Some(Arc::new(options.into())),
+            Arc::new(Default::default()),
+        )),
+        || {
+            sentry::with_scope(
+                |scope| {
+                    scope.add_attachment(Attachment {
+                        buffer: vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
+                        filename: "test-file.txt".to_string(),
+                        ..Default::default()
+                    })
+                },
+                || sentry::capture_message("test", sentry::Level::Error),
+            )
+        },
+    );
+
+    assert_eq!(events.load(Ordering::SeqCst), 1);
 }

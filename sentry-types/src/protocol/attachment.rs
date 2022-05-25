@@ -37,7 +37,7 @@ impl AttachmentType {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Default)]
 /// Represents an attachment item.
 pub struct Attachment {
     /// The actual attachment data.
@@ -80,6 +80,7 @@ impl fmt::Debug for Attachment {
         f.debug_struct("Attachment")
             .field("buffer", &self.buffer.len())
             .field("filename", &self.filename)
+            .field("content_type", &self.content_type)
             .field("type", &self.ty)
             .finish()
     }
