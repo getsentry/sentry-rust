@@ -177,52 +177,27 @@ fn test_attached_stacktrace() {
 
 #[test]
 fn test_attachment_sent_from_scope() {
-    struct TestTransport(Arc<AtomicUsize>);
-
-    impl sentry::Transport for TestTransport {
-        fn send_envelope(&self, envelope: sentry::Envelope) {
-            for item in envelope.items() {
-                if let EnvelopeItem::Attachment(attachment) = item {
-                    assert_eq!(attachment.filename, "test-file.txt");
-                    assert_eq!(attachment.buffer, vec![1, 2, 3, 4, 5, 6, 7, 8, 9]);
-                    self.0.fetch_add(1, Ordering::SeqCst);
-                }
-            }
-        }
-    }
-
-    let events = Arc::new(AtomicUsize::new(0));
-
-    let events_for_options = events.clone();
-    let options = sentry::ClientOptions {
-        dsn: "http://foo@example.com/42".parse().ok(),
-        transport: Some(Arc::new(
-            move |opts: &sentry::ClientOptions| -> Arc<dyn sentry::Transport> {
-                assert_eq!(opts.dsn.as_ref().unwrap().host(), "example.com");
-                Arc::new(TestTransport(events_for_options.clone()))
+    let envelopes = sentry::test::with_captured_envelopes(|| {
+        sentry::with_scope(
+            |scope| {
+                scope.add_attachment(Attachment {
+                    buffer: vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
+                    filename: "test-file.bin".to_string(),
+                    ..Default::default()
+                })
             },
-        )),
-        ..Default::default()
-    };
+            || sentry::capture_message("test", sentry::Level::Error),
+        );
+    });
 
-    sentry::Hub::run(
-        Arc::new(sentry::Hub::new(
-            Some(Arc::new(options.into())),
-            Arc::new(Default::default()),
-        )),
-        || {
-            sentry::with_scope(
-                |scope| {
-                    scope.add_attachment(Attachment {
-                        buffer: vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
-                        filename: "test-file.txt".to_string(),
-                        ..Default::default()
-                    })
-                },
-                || sentry::capture_message("test", sentry::Level::Error),
-            )
-        },
-    );
+    assert_eq!(envelopes.len(), 1);
 
-    assert_eq!(events.load(Ordering::SeqCst), 1);
+    let items = envelopes[0].items().collect::<Vec<_>>();
+
+    assert_eq!(items.len(), 2);
+    assert!(matches!(items[1],
+        EnvelopeItem::Attachment(attachment)
+        if attachment.filename == *"test-file.bin"
+        && attachment.buffer == vec![1, 2, 3, 4, 5, 6, 7, 8, 9]
+    ));
 }
