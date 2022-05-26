@@ -8,12 +8,24 @@ use crate::protocol::{Attachment, Breadcrumb, Context, Event, Level, User, Value
 use crate::session::Session;
 use crate::Client;
 
+#[non_exhaustive]
+pub enum ScopeUpdate {
+    AddBreadcrumb(Breadcrumb),
+    ClearBreadcrumbs,
+    User(Option<User>),
+    SetExtra(String, Value),
+    RemoveExtra(String),
+    SetTag(String, String),
+    RemoveTag(String),
+}
+
 #[derive(Debug)]
 pub struct Stack {
     layers: Vec<StackLayer>,
 }
 
 pub type EventProcessor = Arc<dyn Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync>;
+pub type ScopeListener = Arc<dyn Fn(&ScopeUpdate) + Send + Sync>;
 
 /// Holds contextual data for the current scope.
 ///
@@ -44,6 +56,7 @@ pub struct Scope {
     pub(crate) tags: Arc<HashMap<String, String>>,
     pub(crate) contexts: Arc<HashMap<String, Context>>,
     pub(crate) event_processors: Arc<Vec<EventProcessor>>,
+    pub(crate) scope_listeners: Arc<Vec<ScopeListener>>,
     pub(crate) session: Arc<Mutex<Option<Session>>>,
     pub(crate) span: Arc<Option<TransactionOrSpan>>,
     pub(crate) attachments: Arc<Vec<Attachment>>,
@@ -144,6 +157,7 @@ impl Scope {
 
     /// Deletes current breadcrumbs from the scope.
     pub fn clear_breadcrumbs(&mut self) {
+        self.notify_scope_listeners(|| ScopeUpdate::ClearBreadcrumbs);
         self.breadcrumbs = Default::default();
     }
 
@@ -176,11 +190,13 @@ impl Scope {
 
     /// Sets the user for the current scope.
     pub fn set_user(&mut self, user: Option<User>) {
+        self.notify_scope_listeners(|| ScopeUpdate::User(user.clone()));
         self.user = user.map(Arc::new);
     }
 
     /// Sets a tag to a specific value.
     pub fn set_tag<V: ToString>(&mut self, key: &str, value: V) {
+        self.notify_scope_listeners(|| ScopeUpdate::SetTag(key.to_string(), value.to_string()));
         Arc::make_mut(&mut self.tags).insert(key.to_string(), value.to_string());
     }
 
@@ -188,6 +204,7 @@ impl Scope {
     ///
     /// If the tag is not set, does nothing.
     pub fn remove_tag(&mut self, key: &str) {
+        self.notify_scope_listeners(|| ScopeUpdate::RemoveTag(key.to_string()));
         Arc::make_mut(&mut self.tags).remove(key);
     }
 
@@ -203,11 +220,13 @@ impl Scope {
 
     /// Sets a extra to a specific value.
     pub fn set_extra(&mut self, key: &str, value: Value) {
+        self.notify_scope_listeners(|| ScopeUpdate::SetExtra(key.to_string(), value.clone()));
         Arc::make_mut(&mut self.extra).insert(key.to_string(), value);
     }
 
     /// Removes a extra.
     pub fn remove_extra(&mut self, key: &str) {
+        self.notify_scope_listeners(|| ScopeUpdate::RemoveExtra(key.to_string()));
         Arc::make_mut(&mut self.extra).remove(key);
     }
 
@@ -217,6 +236,14 @@ impl Scope {
         F: Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync + 'static,
     {
         Arc::make_mut(&mut self.event_processors).push(Arc::new(f));
+    }
+
+    /// Add an scope listener to the scope.
+    pub fn add_scope_listener<F>(&mut self, f: F)
+    where
+        F: Fn(&ScopeUpdate) + Send + Sync + 'static,
+    {
+        Arc::make_mut(&mut self.scope_listeners).push(Arc::new(f));
     }
 
     /// Adds an attachment to the scope
@@ -300,6 +327,28 @@ impl Scope {
     pub(crate) fn update_session_from_event(&self, event: &Event<'static>) {
         if let Some(session) = self.session.lock().unwrap().as_mut() {
             session.update_from_event(event);
+        }
+    }
+
+    pub(crate) fn add_breadcrumb(&mut self, breadcrumb: Breadcrumb, max_breadcrumbs: usize) {
+        self.notify_scope_listeners(|| ScopeUpdate::AddBreadcrumb(breadcrumb.clone()));
+
+        let breadcrumbs = Arc::make_mut(&mut self.breadcrumbs);
+        breadcrumbs.push_back(breadcrumb);
+
+        while breadcrumbs.len() > max_breadcrumbs {
+            breadcrumbs.pop_front();
+        }
+    }
+
+    fn notify_scope_listeners<F: Fn() -> ScopeUpdate>(&mut self, update_fn: F) {
+        if self.scope_listeners.is_empty() {
+            return;
+        }
+
+        let update = update_fn();
+        for listener in self.scope_listeners.as_ref() {
+            listener(&update);
         }
     }
 }
