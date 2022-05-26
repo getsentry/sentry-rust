@@ -62,6 +62,8 @@ impl fmt::Debug for Scope {
             .field("contexts", &self.contexts)
             .field("event_processors", &self.event_processors.len())
             .field("session", &self.session)
+            .field("span", &self.span)
+            .field("attachments", &self.attachments.len())
             .finish()
     }
 }
