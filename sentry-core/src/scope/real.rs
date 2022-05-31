@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::collections::{HashMap, VecDeque};
 use std::fmt;
@@ -9,6 +10,7 @@ use crate::session::Session;
 use crate::Client;
 
 #[non_exhaustive]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum ScopeUpdate {
     AddBreadcrumb(Breadcrumb),
     ClearBreadcrumbs,
