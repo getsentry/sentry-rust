@@ -77,7 +77,7 @@ pub use crate::hub::Hub;
 pub use crate::integration::Integration;
 pub use crate::intodsn::IntoDsn;
 pub use crate::performance::*;
-pub use crate::scope::{Scope, ScopeGuard};
+pub use crate::scope::{Scope, ScopeGuard, ScopeUpdate};
 pub use crate::transport::{Transport, TransportFactory};
 
 // client feature

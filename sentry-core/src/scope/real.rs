@@ -1,4 +1,3 @@
-use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::collections::{HashMap, VecDeque};
 use std::fmt;
@@ -9,17 +8,7 @@ use crate::protocol::{Attachment, Breadcrumb, Context, Event, Level, User, Value
 use crate::session::Session;
 use crate::Client;
 
-#[non_exhaustive]
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub enum ScopeUpdate {
-    AddBreadcrumb(Breadcrumb),
-    ClearBreadcrumbs,
-    User(Option<User>),
-    SetExtra(String, Value),
-    RemoveExtra(String),
-    SetTag(String, String),
-    RemoveTag(String),
-}
+use super::ScopeUpdate;
 
 #[derive(Debug)]
 pub struct Stack {
