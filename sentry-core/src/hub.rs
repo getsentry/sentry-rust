@@ -8,6 +8,9 @@ use std::sync::{Arc, Mutex, PoisonError, RwLock, TryLockError};
 use std::thread;
 use std::time::Duration;
 
+#[cfg(feature = "client")]
+use once_cell::sync::Lazy;
+
 use crate::protocol::{Breadcrumb, Event, Level, SessionStatus};
 use crate::types::Uuid;
 use crate::{event_from_error, Integration, IntoBreadcrumbs, Scope, ScopeGuard};
@@ -15,12 +18,12 @@ use crate::{event_from_error, Integration, IntoBreadcrumbs, Scope, ScopeGuard};
 use crate::{scope::Stack, session::Session, Client, Envelope};
 
 #[cfg(feature = "client")]
-lazy_static::lazy_static! {
-    static ref PROCESS_HUB: (Arc<Hub>, thread::ThreadId) = (
+static PROCESS_HUB: Lazy<(Arc<Hub>, thread::ThreadId)> = Lazy::new(|| {
+    (
         Arc::new(Hub::new(None, Arc::new(Default::default()))),
-        thread::current().id()
-    );
-}
+        thread::current().id(),
+    )
+});
 
 #[cfg(feature = "client")]
 thread_local! {

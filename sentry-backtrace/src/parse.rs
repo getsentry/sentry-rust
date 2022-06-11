@@ -1,10 +1,12 @@
+use once_cell::sync::Lazy;
 use regex::Regex;
 
 use crate::utils::{demangle_symbol, filename, strip_symbol};
 use crate::{Frame, Stacktrace};
 
-lazy_static::lazy_static! {
-    static ref FRAME_RE: Regex = Regex::new(r#"(?xm)
+static FRAME_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r#"(?xm)
         ^
             \s*(?:\d+:)?\s*                      # frame number (missing for inline)
 
@@ -27,8 +29,10 @@ lazy_static::lazy_static! {
                 (?::(?P<colno>\d+))?             # optional source column
             )?
         $
-    "#).unwrap();
-}
+    "#,
+    )
+    .unwrap()
+});
 
 /// Parses a backtrace string into a Sentry `Stacktrace`.
 pub fn parse_stacktrace(bt: &str) -> Option<Stacktrace> {

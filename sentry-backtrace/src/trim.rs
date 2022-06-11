@@ -2,31 +2,29 @@ use sentry_core::protocol::{Frame, Stacktrace};
 
 use crate::utils::function_starts_with;
 
-lazy_static::lazy_static! {
-    static ref WELL_KNOWN_SYS_MODULES: Vec<&'static str> = vec![
-        "std::",
-        "core::",
-        "alloc::",
-        "backtrace::",
-        "sentry::",
-        "sentry_core::",
-        "sentry_types::",
-        // these are not modules but things like __rust_maybe_catch_panic
-        "__rust_",
-        "___rust_",
-        // these are well-known library frames
-        "anyhow::",
-        "log::",
-    ];
+const WELL_KNOWN_SYS_MODULES: &[&str] = &[
+    "std::",
+    "core::",
+    "alloc::",
+    "backtrace::",
+    "sentry::",
+    "sentry_core::",
+    "sentry_types::",
+    // these are not modules but things like __rust_maybe_catch_panic
+    "__rust_",
+    "___rust_",
+    // these are well-known library frames
+    "anyhow::",
+    "log::",
+];
 
-    static ref WELL_KNOWN_BORDER_FRAMES: Vec<&'static str> = vec![
-        "std::panicking::begin_panic",
-        "core::panicking::panic",
-        // well-known library frames
-        "anyhow::",
-        "<sentry_log::Logger as log::Log>::log",
-    ];
-}
+const WELL_KNOWN_BORDER_FRAMES: &[&str] = &[
+    "std::panicking::begin_panic",
+    "core::panicking::panic",
+    // well-known library frames
+    "anyhow::",
+    "<sentry_log::Logger as log::Log>::log",
+];
 
 /// A helper function to trim a stacktrace.
 pub fn trim_stacktrace<F>(stacktrace: &mut Stacktrace, f: F)

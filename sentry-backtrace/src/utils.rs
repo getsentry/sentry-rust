@@ -1,25 +1,39 @@
+use once_cell::sync::Lazy;
 use regex::{Captures, Regex};
 
-lazy_static::lazy_static! {
-    static ref HASH_FUNC_RE: Regex = Regex::new(r#"(?x)
+static HASH_FUNC_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r#"(?x)
         ^(.*)::h[a-f0-9]{16}$
-    "#).unwrap();
+    "#,
+    )
+    .unwrap()
+});
 
-    static ref CRATE_RE: Regex = Regex::new(r#"(?x)
+static CRATE_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r#"(?x)
         ^
         (?:_?<)?           # trait impl syntax
         (?:\w+\ as \ )?    # anonymous implementor
         ([a-zA-Z0-9_]+?)   # crate name
         (?:\.\.|::)        # crate delimiter (.. or ::)
-    "#).unwrap();
+    "#,
+    )
+    .unwrap()
+});
 
-    static ref COMMON_RUST_SYMBOL_ESCAPES_RE: Regex = Regex::new(r#"(?x)
+static COMMON_RUST_SYMBOL_ESCAPES_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r#"(?x)
         \$
             (SP|BP|RF|LT|GT|LP|RP|C|
                 u7e|u20|u27|u5b|u5d|u7b|u7d|u3b|u2b|u22)
         \$
-    "#).unwrap();
-}
+    "#,
+    )
+    .unwrap()
+});
 
 /// Tries to parse the rust crate from a function name.
 pub fn parse_crate_name(func_name: &str) -> Option<String> {
