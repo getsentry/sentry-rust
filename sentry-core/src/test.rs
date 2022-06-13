@@ -21,13 +21,13 @@
 
 use std::sync::{Arc, Mutex};
 
+use once_cell::sync::Lazy;
+
 use crate::protocol::Event;
 use crate::types::Dsn;
 use crate::{ClientOptions, Envelope, Hub, Transport};
 
-lazy_static::lazy_static! {
-    static ref TEST_DSN: Dsn = "https://public@sentry.invalid/1".parse().unwrap();
-}
+static TEST_DSN: Lazy<Dsn> = Lazy::new(|| "https://public@sentry.invalid/1".parse().unwrap());
 
 /// Collects events instead of sending them.
 ///

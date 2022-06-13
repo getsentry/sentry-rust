@@ -233,7 +233,7 @@ impl Default for ClientOptions {
             session_mode: SessionMode::Application,
             extra_border_frames: vec![],
             trim_backtraces: true,
-            user_agent: Cow::Borrowed(&USER_AGENT),
+            user_agent: Cow::Borrowed(USER_AGENT),
         }
     }
 }

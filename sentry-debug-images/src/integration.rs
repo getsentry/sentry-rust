@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 
+use once_cell::sync::Lazy;
 use sentry_core::protocol::{DebugMeta, Event};
 use sentry_core::{ClientOptions, Integration};
 
@@ -55,12 +56,10 @@ impl Integration for DebugImagesIntegration {
         mut event: Event<'static>,
         _opts: &ClientOptions,
     ) -> Option<Event<'static>> {
-        lazy_static::lazy_static! {
-            static ref DEBUG_META: DebugMeta = DebugMeta {
-                images: crate::debug_images(),
-                ..Default::default()
-            };
-        }
+        static DEBUG_META: Lazy<DebugMeta> = Lazy::new(|| DebugMeta {
+            images: crate::debug_images(),
+            ..Default::default()
+        });
 
         if event.debug_meta.is_empty() && (self.filter)(&event) {
             event.debug_meta = Cow::Borrowed(&DEBUG_META);
