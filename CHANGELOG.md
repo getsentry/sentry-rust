@@ -1,12 +1,16 @@
 # Changelog
 
-## 0.27.0
+## Unreleased
 
 **Breaking Changes**:
 
 - The minium supported Rust version was bumped to **1.57.0** due to requirements from dependencies. ([#472](https://github.com/getsentry/sentry-rust/pull/472))
 - Add the `rust-version` field to the manifest. ([#473](https://github.com/getsentry/sentry-rust/pull/473))
 - Update to edition 2021. ([#473](https://github.com/getsentry/sentry-rust/pull/473))
+
+**Features**:
+
+- feat: Implement `Envelope::from_path` and `Envelope::from_slice`. ([#456](https://github.com/getsentry/sentry-rust/pull/456))
 
 ## 0.26.0
 
