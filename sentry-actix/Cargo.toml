@@ -9,7 +9,8 @@ homepage = "https://sentry.io/welcome/"
 description = """
 Sentry client extension for actix-web 3.
 """
-edition = "2018"
+edition = "2021"
+rust-version = "1.57"
 
 [dependencies]
 actix-web = { version = "4", default-features = false }

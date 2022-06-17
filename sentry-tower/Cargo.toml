@@ -9,7 +9,8 @@ homepage = "https://sentry.io/welcome/"
 description = """
 Sentry integration for tower-based crates.
 """
-edition = "2018"
+edition = "2021"
+rust-version = "1.57"
 
 [features]
 http = ["http_", "pin-project", "url"]
