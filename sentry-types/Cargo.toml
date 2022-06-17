@@ -10,7 +10,8 @@ description = """
 Common reusable types for implementing the sentry.io protocol.
 """
 keywords = ["sentry", "protocol"]
-edition = "2018"
+edition = "2021"
+rust-version = "1.57"
 
 [package.metadata.docs.rs]
 all-features = true
