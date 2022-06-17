@@ -99,7 +99,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        rust: [1.54.0]
+        rust: [1.57.0]
 
     name: Check / Test MSRV on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}

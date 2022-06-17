@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.27.0
+
+**Breaking Changes**:
+
+- The minium supported Rust version was bumped to **1.57.0** due to requirements from dependencies.
+
 ## 0.26.0
 
 **Breaking Changes**:
