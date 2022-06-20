@@ -17,6 +17,13 @@
 
 - Replace ancient `lazy_static` crate with `once_cell` or `const` slices. ([#471](https://github.com/getsentry/sentry-rust/pull/471))
 
+**Thank you**:
+
+Features, fixes and improvements in this release have been contributed by:
+
+- [@MarijnS95](https://github.com/MarijnS95)
+- [@timfish](https://github.com/timfish)
+
 ## 0.26.0
 
 **Breaking Changes**:
