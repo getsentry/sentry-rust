@@ -10,7 +10,12 @@
 
 **Features**:
 
-- feat: Implement `Envelope::from_path` and `Envelope::from_slice`. ([#456](https://github.com/getsentry/sentry-rust/pull/456))
+- Implement `Envelope::from_path` and `Envelope::from_slice`. ([#456](https://github.com/getsentry/sentry-rust/pull/456))
+- Add basic `attachment` support. ([#466](https://github.com/getsentry/sentry-rust/pull/466))
+
+**Internal**:
+
+- Replace ancient `lazy_static` crate with `once_cell` or `const` slices. ([#471](https://github.com/getsentry/sentry-rust/pull/471))
 
 ## 0.26.0
 
