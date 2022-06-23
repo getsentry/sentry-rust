@@ -92,21 +92,10 @@ impl AnyhowHubExt for Hub {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(feature = "backtrace", test))]
 mod tests {
     use super::*;
 
-    #[cfg(not(feature = "backtrace"))]
-    #[test]
-    fn test_event_from_error_without_backtrace() {
-        let event = event_from_error(&anyhow::anyhow!("Oh jeez"));
-
-        assert!(event.exception[0].stacktrace.is_none());
-        assert_eq!(event.exception[0].ty, "Error");
-        assert_eq!(event.exception[0].value, Some("Oh jeez".to_string()));
-    }
-
-    #[cfg(feature = "backtrace")]
     #[test]
     fn test_event_from_error_with_backtrace() {
         std::env::set_var("RUST_BACKTRACE", "1");
@@ -125,7 +114,6 @@ mod tests {
         assert!(found_test_fn.is_some());
     }
 
-    #[cfg(feature = "backtrace")]
     #[test]
     fn test_capture_anyhow_uses_event_from_error_helper() {
         std::env::set_var("RUST_BACKTRACE", "1");
