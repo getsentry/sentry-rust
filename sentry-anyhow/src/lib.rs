@@ -41,6 +41,7 @@
 #![warn(missing_docs)]
 #![deny(unsafe_code)]
 
+use sentry_core::protocol::Event;
 use sentry_core::types::Uuid;
 use sentry_core::Hub;
 
@@ -58,6 +59,26 @@ pub fn capture_anyhow(e: &anyhow::Error) -> Uuid {
     Hub::with_active(|hub| hub.capture_anyhow(e))
 }
 
+/// Helper function to create an event from a `anyhow::Error`.
+pub fn event_from_error(err: &anyhow::Error) -> Event<'static> {
+    let dyn_err: &dyn std::error::Error = err.as_ref();
+
+    // It's not mutated for not(feature = "backtrace")
+    #[allow(unused_mut)]
+    let mut event = sentry_core::event_from_error(dyn_err);
+
+    #[cfg(feature = "backtrace")]
+    {
+        // exception records are sorted in reverse
+        if let Some(exc) = event.exception.iter_mut().last() {
+            let backtrace = err.backtrace();
+            exc.stacktrace = sentry_backtrace::parse_stacktrace(&format!("{:#}", backtrace));
+        }
+    }
+
+    event
+}
+
 /// Hub extension methods for working with [`anyhow`].
 pub trait AnyhowHubExt {
     /// Captures an [`anyhow::Error`] on a specific hub.
@@ -66,39 +87,56 @@ pub trait AnyhowHubExt {
 
 impl AnyhowHubExt for Hub {
     fn capture_anyhow(&self, anyhow_error: &anyhow::Error) -> Uuid {
-        let dyn_err: &dyn std::error::Error = anyhow_error.as_ref();
-
-        #[cfg(feature = "backtrace")]
-        {
-            let mut event = sentry_core::event_from_error(dyn_err);
-
-            // exception records are sorted in reverse
-            if let Some(exc) = event.exception.iter_mut().last() {
-                let backtrace = anyhow_error.backtrace();
-                exc.stacktrace = sentry_backtrace::parse_stacktrace(&format!("{:#}", backtrace));
-            }
-
-            self.capture_event(event)
-        }
-        #[cfg(not(feature = "backtrace"))]
-        self.capture_error(dyn_err)
+        let event = event_from_error(anyhow_error);
+        self.capture_event(event)
     }
 }
 
-#[cfg(all(feature = "backtrace", test))]
-#[test]
-fn test_has_backtrace() {
-    std::env::set_var("RUST_BACKTRACE", "1");
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    let events = sentry::test::with_captured_events(|| {
-        capture_anyhow(&anyhow::anyhow!("Oh jeez"));
-    });
+    #[cfg(not(feature = "backtrace"))]
+    #[test]
+    fn test_event_from_error_without_backtrace() {
+        let event = event_from_error(&anyhow::anyhow!("Oh jeez"));
 
-    let stacktrace = events[0].exception[0].stacktrace.as_ref().unwrap();
-    let found_test_fn = stacktrace.frames.iter().any(|frame| match &frame.function {
-        Some(f) => f.contains("test_has_backtrace"),
-        None => false,
-    });
+        assert!(event.exception[0].stacktrace.is_none());
+        assert_eq!(event.exception[0].ty, "Error");
+        assert_eq!(event.exception[0].value, Some("Oh jeez".to_string()));
+    }
 
-    assert!(found_test_fn);
+    #[cfg(feature = "backtrace")]
+    #[test]
+    fn test_event_from_error_with_backtrace() {
+        std::env::set_var("RUST_BACKTRACE", "1");
+
+        let event = event_from_error(&anyhow::anyhow!("Oh jeez"));
+
+        let stacktrace = event.exception[0].stacktrace.as_ref().unwrap();
+        let found_test_fn = stacktrace
+            .frames
+            .iter()
+            .find(|frame| match &frame.function {
+                Some(f) => f.contains("test_event_from_error_with_backtrace"),
+                None => false,
+            });
+
+        assert!(found_test_fn.is_some());
+    }
+
+    #[cfg(feature = "backtrace")]
+    #[test]
+    fn test_capture_anyhow_uses_event_from_error_helper() {
+        std::env::set_var("RUST_BACKTRACE", "1");
+
+        let err = &anyhow::anyhow!("Oh jeez");
+
+        let event = event_from_error(err);
+        let events = sentry::test::with_captured_events(|| {
+            capture_anyhow(err);
+        });
+
+        assert_eq!(event.exception, events[0].exception);
+    }
 }
