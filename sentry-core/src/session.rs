@@ -439,8 +439,9 @@ mod tests {
                     sentry::start_session();
                 }
 
-                // this error will be discarded because of the event processor,
-                // but the session will still be updated accordingly.
+                // This error will be discarded because of the event processor,
+                // and session will not be updated.
+                // Only events dropped due to sampling should update the session.
                 let err = "NaN".parse::<usize>().unwrap_err();
                 sentry::capture_error(&err);
             },
@@ -469,11 +470,10 @@ mod tests {
 
             assert_eq!(aggregates[0].distinct_id, None);
             assert_eq!(aggregates[0].exited, 50);
-            assert_eq!(aggregates[1].errored, 1);
 
+            assert_eq!(aggregates[1].errored, 0);
             assert_eq!(aggregates[1].distinct_id, Some("foo-bar".into()));
-            assert_eq!(aggregates[1].exited, 49);
-            assert_eq!(aggregates[1].errored, 1);
+            assert_eq!(aggregates[1].exited, 50);
         } else {
             panic!("expected session");
         }

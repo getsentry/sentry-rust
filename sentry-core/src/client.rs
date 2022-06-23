@@ -158,14 +158,6 @@ impl Client {
         mut event: Event<'static>,
         scope: Option<&Scope>,
     ) -> Option<Event<'static>> {
-        if let Some(scope) = scope {
-            scope.update_session_from_event(&event);
-        }
-
-        if !self.sample_should_send() {
-            return None;
-        }
-
         // event_id and sdk_info are set before the processors run so that the
         // processors can poke around in that data.
         if event.event_id.is_nil() {
@@ -211,10 +203,20 @@ impl Client {
         if let Some(ref func) = self.options.before_send {
             sentry_debug!("invoking before_send callback");
             let id = event.event_id;
-            func(event).or_else(move || {
+            if let Some(processed_event) = func(event) {
+                event = processed_event;
+            } else {
                 sentry_debug!("before_send dropped event {:?}", id);
-                None
-            })
+                return None;
+            }
+        }
+
+        if let Some(scope) = scope {
+            scope.update_session_from_event(&event);
+        }
+
+        if !self.sample_should_send() {
+            None
         } else {
             Some(event)
         }
