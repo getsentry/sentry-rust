@@ -26,13 +26,6 @@ use crate::Client;
 const MAX_SPANS: usize = 1_000;
 
 #[cfg(all(feature = "profiling", not(target_os = "windows")))]
-use build_id;
-#[cfg(all(feature = "profiling", not(target_os = "windows")))]
-use sys_info;
-#[cfg(all(feature = "profiling", not(target_os = "windows")))]
-use uuid;
-
-#[cfg(all(feature = "profiling", not(target_os = "windows")))]
 lazy_static! {
     static ref PROFILER_RUNNING: Mutex<bool> = Mutex::new(false);
     static ref PROFILE_INNER: MutStatic<ProfileInner> = {
@@ -499,7 +492,7 @@ impl Transaction {
                                         profile = Some(get_profile_from_report(
                                             &report,
                                             inner.context.trace_id,
-                                            transaction.event_id.clone(),
+                                            transaction.event_id,
                                             transaction.name.as_ref().unwrap().clone(),
                                         ));
                                     }
@@ -816,7 +809,7 @@ fn get_profile_from_report(
             })
         }
         samples.push(Sample {
-            frames: frames,
+            frames,
             thread_name: String::from_utf8_lossy(&sample.thread_name[0..sample.thread_name_length])
                 .into_owned(),
             thread_id: sample.thread_id,
@@ -852,18 +845,18 @@ fn get_profile_from_report(
         },
         platform: "rust".to_string(),
         architecture: std::env::consts::ARCH.to_string(),
-        trace_id: trace_id,
-        transaction_name: transaction_name,
-        transaction_id: transaction_id,
+        trace_id,
+        transaction_name,
+        transaction_id,
         profile_id: uuid::Uuid::new_v4(),
-        sampled_profile: sampled_profile,
+        sampled_profile,
         os_name: sys_info::os_type().unwrap(),
         os_version: sys_info::os_release().unwrap(),
         version_name: env!("CARGO_PKG_VERSION").to_string(),
         version_code: build_id::get().to_simple().to_string(),
     };
 
-    return profile;
+    profile
 }
 
 impl std::fmt::Display for SentryTrace {
