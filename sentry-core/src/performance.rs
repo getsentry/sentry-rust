@@ -1,18 +1,18 @@
 use std::sync::Arc;
 use std::sync::Mutex;
 
-#[cfg(feature = "profiling")]
+#[cfg(all(feature = "profiling", not(target_os = "windows")))]
 use findshlibs::{SharedLibrary, SharedLibraryId, TargetSharedLibrary, TARGET_SUPPORTED};
-#[cfg(feature = "profiling")]
+#[cfg(all(feature = "profiling", not(target_os = "windows")))]
 use lazy_static::lazy_static;
-#[cfg(feature = "profiling")]
+#[cfg(all(feature = "profiling", not(target_os = "windows")))]
 use mut_static::MutStatic;
-#[cfg(feature = "profiling")]
+#[cfg(all(feature = "profiling", not(target_os = "windows")))]
 use sentry_types::{CodeId, DebugId, Uuid};
 
-#[cfg(feature = "profiling")]
+#[cfg(all(feature = "profiling", not(target_os = "windows")))]
 use sentry_types::protocol::v7::Profile;
-#[cfg(feature = "profiling")]
+#[cfg(all(feature = "profiling", not(target_os = "windows")))]
 use sentry_types::protocol::v7::{
     DebugImage, DebugMeta, RustFrame, Sample, SampledProfile, SymbolicDebugImage, TraceId,
 };
@@ -25,14 +25,14 @@ use crate::Client;
 #[cfg(feature = "client")]
 const MAX_SPANS: usize = 1_000;
 
-#[cfg(feature = "profiling")]
+#[cfg(all(feature = "profiling", not(target_os = "windows")))]
 use build_id;
-#[cfg(feature = "profiling")]
+#[cfg(all(feature = "profiling", not(target_os = "windows")))]
 use sys_info;
-#[cfg(feature = "profiling")]
+#[cfg(all(feature = "profiling", not(target_os = "windows")))]
 use uuid;
 
-#[cfg(feature = "profiling")]
+#[cfg(all(feature = "profiling", not(target_os = "windows")))]
 lazy_static! {
     static ref PROFILER_RUNNING: Mutex<bool> = Mutex::new(false);
     static ref PROFILE_INNER: MutStatic<ProfileInner> = {
@@ -308,10 +308,10 @@ pub(crate) struct TransactionInner {
 }
 
 #[derive(Default)]
-#[cfg(feature = "profiling")]
+#[cfg(all(feature = "profiling", not(target_os = "windows")))]
 struct ProfileInner {
     transaction_id: String,
-    #[cfg(feature = "profiling")]
+    #[cfg(all(feature = "profiling", not(target_os = "windows")))]
     profiler_guard: Option<pprof::ProfilerGuard<'static>>,
 }
 
@@ -358,7 +358,7 @@ impl Transaction {
         }
         // if the transaction was sampled then a profile, linked to the transaction,
         // might as well be sampled
-        #[cfg(feature = "profiling")]
+        #[cfg(all(feature = "profiling", not(target_os = "windows")))]
         if sampled {
             if let Some(client) = client.as_ref() {
                 let mut profiler_running = PROFILER_RUNNING.lock().unwrap();
@@ -483,10 +483,10 @@ impl Transaction {
                     transaction.environment = opts.environment.clone();
                     transaction.sdk = Some(std::borrow::Cow::Owned(client.sdk_info.clone()));
 
-                    #[cfg(feature = "profiling")]
+                    #[cfg(all(feature = "profiling", not(target_os = "windows")))]
                     let mut profile: Option<Profile> = None;
 
-                    #[cfg(feature = "profiling")]
+                    #[cfg(all(feature = "profiling", not(target_os = "windows")))]
                     if client.options().enable_profiling{
                         let mut profiler_running = PROFILER_RUNNING.lock().unwrap();
                         if *profiler_running {
@@ -517,7 +517,7 @@ impl Transaction {
                     let mut envelope = protocol::Envelope::new();
                     envelope.add_item(transaction);
 
-                    #[cfg(feature = "profiling")]
+                    #[cfg(all(feature = "profiling", not(target_os = "windows")))]
                     if let Some(profile) = profile {
                         envelope.add_item(profile);
                     }
@@ -716,7 +716,7 @@ fn parse_sentry_trace(header: &str) -> Option<SentryTrace> {
 /// are flipped to match the big endian expected by the breakpad processor.
 ///
 /// The `DebugId::appendix` field is always `0` for ELF.
-#[cfg(feature = "profiling")]
+#[cfg(all(feature = "profiling", not(target_os = "windows")))]
 fn debug_id_from_build_id(build_id: &[u8]) -> Option<DebugId> {
     const UUID_SIZE: usize = 16;
     let mut data = [0u8; UUID_SIZE];
@@ -736,7 +736,7 @@ fn debug_id_from_build_id(build_id: &[u8]) -> Option<DebugId> {
     Uuid::from_slice(&data).map(DebugId::from_uuid).ok()
 }
 
-#[cfg(feature = "profiling")]
+#[cfg(all(feature = "profiling", not(target_os = "windows")))]
 /// Returns the list of loaded libraries/images.
 pub fn debug_images() -> Vec<DebugImage> {
     let mut images = vec![];
@@ -799,7 +799,7 @@ pub fn debug_images() -> Vec<DebugImage> {
     images
 }
 
-#[cfg(feature = "profiling")]
+#[cfg(all(feature = "profiling", not(target_os = "windows")))]
 fn get_profile_from_report(
     rep: &pprof::UnresolvedReport,
     trace_id: TraceId,
