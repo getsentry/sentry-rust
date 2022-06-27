@@ -98,13 +98,13 @@ impl Profile {
             "{}",
             serde_json::to_string(&ProfileItemHeader {
                 content_type: "application/json".to_string(),
-                file_name: format!("{}.trace", self.trace_id).to_string(),
+                file_name: format!("{}.trace", self.trace_id),
                 typez: "profile".to_string(),
                 length: serialized_profile.len(),
             })?
         )?;
 
-        writer.write_all(&serialized_profile.as_bytes())?;
+        writer.write_all(serialized_profile.as_bytes())?;
         Ok(())
     }
 }

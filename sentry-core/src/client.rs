@@ -216,7 +216,7 @@ impl Client {
         }
 
         if !self.sample_should_send(self.options.sample_rate) {
-            return None;
+            None
         } else {
             Some(event)
         }
