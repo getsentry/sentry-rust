@@ -215,8 +215,8 @@ impl Client {
             scope.update_session_from_event(&event);
         }
 
-        if !self.sample_should_send() {
-            None
+        if !self.sample_should_send(self.options.sample_rate) {
+            return None;
         } else {
             Some(event)
         }
@@ -338,19 +338,9 @@ impl Client {
         }
     }
 
-    fn sample_should_send(&self) -> bool {
-        let rate = self.options.sample_rate;
-        if rate >= 1.0 {
-            true
-        } else {
-            random::<f32>() <= rate
-        }
-    }
-
     /// Returns a random boolean with a probability defined
-    /// by the [`ClientOptions`]'s `traces_sample_rate`
-    pub fn sample_traces_should_send(&self) -> bool {
-        let rate = self.options.traces_sample_rate;
+    /// by rate
+    pub fn sample_should_send(&self, rate: f32) -> bool {
         if rate >= 1.0 {
             true
         } else {

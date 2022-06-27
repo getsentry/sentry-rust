@@ -1,6 +1,22 @@
 use std::sync::Arc;
 use std::sync::Mutex;
 
+#[cfg(feature = "profiling")]
+use findshlibs::{SharedLibrary, SharedLibraryId, TargetSharedLibrary, TARGET_SUPPORTED};
+#[cfg(feature = "profiling")]
+use lazy_static::lazy_static;
+#[cfg(feature = "profiling")]
+use mut_static::MutStatic;
+#[cfg(feature = "profiling")]
+use sentry_types::{CodeId, DebugId, Uuid};
+
+#[cfg(feature = "profiling")]
+use sentry_types::protocol::v7::Profile;
+#[cfg(feature = "profiling")]
+use sentry_types::protocol::v7::{
+    DebugImage, DebugMeta, RustFrame, Sample, SampledProfile, SymbolicDebugImage, TraceId,
+};
+
 use crate::{protocol, Hub};
 
 #[cfg(feature = "client")]
@@ -8,6 +24,24 @@ use crate::Client;
 
 #[cfg(feature = "client")]
 const MAX_SPANS: usize = 1_000;
+
+#[cfg(feature = "profiling")]
+use build_id;
+#[cfg(feature = "profiling")]
+use sys_info;
+#[cfg(feature = "profiling")]
+use uuid;
+
+#[cfg(feature = "profiling")]
+lazy_static! {
+    static ref PROFILER_RUNNING: Mutex<bool> = Mutex::new(false);
+    static ref PROFILE_INNER: MutStatic<ProfileInner> = {
+        MutStatic::from(ProfileInner {
+            transaction_id: "".to_string(),
+            profiler_guard: None,
+        })
+    };
+}
 
 // global API:
 
@@ -273,6 +307,14 @@ pub(crate) struct TransactionInner {
     pub(crate) transaction: Option<protocol::Transaction<'static>>,
 }
 
+#[derive(Default)]
+#[cfg(feature = "profiling")]
+struct ProfileInner {
+    transaction_id: String,
+    #[cfg(feature = "profiling")]
+    profiler_guard: Option<pprof::ProfilerGuard<'static>>,
+}
+
 type TransactionArc = Arc<Mutex<TransactionInner>>;
 
 /// A running Performance Monitoring Transaction.
@@ -297,8 +339,9 @@ impl Transaction {
 
         let (sampled, mut transaction) = match client.as_ref() {
             Some(client) => (
-                ctx.sampled
-                    .unwrap_or_else(|| client.sample_traces_should_send()),
+                ctx.sampled.unwrap_or_else(|| {
+                    client.sample_should_send(client.options().traces_sample_rate)
+                }),
                 Some(protocol::Transaction {
                     name: Some(ctx.name),
                     ..Default::default()
@@ -312,6 +355,42 @@ impl Transaction {
         if !sampled {
             transaction = None;
             client = None;
+        }
+        // if the transaction was sampled then a profile, linked to the transaction,
+        // might as well be sampled
+        #[cfg(feature = "profiling")]
+        if sampled {
+            if let Some(client) = client.as_ref() {
+                let mut profiler_running = PROFILER_RUNNING.lock().unwrap();
+                // if the profile is sampled and currently there is no other profile
+                // being collected
+                if transaction.is_some()
+                    && client.options().enable_profiling
+                    && !*profiler_running
+                    && client.sample_should_send(client.options().profiles_sample_rate)
+                {
+                    let profile_guard_builder = pprof::ProfilerGuardBuilder::default()
+                        .frequency(100)
+                        .blocklist(&["libc", "libgcc", "pthread", "vdso"])
+                        .build();
+
+                    match profile_guard_builder {
+                        Ok(guard_builder) => {
+                            *profiler_running = true;
+                            let mut profile_inner = PROFILE_INNER.write().unwrap();
+                            profile_inner.transaction_id =
+                                transaction.as_ref().unwrap().event_id.clone().to_string();
+                            profile_inner.profiler_guard = Some(guard_builder);
+                        }
+                        Err(err) => {
+                            sentry_debug!(
+                                "could not start the profiler due to the following error: {:?}",
+                                err
+                            );
+                        }
+                    }
+                }
+            }
         }
 
         Self {
@@ -404,8 +483,44 @@ impl Transaction {
                     transaction.environment = opts.environment.clone();
                     transaction.sdk = Some(std::borrow::Cow::Owned(client.sdk_info.clone()));
 
+                    #[cfg(feature = "profiling")]
+                    let mut profile: Option<Profile> = None;
+
+                    #[cfg(feature = "profiling")]
+                    if client.options().enable_profiling{
+                        let mut profiler_running = PROFILER_RUNNING.lock().unwrap();
+                        if *profiler_running {
+                            let mut profile_inner = PROFILE_INNER.write().unwrap();
+                            // if the transaction that is ending is the same that started the
+                            // profiler, then the profile should be added to the envelope too
+                            if profile_inner.transaction_id == transaction.event_id.to_string() {
+                                match profile_inner.profiler_guard.as_ref().unwrap().report().build_unresolved() {
+                                    Ok(report) => {
+                                        profile = Some(get_profile_from_report(
+                                            &report,
+                                            inner.context.trace_id,
+                                            transaction.event_id.clone(),
+                                            transaction.name.as_ref().unwrap().clone(),
+                                        ));
+                                    }
+                                    Err(err) => {
+                                        sentry_debug!("could not build the profile result due to the error: {}", err);
+                                    }
+                                }
+                                // in both cases (Ok or Err), reset profile_inner
+                                *profile_inner = ProfileInner::default();
+                                *profiler_running = false;
+                            }
+                        }
+                    }
+
                     let mut envelope = protocol::Envelope::new();
                     envelope.add_item(transaction);
+
+                    #[cfg(feature = "profiling")]
+                    if let Some(profile) = profile {
+                        envelope.add_item(profile);
+                    }
 
                     client.send_envelope(envelope)
                 }
@@ -592,6 +707,163 @@ fn parse_sentry_trace(header: &str) -> Option<SentryTrace> {
     });
 
     Some(SentryTrace(trace_id, parent_span_id, parent_sampled))
+}
+
+/// Converts an ELF object identifier into a `DebugId`.
+///
+/// The identifier data is first truncated or extended to match 16 byte size of
+/// Uuids. If the data is declared in little endian, the first three Uuid fields
+/// are flipped to match the big endian expected by the breakpad processor.
+///
+/// The `DebugId::appendix` field is always `0` for ELF.
+#[cfg(feature = "profiling")]
+fn debug_id_from_build_id(build_id: &[u8]) -> Option<DebugId> {
+    const UUID_SIZE: usize = 16;
+    let mut data = [0u8; UUID_SIZE];
+    let len = build_id.len().min(UUID_SIZE);
+    data[0..len].copy_from_slice(&build_id[0..len]);
+
+    #[cfg(target_endian = "little")]
+    {
+        // The ELF file targets a little endian architecture. Convert to
+        // network byte order (big endian) to match the Breakpad processor's
+        // expectations. For big endian object files, this is not needed.
+        data[0..4].reverse(); // uuid field 1
+        data[4..6].reverse(); // uuid field 2
+        data[6..8].reverse(); // uuid field 3
+    }
+
+    Uuid::from_slice(&data).map(DebugId::from_uuid).ok()
+}
+
+#[cfg(feature = "profiling")]
+/// Returns the list of loaded libraries/images.
+pub fn debug_images() -> Vec<DebugImage> {
+    let mut images = vec![];
+    if !TARGET_SUPPORTED {
+        return images;
+    }
+
+    //crate:: ::{CodeId, DebugId, Uuid};
+    TargetSharedLibrary::each(|shlib| {
+        let maybe_debug_id = shlib.debug_id().and_then(|id| match id {
+            SharedLibraryId::Uuid(bytes) => Some(DebugId::from_uuid(Uuid::from_bytes(bytes))),
+            SharedLibraryId::GnuBuildId(ref id) => debug_id_from_build_id(id),
+            SharedLibraryId::PdbSignature(guid, age) => DebugId::from_guid_age(&guid, age).ok(),
+            _ => None,
+        });
+
+        let debug_id = match maybe_debug_id {
+            Some(debug_id) => debug_id,
+            None => return,
+        };
+
+        let mut name = shlib.name().to_string_lossy().to_string();
+        if name.is_empty() {
+            name = std::env::current_exe()
+                .map(|x| x.display().to_string())
+                .unwrap_or_else(|_| "<main>".to_string());
+        }
+
+        let code_id = shlib.id().map(|id| CodeId::new(format!("{}", id)));
+        let debug_name = shlib.debug_name().map(|n| n.to_string_lossy().to_string());
+
+        // For windows, the `virtual_memory_bias` actually returns the real
+        // `module_base`, which is the address that sentry uses for symbolication.
+        // Going via the segments means that the `image_addr` would be offset in
+        // a way that symbolication yields wrong results.
+        let (image_addr, image_vmaddr) = if cfg!(windows) {
+            (shlib.virtual_memory_bias().0.into(), 0.into())
+        } else {
+            (
+                shlib.actual_load_addr().0.into(),
+                shlib.stated_load_addr().0.into(),
+            )
+        };
+
+        images.push(
+            SymbolicDebugImage {
+                id: debug_id,
+                name,
+                arch: None,
+                image_addr,
+                image_size: shlib.len() as u64,
+                image_vmaddr,
+                code_id,
+                debug_file: debug_name,
+            }
+            .into(),
+        );
+    });
+
+    images
+}
+
+#[cfg(feature = "profiling")]
+fn get_profile_from_report(
+    rep: &pprof::UnresolvedReport,
+    trace_id: TraceId,
+    transaction_id: sentry_types::Uuid,
+    transaction_name: String,
+) -> Profile {
+    let mut samples: Vec<Sample> = Vec::new();
+
+    for sample in rep.data.keys() {
+        let mut frames: Vec<RustFrame> = Vec::new();
+        for frame in &sample.frames {
+            frames.push(RustFrame {
+                instruction_addr: format!("{:p}", frame.ip()),
+            })
+        }
+        samples.push(Sample {
+            frames: frames,
+            thread_name: String::from_utf8_lossy(&sample.thread_name[0..sample.thread_name_length])
+                .into_owned(),
+            thread_id: sample.thread_id,
+            nanos_relative_to_start: sample
+                .sample_timestamp
+                .duration_since(rep.timing.start_time)
+                .unwrap()
+                .as_nanos() as u64,
+        });
+    }
+    let sampled_profile = SampledProfile {
+        start_time_nanos: rep
+            .timing
+            .start_time
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos() as u64,
+        start_time_secs: rep
+            .timing
+            .start_time
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_secs(),
+        duration_nanos: rep.timing.duration.as_nanos() as u64,
+        samples,
+    };
+    use std::time::SystemTime;
+    let profile: Profile = Profile {
+        duration_ns: sampled_profile.duration_nanos,
+        debug_meta: DebugMeta {
+            sdk_info: None,
+            images: debug_images(),
+        },
+        platform: "rust".to_string(),
+        architecture: std::env::consts::ARCH.to_string(),
+        trace_id: trace_id,
+        transaction_name: transaction_name,
+        transaction_id: transaction_id,
+        profile_id: uuid::Uuid::new_v4(),
+        sampled_profile: sampled_profile,
+        os_name: sys_info::os_type().unwrap(),
+        os_version: sys_info::os_release().unwrap(),
+        version_name: env!("CARGO_PKG_VERSION").to_string(),
+        version_code: build_id::get().to_simple().to_string(),
+    };
+
+    return profile;
 }
 
 impl std::fmt::Display for SentryTrace {

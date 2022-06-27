@@ -25,7 +25,8 @@ client = ["rand"]
 # I would love to just have a `log` feature, but this is used inside a macro,
 # and macros actually expand features (and extern crate) where they are used!
 debug-logs = ["log_"]
-test = ["client"]
+test = ["client", "profiling"]
+profiling = ["pprof", "lazy_static", "mut_static", "build_id", "uuid", "sys-info", "findshlibs"]
 
 [dependencies]
 log_ = { package = "log", version = "0.4.8", optional = true, features = ["std"] }
@@ -33,7 +34,14 @@ once_cell = "1"
 rand = { version = "0.8.1", optional = true }
 sentry-types = { version = "0.27.0", path = "../sentry-types" }
 serde = { version = "1.0.104", features = ["derive"] }
-serde_json = "1.0.46"
+serde_json = { version = "1.0.46" }
+lazy_static = { version = "1.4.0", optional = true }
+mut_static = { version = "5.0.0", optional = true }
+pprof = { version = "0.10.0", optional = true }
+uuid = { version = "1.0.0", features = ["v4", "serde"], optional = true }
+sys-info = { version = "0.9.1", optional = true }
+build_id = { version = "0.2.1", optional = true }
+findshlibs = { version = "=0.10.2", optional = true }
 
 [dev-dependencies]
 # Because we re-export all the public API in `sentry`, we actually run all the

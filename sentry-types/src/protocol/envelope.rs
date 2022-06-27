@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use super::{
     attachment::AttachmentType,
-    v7::{Attachment, Event, SessionAggregates, SessionUpdate, Transaction},
+    v7::{Attachment, Event, Profile, SessionAggregates, SessionUpdate, Transaction},
 };
 
 /// Raised if a envelope cannot be parsed from a given input.
@@ -58,6 +58,9 @@ enum EnvelopeItemType {
     /// An Attachment Item type.
     #[serde(rename = "attachment")]
     Attachment,
+    /// A Profile Item Type
+    #[serde(rename = "profile")]
+    Profile,
 }
 
 /// An Envelope Item Header.
@@ -104,6 +107,9 @@ pub enum EnvelopeItem {
     /// See the [Attachment Item documentation](https://develop.sentry.dev/sdk/envelopes/#attachment)
     /// for more details.
     Attachment(Attachment),
+    /// An Profile Item.
+    ///
+    Profile(Profile),
     // TODO:
     // etc…
 }
@@ -135,6 +141,12 @@ impl From<Transaction<'static>> for EnvelopeItem {
 impl From<Attachment> for EnvelopeItem {
     fn from(attachment: Attachment) -> Self {
         EnvelopeItem::Attachment(attachment)
+    }
+}
+
+impl From<Profile> for EnvelopeItem {
+    fn from(profile: Profile) -> Self {
+        EnvelopeItem::Profile(profile)
     }
 }
 
@@ -282,6 +294,11 @@ impl Envelope {
                     writeln!(writer)?;
                     continue;
                 }
+                EnvelopeItem::Profile(profile) => {
+                    profile.to_writer(&mut writer)?;
+                    writeln!(writer)?;
+                    continue;
+                }
             }
             let item_type = match item {
                 EnvelopeItem::Event(_) => "event",
@@ -289,6 +306,7 @@ impl Envelope {
                 EnvelopeItem::SessionAggregates(_) => "sessions",
                 EnvelopeItem::Transaction(_) => "transaction",
                 EnvelopeItem::Attachment(_) => unreachable!(),
+                EnvelopeItem::Profile(_) => unreachable!(),
             };
             writeln!(
                 writer,
@@ -412,6 +430,7 @@ impl Envelope {
                 content_type: header.content_type,
                 ty: header.attachment_type,
             })),
+            EnvelopeItemType::Profile => serde_json::from_slice(payload).map(EnvelopeItem::Profile),
         }
         .map_err(EnvelopeError::InvalidItemPayload)?;
 

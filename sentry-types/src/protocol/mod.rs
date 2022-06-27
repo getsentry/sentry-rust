@@ -11,4 +11,5 @@ pub use v7 as latest;
 
 mod attachment;
 mod envelope;
+mod profile;
 mod session;
