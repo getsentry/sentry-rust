@@ -49,7 +49,7 @@ pub struct Profile {
     /// Platform is `rust`
     pub platform: String,
     /// A string describing the architecture of the CPU that is currently in use
-    /// https://doc.rust-lang.org/std/env/consts/constant.ARCH.html
+    /// <https://doc.rust-lang.org/std/env/consts/constant.ARCH.html>
     pub architecture: String,
     /// The trace ID
     pub trace_id: TraceId,
@@ -71,7 +71,7 @@ pub struct Profile {
     pub os_version: String,
     /// Package version
     pub version_name: String,
-    /// Current binary build ID. See https://docs.rs/build_id/latest/build_id/
+    /// Current binary build ID. See <https://docs.rs/build_id/latest/build_id/>
     pub version_code: String,
 }
 
