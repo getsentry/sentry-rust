@@ -1,10 +1,5 @@
-#[cfg(all(feature = "profiling", not(target_os = "windows")))]
-use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::sync::Mutex;
-
-#[cfg(all(feature = "profiling", not(target_os = "windows")))]
-use sentry_types::protocol::v7::Profile;
 
 #[cfg(all(feature = "profiling", not(target_os = "windows")))]
 use crate::profiling;
@@ -15,9 +10,6 @@ use crate::Client;
 
 #[cfg(feature = "client")]
 const MAX_SPANS: usize = 1_000;
-
-#[cfg(all(feature = "profiling", not(target_os = "windows")))]
-static PROFILER_RUNNING: AtomicBool = AtomicBool::new(false);
 
 // global API:
 
@@ -329,13 +321,11 @@ impl Transaction {
         // if the transaction was sampled then a profile, linked to the transaction,
         // might as well be sampled
         #[cfg(all(feature = "profiling", not(target_os = "windows")))]
-        let mut profiler_guard: Option<profiling::ProfilerGuard> = None;
-        #[cfg(all(feature = "profiling", not(target_os = "windows")))]
-        if sampled {
-            if let Some(client) = client.as_ref() {
-                profiler_guard = profiling::start_profiling(&PROFILER_RUNNING, client);
-            }
-        }
+        let profiler_guard = if sampled {
+            client.as_deref().and_then(profiling::start_profiling)
+        } else {
+            None
+        };
 
         Self {
             inner: Arc::new(Mutex::new(TransactionInner {
@@ -432,11 +422,9 @@ impl Transaction {
                     transaction.sdk = Some(std::borrow::Cow::Owned(client.sdk_info.clone()));
 
                     #[cfg(all(feature = "profiling", not(target_os = "windows")))]
-                    let mut profile: Option<Profile> = None;
-                    #[cfg(all(feature = "profiling", not(target_os = "windows")))]
-                    if client.options().enable_profiling{
-                        profile = profiling::finish_profiling(&PROFILER_RUNNING, &transaction, &mut inner);
-                    }
+                    let profile = inner.profiler_guard.take().and_then(|profiler_guard| {
+                        profiling::finish_profiling(&transaction, profiler_guard, inner.context.trace_id)
+                    });
 
                     let mut envelope = protocol::Envelope::new();
                     envelope.add_item(transaction);

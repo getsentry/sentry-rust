@@ -1,10 +1,8 @@
 use std::fmt;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
 
 use findshlibs::{SharedLibrary, SharedLibraryId, TargetSharedLibrary, TARGET_SUPPORTED};
 
-use crate::TransactionInner;
 use sentry_types::protocol::v7::Profile;
 use sentry_types::protocol::v7::{
     DebugImage, DebugMeta, RustFrame, Sample, SampledProfile, SymbolicDebugImage, TraceId,
@@ -15,6 +13,8 @@ use sentry_types::{CodeId, DebugId, Uuid};
 #[cfg(feature = "client")]
 use crate::Client;
 
+static PROFILER_RUNNING: AtomicBool = AtomicBool::new(false);
+
 pub(crate) struct ProfilerGuard(pprof::ProfilerGuard<'static>);
 
 impl fmt::Debug for ProfilerGuard {
@@ -23,10 +23,7 @@ impl fmt::Debug for ProfilerGuard {
     }
 }
 
-pub(crate) fn start_profiling(
-    profiler_running: &AtomicBool,
-    client: &Arc<Client>,
-) -> Option<ProfilerGuard> {
+pub(crate) fn start_profiling(client: &Client) -> Option<ProfilerGuard> {
     // if profiling is not enabled or the profile was not sampled
     // return None immediately
     if !client.options().enable_profiling
@@ -38,7 +35,7 @@ pub(crate) fn start_profiling(
     // if no other profile is being collected, then
     // start the profiler
     if let Ok(false) =
-        profiler_running.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+        PROFILER_RUNNING.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
     {
         let profile_guard_builder = pprof::ProfilerGuardBuilder::default()
             .frequency(100)
@@ -52,6 +49,7 @@ pub(crate) fn start_profiling(
                     "could not start the profiler due to the following error: {:?}",
                     err
                 );
+                PROFILER_RUNNING.store(false, Ordering::SeqCst);
             }
         }
     }
@@ -59,35 +57,28 @@ pub(crate) fn start_profiling(
 }
 
 pub(crate) fn finish_profiling(
-    profiler_running: &AtomicBool,
     transaction: &Transaction,
-    transaction_inner: &mut TransactionInner,
+    profiler_guard: ProfilerGuard,
+    trace_id: TraceId,
 ) -> Option<Profile> {
-    // if the profiler is running for this transaction,
-    // then stop it and return the profile
-    if let Some(profiler_guard) = transaction_inner.profiler_guard.take() {
-        let mut profile: Option<Profile> = None;
-
-        match profiler_guard.0.report().build_unresolved() {
-            Ok(report) => {
-                profile = Some(get_profile_from_report(
-                    &report,
-                    transaction_inner.context.trace_id,
-                    transaction.event_id,
-                    transaction.name.as_ref().unwrap().clone(),
-                ));
-            }
-            Err(err) => {
-                sentry_debug!(
-                    "could not build the profile result due to the error: {}",
-                    err
-                );
-            }
+    let profile = match profiler_guard.0.report().build_unresolved() {
+        Ok(report) => Some(get_profile_from_report(
+            &report,
+            trace_id,
+            transaction.event_id,
+            transaction.name.as_ref().unwrap().clone(),
+        )),
+        Err(err) => {
+            sentry_debug!(
+                "could not build the profile result due to the error: {}",
+                err
+            );
+            None
         }
-        profiler_running.store(false, Ordering::SeqCst);
-        return profile;
-    }
-    None
+    };
+
+    PROFILER_RUNNING.store(false, Ordering::SeqCst);
+    profile
 }
 
 /// Converts an ELF object identifier into a `DebugId`.
