@@ -35,9 +35,6 @@ rand = { version = "0.8.1", optional = true }
 sentry-types = { version = "0.27.0", path = "../sentry-types" }
 serde = { version = "1.0.104", features = ["derive"] }
 serde_json = { version = "1.0.46" }
-lazy_static = { version = "1.4.0", optional = true }
-mut_static = { version = "5.0.0", optional = true }
-#pprof = { version = "0.10.0", optional = true }
 uuid = { version = "1.0.0", features = ["v4", "serde"], optional = true }
 sys-info = { version = "0.9.1", optional = true }
 build_id = { version = "0.2.1", optional = true }
