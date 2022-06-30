@@ -294,11 +294,7 @@ impl Envelope {
                     writeln!(writer)?;
                     continue;
                 }
-                EnvelopeItem::Profile(profile) => {
-                    profile.to_writer(&mut writer)?;
-                    writeln!(writer)?;
-                    continue;
-                }
+                EnvelopeItem::Profile(profile) => serde_json::to_writer(&mut item_buf, profile)?,
             }
             let item_type = match item {
                 EnvelopeItem::Event(_) => "event",
@@ -306,7 +302,7 @@ impl Envelope {
                 EnvelopeItem::SessionAggregates(_) => "sessions",
                 EnvelopeItem::Transaction(_) => "transaction",
                 EnvelopeItem::Attachment(_) => unreachable!(),
-                EnvelopeItem::Profile(_) => unreachable!(),
+                EnvelopeItem::Profile(_) => "profile",
             };
             writeln!(
                 writer,

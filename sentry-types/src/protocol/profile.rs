@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize, Serializer};
 use uuid::Uuid;
 
 fn serialize_id<S: Serializer>(uuid: &Uuid, serializer: S) -> Result<S::Ok, S::Error> {
-    serializer.serialize_some(&uuid.as_simple().to_string())
+    serializer.serialize_some(&uuid.as_simple())
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
@@ -50,7 +50,8 @@ pub struct Profile {
     pub platform: String,
     /// A string describing the architecture of the CPU that is currently in use
     /// <https://doc.rust-lang.org/std/env/consts/constant.ARCH.html>
-    pub architecture: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub architecture: Option<String>,
     /// The trace ID
     pub trace_id: TraceId,
     /// The name of the transaction this profile belongs to
@@ -63,8 +64,8 @@ pub struct Profile {
     pub profile_id: Uuid,
     /// Represents the profile collected
     pub sampled_profile: SampledProfile,
-    #[serde(rename = "device_os_name")]
     /// OS name
+    #[serde(rename = "device_os_name")]
     pub os_name: String,
     #[serde(rename = "device_os_version")]
     /// OS version
@@ -85,6 +86,7 @@ struct ProfileItemHeader {
     length: usize,
 }
 
+/*
 impl Profile {
     /// Writes the attachment and its headers to the provided `Writer`.
     pub fn to_writer<W>(&self, writer: &mut W) -> std::io::Result<()>
@@ -108,3 +110,4 @@ impl Profile {
         Ok(())
     }
 }
+*/
