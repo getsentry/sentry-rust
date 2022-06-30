@@ -421,6 +421,8 @@ impl Transaction {
                     transaction.environment = opts.environment.clone();
                     transaction.sdk = Some(std::borrow::Cow::Owned(client.sdk_info.clone()));
 
+                    // if the profiler is running for the given transaction
+                    // then call finish_profiling to return the profile
                     #[cfg(all(feature = "profiling", not(target_os = "windows")))]
                     let profile = inner.profiler_guard.take().and_then(|profiler_guard| {
                         profiling::finish_profiling(&transaction, profiler_guard, inner.context.trace_id)
