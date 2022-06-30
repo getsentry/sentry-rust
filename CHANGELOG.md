@@ -12,9 +12,6 @@
 
 **Thank you**:
 
-Features, fixes and improvements in this release have been contributed by:
-
-- [@viglia](https://github.com/viglia)
 
 ## 0.27.0
 
