@@ -75,39 +75,3 @@ pub struct Profile {
     /// Current binary build ID. See <https://docs.rs/build_id/latest/build_id/>
     pub version_code: String,
 }
-
-#[derive(Debug, Default, Deserialize, Serialize)]
-struct ProfileItemHeader {
-    content_type: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    file_name: String,
-    #[serde(rename = "type")]
-    typez: String,
-    length: usize,
-}
-
-/*
-impl Profile {
-    /// Writes the attachment and its headers to the provided `Writer`.
-    pub fn to_writer<W>(&self, writer: &mut W) -> std::io::Result<()>
-    where
-        W: std::io::Write,
-    {
-        let serialized_profile = serde_json::to_string(self).unwrap();
-
-        writeln!(
-            writer,
-            "{}",
-            serde_json::to_string(&ProfileItemHeader {
-                content_type: "application/json".to_string(),
-                file_name: format!("{}.trace", self.trace_id),
-                typez: "profile".to_string(),
-                length: serialized_profile.len(),
-            })?
-        )?;
-
-        writer.write_all(serialized_profile.as_bytes())?;
-        Ok(())
-    }
-}
-*/
