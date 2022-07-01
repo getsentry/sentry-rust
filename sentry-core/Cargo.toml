@@ -26,6 +26,7 @@ client = ["rand"]
 # and macros actually expand features (and extern crate) where they are used!
 debug-logs = ["log_"]
 test = ["client"]
+profiling = ["pprof", "build_id", "uuid", "sys-info", "findshlibs"]
 
 [dependencies]
 log_ = { package = "log", version = "0.4.8", optional = true, features = ["std"] }
@@ -33,7 +34,14 @@ once_cell = "1"
 rand = { version = "0.8.1", optional = true }
 sentry-types = { version = "0.27.0", path = "../sentry-types" }
 serde = { version = "1.0.104", features = ["derive"] }
-serde_json = "1.0.46"
+serde_json = { version = "1.0.46" }
+uuid = { version = "1.0.0", features = ["v4", "serde"], optional = true }
+sys-info = { version = "0.9.1", optional = true }
+build_id = { version = "0.2.1", optional = true }
+findshlibs = { version = "=0.10.2", optional = true }
+
+[target.'cfg(not(target_os = "windows"))'.dependencies]
+pprof = { version = "0.10.0", optional = true }
 
 [dev-dependencies]
 # Because we re-export all the public API in `sentry`, we actually run all the

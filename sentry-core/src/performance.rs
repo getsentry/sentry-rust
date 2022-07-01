@@ -1,6 +1,8 @@
 use std::sync::Arc;
 use std::sync::Mutex;
 
+#[cfg(all(feature = "profiling", not(target_os = "windows")))]
+use crate::profiling;
 use crate::{protocol, Hub};
 
 #[cfg(feature = "client")]
@@ -269,8 +271,10 @@ pub(crate) struct TransactionInner {
     #[cfg(feature = "client")]
     client: Option<Arc<Client>>,
     sampled: bool,
-    context: protocol::TraceContext,
+    pub(crate) context: protocol::TraceContext,
     pub(crate) transaction: Option<protocol::Transaction<'static>>,
+    #[cfg(all(feature = "profiling", not(target_os = "windows")))]
+    pub(crate) profiler_guard: Option<profiling::ProfilerGuard>,
 }
 
 type TransactionArc = Arc<Mutex<TransactionInner>>;
@@ -297,8 +301,9 @@ impl Transaction {
 
         let (sampled, mut transaction) = match client.as_ref() {
             Some(client) => (
-                ctx.sampled
-                    .unwrap_or_else(|| client.sample_traces_should_send()),
+                ctx.sampled.unwrap_or_else(|| {
+                    client.sample_should_send(client.options().traces_sample_rate)
+                }),
                 Some(protocol::Transaction {
                     name: Some(ctx.name),
                     ..Default::default()
@@ -313,6 +318,14 @@ impl Transaction {
             transaction = None;
             client = None;
         }
+        // if the transaction was sampled then a profile, linked to the transaction,
+        // might as well be sampled
+        #[cfg(all(feature = "profiling", not(target_os = "windows")))]
+        let profiler_guard = if sampled {
+            client.as_deref().and_then(profiling::start_profiling)
+        } else {
+            None
+        };
 
         Self {
             inner: Arc::new(Mutex::new(TransactionInner {
@@ -320,6 +333,8 @@ impl Transaction {
                 sampled,
                 context,
                 transaction,
+                #[cfg(all(feature = "profiling", not(target_os = "windows")))]
+                profiler_guard,
             })),
         }
     }
@@ -339,6 +354,8 @@ impl Transaction {
                 sampled,
                 context,
                 transaction: None,
+                #[cfg(all(feature = "profiling", not(target_os = "windows")))]
+                profiler_guard: None,
             })),
         }
     }
@@ -404,8 +421,20 @@ impl Transaction {
                     transaction.environment = opts.environment.clone();
                     transaction.sdk = Some(std::borrow::Cow::Owned(client.sdk_info.clone()));
 
+                    // if the profiler is running for the given transaction
+                    // then call finish_profiling to return the profile
+                    #[cfg(all(feature = "profiling", not(target_os = "windows")))]
+                    let profile = inner.profiler_guard.take().and_then(|profiler_guard| {
+                        profiling::finish_profiling(&transaction, profiler_guard, inner.context.trace_id)
+                    });
+
                     let mut envelope = protocol::Envelope::new();
                     envelope.add_item(transaction);
+
+                    #[cfg(all(feature = "profiling", not(target_os = "windows")))]
+                    if let Some(profile) = profile {
+                        envelope.add_item(profile);
+                    }
 
                     client.send_envelope(envelope)
                 }

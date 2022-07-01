@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+**Breaking Changes**:
+
+**Features**:
+
+- Add support for Profiling feature. ([#479](https://github.com/getsentry/sentry-rust/pull/479))
+
+**Internal**:
+
+**Thank you**:
+
+
 ## 0.27.0
 
 **Breaking Changes**:

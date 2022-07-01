@@ -47,6 +47,7 @@ native-tls = ["reqwest_/default-tls"]
 rustls = ["reqwest_/rustls-tls"]
 ureq = ["ureq_/tls", "httpdate"]
 ureq-native-tls = ["ureq_/native-tls", "httpdate"]
+profiling = ["sentry-core/profiling"]
 
 [dependencies]
 sentry-core = { version = "0.27.0", path = "../sentry-core", features = ["client"] }

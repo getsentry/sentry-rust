@@ -74,6 +74,14 @@ pub struct ClientOptions {
     pub sample_rate: f32,
     /// The sample rate for tracing transactions. (0.0 - 1.0, defaults to 0.0)
     pub traces_sample_rate: f32,
+    /// Enables profiling
+    pub enable_profiling: bool,
+    /// The sample rate for profiling a transactions. (0.0 - 1.0, defaults to 0.0)
+    ///
+    /// This is dependent on `traces_sample_rate`. The probability of sending a profile
+    /// is given by `traces_sample_rate * profiles_sample_rate`.
+    /// If a given transaction is not sent, then the profile won't be sent neither.
+    pub profiles_sample_rate: f32,
     /// Maximum number of breadcrumbs. (defaults to 100)
     pub max_breadcrumbs: usize,
     /// Attaches stacktraces to messages.
@@ -183,6 +191,8 @@ impl fmt::Debug for ClientOptions {
             .field("environment", &self.environment)
             .field("sample_rate", &self.sample_rate)
             .field("traces_sample_rate", &self.traces_sample_rate)
+            .field("enable_profiling", &self.enable_profiling)
+            .field("profiles_sample_rate", &self.profiles_sample_rate)
             .field("max_breadcrumbs", &self.max_breadcrumbs)
             .field("attach_stacktrace", &self.attach_stacktrace)
             .field("send_default_pii", &self.send_default_pii)
@@ -215,6 +225,8 @@ impl Default for ClientOptions {
             environment: None,
             sample_rate: 1.0,
             traces_sample_rate: 0.0,
+            enable_profiling: false,
+            profiles_sample_rate: 0.0,
             max_breadcrumbs: 100,
             attach_stacktrace: false,
             send_default_pii: false,
