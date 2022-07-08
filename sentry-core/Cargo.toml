@@ -40,8 +40,11 @@ sys-info = { version = "0.9.1", optional = true }
 build_id = { version = "0.2.1", optional = true }
 findshlibs = { version = "=0.10.2", optional = true }
 
-[target.'cfg(not(target_os = "windows"))'.dependencies]
+[target.'cfg(all(not(target_os = "windows"), not(target_os = "macos")))'.dependencies]
 pprof = { version = "0.10.0", optional = true }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+pprof = { version = "0.10.0", optional = true, features = ["frame-pointer"]}
 
 [dev-dependencies]
 # Because we re-export all the public API in `sentry`, we actually run all the

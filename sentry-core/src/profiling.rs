@@ -183,6 +183,9 @@ fn get_profile_from_report(
             .frames
             .iter()
             .map(|frame| RustFrame {
+                #[cfg(target_os = "macos")]
+                instruction_addr: format!("{:p}", frame.ip as *mut core::ffi::c_void),
+                #[cfg(not(target_os = "macos"))]
                 instruction_addr: format!("{:p}", frame.ip()),
             })
             .collect();
