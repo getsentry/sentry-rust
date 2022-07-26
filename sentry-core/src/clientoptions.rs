@@ -78,9 +78,8 @@ pub struct ClientOptions {
     pub enable_profiling: bool,
     /// The sample rate for profiling a transactions. (0.0 - 1.0, defaults to 0.0)
     ///
-    /// This is dependent on `traces_sample_rate`. The probability of sending a profile
-    /// is given by `traces_sample_rate * profiles_sample_rate`.
-    /// If a given transaction is not sent, then the profile won't be sent neither.
+    /// This represents the probability that a sampled transaction
+    /// will send a profile to Sentry
     pub profiles_sample_rate: f32,
     /// Maximum number of breadcrumbs. (defaults to 100)
     pub max_breadcrumbs: usize,
