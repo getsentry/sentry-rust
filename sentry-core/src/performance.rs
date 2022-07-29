@@ -433,7 +433,12 @@ impl Transaction {
 
                     #[cfg(all(feature = "profiling", not(target_os = "windows")))]
                     if let Some(profile) = profile {
-                        envelope.add_item(profile);
+                        if !profile.sampled_profile.samples.is_empty(){
+                            envelope.add_item(profile);
+                        }
+                        else {
+                            sentry_debug!("the profile is being dropped because it contains no samples");
+                        }
                     }
 
                     client.send_envelope(envelope)
