@@ -41,10 +41,10 @@ build_id = { version = "0.2.1", optional = true }
 findshlibs = { version = "=0.10.2", optional = true }
 
 [target.'cfg(all(not(target_os = "windows"), not(all(target_os = "macos", target_arch = "aarch64"))))'.dependencies]
-pprof = { version = "0.10.0", optional = true }
+pprof = { version = "0.10.0", optional = true, default-features = false }
 
 [target.'cfg(all(target_os = "macos", target_arch = "aarch64"))'.dependencies]
-pprof = { version = "0.10.0", optional = true, features = ["frame-pointer"]}
+pprof = { version = "0.10.0", optional = true, default-features = false, features = ["frame-pointer"]}
 
 [dev-dependencies]
 # Because we re-export all the public API in `sentry`, we actually run all the
