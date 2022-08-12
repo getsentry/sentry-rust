@@ -39,7 +39,6 @@ pub(crate) fn start_profiling(client: &Client) -> Option<ProfilerGuard> {
     {
         let profile_guard_builder = pprof::ProfilerGuardBuilder::default()
             .frequency(100)
-            .blocklist(&["libc", "libgcc", "pthread", "vdso"])
             .build();
 
         match profile_guard_builder {
