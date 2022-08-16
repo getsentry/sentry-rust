@@ -64,6 +64,7 @@ impl log::Log for NoopLogger {
 pub struct SentryLogger<L: log::Log> {
     dest: L,
     filter: Box<dyn Fn(&log::Metadata<'_>) -> LogFilter + Send + Sync>,
+    #[allow(clippy::type_complexity)]
     mapper: Option<Box<dyn Fn(&Record<'_>) -> RecordMapping + Send + Sync>>,
 }
 

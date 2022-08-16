@@ -44,6 +44,7 @@ pub fn default_filter(level: slog::Level) -> LevelFilter {
 pub struct SentryDrain<D: Drain> {
     drain: D,
     filter: Box<dyn Fn(slog::Level) -> LevelFilter + Send + Sync>,
+    #[allow(clippy::type_complexity)]
     mapper: Option<Box<dyn Fn(&Record, &OwnedKVList) -> RecordMapping + Send + Sync>>,
 }
 

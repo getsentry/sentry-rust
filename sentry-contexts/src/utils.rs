@@ -82,17 +82,19 @@ mod model_support {
         let m = get_model().unwrap();
         assert!(m.chars().all(|c| c != '\0'));
         let f = get_family().unwrap();
-        assert!(f.chars().all(|c| !c.is_digit(10)));
+        assert!(f.chars().all(|c| !c.is_ascii_digit()));
     }
 
     #[test]
     fn test_macos_version_and_build() {
         let v = get_macos_version().unwrap();
-        assert!(v.chars().all(|c| c.is_digit(10) || c == '.'));
+        assert!(v.chars().all(|c| c.is_ascii_digit() || c == '.'));
         let dot_count = v.split('.').count() - 1;
         assert_eq!(dot_count, 2);
         let b = get_macos_build().unwrap();
-        assert!(b.chars().all(|c| c.is_ascii_alphabetic() || c.is_digit(10)));
+        assert!(b
+            .chars()
+            .all(|c| c.is_ascii_alphabetic() || c.is_ascii_digit()));
     }
 }
 
