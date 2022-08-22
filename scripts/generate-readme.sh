@@ -2,8 +2,8 @@
 set -euo pipefail
 
 NEW_VERSION="${1}"
-CRATE=$(basename $PWD)
 CRATE_UNDERSCORE=$(echo $CRATE | sed s/-/_/)
+CRATE=$(basename "$PWD")
 
 cargo readme --template ../README.tpl --output README.md
 
