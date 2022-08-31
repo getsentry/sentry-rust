@@ -36,6 +36,7 @@ tower = ["sentry-tower"]
 tower-http = ["sentry-tower", "sentry-tower/http"]
 tracing = ["sentry-tracing"]
 profiling = ["sentry-core/profiling"]
+frame-pointer = ["sentry-core/frame-pointer"]
 # other features
 test = ["sentry-core/test"]
 debug-logs = ["log_", "sentry-core/debug-logs"]
