@@ -27,7 +27,7 @@ client = ["rand"]
 debug-logs = ["log_"]
 test = ["client"]
 profiling = ["pprof", "build_id", "uuid", "sys-info", "findshlibs"]
-frame-pointer = ["pprof?/frame-pointer"]
+frame-pointer = ["pprof/frame-pointer"]
 
 [dependencies]
 log_ = { package = "log", version = "0.4.8", optional = true, features = ["std"] }
