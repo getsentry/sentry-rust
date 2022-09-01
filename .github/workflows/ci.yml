@@ -99,7 +99,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        rust: [1.57.0]
+        rust: [1.60.0]
 
     name: Check / Test MSRV on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -139,7 +139,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2022-01-14
+          toolchain: nightly-2022-09-01
           components: llvm-tools-preview
           override: true
 
