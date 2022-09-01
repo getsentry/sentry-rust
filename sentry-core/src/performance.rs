@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::sync::Mutex;
 
-#[cfg(all(feature = "profiling", not(target_os = "windows")))]
+#[cfg(all(feature = "profiling", target_family = "unix"))]
 use crate::profiling;
 use crate::{protocol, Hub};
 
@@ -273,7 +273,7 @@ pub(crate) struct TransactionInner {
     sampled: bool,
     pub(crate) context: protocol::TraceContext,
     pub(crate) transaction: Option<protocol::Transaction<'static>>,
-    #[cfg(all(feature = "profiling", not(target_os = "windows")))]
+    #[cfg(all(feature = "profiling", target_family = "unix"))]
     pub(crate) profiler_guard: Option<profiling::ProfilerGuard>,
 }
 
@@ -320,7 +320,7 @@ impl Transaction {
         }
         // if the transaction was sampled then a profile, linked to the transaction,
         // might as well be sampled
-        #[cfg(all(feature = "profiling", not(target_os = "windows")))]
+        #[cfg(all(feature = "profiling", target_family = "unix"))]
         let profiler_guard = if sampled {
             client.as_deref().and_then(profiling::start_profiling)
         } else {
@@ -333,7 +333,7 @@ impl Transaction {
                 sampled,
                 context,
                 transaction,
-                #[cfg(all(feature = "profiling", not(target_os = "windows")))]
+                #[cfg(all(feature = "profiling", target_family = "unix"))]
                 profiler_guard,
             })),
         }
@@ -354,7 +354,7 @@ impl Transaction {
                 sampled,
                 context,
                 transaction: None,
-                #[cfg(all(feature = "profiling", not(target_os = "windows")))]
+                #[cfg(all(feature = "profiling", target_family = "unix"))]
                 profiler_guard: None,
             })),
         }
@@ -423,7 +423,7 @@ impl Transaction {
 
                     // if the profiler is running for the given transaction
                     // then call finish_profiling to return the profile
-                    #[cfg(all(feature = "profiling", not(target_os = "windows")))]
+                    #[cfg(all(feature = "profiling", target_family = "unix"))]
                     let profile = inner.profiler_guard.take().and_then(|profiler_guard| {
                         profiling::finish_profiling(&transaction, profiler_guard, inner.context.trace_id)
                     });
@@ -431,7 +431,7 @@ impl Transaction {
                     let mut envelope = protocol::Envelope::new();
                     envelope.add_item(transaction);
 
-                    #[cfg(all(feature = "profiling", not(target_os = "windows")))]
+                    #[cfg(all(feature = "profiling", target_family = "unix"))]
                     if let Some(profile) = profile {
                         if !profile.sampled_profile.samples.is_empty(){
                             envelope.add_item(profile);
