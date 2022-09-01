@@ -4,7 +4,7 @@
 
 **Breaking Changes**:
 
-- The minium supported Rust version was bumped to **1.60.0** due to requirements from dependencies. ([#498](https://github.com/getsentry/sentry-rust/pull/498))
+- The minimum supported Rust version was bumped to **1.60.0** due to requirements from dependencies. ([#498](https://github.com/getsentry/sentry-rust/pull/498))
 
 **Features**:
 
@@ -18,7 +18,7 @@
 
 **Breaking Changes**:
 
-- The minium supported Rust version was bumped to **1.57.0** due to requirements from dependencies. ([#472](https://github.com/getsentry/sentry-rust/pull/472))
+- The minimum supported Rust version was bumped to **1.57.0** due to requirements from dependencies. ([#472](https://github.com/getsentry/sentry-rust/pull/472))
 - Add the `rust-version` field to the manifest. ([#473](https://github.com/getsentry/sentry-rust/pull/473))
 - Update to edition 2021. ([#473](https://github.com/getsentry/sentry-rust/pull/473))
 
@@ -77,7 +77,7 @@ Features, fixes and improvements in this release have been contributed by:
 
 **Breaking Changes**:
 
-- The minium supported Rust version was bumped to **1.54.0** due to requirements from dependencies.
+- The minimum supported Rust version was bumped to **1.54.0** due to requirements from dependencies.
 - Updated the `sentry-actix` integration to `actix-web@4`. ([#437](https://github.com/getsentry/sentry-rust/pull/437))
 
 **Features**:
@@ -125,7 +125,7 @@ Features, fixes and improvements in this release have been contributed by:
 
 **Breaking Changes**:
 
-- The minium supported Rust version was bumped to **1.53.0** due to requirements from dependencies.
+- The minimum supported Rust version was bumped to **1.53.0** due to requirements from dependencies.
 - The `backtrace` feature of `sentry-anyhow` is enabled by default. ([#362](https://github.com/getsentry/sentry-rust/pull/362))
 - The `tracing-subscriber` dependency of `sentry-tracing` has been bumped to version `0.3.x`. ([#377](https://github.com/getsentry/sentry-rust/pull/377))
 - `Scope::add_event_processor` now takes a generic parameter instead of a boxed function.([#380](https://github.com/getsentry/sentry-rust/pull/380))
@@ -167,7 +167,7 @@ Features, fixes and improvements in this release have been contributed by:
 
 **Breaking Changes**:
 
-- The minium supported Rust version was bumped to **1.46.0** due to requirements from dependencies.
+- The minimum supported Rust version was bumped to **1.46.0** due to requirements from dependencies.
 
 **Features**:
 
