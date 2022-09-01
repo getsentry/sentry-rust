@@ -4,6 +4,8 @@
 
 **Breaking Changes**:
 
+- The minium supported Rust version was bumped to **1.60.0** due to requirements from dependencies. ([#498](https://github.com/getsentry/sentry-rust/pull/498))
+
 **Features**:
 
 - Add support for Profiling feature. ([#479](https://github.com/getsentry/sentry-rust/pull/479))
@@ -11,7 +13,6 @@
 **Internal**:
 
 **Thank you**:
-
 
 ## 0.27.0
 

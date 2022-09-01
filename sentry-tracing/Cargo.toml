@@ -10,7 +10,7 @@ description = """
 Sentry integration for tracing and tracing-subscriber crates.
 """
 edition = "2021"
-rust-version = "1.57"
+rust-version = "1.60"
 
 [dependencies]
 sentry-core = { version = "0.27.0", path = "../sentry-core", features = ["client"] }
