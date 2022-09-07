@@ -115,50 +115,57 @@ pub fn server_name() -> Option<String> {
 }
 
 /// Returns the OS context
+#[cfg(not(windows))]
 pub fn os_context() -> Option<Context> {
-    #[cfg(not(windows))]
-    {
-        use uname::uname;
-        if let Ok(info) = uname() {
-            #[cfg(target_os = "macos")]
-            {
-                Some(
-                    OsContext {
-                        name: Some("macOS".into()),
-                        kernel_version: Some(info.version),
-                        version: model_support::get_macos_version(),
-                        build: model_support::get_macos_build(),
-                        ..Default::default()
-                    }
-                    .into(),
-                )
-            }
-            #[cfg(not(target_os = "macos"))]
-            {
-                Some(
-                    OsContext {
-                        name: Some(info.sysname),
-                        kernel_version: Some(info.version),
-                        version: Some(info.release),
-                        ..Default::default()
-                    }
-                    .into(),
-                )
-            }
-        } else {
-            None
+    use uname::uname;
+    if let Ok(info) = uname() {
+        #[cfg(target_os = "macos")]
+        {
+            Some(
+                OsContext {
+                    name: Some("macOS".into()),
+                    kernel_version: Some(info.version),
+                    version: model_support::get_macos_version(),
+                    build: model_support::get_macos_build(),
+                    ..Default::default()
+                }
+                .into(),
+            )
         }
+        #[cfg(not(target_os = "macos"))]
+        {
+            Some(
+                OsContext {
+                    name: Some(info.sysname),
+                    kernel_version: Some(info.version),
+                    version: Some(info.release),
+                    ..Default::default()
+                }
+                .into(),
+            )
+        }
+    } else {
+        None
     }
-    #[cfg(windows)]
-    {
-        Some(
-            OsContext {
-                name: Some(PLATFORM.into()),
-                ..Default::default()
-            }
-            .into(),
-        )
-    }
+}
+
+/// Returns the OS context
+#[cfg(windows)]
+pub fn os_context() -> Option<Context> {
+    use os_info::Version;
+    let version = match os_info::get().version() {
+        Version::Unknown => None,
+        version => Some(version.to_string()),
+    };
+
+    Some(
+        OsContext {
+            name: Some(PLATFORM.into()),
+            version,
+            ..Default::default()
+        }
+        .into(),
+    )
 }
 
 /// Returns the rust info.
@@ -186,4 +193,26 @@ pub fn device_context() -> Context {
         ..Default::default()
     }
     .into()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[cfg(windows)]
+    #[test]
+    fn windows_os_version_not_empty() {
+        let context = os_context();
+        match context {
+            Some(Context::Os(os_context)) => {
+                // verify the version is a non-empty string
+                let version = os_context.version.expect("OS version to be some");
+                assert!(!version.is_empty());
+
+                // verify the version is not equal to the unknown OS version
+                let unknown_version = os_info::Version::Unknown.to_string();
+                assert_ne!(version, unknown_version);
+            }
+            _ => unreachable!("os_context() should return a Context::Os"),
+        }
+    }
 }
