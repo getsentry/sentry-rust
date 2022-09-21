@@ -1894,6 +1894,11 @@ impl fmt::Display for SpanStatus {
     }
 }
 
+#[cfg(all(feature = "profiling", target_family = "unix"))]
+fn is_zero(number: u64) -> bool {
+    number == 0
+}
+
 /// Represents a tracing transaction.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Transaction<'a> {
@@ -1946,6 +1951,9 @@ pub struct Transaction<'a> {
     /// Optionally HTTP request data to be sent along.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub request: Option<Request>,
+    /// ID of the thread where the transaction was started
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub active_thread_id: Option<u64>,
 }
 
 impl<'a> Default for Transaction<'a> {
@@ -1964,6 +1972,7 @@ impl<'a> Default for Transaction<'a> {
             spans: Default::default(),
             contexts: Default::default(),
             request: Default::default(),
+            active_thread_id: Default::default(),
         }
     }
 }
@@ -1990,6 +1999,7 @@ impl<'a> Transaction<'a> {
             spans: self.spans,
             contexts: self.contexts,
             request: self.request,
+            active_thread_id: self.active_thread_id,
         }
     }
 

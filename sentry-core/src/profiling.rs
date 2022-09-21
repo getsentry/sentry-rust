@@ -1,12 +1,15 @@
+use std::collections::HashMap;
 use std::fmt;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use chrono::DateTime;
 use findshlibs::{SharedLibrary, SharedLibraryId, TargetSharedLibrary, TARGET_SUPPORTED};
 
 use sentry_types::protocol::v7::Profile;
 use sentry_types::protocol::v7::{
-    DebugImage, DebugMeta, RustFrame, Sample, SampledProfile, SymbolicDebugImage, TraceId,
-    Transaction,
+    DebugImage, DebugMeta, DeviceMetadata, OSMetadata, RuntimeMetadata, RustFrame, Sample,
+    SampleProfile, SymbolicDebugImage, ThreadMetadata, TraceId, Transaction, TransactionMetadata,
+    Version,
 };
 use sentry_types::{CodeId, DebugId, Uuid};
 
@@ -60,14 +63,9 @@ pub(crate) fn finish_profiling(
     transaction: &Transaction,
     profiler_guard: ProfilerGuard,
     trace_id: TraceId,
-) -> Option<Profile> {
-    let profile = match profiler_guard.0.report().build_unresolved() {
-        Ok(report) => Some(get_profile_from_report(
-            &report,
-            trace_id,
-            transaction.event_id,
-            transaction.name.as_ref().unwrap().clone(),
-        )),
+) -> Option<SampleProfile> {
+    let sample_profile = match profiler_guard.0.report().build_unresolved() {
+        Ok(report) => Some(get_profile_from_report(&report, trace_id, transaction)),
         Err(err) => {
             sentry_debug!(
                 "could not build the profile result due to the error: {}",
@@ -78,7 +76,7 @@ pub(crate) fn finish_profiling(
     };
 
     PROFILER_RUNNING.store(false, Ordering::SeqCst);
-    profile
+    sample_profile
 }
 
 /// Converts an ELF object identifier into a `DebugId`.
@@ -171,72 +169,104 @@ pub fn debug_images() -> Vec<DebugImage> {
 fn get_profile_from_report(
     rep: &pprof::UnresolvedReport,
     trace_id: TraceId,
-    transaction_id: sentry_types::Uuid,
-    transaction_name: String,
-) -> Profile {
+    transaction: &Transaction,
+) -> SampleProfile {
     use std::time::SystemTime;
 
-    let mut samples: Vec<Sample> = Vec::new();
+    let mut samples: Vec<Sample> = Vec::with_capacity(rep.data.len());
+    let mut stacks: Vec<Vec<u32>> = Vec::with_capacity(rep.data.len());
+    let mut frames: Vec<RustFrame> = Vec::new();
+    let mut address_to_frame_id: HashMap<String, u32> = HashMap::new();
+    let mut thread_metadata: HashMap<String, ThreadMetadata> = HashMap::new();
 
     for sample in rep.data.keys() {
-        let frames = sample
+        let stack = sample
             .frames
             .iter()
-            .map(|frame| RustFrame {
+            .map(|frame| {
                 #[cfg(feature = "frame-pointer")]
-                instruction_addr: format!("{:p}", frame.ip as *mut core::ffi::c_void),
+                let instruction_addr = format!("{:p}", frame.ip as *mut core::ffi::c_void);
                 #[cfg(not(feature = "frame-pointer"))]
-                instruction_addr: format!("{:p}", frame.ip()),
+                let instruction_addr = format!("{:p}", frame.ip());
+                *address_to_frame_id
+                    .entry(instruction_addr.clone())
+                    .or_insert_with(|| {
+                        frames.push(RustFrame { instruction_addr });
+                        (frames.len() - 1) as u32
+                    })
             })
             .collect();
 
+        stacks.push(stack);
         samples.push(Sample {
-            frames,
-            thread_name: String::from_utf8_lossy(&sample.thread_name[0..sample.thread_name_length])
-                .into_owned(),
+            stack_id: (stacks.len() - 1) as u32,
             thread_id: sample.thread_id,
-            nanos_relative_to_start: sample
+            relative_timestamp_ns: sample
                 .sample_timestamp
                 .duration_since(rep.timing.start_time)
                 .unwrap()
                 .as_nanos() as u64,
         });
-    }
-    let sampled_profile = SampledProfile {
-        start_time_nanos: rep
-            .timing
-            .start_time
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap()
-            .as_nanos() as u64,
-        start_time_secs: rep
-            .timing
-            .start_time
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap()
-            .as_secs(),
-        duration_nanos: rep.timing.duration.as_nanos() as u64,
-        samples,
-    };
 
-    let profile: Profile = Profile {
-        duration_ns: sampled_profile.duration_nanos,
-        debug_meta: DebugMeta {
+        thread_metadata
+            .entry(sample.thread_id.to_string())
+            .or_insert(ThreadMetadata {
+                name: Some(
+                    String::from_utf8_lossy(&sample.thread_name[0..sample.thread_name_length])
+                        .into_owned(),
+                ),
+            });
+    }
+
+    SampleProfile {
+        version: Version::V1,
+        debug_meta: Some(DebugMeta {
             sdk_info: None,
             images: debug_images(),
+        }),
+        device: DeviceMetadata {
+            architecture: Some(std::env::consts::ARCH.to_string()),
         },
-        platform: "rust".to_string(),
-        architecture: Some(std::env::consts::ARCH.to_string()),
-        trace_id,
-        transaction_name,
-        transaction_id,
-        profile_id: uuid::Uuid::new_v4(),
-        sampled_profile,
-        os_name: sys_info::os_type().unwrap(),
-        os_version: sys_info::os_release().unwrap(),
-        version_name: env!("CARGO_PKG_VERSION").to_string(),
-        version_code: build_id::get().to_simple().to_string(),
-    };
+        os: OSMetadata {
+            name: sys_info::os_type().unwrap(),
+            version: sys_info::os_release().unwrap(),
+            build_number: None,
+        },
+        runtime: Some(RuntimeMetadata {
+            name: "rustc".to_string(),
+            version: rustc_version_runtime::version().to_string(),
+        }),
+        environment: match &transaction.environment {
+            Some(env) => env.to_string(),
+            _ => "".to_string(),
+        },
 
-    profile
+        event_id: uuid::Uuid::new_v4(), // double check this
+        release: format!(
+            "{} ({})",
+            env!("CARGO_PKG_VERSION"),
+            build_id::get().to_simple(),
+        ),
+        timestamp: DateTime::from(rep.timing.start_time),
+        transactions: vec![TransactionMetadata {
+            id: transaction.event_id,
+            name: transaction.name.clone().unwrap_or_else(|| "".to_string()),
+            trace_id,
+            relative_start_ns: 0,
+            relative_end_ns: transaction
+                .timestamp
+                .unwrap_or_else(SystemTime::now)
+                .duration_since(rep.timing.start_time)
+                .unwrap()
+                .as_nanos() as u64,
+            active_thread_id: transaction.active_thread_id.unwrap_or(0),
+        }],
+        platform: "rust".to_string(),
+        profile: Profile {
+            samples,
+            stacks,
+            frames,
+            thread_metadata,
+        },
+    }
 }
