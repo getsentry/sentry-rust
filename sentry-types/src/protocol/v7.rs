@@ -1894,11 +1894,6 @@ impl fmt::Display for SpanStatus {
     }
 }
 
-#[cfg(all(feature = "profiling", target_family = "unix"))]
-fn is_zero(number: u64) -> bool {
-    number == 0
-}
-
 /// Represents a tracing transaction.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Transaction<'a> {
