@@ -28,7 +28,7 @@ pub struct TransactionMetadata {
     pub active_thread_id: u64,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
 /// Single frame of a Sample
 pub struct RustFrame {
     /// Instruction address

@@ -1,3 +1,4 @@
+use indexmap::set::IndexSet;
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -175,8 +176,7 @@ fn get_profile_from_report(
 
     let mut samples: Vec<Sample> = Vec::with_capacity(rep.data.len());
     let mut stacks: Vec<Vec<u32>> = Vec::with_capacity(rep.data.len());
-    let mut frames: Vec<RustFrame> = Vec::new();
-    let mut address_to_frame_id: HashMap<String, u32> = HashMap::new();
+    let mut address_to_frame_idx: IndexSet<RustFrame> = IndexSet::new();
     let mut thread_metadata: HashMap<String, ThreadMetadata> = HashMap::new();
 
     for sample in rep.data.keys() {
@@ -188,12 +188,15 @@ fn get_profile_from_report(
                 let instruction_addr = format!("{:p}", frame.ip as *mut core::ffi::c_void);
                 #[cfg(not(feature = "frame-pointer"))]
                 let instruction_addr = format!("{:p}", frame.ip());
-                *address_to_frame_id
-                    .entry(instruction_addr.clone())
-                    .or_insert_with(|| {
-                        frames.push(RustFrame { instruction_addr });
-                        (frames.len() - 1) as u32
-                    })
+                let rust_frame = RustFrame { instruction_addr };
+
+                address_to_frame_idx
+                    .get_index_of(&rust_frame)
+                    .unwrap_or_else(|| -> usize {
+                        address_to_frame_idx.insert(rust_frame);
+
+                        address_to_frame_idx.len() - 1
+                    }) as u32
             })
             .collect();
 
@@ -241,12 +244,11 @@ fn get_profile_from_report(
             _ => "".to_string(),
         },
 
-        event_id: uuid::Uuid::new_v4(), // double check this
-        release: format!(
-            "{} ({})",
-            env!("CARGO_PKG_VERSION"),
-            build_id::get().to_simple(),
-        ),
+        event_id: uuid::Uuid::new_v4(),
+        release: transaction
+            .release
+            .as_ref()
+            .map_or("".to_string(), |r| -> String { r.to_string() }),
         timestamp: DateTime::from(rep.timing.start_time),
         transactions: vec![TransactionMetadata {
             id: transaction.event_id,
@@ -265,7 +267,7 @@ fn get_profile_from_report(
         profile: Profile {
             samples,
             stacks,
-            frames,
+            frames: address_to_frame_idx.into_iter().collect(),
             thread_metadata,
         },
     }
