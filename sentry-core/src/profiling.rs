@@ -237,10 +237,7 @@ fn get_profile_from_report(
         },
 
         event_id: uuid::Uuid::new_v4(),
-        release: transaction
-            .release
-            .as_ref()
-            .map_or("".to_string(), |r| -> String { r.to_string() }),
+        release: transaction.release.clone().unwrap_or_default().into(),
         timestamp: rep.timing.start_time,
         transactions: vec![TransactionMetadata {
             id: transaction.event_id,
