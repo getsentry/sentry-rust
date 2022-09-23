@@ -1,8 +1,8 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::SystemTime};
 
 use super::v7::{DebugMeta, TraceId};
+use crate::utils::ts_rfc3339;
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize, Serializer};
 use uuid::Uuid;
 
@@ -134,8 +134,9 @@ pub struct SampleProfile {
     pub profile: Profile,
     /// Release
     pub release: String,
+    #[serde(with = "ts_rfc3339")]
     /// Timestamp at which the profiler started
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: SystemTime,
 
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     /// List of transactions associated with this profile

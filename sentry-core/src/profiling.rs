@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use std::fmt;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use chrono::DateTime;
 use findshlibs::{SharedLibrary, SharedLibraryId, TargetSharedLibrary, TARGET_SUPPORTED};
 
 use sentry_types::protocol::v7::Profile;
@@ -249,7 +248,7 @@ fn get_profile_from_report(
             .release
             .as_ref()
             .map_or("".to_string(), |r| -> String { r.to_string() }),
-        timestamp: DateTime::from(rep.timing.start_time),
+        timestamp: rep.timing.start_time,
         transactions: vec![TransactionMetadata {
             id: transaction.event_id,
             name: transaction.name.clone().unwrap_or_else(|| "".to_string()),

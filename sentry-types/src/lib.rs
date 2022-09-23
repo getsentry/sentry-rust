@@ -43,7 +43,7 @@ mod auth;
 mod dsn;
 mod project_id;
 pub mod protocol;
-mod utils;
+pub(crate) mod utils;
 
 pub use crate::auth::*;
 pub use crate::dsn::*;
