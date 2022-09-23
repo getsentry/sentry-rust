@@ -175,7 +175,7 @@ fn get_profile_from_report(
 
     let mut samples: Vec<Sample> = Vec::with_capacity(rep.data.len());
     let mut stacks: Vec<Vec<u32>> = Vec::with_capacity(rep.data.len());
-    let mut address_to_frame_idx: IndexSet<RustFrame> = IndexSet::new();
+    let mut address_to_frame_idx: IndexSet<_> = IndexSet::new();
     let mut thread_metadata: HashMap<String, ThreadMetadata> = HashMap::new();
 
     for sample in rep.data.keys() {
@@ -184,18 +184,11 @@ fn get_profile_from_report(
             .iter()
             .map(|frame| {
                 #[cfg(feature = "frame-pointer")]
-                let instruction_addr = format!("{:p}", frame.ip as *mut core::ffi::c_void);
+                let instruction_addr = frame.ip as *mut core::ffi::c_void;
                 #[cfg(not(feature = "frame-pointer"))]
-                let instruction_addr = format!("{:p}", frame.ip());
-                let rust_frame = RustFrame { instruction_addr };
+                let instruction_addr = frame.ip();
 
-                address_to_frame_idx
-                    .get_index_of(&rust_frame)
-                    .unwrap_or_else(|| -> usize {
-                        address_to_frame_idx.insert(rust_frame);
-
-                        address_to_frame_idx.len() - 1
-                    }) as u32
+                address_to_frame_idx.insert_full(instruction_addr).0 as u32
             })
             .collect();
 
@@ -266,7 +259,14 @@ fn get_profile_from_report(
         profile: Profile {
             samples,
             stacks,
-            frames: address_to_frame_idx.into_iter().collect(),
+            frames: address_to_frame_idx
+                .into_iter()
+                .map(|address| -> RustFrame {
+                    RustFrame {
+                        instruction_addr: format!("{:p}", address),
+                    }
+                })
+                .collect(),
             thread_metadata,
         },
     }
