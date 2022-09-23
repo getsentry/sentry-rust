@@ -307,7 +307,7 @@ impl Transaction {
                 Some(protocol::Transaction {
                     name: Some(ctx.name),
                     #[cfg(all(feature = "profiling", target_family = "unix"))]
-                    active_thread_id: Some(unsafe { libc::pthread_self().try_into().unwrap_or(0) }),
+                    active_thread_id: Some(unsafe { libc::pthread_self() as u64 }),
                     ..Default::default()
                 }),
             ),
