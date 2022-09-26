@@ -43,7 +43,7 @@ pub struct Sample {
     /// Thread ID
     pub thread_id: u64,
     /// Timestamp at which this sample was collected relative to the start of the profiler
-    pub relative_timestamp_ns: u64,
+    pub elapsed_since_start_ns: u64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]

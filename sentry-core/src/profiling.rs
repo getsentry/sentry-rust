@@ -196,7 +196,7 @@ fn get_profile_from_report(
         samples.push(Sample {
             stack_id: (stacks.len() - 1) as u32,
             thread_id: sample.thread_id,
-            relative_timestamp_ns: sample
+            elapsed_since_start_ns: sample
                 .sample_timestamp
                 .duration_since(rep.timing.start_time)
                 .unwrap()
