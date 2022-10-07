@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use super::{
     attachment::AttachmentType,
-    v7::{Attachment, Event, Profile, SessionAggregates, SessionUpdate, Transaction},
+    v7::{Attachment, Event, SampleProfile, SessionAggregates, SessionUpdate, Transaction},
 };
 
 /// Raised if a envelope cannot be parsed from a given input.
@@ -109,7 +109,7 @@ pub enum EnvelopeItem {
     Attachment(Attachment),
     /// An Profile Item.
     ///
-    Profile(Profile),
+    Profile(SampleProfile),
     // TODO:
     // etc…
 }
@@ -144,8 +144,8 @@ impl From<Attachment> for EnvelopeItem {
     }
 }
 
-impl From<Profile> for EnvelopeItem {
-    fn from(profile: Profile) -> Self {
+impl From<SampleProfile> for EnvelopeItem {
+    fn from(profile: SampleProfile) -> Self {
         EnvelopeItem::Profile(profile)
     }
 }

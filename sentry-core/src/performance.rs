@@ -306,6 +306,8 @@ impl Transaction {
                 }),
                 Some(protocol::Transaction {
                     name: Some(ctx.name),
+                    #[cfg(all(feature = "profiling", target_family = "unix"))]
+                    active_thread_id: Some(unsafe { libc::pthread_self() as u64 }),
                     ..Default::default()
                 }),
             ),
@@ -424,7 +426,7 @@ impl Transaction {
                     // if the profiler is running for the given transaction
                     // then call finish_profiling to return the profile
                     #[cfg(all(feature = "profiling", target_family = "unix"))]
-                    let profile = inner.profiler_guard.take().and_then(|profiler_guard| {
+                    let sample_profile = inner.profiler_guard.take().and_then(|profiler_guard| {
                         profiling::finish_profiling(&transaction, profiler_guard, inner.context.trace_id)
                     });
 
@@ -432,9 +434,9 @@ impl Transaction {
                     envelope.add_item(transaction);
 
                     #[cfg(all(feature = "profiling", target_family = "unix"))]
-                    if let Some(profile) = profile {
-                        if !profile.sampled_profile.samples.is_empty(){
-                            envelope.add_item(profile);
+                    if let Some(sample_profile) = sample_profile {
+                        if !sample_profile.profile.samples.is_empty(){
+                            envelope.add_item(sample_profile);
                         }
                         else {
                             sentry_debug!("the profile is being dropped because it contains no samples");

@@ -1946,6 +1946,9 @@ pub struct Transaction<'a> {
     /// Optionally HTTP request data to be sent along.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub request: Option<Request>,
+    /// ID of the thread where the transaction was started
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub active_thread_id: Option<u64>,
 }
 
 impl<'a> Default for Transaction<'a> {
@@ -1964,6 +1967,7 @@ impl<'a> Default for Transaction<'a> {
             spans: Default::default(),
             contexts: Default::default(),
             request: Default::default(),
+            active_thread_id: Default::default(),
         }
     }
 }
@@ -1990,6 +1994,7 @@ impl<'a> Transaction<'a> {
             spans: self.spans,
             contexts: self.contexts,
             request: self.request,
+            active_thread_id: self.active_thread_id,
         }
     }
 
