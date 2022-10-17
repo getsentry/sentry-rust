@@ -1,5 +1,9 @@
 use std::time::Duration;
 
+use isahc::{
+    config::{Configurable, SslOption},
+    HttpClient,
+};
 use surf_::{http::headers as SurfHeaders, Client as SurfClient, StatusCode};
 
 use super::tokio_thread::TransportThread;
@@ -28,7 +32,20 @@ impl SurfHttpTransport {
     }
 
     fn new_internal(options: &ClientOptions, client: Option<SurfClient>) -> Self {
-        let client = client.unwrap_or_else(SurfClient::new);
+        let client = if let Some(client) = client {
+            client
+        } else {
+            let mut http_client = http_client::isahc::IsahcClient::new();
+            if options.accept_invalid_certs {
+                let hc = HttpClient::builder()
+                    .ssl_options(SslOption::DANGER_ACCEPT_INVALID_CERTS)
+                    .build()
+                    .unwrap();
+                http_client = http_client::isahc::IsahcClient::from_client(hc);
+            }
+            SurfClient::with_http_client(http_client)
+        };
+
         let dsn = options.dsn.as_ref().unwrap();
         let user_agent = options.user_agent.to_owned();
         let auth = dsn.to_auth(Some(&user_agent)).to_string();

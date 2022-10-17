@@ -32,6 +32,9 @@ impl ReqwestHttpTransport {
     fn new_internal(options: &ClientOptions, client: Option<ReqwestClient>) -> Self {
         let client = client.unwrap_or_else(|| {
             let mut builder = reqwest_::Client::builder();
+            if options.accept_invalid_certs {
+                builder = builder.danger_accept_invalid_certs(true);
+            }
             if let Some(url) = options.http_proxy.as_ref() {
                 match Proxy::http(url.as_ref()) {
                     Ok(proxy) => {

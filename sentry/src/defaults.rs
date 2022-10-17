@@ -113,6 +113,9 @@ pub fn apply_defaults(mut opts: ClientOptions) -> ClientOptions {
             .or_else(|| std::env::var("https_proxy").ok().map(Cow::Owned))
             .or_else(|| opts.http_proxy.clone());
     }
+    if let Ok(accept_invalid_certs) = std::env::var("SSL_VERIFY") {
+        opts.accept_invalid_certs = !accept_invalid_certs.parse().unwrap_or(true);
+    }
     opts
 }
 
