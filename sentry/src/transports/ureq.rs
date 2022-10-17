@@ -1,8 +1,20 @@
+use std::sync::Arc;
 use std::time::Duration;
+#[cfg(feature = "rustls")]
+use std::time::SystemTime;
 
+#[cfg(feature = "native-tls")]
+use native_tls_::TlsConnector;
+#[cfg(feature = "rustls")]
+use rustls_::{
+    client::{ServerCertVerified, ServerCertVerifier},
+    Certificate, ClientConfig, Error, OwnedTrustAnchor, RootCertStore, ServerName,
+};
 #[cfg(doc)]
 use ureq_ as ureq;
 use ureq_::{Agent, AgentBuilder, Proxy};
+#[cfg(feature = "rustls")]
+use webpki_roots::TLS_SERVER_ROOTS;
 
 use super::thread::TransportThread;
 
@@ -32,6 +44,53 @@ impl UreqHttpTransport {
         let scheme = dsn.scheme();
         let agent = agent.unwrap_or_else(|| {
             let mut builder = AgentBuilder::new();
+
+            if options.accept_invalid_certs {
+                #[cfg(feature = "native-tls")]
+                {
+                    let tls_connector = TlsConnector::builder()
+                        .danger_accept_invalid_certs(true)
+                        .build()
+                        .unwrap();
+                    builder = builder.tls_connector(Arc::new(tls_connector));
+                }
+
+                #[cfg(feature = "rustls")]
+                {
+                    struct NoVerifier;
+
+                    impl ServerCertVerifier for NoVerifier {
+                        fn verify_server_cert(
+                            &self,
+                            _end_entity: &Certificate,
+                            _intermediates: &[Certificate],
+                            _server_name: &ServerName,
+                            _scts: &mut dyn Iterator<Item = &[u8]>,
+                            _ocsp_response: &[u8],
+                            _now: SystemTime,
+                        ) -> Result<ServerCertVerified, Error> {
+                            Ok(ServerCertVerified::assertion())
+                        }
+                    }
+
+                    let mut root_store = RootCertStore::empty();
+                    root_store.add_server_trust_anchors(TLS_SERVER_ROOTS.0.iter().map(|ta| {
+                        OwnedTrustAnchor::from_subject_spki_name_constraints(
+                            ta.subject,
+                            ta.spki,
+                            ta.name_constraints,
+                        )
+                    }));
+                    let mut config = ClientConfig::builder()
+                        .with_safe_defaults()
+                        .with_root_certificates(root_store)
+                        .with_no_client_auth();
+                    config
+                        .dangerous()
+                        .set_certificate_verifier(Arc::new(NoVerifier));
+                    builder = builder.tls_config(Arc::new(config));
+                }
+            }
 
             match (scheme, &options.http_proxy, &options.https_proxy) {
                 (Scheme::Https, _, &Some(ref proxy)) => match Proxy::new(proxy) {

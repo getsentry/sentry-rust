@@ -35,12 +35,18 @@ impl CurlHttpTransport {
         let auth = dsn.to_auth(Some(&user_agent)).to_string();
         let url = dsn.envelope_api_url().to_string();
         let scheme = dsn.scheme();
+        let accept_invalid_certs = options.accept_invalid_certs;
 
         let mut handle = client;
         let thread = TransportThread::new(move |envelope, rl| {
             handle.reset();
             handle.url(&url).unwrap();
             handle.custom_request("POST").unwrap();
+
+            if accept_invalid_certs {
+                handle.ssl_verify_host(false).unwrap();
+                handle.ssl_verify_peer(false).unwrap();
+            }
 
             match (scheme, &http_proxy, &https_proxy) {
                 (Scheme::Https, _, &Some(ref proxy)) => {

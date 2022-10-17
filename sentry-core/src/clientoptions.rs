@@ -128,6 +128,12 @@ pub struct ClientOptions {
     /// The timeout on client drop for draining events on shutdown.
     pub shutdown_timeout: Duration,
     // Other options not documented in Unified API
+    /// Disable SSL verification.
+    ///
+    /// # Warning
+    ///
+    /// This introduces significant vulnerabilities, and should only be used as a last resort.
+    pub accept_invalid_certs: bool,
     /// Enable Release Health Session tracking.
     ///
     /// When automatic session tracking is enabled, a new "user-mode" session
@@ -206,6 +212,7 @@ impl fmt::Debug for ClientOptions {
             .field("http_proxy", &self.http_proxy)
             .field("https_proxy", &self.https_proxy)
             .field("shutdown_timeout", &self.shutdown_timeout)
+            .field("accept_invalid_certs", &self.accept_invalid_certs)
             .field("auto_session_tracking", &self.auto_session_tracking)
             .field("session_mode", &self.session_mode)
             .field("extra_border_frames", &self.extra_border_frames)
@@ -240,6 +247,7 @@ impl Default for ClientOptions {
             http_proxy: None,
             https_proxy: None,
             shutdown_timeout: Duration::from_secs(2),
+            accept_invalid_certs: false,
             auto_session_tracking: false,
             session_mode: SessionMode::Application,
             extra_border_frames: vec![],
