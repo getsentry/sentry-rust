@@ -10,7 +10,7 @@ description = """
 Sentry (getsentry.com) client for rust ;)
 """
 edition = "2021"
-rust-version = "1.57"
+rust-version = "1.60"
 autoexamples = true
 
 # To build locally:
@@ -36,6 +36,7 @@ tower = ["sentry-tower"]
 tower-http = ["sentry-tower", "sentry-tower/http"]
 tracing = ["sentry-tracing"]
 profiling = ["sentry-core/profiling"]
+frame-pointer = ["sentry-core/frame-pointer"]
 # other features
 test = ["sentry-core/test"]
 debug-logs = ["log_", "sentry-core/debug-logs"]

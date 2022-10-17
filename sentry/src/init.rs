@@ -41,12 +41,12 @@ impl Drop for ClientInitGuard {
 
 /// Creates the Sentry client for a given client config and binds it.
 ///
-/// This returns a client init guard that must kept in scope will help the
-/// client send events before the application closes.  When the guard is
-/// dropped then the transport that was initialized shuts down and no
+/// This returns a client init guard that must be kept in scope and that will help the
+/// client send events before the application closes. When the guard is
+/// dropped, then the transport that was initialized shuts down and no
 /// further events can be sent on it.
 ///
-/// If you don't want (or can) keep the guard around it's permissible to
+/// If you don't want (or can not) keep the guard around, it's permissible to
 /// call `mem::forget` on it.
 ///
 /// # Examples
@@ -87,7 +87,7 @@ impl Drop for ClientInitGuard {
 ///
 /// This will panic when the provided DSN is invalid.
 /// If you want to handle invalid DSNs you need to parse them manually by
-/// calling `parse` on it and handle the error.
+/// calling `parse` on each of them and handle the error.
 pub fn init<C>(opts: C) -> ClientInitGuard
 where
     C: Into<ClientOptions>,
