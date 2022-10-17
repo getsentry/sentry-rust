@@ -9,7 +9,7 @@
 **Features**:
 
 - Add support for Profiling feature. ([#479](https://github.com/getsentry/sentry-rust/pull/479))
-- Add `SSL_VERIFY` option to disable certificates verification. ([#508](https://github.com/getsentry/sentry-rust/pull/508))
+- Add `SSL_VERIFY` option to control certificate verification. ([#508](https://github.com/getsentry/sentry-rust/pull/508))
 
 **Internal**:
 

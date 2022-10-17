@@ -32,19 +32,16 @@ impl SurfHttpTransport {
     }
 
     fn new_internal(options: &ClientOptions, client: Option<SurfClient>) -> Self {
-        let client = if let Some(client) = client {
-            client
-        } else {
+        let mut client = client.unwrap_or_else(SurfClient::new);
+        if options.accept_invalid_certs {
             let mut http_client = http_client::isahc::IsahcClient::new();
-            if options.accept_invalid_certs {
-                let hc = HttpClient::builder()
-                    .ssl_options(SslOption::DANGER_ACCEPT_INVALID_CERTS)
-                    .build()
-                    .unwrap();
-                http_client = http_client::isahc::IsahcClient::from_client(hc);
-            }
-            SurfClient::with_http_client(http_client)
-        };
+            let hc = HttpClient::builder()
+                .ssl_options(SslOption::DANGER_ACCEPT_INVALID_CERTS)
+                .build()
+                .unwrap();
+            http_client = http_client::isahc::IsahcClient::from_client(hc);
+            client = SurfClient::with_http_client(http_client)
+        }
 
         let dsn = options.dsn.as_ref().unwrap();
         let user_agent = options.user_agent.to_owned();
