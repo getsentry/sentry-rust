@@ -8,7 +8,8 @@
 //!
 //! The most convenient way to use this library is via the [`sentry::init`] function,
 //! which starts a sentry client with a default set of integrations, and binds
-//! it to the current [`Hub`].
+//! it to the current [`Hub`]. More Information on how to use Sentry in parallel,
+//! concurrent and async scenarios can be found on the [`Hub`] docs as well.
 //!
 //! The [`sentry::init`] function returns a guard that when dropped will flush Events that were not
 //! yet sent to the sentry service. It has a two second deadline for this so shutdown of
@@ -110,6 +111,7 @@
 //!
 //! ## Integrations
 //! - `tower`: Enables support for the `tower` crate and those using it.
+
 #![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
 #![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
 #![warn(missing_docs)]
