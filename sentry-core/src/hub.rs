@@ -77,7 +77,8 @@ impl HubImpl {
 /// toplevel convenience functions are expose that will automatically dispatch
 /// to the thread-local ([`Hub::current`]) hub.  In some situations this might not be
 /// possible in which case it might become necessary to manually work with the
-/// hub.  This is for instance the case when working with async code.
+/// hub.  See the main [`crate`] docs for some common use-cases and pitfalls
+/// related to parallel, concurrent or async code.
 ///
 /// Hubs that are wrapped in [`Arc`]s can be bound to the current thread with
 /// the `run` static method.

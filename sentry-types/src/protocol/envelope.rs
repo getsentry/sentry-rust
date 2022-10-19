@@ -108,7 +108,6 @@ pub enum EnvelopeItem {
     /// for more details.
     Attachment(Attachment),
     /// An Profile Item.
-    ///
     Profile(SampleProfile),
     // TODO:
     // etc…

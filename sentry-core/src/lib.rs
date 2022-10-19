@@ -14,6 +14,68 @@
 //! the concepts of [`Client`], [`Hub`] and [`Scope`], as well as the extension
 //! points via the [`Integration`], [`Transport`] and [`TransportFactory`] traits.
 //!
+//! # Parallelism, Concurrency and Async
+//!
+//! The main concurrency primitive is the [`Hub`]. In general, all concurrent
+//! code, no matter if multithreaded parallelism or futures concurrency, needs
+//! to run with its own copy of a [`Hub`]. Even though the [`Hub`] is internally
+//! synchronized, using it concurrently may lead to unexpected results up to
+//! panics.
+//!
+//! For threads or tasks that are running concurrently or outlive the current
+//! execution context, a new [`Hub`] needs to be created and bound for the computation.
+//!
+//! ```rust
+//! # let rt = tokio::runtime::Runtime::new().unwrap();
+//! # rt.block_on(async {
+//! use rayon::prelude::*;
+//! use sentry::{Hub, SentryFutureExt};
+//! use std::sync::Arc;
+//!
+//! // Parallel multithreaded code:
+//! let outer_hub = Hub::current();
+//! let results: Vec<_> = [1_u32, 2, 3]
+//!     .into_par_iter()
+//!     .map(|num| {
+//!         let thread_hub = Arc::new(Hub::new_from_top(&outer_hub));
+//!         Hub::run(thread_hub, || num * num)
+//!     })
+//!     .collect();
+//!
+//! assert_eq!(&results, &[1, 4, 9]);
+//!
+//! // Concurrent futures code:
+//! let futures = [1_u32, 2, 3]
+//!     .into_iter()
+//!     .map(|num| async move { num * num }.bind_hub(Hub::new_from_top(Hub::current())));
+//! let results = futures::future::join_all(futures).await;
+//!
+//! assert_eq!(&results, &[1, 4, 9]);
+//! # });
+//! ```
+//!
+//! For tasks that are not concurrent and do not outlive the current execution
+//! context, no *new* [`Hub`] needs to be created, but the current [`Hub`] has
+//! to be bound.
+//!
+//! ```rust
+//! # let rt = tokio::runtime::Runtime::new().unwrap();
+//! # rt.block_on(async {
+//! use sentry::{Hub, SentryFutureExt};
+//!
+//! // Spawned thread that is being joined:
+//! let hub = Hub::current();
+//! let result = std::thread::spawn(|| Hub::run(hub, || 1_u32)).join();
+//!
+//! assert_eq!(result.unwrap(), 1);
+//!
+//! // Spawned future that is being awaited:
+//! let result = tokio::spawn(async { 1_u32 }.bind_hub(Hub::current())).await;
+//!
+//! assert_eq!(result.unwrap(), 1);
+//! # });
+//! ```
+//!
 //! # Minimal API
 //!
 //! By default, this crate comes with a so-called "minimal" mode. This mode will
@@ -38,12 +100,6 @@
 //! [Sentry]: https://sentry.io/
 //! [`sentry`]: https://crates.io/crates/sentry
 //! [Unified API]: https://develop.sentry.dev/sdk/unified-api/
-//! [`Client`]: struct.Client.html
-//! [`Hub`]: struct.Hub.html
-//! [`Scope`]: struct.Scope.html
-//! [`Integration`]: trait.Integration.html
-//! [`Transport`]: trait.Transport.html
-//! [`TransportFactory`]: trait.TransportFactory.html
 //! [`test`]: test/index.html
 
 #![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
