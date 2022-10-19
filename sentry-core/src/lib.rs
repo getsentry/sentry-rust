@@ -17,8 +17,8 @@
 //! # Parallelism, Concurrency and Async
 //!
 //! The main concurrency primitive is the [`Hub`]. In general, all concurrent
-//! code, no matter if multithreaded parallelism, or futures concurrency needs
-//! to run with its own copy of a Hub. Even though the [`Hub`] is internally
+//! code, no matter if multithreaded parallelism or futures concurrency, needs
+//! to run with its own copy of a [`Hub`]. Even though the [`Hub`] is internally
 //! synchronized, using it concurrently may lead to unexpected results up to
 //! panics.
 //!
