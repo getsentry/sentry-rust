@@ -1,8 +1,6 @@
 #![cfg(feature = "test")]
 
-use log_ as log;
 use sentry::protocol::{Context, Request, Value};
-use tracing_ as tracing;
 use tracing_subscriber::prelude::*;
 
 #[test]

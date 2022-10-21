@@ -1,8 +1,5 @@
 #![cfg(feature = "test")]
 
-use log_ as log;
-use slog_ as slog;
-
 #[test]
 fn test_log() {
     let logger = sentry_log::SentryLogger::new();

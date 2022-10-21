@@ -4,7 +4,7 @@ use isahc::{
     config::{Configurable, SslOption},
     HttpClient,
 };
-use surf_::{http::headers as SurfHeaders, Client as SurfClient, StatusCode};
+use surf::{http::headers as SurfHeaders, Client as SurfClient, StatusCode};
 
 use super::tokio_thread::TransportThread;
 

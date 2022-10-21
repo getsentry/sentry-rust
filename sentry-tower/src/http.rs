@@ -3,7 +3,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-use http_::{header, uri, Request, Response, StatusCode};
+use http::{header, uri, Request, Response, StatusCode};
 use sentry_core::protocol;
 use tower_layer::Layer;
 use tower_service::Service;

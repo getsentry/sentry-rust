@@ -4,15 +4,13 @@ use std::time::Duration;
 use std::time::SystemTime;
 
 #[cfg(feature = "native-tls")]
-use native_tls_::TlsConnector;
+use native_tls::TlsConnector;
 #[cfg(feature = "rustls")]
-use rustls_::{
+use rustls::{
     client::{ServerCertVerified, ServerCertVerifier},
     Certificate, ClientConfig, Error, OwnedTrustAnchor, RootCertStore, ServerName,
 };
-#[cfg(doc)]
-use ureq_ as ureq;
-use ureq_::{Agent, AgentBuilder, Proxy};
+use ureq::{Agent, AgentBuilder, Proxy};
 #[cfg(feature = "rustls")]
 use webpki_roots::TLS_SERVER_ROOTS;
 

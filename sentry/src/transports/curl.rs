@@ -1,7 +1,7 @@
 use std::io::{Cursor, Read};
 use std::time::Duration;
 
-use curl_::{self as curl, easy::Easy as CurlClient};
+use curl::easy::Easy as CurlClient;
 
 use super::thread::TransportThread;
 

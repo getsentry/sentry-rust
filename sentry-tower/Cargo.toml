@@ -13,12 +13,12 @@ edition = "2021"
 rust-version = "1.60"
 
 [features]
-http = ["http_", "pin-project", "url"]
+http = ["dep:http", "pin-project", "url"]
 
 [dependencies]
 tower-layer = "0.3"
 tower-service = "0.3"
-http_ = { package = "http", version = "0.2.6", optional = true }
+http = { version = "0.2.6", optional = true }
 pin-project = { version = "1.0.10", optional = true }
 sentry-core = { version = "0.27.0", path = "../sentry-core", default-features = false, features = ["client"] }
 url = { version = "2.2.2", optional = true }

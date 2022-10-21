@@ -1,7 +1,6 @@
 use std::thread;
 use std::time::Duration;
 
-use tracing_ as tracing;
 use tracing_subscriber::prelude::*;
 
 // cargo run --example tracing-demo
