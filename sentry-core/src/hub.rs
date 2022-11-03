@@ -42,12 +42,12 @@ pub(crate) struct HubImpl {
 impl HubImpl {
     pub(crate) fn with<F: FnOnce(&Stack) -> R, R>(&self, f: F) -> R {
         let guard = self.stack.read().unwrap_or_else(PoisonError::into_inner);
-        f(&*guard)
+        f(&guard)
     }
 
     fn with_mut<F: FnOnce(&mut Stack) -> R, R>(&self, f: F) -> R {
         let mut guard = self.stack.write().unwrap_or_else(PoisonError::into_inner);
-        f(&mut *guard)
+        f(&mut guard)
     }
 
     fn is_active_and_usage_safe(&self) -> bool {
