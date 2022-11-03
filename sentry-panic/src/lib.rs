@@ -77,7 +77,7 @@ impl Integration for PanicIntegration {
 /// Extract the message of a panic.
 pub fn message_from_panic_info<'a>(info: &'a PanicInfo<'_>) -> &'a str {
     match info.payload().downcast_ref::<&'static str>() {
-        Some(s) => *s,
+        Some(s) => s,
         None => match info.payload().downcast_ref::<String>() {
             Some(s) => &s[..],
             None => "Box<Any>",

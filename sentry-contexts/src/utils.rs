@@ -26,7 +26,7 @@ mod model_support {
                 return None;
             }
 
-            let mut buf = vec![0u8; size as usize];
+            let mut buf = vec![0u8; size];
             let res = libc::sysctlbyname(
                 c_name.as_ptr() as _,
                 buf.as_mut_ptr() as *mut c_void,
