@@ -310,10 +310,7 @@ impl Client {
     fn is_transaction_sampled(&self, ctx: &TransactionContext) -> bool {
         let client_options = self.options();
         self.sample_should_send(transaction_sample_rate(
-            client_options
-                .traces_sampler
-                .as_ref()
-                .map(|sampler| &**sampler),
+            client_options.traces_sampler.as_deref(),
             ctx,
             client_options.traces_sample_rate,
         ))

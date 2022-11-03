@@ -1360,7 +1360,7 @@ impl Default for SpanId {
 
 impl fmt::Display for SpanId {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "{}", hex::encode(&self.0))
+        write!(fmt, "{}", hex::encode(self.0))
     }
 }
 
@@ -1406,7 +1406,7 @@ impl Default for TraceId {
 
 impl fmt::Display for TraceId {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "{}", hex::encode(&self.0))
+        write!(fmt, "{}", hex::encode(self.0))
     }
 }
 
