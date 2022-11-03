@@ -388,7 +388,7 @@ impl Envelope {
         let payload_start = std::cmp::min(header_end + 1, slice.len());
         let payload_end = match header.length {
             Some(len) => {
-                let payload_end = payload_start + len as usize;
+                let payload_end = payload_start + len;
                 if slice.len() < payload_end {
                     return Err(EnvelopeError::UnexpectedEof);
                 }

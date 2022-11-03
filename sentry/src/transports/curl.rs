@@ -31,7 +31,7 @@ impl CurlHttpTransport {
         let http_proxy = options.http_proxy.as_ref().map(ToString::to_string);
         let https_proxy = options.https_proxy.as_ref().map(ToString::to_string);
         let dsn = options.dsn.as_ref().unwrap();
-        let user_agent = options.user_agent.to_owned();
+        let user_agent = options.user_agent.clone();
         let auth = dsn.to_auth(Some(&user_agent)).to_string();
         let url = dsn.envelope_api_url().to_string();
         let scheme = dsn.scheme();

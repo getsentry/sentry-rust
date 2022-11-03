@@ -5,6 +5,7 @@
 **Breaking Changes**:
 
 - The minimum supported Rust version was bumped to **1.60.0** due to requirements from dependencies. ([#498](https://github.com/getsentry/sentry-rust/pull/498))
+- Added the `traces_sampler` option to `ClientOptions`. This allows the user to customise sampling rates on a per-transaction basis. ([#510](https://github.com/getsentry/sentry-rust/pull/510))
 
 **Features**:
 

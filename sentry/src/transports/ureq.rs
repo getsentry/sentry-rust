@@ -112,7 +112,7 @@ impl UreqHttpTransport {
 
             builder.build()
         });
-        let user_agent = options.user_agent.to_owned();
+        let user_agent = options.user_agent.clone();
         let auth = dsn.to_auth(Some(&user_agent)).to_string();
         let url = dsn.envelope_api_url().to_string();
 

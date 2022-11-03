@@ -241,7 +241,7 @@ fn get_profile_from_report(
         timestamp: rep.timing.start_time,
         transactions: vec![TransactionMetadata {
             id: transaction.event_id,
-            name: transaction.name.clone().unwrap_or_else(|| "".to_string()),
+            name: transaction.name.clone().unwrap_or_default(),
             trace_id,
             relative_start_ns: 0,
             relative_end_ns: transaction
