@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use crate::constants::USER_AGENT;
+use crate::performance::TracesSampler;
 use crate::protocol::{Breadcrumb, Event};
 use crate::types::Dsn;
 use crate::{Integration, IntoDsn, TransportFactory};
@@ -74,6 +75,11 @@ pub struct ClientOptions {
     pub sample_rate: f32,
     /// The sample rate for tracing transactions. (0.0 - 1.0, defaults to 0.0)
     pub traces_sample_rate: f32,
+    /// If given, called with a SamplingContext for each transaction to determine the sampling rate.
+    ///
+    /// Return a sample rate between 0.0 and 1.0 for the transaction in question.
+    /// Takes priority over the `sample_rate`.
+    pub traces_sampler: Option<Arc<TracesSampler>>,
     /// Enables profiling
     pub enable_profiling: bool,
     /// The sample rate for profiling a transactions. (0.0 - 1.0, defaults to 0.0)
@@ -196,6 +202,13 @@ impl fmt::Debug for ClientOptions {
             .field("environment", &self.environment)
             .field("sample_rate", &self.sample_rate)
             .field("traces_sample_rate", &self.traces_sample_rate)
+            .field(
+                "traces_sampler",
+                &self
+                    .traces_sampler
+                    .as_ref()
+                    .map(|arc| std::ptr::addr_of!(**arc)),
+            )
             .field("enable_profiling", &self.enable_profiling)
             .field("profiles_sample_rate", &self.profiles_sample_rate)
             .field("max_breadcrumbs", &self.max_breadcrumbs)
@@ -231,6 +244,7 @@ impl Default for ClientOptions {
             environment: None,
             sample_rate: 1.0,
             traces_sample_rate: 0.0,
+            traces_sampler: None,
             enable_profiling: false,
             profiles_sample_rate: 0.0,
             max_breadcrumbs: 100,

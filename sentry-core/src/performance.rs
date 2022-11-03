@@ -156,6 +156,13 @@ impl TransactionContext {
     }
 }
 
+/// A function to be run for each new transaction, to determine the rate at which
+/// it should be sampled.
+///
+/// This function may choose to respect the sampling of the parent transaction (`ctx.sampled`)
+/// or ignore it.
+pub type TracesSampler = dyn Fn(&TransactionContext) -> f32 + Send + Sync;
+
 // global API types:
 
 /// A wrapper that groups a [`Transaction`] and a [`Span`] together.
@@ -279,6 +286,40 @@ pub(crate) struct TransactionInner {
 
 type TransactionArc = Arc<Mutex<TransactionInner>>;
 
+/// Functional implementation of how a new transation's sample rate is chosen.
+///
+/// Split out from `Client.is_transaction_sampled` for testing.
+#[cfg(feature = "client")]
+fn transaction_sample_rate(
+    traces_sampler: Option<&TracesSampler>,
+    ctx: &TransactionContext,
+    traces_sample_rate: f32,
+) -> f32 {
+    match (traces_sampler, traces_sample_rate) {
+        (Some(traces_sampler), _) => traces_sampler(ctx),
+        (None, traces_sample_rate) => ctx
+            .sampled
+            .map(|sampled| if sampled { 1.0 } else { 0.0 })
+            .unwrap_or(traces_sample_rate),
+    }
+}
+
+/// Determine whether the new transaction should be sampled.
+#[cfg(feature = "client")]
+impl Client {
+    fn is_transaction_sampled(&self, ctx: &TransactionContext) -> bool {
+        let client_options = self.options();
+        self.sample_should_send(transaction_sample_rate(
+            client_options
+                .traces_sampler
+                .as_ref()
+                .map(|sampler| &**sampler),
+            ctx,
+            client_options.traces_sample_rate,
+        ))
+    }
+}
+
 /// A running Performance Monitoring Transaction.
 ///
 /// The transaction needs to be explicitly finished via [`Transaction::finish`],
@@ -292,18 +333,9 @@ pub struct Transaction {
 impl Transaction {
     #[cfg(feature = "client")]
     fn new(mut client: Option<Arc<Client>>, ctx: TransactionContext) -> Self {
-        let context = protocol::TraceContext {
-            trace_id: ctx.trace_id,
-            parent_span_id: ctx.parent_span_id,
-            op: Some(ctx.op),
-            ..Default::default()
-        };
-
         let (sampled, mut transaction) = match client.as_ref() {
             Some(client) => (
-                ctx.sampled.unwrap_or_else(|| {
-                    client.sample_should_send(client.options().traces_sample_rate)
-                }),
+                client.is_transaction_sampled(&ctx),
                 Some(protocol::Transaction {
                     name: Some(ctx.name),
                     #[cfg(all(feature = "profiling", target_family = "unix"))]
@@ -312,6 +344,13 @@ impl Transaction {
                 }),
             ),
             None => (ctx.sampled.unwrap_or(false), None),
+        };
+
+        let context = protocol::TraceContext {
+            trace_id: ctx.trace_id,
+            parent_span_id: ctx.parent_span_id,
+            op: Some(ctx.op),
+            ..Default::default()
         };
 
         // throw away the transaction here, which means there is nothing to send
@@ -678,5 +717,37 @@ mod tests {
 
         assert_eq!(&parsed.0.to_string(), "09e04486820349518ac7b5d2adbf6ba5");
         assert_eq!(parsed.2, Some(true));
+    }
+
+    #[cfg(feature = "client")]
+    #[test]
+    fn compute_transaction_sample_rate() {
+        // Global rate used as fallback.
+        let ctx = TransactionContext::new("noop", "noop");
+        assert_eq!(transaction_sample_rate(None, &ctx, 0.3), 0.3);
+        assert_eq!(transaction_sample_rate(None, &ctx, 0.7), 0.7);
+
+        // If only global rate, setting sampled overrides it
+        let mut ctx = TransactionContext::new("noop", "noop");
+        ctx.set_sampled(true);
+        assert_eq!(transaction_sample_rate(None, &ctx, 0.3), 1.0);
+        ctx.set_sampled(false);
+        assert_eq!(transaction_sample_rate(None, &ctx, 0.3), 0.0);
+
+        // If given, sampler function overrides everything else.
+        let mut ctx = TransactionContext::new("noop", "noop");
+        assert_eq!(transaction_sample_rate(Some(&|_| { 0.7 }), &ctx, 0.3), 0.7);
+        ctx.set_sampled(false);
+        assert_eq!(transaction_sample_rate(Some(&|_| { 0.7 }), &ctx, 0.3), 0.7);
+        // But the sampler may choose to inspect parent sampling
+        let sampler = |ctx: &TransactionContext| match ctx.sampled {
+            Some(true) => 0.8,
+            Some(false) => 0.4,
+            None => 0.6,
+        };
+        ctx.set_sampled(true);
+        assert_eq!(transaction_sample_rate(Some(&sampler), &ctx, 0.3), 0.8);
+        ctx.set_sampled(None);
+        assert_eq!(transaction_sample_rate(Some(&sampler), &ctx, 0.3), 0.6);
     }
 }
