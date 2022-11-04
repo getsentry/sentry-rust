@@ -5,6 +5,7 @@
 **Features**
 
 - Allow `traces_sampler` to inspect well known properties of `TransactionContext` ([#514](https://github.com/getsentry/sentry-rust/pull/514))
+- Users of `TransactionContext` may now add `custom` context to it. This may be used by `traces_sampler` to decide sampling rates on a per-transaction basis. ([#512](https://github.com/getsentry/sentry-rust/pull/512))
 
 ## 0.28.0
 
