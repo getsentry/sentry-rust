@@ -16,7 +16,8 @@ system in Rust as well as a few popular error handling setups.
 
 The most convenient way to use this library is via the [`sentry::init`] function,
 which starts a sentry client with a default set of integrations, and binds
-it to the current [`Hub`].
+it to the current [`Hub`]. More Information on how to use Sentry in parallel,
+concurrent and async scenarios can be found on the [`Hub`] docs as well.
 
 The [`sentry::init`] function returns a guard that when dropped will flush Events that were not
 yet sent to the sentry service. It has a two second deadline for this so shutdown of
@@ -33,8 +34,8 @@ sentry::capture_message("Hello World!", sentry::Level::Info);
 More complex examples on how to use sentry can also be found in [examples]. Extended instructions
 may also be found on [Sentry itself].
 
-[`sentry::init`]: https://docs.rs/sentry/0.27.0/sentry/fn.init.html
-[`Hub`]: https://docs.rs/sentry/0.27.0/sentry/struct.Hub.html
+[`sentry::init`]: https://docs.rs/sentry/0.28.0/sentry/fn.init.html
+[`Hub`]: https://docs.rs/sentry/0.28.0/sentry/struct.Hub.html
 [examples]: https://github.com/getsentry/sentry-rust/tree/master/sentry/examples
 [Sentry itself]: https://docs.sentry.io/platforms/rust
 
@@ -46,8 +47,8 @@ the ecosystem require a feature flag. For available integrations and how to use 
 [integrations] and [apply_defaults].
 
 [Features]: #features
-[integrations]: https://docs.rs/sentry/0.27.0/sentry/integrations/index.html
-[apply_defaults]: https://docs.rs/sentry/0.27.0/sentry/fn.apply_defaults.html
+[integrations]: https://docs.rs/sentry/0.28.0/sentry/integrations/index.html
+[apply_defaults]: https://docs.rs/sentry/0.28.0/sentry/fn.apply_defaults.html
 
 ## Minimal API
 
@@ -55,8 +56,8 @@ This crate comes fully-featured. If the goal is to instrument libraries for usag
 with sentry, or to extend sentry with a custom [`Integration`] or a [`Transport`],
 one should use the [`sentry-core`] crate instead.
 
-[`Integration`]: https://docs.rs/sentry/0.27.0/sentry/trait.Integration.html
-[`Transport`]: https://docs.rs/sentry/0.27.0/sentry/trait.Transport.html
+[`Integration`]: https://docs.rs/sentry/0.28.0/sentry/trait.Integration.html
+[`Transport`]: https://docs.rs/sentry/0.28.0/sentry/trait.Transport.html
 [`sentry-core`]: https://crates.io/crates/sentry-core
 
 ## Features
