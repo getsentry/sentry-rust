@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.28.0
 
 **Breaking Changes**:
 
@@ -11,10 +11,23 @@
 
 - Add support for Profiling feature. ([#479](https://github.com/getsentry/sentry-rust/pull/479))
 - Add `SSL_VERIFY` option to control certificate verification. ([#508](https://github.com/getsentry/sentry-rust/pull/508))
+- Add Windows OS version to OS context ([#499](https://github.com/getsentry/sentry-rust/pull/499))
+- Add a `tower-http` feature as a shortcut ([#493](https://github.com/getsentry/sentry-rust/pull/493))
 
 **Internal**:
 
+- Take advantage of weak features in Rust 1.60 for TLS enablement ([#454](https://github.com/getsentry/sentry-rust/pull/454))
+- Turn off `pprof` default features ([#491](https://github.com/getsentry/sentry-rust/pull/491))
+- Change session update logic to follow the spec ([#477](https://github.com/getsentry/sentry-rust/pull/477))
+- Extract public `event_from_error` fn in `sentry-anyhow` ([#476](https://github.com/getsentry/sentry-rust/pull/476))
+
 **Thank you**:
+
+Features, fixes and improvements in this release have been contributed by:
+
+- [@MarijnS95](https://github.com/MarijnS95)
+- [@lpraneis](https://github.com/lpraneis)
+- [@tommilligan](https://github.com/tommilligan)
 
 ## 0.27.0
 
