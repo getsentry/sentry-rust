@@ -154,6 +154,21 @@ impl TransactionContext {
     pub fn set_sampled(&mut self, sampled: impl Into<Option<bool>>) {
         self.sampled = sampled.into();
     }
+
+    /// Get the sampling decision for this Transaction.
+    pub fn sampled(&self) -> Option<bool> {
+        self.sampled
+    }
+
+    /// Get the name of this Transaction.
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// Get the operation of this Transaction.
+    pub fn operation(&self) -> &str {
+        &self.op
+    }
 }
 
 /// A function to be run for each new transaction, to determine the rate at which
@@ -716,6 +731,17 @@ mod tests {
         assert_eq!(parsed.2, Some(true));
     }
 
+    #[test]
+    fn transaction_context_public_getters() {
+        let mut ctx = TransactionContext::new("test-name", "test-operation");
+        assert_eq!(ctx.name(), "test-name");
+        assert_eq!(ctx.operation(), "test-operation");
+        assert_eq!(ctx.sampled(), None);
+
+        ctx.set_sampled(true);
+        assert_eq!(ctx.sampled(), Some(true));
+    }
+
     #[cfg(feature = "client")]
     #[test]
     fn compute_transaction_sample_rate() {
@@ -737,7 +763,7 @@ mod tests {
         ctx.set_sampled(false);
         assert_eq!(transaction_sample_rate(Some(&|_| { 0.7 }), &ctx, 0.3), 0.7);
         // But the sampler may choose to inspect parent sampling
-        let sampler = |ctx: &TransactionContext| match ctx.sampled {
+        let sampler = |ctx: &TransactionContext| match ctx.sampled() {
             Some(true) => 0.8,
             Some(false) => 0.4,
             None => 0.6,
