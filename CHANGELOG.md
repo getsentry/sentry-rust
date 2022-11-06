@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Features**
+
+- Allow `traces_sampler` to inspect well known properties of `TransactionContext` ([#514](https://github.com/getsentry/sentry-rust/pull/514))
+
 ## 0.28.0
 
 **Breaking Changes**:
