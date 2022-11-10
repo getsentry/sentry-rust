@@ -18,6 +18,9 @@ fn test_into_client() {
         "https://public@example.com/42%21",
         sentry::ClientOptions {
             release: Some("foo@1.0".into()),
+            traces_sampler: Some(Arc::new(
+                |ctx| if ctx.name().is_empty() { 0.0 } else { 1.0 },
+            )),
             ..Default::default()
         },
     ));
