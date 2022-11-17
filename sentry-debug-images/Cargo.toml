@@ -1,6 +1,6 @@
 [package]
 name = "sentry-debug-images"
-version = "0.28.0"
+version = "0.29.0"
 authors = ["Sentry <hello@sentry.io>"]
 license = "Apache-2.0"
 readme = "README.md"
@@ -15,4 +15,4 @@ rust-version = "1.60"
 [dependencies]
 findshlibs = "=0.10.2"
 once_cell = "1"
-sentry-core = { version = "0.28.0", path = "../sentry-core" }
+sentry-core = { version = "0.29.0", path = "../sentry-core" }
