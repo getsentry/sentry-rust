@@ -57,4 +57,4 @@ anyhow = "1.0.30"
 tokio = { version = "1.0", features = ["rt", "rt-multi-thread", "macros"] }
 futures = "0.3.24"
 rayon = "1.5.3"
-criterion = "0.3"
+criterion = "0.4"
