@@ -21,7 +21,7 @@ harness = false
 
 [features]
 default = []
-client = ["rand"]
+client = ["rand", "arc-swap"]
 # I would love to just have a `log` feature, but this is used inside a macro,
 # and macros actually expand features (and extern crate) where they are used!
 debug-logs = ["dep:log"]
@@ -41,10 +41,11 @@ sys-info = { version = "0.9.1", optional = true }
 build_id = { version = "0.2.1", optional = true }
 findshlibs = { version = "=0.10.2", optional = true }
 rustc_version_runtime = { version = "0.2.1", optional = true }
-indexmap = { version = "1.9.1", optional = true}
+indexmap = { version = "1.9.1", optional = true }
+arc-swap = { version = "1.5.1", optional = true }
 
 [target.'cfg(target_family = "unix")'.dependencies]
-pprof = { version = "0.11.0", optional = true, default-features = false}
+pprof = { version = "0.11.0", optional = true, default-features = false }
 libc = { version = "^0.2.66", optional = true }
 
 [dev-dependencies]
