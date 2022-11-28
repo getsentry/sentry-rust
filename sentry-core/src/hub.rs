@@ -1,7 +1,6 @@
 use std::sync::{Arc, Mutex, RwLock};
 
 use crate::protocol::{Event, Level, SessionStatus};
-use crate::session::Session;
 use crate::types::Uuid;
 use crate::{Integration, IntoBreadcrumbs, Scope, ScopeGuard};
 
@@ -133,7 +132,7 @@ impl Hub {
         with_client_impl! {{
             self.inner.with_mut(|stack| {
                 let top = stack.top_mut();
-                if let Some(session) = Session::from_stack(top) {
+                if let Some(session) = crate::session::Session::from_stack(top) {
                     // When creating a *new* session, we make sure it is unique,
                     // as to no inherit *backwards* to any parents.
                     let mut scope = Arc::make_mut(&mut top.scope);
