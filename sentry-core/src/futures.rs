@@ -37,7 +37,8 @@ where
         let future = unsafe { self.map_unchecked_mut(|s| &mut s.future) };
         #[cfg(feature = "client")]
         {
-            Hub::run(hub, || future.poll(cx))
+            let _guard = crate::hub_impl::SwitchGuard::new(hub);
+            future.poll(cx)
         }
         #[cfg(not(feature = "client"))]
         {

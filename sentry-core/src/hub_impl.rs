@@ -1,10 +1,11 @@
-use std::cell::{Cell, UnsafeCell};
+use std::cell::Cell;
 use std::sync::{Arc, PoisonError, RwLock};
 use std::thread;
 
 use crate::Scope;
 use crate::{scope::Stack, Client, Hub};
 
+use arc_swap::ArcSwap;
 use once_cell::sync::Lazy;
 
 static PROCESS_HUB: Lazy<(Arc<Hub>, thread::ThreadId)> = Lazy::new(|| {
@@ -15,9 +16,51 @@ static PROCESS_HUB: Lazy<(Arc<Hub>, thread::ThreadId)> = Lazy::new(|| {
 });
 
 thread_local! {
-    static THREAD_HUB: UnsafeCell<Arc<Hub>> = UnsafeCell::new(
-        Arc::new(Hub::new_from_top(&PROCESS_HUB.0)));
-    static USE_PROCESS_HUB: Cell<bool> = Cell::new(PROCESS_HUB.1 == thread::current().id());
+    static THREAD_HUB: (ArcSwap<Hub>, Cell<bool>) = (
+        ArcSwap::from_pointee(Hub::new_from_top(&PROCESS_HUB.0)),
+        Cell::new(PROCESS_HUB.1 == thread::current().id())
+    );
+}
+
+pub(crate) struct SwitchGuard {
+    inner: Option<(Arc<Hub>, bool)>,
+}
+
+impl SwitchGuard {
+    pub(crate) fn new(hub: Arc<Hub>) -> Self {
+        let inner = THREAD_HUB.with(|(old_hub, is_process_hub)| {
+            {
+                let old_hub = old_hub.load();
+                if std::ptr::eq(old_hub.as_ref(), hub.as_ref()) {
+                    return None;
+                }
+            }
+            let old_hub = old_hub.swap(hub);
+            let was_process_hub = is_process_hub.replace(false);
+            Some((old_hub, was_process_hub))
+        });
+        SwitchGuard { inner }
+    }
+
+    fn swap(&mut self) -> Option<Arc<Hub>> {
+        if let Some((old_hub, was_process_hub)) = self.inner.take() {
+            Some(THREAD_HUB.with(|(hub, is_process_hub)| {
+                let hub = hub.swap(old_hub);
+                if was_process_hub {
+                    is_process_hub.set(true);
+                }
+                hub
+            }))
+        } else {
+            None
+        }
+    }
+}
+
+impl Drop for SwitchGuard {
+    fn drop(&mut self) {
+        let _ = self.swap();
+    }
 }
 
 #[derive(Debug)]
@@ -103,17 +146,13 @@ impl Hub {
     where
         F: FnOnce(&Arc<Hub>) -> R,
     {
-        if USE_PROCESS_HUB.with(Cell::get) {
-            f(&PROCESS_HUB.0)
-        } else {
-            // note on safety: this is safe because even though we change the Arc
-            // by temporary binding we guarantee that the original Arc stays alive.
-            // For more information see: run
-            THREAD_HUB.with(|stack| unsafe {
-                let ptr = stack.get();
-                f(&*ptr)
-            })
-        }
+        THREAD_HUB.with(|(hub, is_process_hub)| {
+            if is_process_hub.get() {
+                f(&PROCESS_HUB.0)
+            } else {
+                f(&hub.load())
+            }
+        })
     }
 
     /// Binds a hub to the current thread for the duration of the call.
@@ -125,47 +164,8 @@ impl Hub {
     /// Once the function is finished executing, including after it
     /// paniced, the original hub is re-installed if one was present.
     pub fn run<F: FnOnce() -> R, R>(hub: Arc<Hub>, f: F) -> R {
-        let mut restore_process_hub = false;
-        let did_switch = THREAD_HUB.with(|ctx| unsafe {
-            let ptr = ctx.get();
-            if std::ptr::eq(&**ptr, &*hub) {
-                None
-            } else {
-                USE_PROCESS_HUB.with(|x| {
-                    if x.get() {
-                        restore_process_hub = true;
-                        x.set(false);
-                    }
-                });
-                let old = (*ptr).clone();
-                *ptr = hub.clone();
-                Some(old)
-            }
-        });
-
-        match did_switch {
-            None => {
-                // None means no switch happened.  We can invoke the function
-                // just like that, no changes necessary.
-                f()
-            }
-            Some(old_hub) => {
-                use std::panic;
-
-                // this is for the case where we just switched the hub.  This
-                // means we need to catch the panic, restore the
-                // old context and resume the panic if needed.
-                let rv = panic::catch_unwind(panic::AssertUnwindSafe(f));
-                THREAD_HUB.with(|ctx| unsafe { *ctx.get() = old_hub });
-                if restore_process_hub {
-                    USE_PROCESS_HUB.with(|x| x.set(true));
-                }
-                match rv {
-                    Err(err) => panic::resume_unwind(err),
-                    Ok(rv) => rv,
-                }
-            }
-        }
+        let _guard = SwitchGuard::new(hub);
+        f()
     }
 
     /// Returns the currently bound client.
