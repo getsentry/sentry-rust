@@ -140,6 +140,8 @@ pub use crate::transport::{Transport, TransportFactory};
 #[cfg(feature = "client")]
 mod client;
 #[cfg(feature = "client")]
+mod hub_impl;
+#[cfg(feature = "client")]
 mod session;
 #[cfg(feature = "client")]
 pub use crate::client::Client;
