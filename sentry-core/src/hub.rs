@@ -1,4 +1,8 @@
-use std::sync::{Arc, Mutex, RwLock};
+// NOTE: Most of the methods are noops without the `client` feature, and this will
+// silence all the "unused variable" warnings related to fn arguments.
+#![allow(unused)]
+
+use std::sync::{Arc, RwLock};
 
 use crate::protocol::{Event, Level, SessionStatus};
 use crate::types::Uuid;
@@ -136,7 +140,7 @@ impl Hub {
                     // When creating a *new* session, we make sure it is unique,
                     // as to no inherit *backwards* to any parents.
                     let mut scope = Arc::make_mut(&mut top.scope);
-                    scope.session = Arc::new(Mutex::new(Some(session)));
+                    scope.session = Arc::new(std::sync::Mutex::new(Some(session)));
                 }
             })
         }}
