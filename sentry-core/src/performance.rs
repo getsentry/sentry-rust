@@ -51,6 +51,13 @@ impl Hub {
 
 // "Context" Types:
 
+/// Arbitrary data passed by the caller, when starting a transaction.
+///
+/// May be inspected by the user in the `traces_sampler` callback, if set.
+///
+/// Represents arbitrary JSON data, the top level of which must be a map.
+pub type CustomTransactionContext = serde_json::Map<String, serde_json::Value>;
+
 /// The Transaction Context used to start a new Performance Monitoring Transaction.
 ///
 /// The Transaction Context defines the metadata for a Performance Monitoring
@@ -63,6 +70,7 @@ pub struct TransactionContext {
     trace_id: protocol::TraceId,
     parent_span_id: Option<protocol::SpanId>,
     sampled: Option<bool>,
+    custom: Option<CustomTransactionContext>,
 }
 
 impl TransactionContext {
@@ -108,6 +116,7 @@ impl TransactionContext {
             trace_id,
             parent_span_id,
             sampled,
+            custom: None,
         }
     }
 
@@ -144,6 +153,7 @@ impl TransactionContext {
             trace_id,
             parent_span_id: Some(parent_span_id),
             sampled,
+            custom: None,
         }
     }
 
@@ -168,6 +178,41 @@ impl TransactionContext {
     /// Get the operation of this Transaction.
     pub fn operation(&self) -> &str {
         &self.op
+    }
+
+    /// Get the custom context of this Transaction.
+    pub fn custom(&self) -> Option<&CustomTransactionContext> {
+        self.custom.as_ref()
+    }
+
+    /// Update the custom context of this Transaction.
+    ///
+    /// For simply adding a key, use the `custom_insert` method.
+    pub fn custom_mut(&mut self) -> &mut Option<CustomTransactionContext> {
+        &mut self.custom
+    }
+
+    /// Inserts a key-value pair into the custom context.
+    ///
+    /// If the context did not have this key present, None is returned.
+    ///
+    /// If the context did have this key present, the value is updated, and the old value is returned.
+    pub fn custom_insert(
+        &mut self,
+        key: String,
+        value: serde_json::Value,
+    ) -> Option<serde_json::Value> {
+        // Get the custom context
+        let mut custom = None;
+        std::mem::swap(&mut self.custom, &mut custom);
+
+        // Initialise the context, if not used yet
+        let mut custom = custom.unwrap_or_default();
+
+        // And set our key
+        let existing_value = custom.insert(key, value);
+        std::mem::swap(&mut self.custom, &mut Some(custom));
+        existing_value
     }
 }
 
@@ -772,5 +817,31 @@ mod tests {
         assert_eq!(transaction_sample_rate(Some(&sampler), &ctx, 0.3), 0.8);
         ctx.set_sampled(None);
         assert_eq!(transaction_sample_rate(Some(&sampler), &ctx, 0.3), 0.6);
+
+        // Can use first-class and custom attributes of the context.
+        let sampler = |ctx: &TransactionContext| {
+            if ctx.name() == "must-name" || ctx.operation() == "must-operation" {
+                return 1.0;
+            }
+
+            if let Some(custom) = ctx.custom() {
+                if let Some(rate) = custom.get("rate") {
+                    if let Some(rate) = rate.as_f64() {
+                        return rate as f32;
+                    }
+                }
+            }
+
+            0.1
+        };
+        // First class attributes
+        let ctx = TransactionContext::new("noop", "must-operation");
+        assert_eq!(transaction_sample_rate(Some(&sampler), &ctx, 0.3), 1.0);
+        let ctx = TransactionContext::new("must-name", "noop");
+        assert_eq!(transaction_sample_rate(Some(&sampler), &ctx, 0.3), 1.0);
+        // Custom data payload
+        let mut ctx = TransactionContext::new("noop", "noop");
+        ctx.custom_insert("rate".to_owned(), serde_json::json!(0.7));
+        assert_eq!(transaction_sample_rate(Some(&sampler), &ctx, 0.3), 0.7);
     }
 }
