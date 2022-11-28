@@ -28,7 +28,7 @@ static CRATE_RE: Lazy<Regex> = Lazy::new(|| {
         (?:_?<)?           # trait impl syntax
         (?:\w+\ as \ )?    # anonymous implementor
         ([a-zA-Z0-9_]+?)   # crate name
-        (?:\.\.|::|\[)     # crate delimiter (.. or ::)
+        (?:\.\.|::|\[)     # crate delimiter (.. or :: or [)
     "#,
     )
     .unwrap()
