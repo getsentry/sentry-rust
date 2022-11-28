@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.29.0
 
 **Features**
 
