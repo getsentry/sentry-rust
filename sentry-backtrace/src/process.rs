@@ -104,7 +104,7 @@ pub fn backtrace_to_stacktrace(bt: &Backtrace) -> Option<Stacktrace> {
                         .name()
                         .map_or(Cow::Borrowed("<unknown>"), |n| Cow::Owned(n.to_string()));
                     let symbol = strip_symbol(&real_symbol);
-                    let function = demangle_symbol(symbol);
+                    let function = demangle_symbol(&symbol);
                     Frame {
                         symbol: if symbol != function {
                             Some(symbol.into())

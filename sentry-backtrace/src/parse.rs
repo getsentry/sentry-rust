@@ -45,7 +45,7 @@ pub fn parse_stacktrace(bt: &str) -> Option<Stacktrace> {
             let filename = abs_path.as_ref().map(|p| filename(p).to_string());
             let real_symbol = captures["symbol"].to_string();
             let symbol = strip_symbol(&real_symbol);
-            let function = demangle_symbol(symbol);
+            let function = demangle_symbol(&symbol);
 
             // Obtain the instruction address. A missing address usually indicates an inlined stack
             // frame, in which case the previous address needs to be used.
