@@ -49,12 +49,12 @@ impl CurlHttpTransport {
             }
 
             match (scheme, &http_proxy, &https_proxy) {
-                (Scheme::Https, _, &Some(ref proxy)) => {
+                (Scheme::Https, _, Some(proxy)) => {
                     if let Err(err) = handle.proxy(proxy) {
                         sentry_debug!("invalid proxy: {:?}", err);
                     }
                 }
-                (_, &Some(ref proxy), _) => {
+                (_, Some(proxy), _) => {
                     if let Err(err) = handle.proxy(proxy) {
                         sentry_debug!("invalid proxy: {:?}", err);
                     }

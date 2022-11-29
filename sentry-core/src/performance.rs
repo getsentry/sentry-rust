@@ -396,7 +396,13 @@ impl Transaction {
                 Some(protocol::Transaction {
                     name: Some(ctx.name),
                     #[cfg(all(feature = "profiling", target_family = "unix"))]
-                    active_thread_id: Some(unsafe { libc::pthread_self() as u64 }),
+                    active_thread_id: Some(
+                        // NOTE: `pthread_t` is a `usize`, so clippy is wrong complaining about this cast
+                        #[allow(clippy::unnecessary_cast)]
+                        unsafe {
+                            libc::pthread_self() as u64
+                        },
+                    ),
                     ..Default::default()
                 }),
             ),

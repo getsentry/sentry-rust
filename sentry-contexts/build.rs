@@ -8,7 +8,7 @@ use rustc_version::{version, version_meta, Channel};
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let out_dir = env::var("OUT_DIR")?;
     let dest_path = Path::new(&out_dir).join("constants.gen.rs");
-    let mut f = File::create(&dest_path)?;
+    let mut f = File::create(dest_path)?;
 
     let target = env::var("TARGET")?;
     let mut target_bits = target.split('-');
