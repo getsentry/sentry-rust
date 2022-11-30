@@ -1,11 +1,10 @@
-use std::cell::Cell;
+use std::cell::{Cell, UnsafeCell};
 use std::sync::{Arc, PoisonError, RwLock};
 use std::thread;
 
 use crate::Scope;
 use crate::{scope::Stack, Client, Hub};
 
-use arc_swap::ArcSwap;
 use once_cell::sync::Lazy;
 
 static PROCESS_HUB: Lazy<(Arc<Hub>, thread::ThreadId)> = Lazy::new(|| {
@@ -16,8 +15,8 @@ static PROCESS_HUB: Lazy<(Arc<Hub>, thread::ThreadId)> = Lazy::new(|| {
 });
 
 thread_local! {
-    static THREAD_HUB: (ArcSwap<Hub>, Cell<bool>) = (
-        ArcSwap::from_pointee(Hub::new_from_top(&PROCESS_HUB.0)),
+    static THREAD_HUB: (UnsafeCell<Arc<Hub>>, Cell<bool>) = (
+        UnsafeCell::new(Arc::new(Hub::new_from_top(&PROCESS_HUB.0))),
         Cell::new(PROCESS_HUB.1 == thread::current().id())
     );
 }
@@ -27,25 +26,26 @@ pub(crate) struct SwitchGuard {
 }
 
 impl SwitchGuard {
-    pub(crate) fn new(hub: Arc<Hub>) -> Self {
-        let inner = THREAD_HUB.with(|(old_hub, is_process_hub)| {
-            {
-                let old_hub = old_hub.load();
-                if std::ptr::eq(old_hub.as_ref(), hub.as_ref()) {
-                    return None;
-                }
+    pub(crate) fn new(mut hub: Arc<Hub>) -> Self {
+        let inner = THREAD_HUB.with(|(thread_hub, is_process_hub)| {
+            // SAFETY: `thread_hub` will always be a valid thread local hub,
+            // by definition not shared between threads.
+            let thread_hub = unsafe { &mut *thread_hub.get() };
+            if std::ptr::eq(thread_hub.as_ref(), hub.as_ref()) {
+                return None;
             }
-            let old_hub = old_hub.swap(hub);
+            std::mem::swap(thread_hub, &mut hub);
             let was_process_hub = is_process_hub.replace(false);
-            Some((old_hub, was_process_hub))
+            Some((hub, was_process_hub))
         });
         SwitchGuard { inner }
     }
 
     fn swap(&mut self) -> Option<Arc<Hub>> {
-        if let Some((old_hub, was_process_hub)) = self.inner.take() {
-            Some(THREAD_HUB.with(|(hub, is_process_hub)| {
-                let hub = hub.swap(old_hub);
+        if let Some((mut hub, was_process_hub)) = self.inner.take() {
+            Some(THREAD_HUB.with(|(thread_hub, is_process_hub)| {
+                let thread_hub = unsafe { &mut *thread_hub.get() };
+                std::mem::swap(thread_hub, &mut hub);
                 if was_process_hub {
                     is_process_hub.set(true);
                 }
@@ -150,7 +150,7 @@ impl Hub {
             if is_process_hub.get() {
                 f(&PROCESS_HUB.0)
             } else {
-                f(&hub.load())
+                f(unsafe { &*hub.get() })
             }
         })
     }
