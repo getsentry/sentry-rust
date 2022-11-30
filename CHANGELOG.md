@@ -12,7 +12,7 @@
 
 **Internal**:
 
-- Simplify `Hub::run` and `SentryFuture` by using a scope-guard and `arc-swap` for `Hub` switching. ([#524](https://github.com/getsentry/sentry-rust/pull/524))
+- Simplify `Hub::run` and `SentryFuture` by using a scope-guard for `Hub` switching. ([#524](https://github.com/getsentry/sentry-rust/pull/524), [#529](https://github.com/getsentry/sentry-rust/pull/529))
 
 **Thank you**:
 
