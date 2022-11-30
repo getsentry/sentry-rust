@@ -91,7 +91,7 @@ impl UreqHttpTransport {
             }
 
             match (scheme, &options.http_proxy, &options.https_proxy) {
-                (Scheme::Https, _, &Some(ref proxy)) => match Proxy::new(proxy) {
+                (Scheme::Https, _, Some(proxy)) => match Proxy::new(proxy) {
                     Ok(proxy) => {
                         builder = builder.proxy(proxy);
                     }
@@ -99,7 +99,7 @@ impl UreqHttpTransport {
                         sentry_debug!("invalid proxy: {:?}", err);
                     }
                 },
-                (_, &Some(ref proxy), _) => match Proxy::new(proxy) {
+                (_, Some(proxy), _) => match Proxy::new(proxy) {
                     Ok(proxy) => {
                         builder = builder.proxy(proxy);
                     }
