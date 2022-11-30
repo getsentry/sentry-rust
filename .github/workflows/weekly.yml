@@ -3,44 +3,40 @@ name: Weekly CI
 on:
   schedule:
     - cron: "0 0 * * 1" # every monday at 00:00
+  workflow_dispatch:
 
 env:
   RUSTFLAGS: -Dwarnings
 
 jobs:
-  weekly-clippy-beta:
-    name: Clippy Beta
+  weekly-ci:
+    strategy:
+      fail-fast: false
+      matrix:
+        rust: [nightly, beta]
+
     runs-on: ubuntu-latest
-    if: github.repository_owner == 'getsentry'
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: beta
-          profile: minimal
-          override: true
-          components: clippy
+      - name: Install rust stable toolchain
+        run: |
+          rustup toolchain install ${{ matrix.rust }} --profile minimal --component clippy --no-self-update
+          rustup default ${{ matrix.rust }}
 
-      - uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --all-features --workspace --tests --examples -- -D clippy::all
+      - run: cargo clippy --all-features --workspace --tests --examples -- -D clippy::all
 
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --workspace --all-features
+      - run: cargo test --workspace --all-features
 
   weekly-audit:
     name: Audit
     runs-on: ubuntu-latest
-    if: github.repository_owner == 'getsentry'
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
+      # FIXME: find a maintained alternative to audit-check
       - uses: actions-rs/audit-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}

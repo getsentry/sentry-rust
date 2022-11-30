@@ -13,29 +13,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
-      - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-          components: rustfmt, clippy
+      - run: rustup toolchain install stable --profile minimal --component rustfmt --component clippy --no-self-update
 
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
 
       - name: Run cargo fmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+        run: cargo fmt --all -- --check
 
       - name: Run cargo clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --all-features --workspace --tests --examples -- -D clippy::all
+        run: cargo clippy --all-features --workspace --tests --examples -- -D clippy::all
 
   check:
     strategy:
@@ -52,16 +40,11 @@ jobs:
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
-      - name: Install rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: ${{ matrix.rust }}
-          override: true
+      - run: rustup toolchain install ${{ matrix.rust }} --profile minimal --no-self-update
 
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
 
       - run: make checkall
 
@@ -77,22 +60,14 @@ jobs:
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
-      - name: Install rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: ${{ matrix.rust }}
-          override: true
+      - run: rustup toolchain install ${{ matrix.rust }} --profile minimal --no-self-update
 
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
 
       - name: Run cargo test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --workspace --all-features
+        run: cargo test --workspace --all-features --all-targets
 
   MSRV:
     strategy:
@@ -109,79 +84,48 @@ jobs:
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
-      - name: Install rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: ${{ matrix.rust }}
-          override: true
+      - run: rustup toolchain install ${{ matrix.rust }} --profile minimal --no-self-update
 
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
 
       - run: make checkfast
 
       - run: make testfast
 
-  # Code coverage instrumentation is current broken in recent Rust nightlies,
-  # as they fail processing with the following error:
-  # `Failed to load coverage: Truncated coverage data`
-  # https://github.com/taiki-e/cargo-llvm-cov/issues/128
   codecov:
     name: Code Coverage
     runs-on: ubuntu-latest
-    continue-on-error: true # well, its nightly and highly experimental
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly-2022-09-01
-          components: llvm-tools-preview
-          override: true
+      - run: rustup toolchain install stable --profile minimal --component llvm-tools-preview --no-self-update
 
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
 
-      - uses: Swatinem/fucov@v1
-        with:
-          args: --workspace --all-features
+      - uses: taiki-e/install-action@cargo-llvm-cov
 
-      # Or maybe switch to `cargo-llvm-cov` later once its doctests are fixed
-
-      #- uses: taiki-e/install-action@cargo-llvm-cov
-
-      #- run: cargo llvm-cov --all-features --workspace --doctests --lcov --output-path lcov.info
+      - run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
 
       - uses: codecov/codecov-action@e156083f13aff6830c92fc5faa23505779fbf649
         with:
-          directory: coverage
-          #files: lcov.info
+          files: lcov.info
 
   doc:
     name: Build-test documentation
     runs-on: ubuntu-latest
+    env:
+      RUSTDOCFLAGS: -Dwarnings
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
-      - name: Install rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-          components: rust-docs
+      - run: rustup toolchain install stable --profile minimal --component rust-docs --no-self-update
 
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
 
       - name: Run cargo doc
-        uses: actions-rs/cargo@v1
-        env:
-          RUSTDOCFLAGS: -Dwarnings
-        with:
-          command: doc
-          args: --workspace --all-features --no-deps --document-private-items
+        run: cargo doc --workspace --all-features --document-private-items --no-deps
