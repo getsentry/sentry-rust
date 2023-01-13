@@ -125,11 +125,24 @@ impl fmt::Debug for ScopeGuard {
 impl Drop for ScopeGuard {
     fn drop(&mut self) {
         if let Some((stack, depth)) = self.0.take() {
-            let mut stack = stack.write().unwrap_or_else(PoisonError::into_inner);
-            if stack.depth() != depth {
-                panic!("Tried to pop guards out of order");
+            let popped_depth = {
+                let mut stack = stack.write().unwrap_or_else(PoisonError::into_inner);
+                let popped_depth = stack.depth();
+                stack.pop();
+                popped_depth
+            };
+            // NOTE: We need to drop the `stack` lock before panicing, as the
+            // `PanicIntegration` will want to lock the `stack` itself
+            // (through `capture_event` -> `HubImpl::with`), and would thus
+            // result in a deadlock.
+            // Though that deadlock itself is detected by the `RwLock` (on macOS)
+            // and results in its own panic: `rwlock read lock would result in deadlock`.
+            // However that panic happens in the panic handler and will thus
+            // ultimately result in a `thread panicked while processing panic. aborting.`
+            // Long story short, we should not panic while holding the lock :-)
+            if popped_depth != depth {
+                panic!("Popped scope guard out of order");
             }
-            stack.pop();
         }
     }
 }

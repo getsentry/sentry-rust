@@ -199,3 +199,49 @@ fn test_attachment_sent_from_scope() {
         && attachment.buffer == vec![1, 2, 3, 4, 5, 6, 7, 8, 9]
     ));
 }
+
+#[cfg(feature = "panic")]
+#[test]
+fn test_panic_scope_pop() {
+    let options = sentry::ClientOptions::new()
+        .add_integration(sentry::integrations::panic::PanicIntegration::new());
+
+    let events = sentry::test::with_captured_events_options(
+        || {
+            // in case someone wants to log the original panics:
+            // let next = std::panic::take_hook();
+            // std::panic::set_hook(Box::new(move |info| {
+            //     dbg!(&info);
+            //     println!("{}", std::backtrace::Backtrace::force_capture());
+            //     next(info);
+            // }));
+
+            let hub = sentry::Hub::current();
+            let scope1 = hub.push_scope();
+            let scope2 = hub.push_scope();
+
+            let panic = std::panic::catch_unwind(|| {
+                drop(scope1);
+            });
+            assert!(panic.is_err());
+
+            let panic = std::panic::catch_unwind(|| {
+                drop(scope2);
+            });
+            assert!(panic.is_err());
+        },
+        options,
+    );
+
+    assert_eq!(events.len(), 2);
+    assert_eq!(&events[0].exception[0].ty, "panic");
+    assert_eq!(
+        events[0].exception[0].value,
+        Some("Popped scope guard out of order".into())
+    );
+    assert_eq!(&events[1].exception[0].ty, "panic");
+    assert_eq!(
+        events[1].exception[0].value,
+        Some("Popped scope guard out of order".into())
+    );
+}
