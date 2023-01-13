@@ -180,6 +180,11 @@ impl TransactionContext {
         &self.op
     }
 
+    /// Get the Trace ID of this Transaction.
+    pub fn trace_id(&self) -> protocol::TraceId {
+        self.trace_id
+    }
+
     /// Get the custom context of this Transaction.
     pub fn custom(&self) -> Option<&CustomTransactionContext> {
         self.custom.as_ref()
