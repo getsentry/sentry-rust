@@ -62,7 +62,7 @@ pub type CustomTransactionContext = serde_json::Map<String, serde_json::Value>;
 ///
 /// The Transaction Context defines the metadata for a Performance Monitoring
 /// Transaction, and also the connection point for distributed tracing.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TransactionContext {
     #[cfg_attr(not(feature = "client"), allow(dead_code))]
     name: String,
@@ -180,6 +180,11 @@ impl TransactionContext {
         &self.op
     }
 
+    /// Get the Trace ID of this Transaction.
+    pub fn trace_id(&self) -> protocol::TraceId {
+        self.trace_id
+    }
+
     /// Get the custom context of this Transaction.
     pub fn custom(&self) -> Option<&CustomTransactionContext> {
         self.custom.as_ref()
@@ -252,6 +257,16 @@ impl TransactionOrSpan {
         match self {
             TransactionOrSpan::Transaction(transaction) => transaction.set_data(key, value),
             TransactionOrSpan::Span(span) => span.set_data(key, value),
+        }
+    }
+
+    /// Get the TransactionContext of the Transaction/Span.
+    ///
+    /// Note that this clones the underlying value.
+    pub fn get_trace_context(&self) -> protocol::TraceContext {
+        match self {
+            TransactionOrSpan::Transaction(transaction) => transaction.get_trace_context(),
+            TransactionOrSpan::Span(span) => span.get_trace_context(),
         }
     }
 
@@ -472,6 +487,14 @@ impl Transaction {
         }
     }
 
+    /// Get the TransactionContext of the Transaction.
+    ///
+    /// Note that this clones the underlying value.
+    pub fn get_trace_context(&self) -> protocol::TraceContext {
+        let inner = self.inner.lock().unwrap();
+        inner.context.clone()
+    }
+
     /// Get the status of the Transaction.
     pub fn get_status(&self) -> Option<protocol::SpanStatus> {
         let inner = self.inner.lock().unwrap();
@@ -595,6 +618,14 @@ impl Span {
     pub fn set_data(&self, key: &str, value: protocol::Value) {
         let mut span = self.span.lock().unwrap();
         span.data.insert(key.into(), value);
+    }
+
+    /// Get the TransactionContext of the Span.
+    ///
+    /// Note that this clones the underlying value.
+    pub fn get_trace_context(&self) -> protocol::TraceContext {
+        let transaction = self.transaction.lock().unwrap();
+        transaction.context.clone()
     }
 
     /// Get the status of the Span.
