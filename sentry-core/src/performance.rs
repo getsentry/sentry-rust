@@ -531,6 +531,7 @@ impl Transaction {
                     let sample_profile = inner.profiler_guard.take().and_then(|profiler_guard| {
                         profiling::finish_profiling(&transaction, profiler_guard, inner.context.trace_id)
                     });
+                    drop(inner);
 
                     let mut envelope = protocol::Envelope::new();
                     envelope.add_item(transaction);
