@@ -16,6 +16,7 @@ jobs:
         rust: [nightly, beta]
 
     runs-on: ubuntu-latest
+    if: github.repository_owner == 'getsentry'
 
     steps:
       - uses: actions/checkout@v3
@@ -32,6 +33,7 @@ jobs:
   weekly-audit:
     name: Audit
     runs-on: ubuntu-latest
+    if: github.repository_owner == 'getsentry'
 
     steps:
       - uses: actions/checkout@v3
