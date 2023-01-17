@@ -1348,7 +1348,7 @@ pub struct GpuContext {
 /// Profile context.
 #[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
 pub struct ProfileContext {
-    /// The name of the graphics device.
+    /// The profile ID.
     pub profile_id: Uuid,
 }
 
