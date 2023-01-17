@@ -5,6 +5,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use findshlibs::{SharedLibrary, SharedLibraryId, TargetSharedLibrary, TARGET_SUPPORTED};
 
+use sentry_types::protocol::latest::Context;
+use sentry_types::protocol::latest::ProfileContext;
 use sentry_types::protocol::v7::Profile;
 use sentry_types::protocol::v7::{
     DebugImage, DebugMeta, DeviceMetadata, OSMetadata, RuntimeMetadata, RustFrame, Sample,
@@ -60,12 +62,21 @@ pub(crate) fn start_profiling(client: &Client) -> Option<ProfilerGuard> {
 }
 
 pub(crate) fn finish_profiling(
-    transaction: &Transaction,
+    transaction: &mut Transaction,
     profiler_guard: ProfilerGuard,
     trace_id: TraceId,
 ) -> Option<SampleProfile> {
     let sample_profile = match profiler_guard.0.report().build_unresolved() {
-        Ok(report) => Some(get_profile_from_report(&report, trace_id, transaction)),
+        Ok(report) => {
+            let prof = get_profile_from_report(&report, trace_id, transaction);
+            transaction.contexts.insert(
+                "profile".to_string(),
+                Context::Profile(Box::new(ProfileContext {
+                    profile_id: prof.event_id,
+                })),
+            );
+            Some(prof)
+        }
         Err(err) => {
             sentry_debug!(
                 "could not build the profile result due to the error: {}",
