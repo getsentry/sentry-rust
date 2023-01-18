@@ -237,12 +237,10 @@ where
             .as_ref()
             .map_or(false, |client| client.options().send_default_pii);
 
-        let (mut tx, sentry_req) = sentry_request_from_http(&req, with_pii);
+        let sentry_req = sentry_request_from_http(&req, with_pii);
+        let name = transaction_name_from_http(&req);
 
         let transaction = if inner.start_transaction {
-            let name = std::mem::take(&mut tx)
-                .unwrap_or_else(|| format!("{} {}", req.method(), req.uri()));
-
             let headers = req.headers().iter().flat_map(|(header, value)| {
                 value.to_str().ok().map(|value| (header.as_str(), value))
             });
@@ -262,7 +260,7 @@ where
             if let Some(transaction) = transaction.as_ref() {
                 scope.set_span(Some(transaction.clone().into()));
             } else {
-                scope.set_transaction(tx.as_deref());
+                scope.set_transaction((!inner.start_transaction).then_some(&name));
             }
             scope.add_event_processor(move |event| Some(process_event(event, &sentry_req)));
             parent_span
@@ -336,14 +334,13 @@ fn map_status(status: StatusCode) -> protocol::SpanStatus {
     }
 }
 
-/// Build a Sentry request struct from the HTTP request
-fn sentry_request_from_http(request: &ServiceRequest, with_pii: bool) -> (Option<String>, Request) {
-    let transaction = if let Some(name) = request.match_name() {
-        Some(String::from(name))
-    } else {
-        request.match_pattern()
-    };
+/// Extract a transaction name from the HTTP request
+fn transaction_name_from_http(req: &ServiceRequest) -> String {
+    format!("{} {}", req.method(), req.uri())
+}
 
+/// Build a Sentry request struct from the HTTP request
+fn sentry_request_from_http(request: &ServiceRequest, with_pii: bool) -> Request {
     let mut sentry_req = Request {
         url: format!(
             "{}://{}{}",
@@ -369,7 +366,7 @@ fn sentry_request_from_http(request: &ServiceRequest, with_pii: bool) -> (Option
         }
     };
 
-    (transaction, sentry_req)
+    sentry_req
 }
 
 /// Add request data to a Sentry event
