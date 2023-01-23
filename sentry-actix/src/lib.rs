@@ -336,7 +336,8 @@ fn map_status(status: StatusCode) -> protocol::SpanStatus {
 
 /// Extract a transaction name from the HTTP request
 fn transaction_name_from_http(req: &ServiceRequest) -> String {
-    format!("{} {}", req.method(), req.uri())
+    let path_part = req.match_pattern().unwrap_or_else(|| "<none>".to_string());
+    format!("{} {}", req.method(), path_part)
 }
 
 /// Build a Sentry request struct from the HTTP request
@@ -448,10 +449,53 @@ mod tests {
         assert_eq!(events.len(), 2);
         for event in events {
             let request = event.request.expect("Request should be set.");
-            assert_eq!(event.transaction, Some("/test".into()));
+            assert_eq!(event.transaction, Some("GET /test".into()));
             assert_eq!(event.message, Some("Message".into()));
             assert_eq!(event.level, Level::Warning);
             assert_eq!(request.method, Some("GET".into()));
+        }
+    }
+
+    /// Test transaction name HTTP verb.
+    #[actix_web::test]
+    async fn test_match_pattern() {
+        let events = sentry::test::with_captured_events(|| {
+            block_on(async {
+                let service = |_name: String| {
+                    // Current Hub should have no events
+                    _assert_hub_no_events();
+
+                    sentry::capture_message("Message", Level::Warning);
+
+                    // Current Hub should have the event
+                    _assert_hub_has_events();
+
+                    HttpResponse::Ok()
+                };
+
+                let app = init_service(
+                    App::new()
+                        .wrap(Sentry::builder().with_hub(Hub::current()).finish())
+                        .service(web::resource("/test/{name}").route(web::post().to(service))),
+                )
+                .await;
+
+                // Call the service twice (sequentially) to ensure the middleware isn't sticky
+                for _ in 0..2 {
+                    let req = TestRequest::post().uri("/test/fake_name").to_request();
+                    let res = call_service(&app, req).await;
+                    assert!(res.status().is_success());
+                }
+            })
+        });
+
+        assert_eq!(events.len(), 2);
+        for event in events {
+            let request = event.request.expect("Request should be set.");
+            assert_eq!(event.transaction, Some("POST /test/{name}".into()));
+            assert_eq!(event.message, Some("Message".into()));
+            assert_eq!(event.level, Level::Warning);
+            assert_eq!(request.method, Some("POST".into()));
         }
     }
 
@@ -487,7 +531,7 @@ mod tests {
         assert_eq!(events.len(), 2);
         for event in events {
             let request = event.request.expect("Request should be set.");
-            assert_eq!(event.transaction, Some("failing".into())); // Transaction name is the name of the function
+            assert_eq!(event.transaction, Some("GET /test".into())); // Transaction name is the name of the function
             assert_eq!(event.message, None);
             assert_eq!(event.exception.values[0].ty, String::from("Custom"));
             assert_eq!(event.exception.values[0].value, Some("Test Error".into()));
