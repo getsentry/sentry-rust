@@ -531,7 +531,7 @@ mod tests {
         assert_eq!(events.len(), 2);
         for event in events {
             let request = event.request.expect("Request should be set.");
-            assert_eq!(event.transaction, Some("GET /test".into())); // Transaction name is the name of the function
+            assert_eq!(event.transaction, Some("GET /test".into())); // Transaction name is the matcher of the route
             assert_eq!(event.message, None);
             assert_eq!(event.exception.values[0].ty, String::from("Custom"));
             assert_eq!(event.exception.values[0].value, Some("Test Error".into()));
