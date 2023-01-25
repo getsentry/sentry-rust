@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.29.2
+
+### Various fixes & improvements
+
+- fix: Prefer `match_pattern` over `match_name` in actix (#539) by @wuerges
+- feat(profiling): Add profile context to transaction. (#538) by @viglia
+- Re-disable scheduled jobs on forks (#537) by @MarijnS95
+- fix: Avoid Deadlock popping ScopeGuards out of order (#536) by @Swatinem
+- sentry-core: make TraceContext publicly readable (#534) by @tommilligan
+- sentry-core: make TransactionContext.trace_id readable (#533) by @tommilligan
+- docs: fix outdated `native-tls`/`rustls` info in README (#535) by @seritools
+- features: Make `tower-http` enable the `tower` feature (#532) by @Turbo87
+
 ## 0.29.1
 
 **Features**:
