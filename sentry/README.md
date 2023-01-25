@@ -34,8 +34,8 @@ sentry::capture_message("Hello World!", sentry::Level::Info);
 More complex examples on how to use sentry can also be found in [examples]. Extended instructions
 may also be found on [Sentry itself].
 
-[`sentry::init`]: https://docs.rs/sentry/0.29.1/sentry/fn.init.html
-[`Hub`]: https://docs.rs/sentry/0.29.1/sentry/struct.Hub.html
+[`sentry::init`]: https://docs.rs/sentry/0.29.2/sentry/fn.init.html
+[`Hub`]: https://docs.rs/sentry/0.29.2/sentry/struct.Hub.html
 [examples]: https://github.com/getsentry/sentry-rust/tree/master/sentry/examples
 [Sentry itself]: https://docs.sentry.io/platforms/rust
 
@@ -47,8 +47,8 @@ the ecosystem require a feature flag. For available integrations and how to use 
 [integrations] and [apply_defaults].
 
 [Features]: #features
-[integrations]: https://docs.rs/sentry/0.29.1/sentry/integrations/index.html
-[apply_defaults]: https://docs.rs/sentry/0.29.1/sentry/fn.apply_defaults.html
+[integrations]: https://docs.rs/sentry/0.29.2/sentry/integrations/index.html
+[apply_defaults]: https://docs.rs/sentry/0.29.2/sentry/fn.apply_defaults.html
 
 ## Minimal API
 
@@ -56,8 +56,8 @@ This crate comes fully-featured. If the goal is to instrument libraries for usag
 with sentry, or to extend sentry with a custom [`Integration`] or a [`Transport`],
 one should use the [`sentry-core`] crate instead.
 
-[`Integration`]: https://docs.rs/sentry/0.29.1/sentry/trait.Integration.html
-[`Transport`]: https://docs.rs/sentry/0.29.1/sentry/trait.Transport.html
+[`Integration`]: https://docs.rs/sentry/0.29.2/sentry/trait.Integration.html
+[`Transport`]: https://docs.rs/sentry/0.29.2/sentry/trait.Transport.html
 [`sentry-core`]: https://crates.io/crates/sentry-core
 
 ## Features
@@ -65,25 +65,26 @@ one should use the [`sentry-core`] crate instead.
 Additional functionality and integrations are enabled via feature flags. Some features require
 extra setup to function properly.
 
-| Feature        | Default | Is Integration | Deprecated | Additional notes                                                                                   |
-| -------------- | ------- | -------------- | ---------- | -------------------------------------------------------------------------------------------------- |
-| `backtrace`    | ✅      | 🔌             |            |                                                                                                    |
-| `contexts`     | ✅      | 🔌             |            |                                                                                                    |
-| `panic`        | ✅      | 🔌             |            |                                                                                                    |
-| `transport`    | ✅      |                |            |                                                                                                    |
-| `anyhow`       |         | 🔌             |            |                                                                                                    |
-| `test`         |         |                |            |                                                                                                    |
-| `debug-images` |         | 🔌             |            |                                                                                                    |
-| `log`          |         | 🔌             |            | Requires extra setup; See [`sentry-log`]'s documentation.                                          |
-| `debug-logs`   |         |                | ❗         | Requires extra setup; See [`sentry-log`]'s documentation.                                          |
-| `slog`         |         | 🔌             |            | Requires extra setup; See [`sentry-slog`]'s documentation.                                         |
-| `reqwest`      | ✅      |                |            |                                                                                                    |
-| `native-tls`   | ✅      |                |            | `reqwest` or `ureq` must be enabled.                                                               |
-| `rustls`       |         |                |            | `reqwest` or `ureq` must be enabled. `native-tls` must be disabled via `default-features = false`. |
-| `curl`         |         |                |            |                                                                                                    |
-| `surf`         |         |                |            |                                                                                                    |
-| `tower`        |         | 🔌             |            | Requires extra setup; See [`sentry-tower`]'s documentation.                                        |
-| `ureq`         |         |                |            | `ureq` transport support using `rustls` by default                                                 |
+| Feature           | Default | Is Integration | Deprecated | Additional notes                                                                         |
+| --------------    | ------- | -------------- | ---------- | ---------------------------------------------------------------------------------------- |
+| `backtrace`       | ✅      | 🔌             |            |                                                                                          |
+| `contexts`        | ✅      | 🔌             |            |                                                                                          |
+| `panic`           | ✅      | 🔌             |            |                                                                                          |
+| `transport`       | ✅      |                |            |                                                                                          |
+| `anyhow`          |         | 🔌             |            |                                                                                          |
+| `test`            |         |                |            |                                                                                          |
+| `debug-images`    |         | 🔌             |            |                                                                                          |
+| `log`             |         | 🔌             |            | Requires extra setup; See [`sentry-log`]'s documentation.                                |
+| `debug-logs`      |         |                | ❗         | Requires extra setup; See [`sentry-log`]'s documentation.                                |
+| `slog`            |         | 🔌             |            | Requires extra setup; See [`sentry-slog`]'s documentation.                               |
+| `reqwest`         | ✅      |                |            |                                                                                          |
+| `native-tls`      | ✅      |                |            | `reqwest` must be enabled.                                                               |
+| `rustls`          |         |                |            | `reqwest` must be enabled. `native-tls` must be disabled via `default-features = false`. |
+| `curl`            |         |                |            |                                                                                          |
+| `surf`            |         |                |            |                                                                                          |
+| `tower`           |         | 🔌             |            | Requires extra setup; See [`sentry-tower`]'s documentation.                              |
+| `ureq`            |         |                |            | `ureq` transport support using `rustls` by default                                       |
+| `ureq-native-tls` |         |                |            |                                                                                          |
 
 [`sentry-log`]: https://crates.io/crates/sentry-log
 [`sentry-slog`]: https://crates.io/crates/sentry-slog
@@ -107,14 +108,14 @@ extra setup to function properly.
 
 ### Transports
 - `reqwest`: **Default**. Enables the `reqwest` transport.
-- `native-tls`: **Default**. Uses the `native-tls` crate. This affects the `reqwest` and `ureq`
-  transport.
-- `rustls`: Enables `rustls` support for `reqwest` or `ureq`. Please note that `native-tls` is a
-  default feature, and `default-features = false` must be set to completely disable building
-  `native-tls` dependencies.
+- `native-tls`: **Default**. Uses the `native-tls` crate. This only affects the `reqwest` transport.
+- `rustls`: Enables `rustls` support for `reqwest`. Please note that `native-tls` is a default
+  feature, and `default-features = false` must be set to completely disable building `native-tls`
+  dependencies.
 - `curl`: Enables the `curl` transport.
 - `surf`: Enables the `surf` transport.
 - `ureq`: Enables the `ureq` transport using `rustls`.
+- `ureq-native-tls`: Enables the `ureq` transport using `native-tls`.
 
 ### Integrations
 - `tower`: Enables support for the `tower` crate and those using it.
