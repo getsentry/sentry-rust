@@ -305,8 +305,9 @@ fn collect_samples(
         collector_tid, pid
     );
     while running.load(Ordering::SeqCst) {
-        // lock the process to get a consistent snapshot. Unwinding will fail otherwise
-        let _lock = process.lock();
+            // lock the process to get a consistent snapshot. Unwinding will fail otherwise
+        let process_lock = process.lock();
+        println("process lock is err: {}"process_lock.is_err());
         if let Some(threads) = process.threads().ok() {
             for thread in threads.iter() {
                 let tid = thread.id().unwrap();
@@ -318,28 +319,26 @@ fn collect_samples(
 
                 // }
 
-                println!("Thread lock is ok");
-                let frames: Vec<u64> = unwinder
-                    .cursor(&thread)
-                    .unwrap()
-                    .into_iter()
-                    .filter_map(|ip| ip.ok())
-                    .collect();
-                println!("stack length: {}", frames.len());
-                if let Ok(mut write_guard) = data.try_write() {
-                    write_guard.push(UnresolvedFrames {
-                        thread_id: tid as u64,
-                        timestamp,
-                        frames,
-                    });
+                match thread.lock() {
+                    Ok(_) => {
+                        println!("Thread lock is ok");
+                        let frames: Vec<u64> = unwinder
+                            .cursor(&thread)
+                            .unwrap()
+                            .into_iter()
+                            .filter_map(|ip| ip.ok())
+                            .collect();
+                        println!("stack length: {}", frames.len());
+                        if let Ok(mut write_guard) = data.try_write() {
+                            write_guard.push(UnresolvedFrames {
+                                thread_id: tid as u64,
+                                timestamp,
+                                frames,
+                            });
+                        }
+                    }
+                    Err(err) => println!("Error: {}", err),
                 }
-
-                // match thread.lock() {
-                //     Ok(_) => {
-
-                //     }
-                //     Err(err) => println!("Error: {}", err),
-                // }
             } // end thread looping
         }
         thread::sleep(Duration::from_millis(interval));
