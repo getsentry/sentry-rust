@@ -180,7 +180,10 @@ fn get_sample_profile(
     transaction: &Transaction,
 ) -> SampleProfile {
     let sample_rl = profiler.data.read().unwrap();
-
+    println!(
+        "got reading access to data. There are {} samples",
+        sample_rl.len()
+    );
     let mut samples: Vec<Sample> = Vec::with_capacity(sample_rl.len());
     let mut stacks: Vec<Vec<u32>> = Vec::with_capacity(sample_rl.len());
     let mut address_to_frame_idx: IndexSet<_> = IndexSet::new();
