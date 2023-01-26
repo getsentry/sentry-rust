@@ -334,7 +334,7 @@ fn collect_samples(
                             });
                         }
                     }
-                    Err(err) => println!("Error: {:?}", err),
+                    Err(err) => log::debug!("Error: cannot lock thread {}", err),
                 }
             } // end thread looping
         }
