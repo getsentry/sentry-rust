@@ -311,7 +311,7 @@ fn collect_samples(
             Err(err) => println!("process err: {}", err),
             _ => {}
         }
-        if let Some(threads) = process.threads().ok() && !process_lock.is_err(){
+        if let Some(threads) = process.threads().ok() {
             for thread in threads.iter() {
                 let tid = thread.id().unwrap();
                 let timestamp = SystemTime::now();
