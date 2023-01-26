@@ -297,7 +297,10 @@ fn collect_samples(
     let process = remoteprocess::Process::new(pid).unwrap();
     // Create a stack unwind object, and use it to get the stack for each thread
     let unwinder = process.unwinder().unwrap();
-    println!("Collector thread id {} should be skipped", collector_tid);
+    println!(
+        "Collector thread id <{}> and Process id <{}> should be skipped",
+        collector_tid, pid
+    );
     while running.load(Ordering::SeqCst) {
         println!("Stacks collection");
         if let Some(threads) = process.threads().ok() {
