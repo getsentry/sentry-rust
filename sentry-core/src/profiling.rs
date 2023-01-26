@@ -307,7 +307,7 @@ fn collect_samples(
             for thread in threads.iter() {
                 let tid = thread.id().unwrap();
                 let timestamp = SystemTime::now();
-                if tid == collector_tid {
+                if collector_tid == tid || collector_tid == pid {
                     continue;
                 }
                 println!("collecting stack for thread: {}", tid);
