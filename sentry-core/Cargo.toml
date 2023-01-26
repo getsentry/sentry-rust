@@ -35,6 +35,7 @@ profiling = [
     "rustc_version_runtime",
     "libc",
     "indexmap",
+    "dep:log",
 ]
 
 [dependencies]
