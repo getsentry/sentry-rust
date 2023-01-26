@@ -312,22 +312,29 @@ fn collect_samples(
                 if tid == collector_tid || tid == pid {
                     continue;
                 }
-                if thread.lock().is_ok() {
-                    println!("Thread lock is ok");
-                    let frames: Vec<u64> = unwinder
-                        .cursor(&thread)
-                        .unwrap()
-                        .into_iter()
-                        .filter_map(|ip| ip.ok())
-                        .collect();
-                    println!("stack length: {}", frames.len());
-                    if let Ok(mut write_guard) = data.try_write() {
-                        write_guard.push(UnresolvedFrames {
-                            thread_id: tid as u64,
-                            timestamp,
-                            frames,
-                        });
+                // if thread.lock().is_ok() {
+
+                // }
+
+                match thread.lock() {
+                    Ok(_) => {
+                        println!("Thread lock is ok");
+                        let frames: Vec<u64> = unwinder
+                            .cursor(&thread)
+                            .unwrap()
+                            .into_iter()
+                            .filter_map(|ip| ip.ok())
+                            .collect();
+                        println!("stack length: {}", frames.len());
+                        if let Ok(mut write_guard) = data.try_write() {
+                            write_guard.push(UnresolvedFrames {
+                                thread_id: tid as u64,
+                                timestamp,
+                                frames,
+                            });
+                        }
                     }
+                    Err(err) => println!(Error: {err}),
                 }
             } // end thread looping
         }
