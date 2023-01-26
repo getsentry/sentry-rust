@@ -49,6 +49,7 @@ pub(crate) fn start_profiling(client: &Client) -> Option<Profiler> {
     if let Ok(false) =
         PROFILER_RUNNING.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
     {
+        println!("starting profiler");
         let profiler = Profiler {
             data: Arc::new(RwLock::new(Vec::with_capacity(1024))),
             start_time: SystemTime::now(),
@@ -297,6 +298,7 @@ fn collect_samples(
     let unwinder = process.unwinder().unwrap();
 
     while running.load(Ordering::SeqCst) {
+        println!("Stacks collection");
         if let Some(threads) = process.threads().ok() {
             for thread in threads.iter() {
                 let tid = thread.id().unwrap();
@@ -304,7 +306,7 @@ fn collect_samples(
                 if tid == collector_tid {
                     continue;
                 }
-
+                println!("collecting stack for thread: {}", tid);
                 if thread.lock().is_ok() {
                     let frames: Vec<u64> = unwinder
                         .cursor(&thread)
