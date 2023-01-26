@@ -564,8 +564,8 @@ impl Transaction {
                     if let Some(sample_profile) = sample_profile {
                         if !sample_profile.profile.samples.is_empty(){
                             //envelope.add_item(sample_profile);
-                            let pr = serde_json::to_string(&sample_profile)?;
-                            println!("{}", pr);
+                            let pr = serde_json::to_string(&sample_profile);
+                            println!("{}", pr.unwrap());
                         }
                         else {
                             sentry_debug!("the profile is being dropped because it contains no samples");
