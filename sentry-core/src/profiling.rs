@@ -307,8 +307,11 @@ fn collect_samples(
     while running.load(Ordering::SeqCst) {
         // lock the process to get a consistent snapshot. Unwinding will fail otherwise
         let process_lock = process.lock();
-        println!("process lock is err: {}", process_lock.is_err());
-        if let Some(threads) = process.threads().ok() {
+        match process_lock {
+            Err(err) => println!("process err: {}", err),
+            _ => {}
+        }
+        if let Some(threads) = process.threads().ok() && !process_lock.is_err(){
             for thread in threads.iter() {
                 let tid = thread.id().unwrap();
                 let timestamp = SystemTime::now();
