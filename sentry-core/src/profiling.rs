@@ -305,7 +305,6 @@ fn collect_samples(
         collector_tid, pid
     );
     while running.load(Ordering::SeqCst) {
-        println!("Stacks collection");
         if let Some(threads) = process.threads().ok() {
             for thread in threads.iter() {
                 let tid = thread.id().unwrap();
@@ -313,7 +312,6 @@ fn collect_samples(
                 if tid == collector_tid || tid == pid {
                     continue;
                 }
-                println!("collecting stack for thread: {}", tid);
                 if thread.lock().is_ok() {
                     let frames: Vec<u64> = unwinder
                         .cursor(&thread)
@@ -321,7 +319,7 @@ fn collect_samples(
                         .into_iter()
                         .filter_map(|ip| ip.ok())
                         .collect();
-
+                    println!("stack length: {}", frames.len());
                     if let Ok(mut write_guard) = data.try_write() {
                         write_guard.push(UnresolvedFrames {
                             thread_id: tid as u64,
