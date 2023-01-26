@@ -334,7 +334,7 @@ fn collect_samples(
                             });
                         }
                     }
-                    Err(err) => println!(Error: {err}),
+                    Err(err) => println!("Error: {}", err),
                 }
             } // end thread looping
         }
