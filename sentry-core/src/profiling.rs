@@ -305,9 +305,9 @@ fn collect_samples(
         collector_tid, pid
     );
     while running.load(Ordering::SeqCst) {
-            // lock the process to get a consistent snapshot. Unwinding will fail otherwise
+        // lock the process to get a consistent snapshot. Unwinding will fail otherwise
         let process_lock = process.lock();
-        println("process lock is err: {}"process_lock.is_err());
+        println("process lock is err: {}", process_lock.is_err());
         if let Some(threads) = process.threads().ok() {
             for thread in threads.iter() {
                 let tid = thread.id().unwrap();
