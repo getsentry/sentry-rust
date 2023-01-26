@@ -6,6 +6,8 @@ use std::sync::Arc;
 use std::sync::RwLock;
 use std::time::SystemTime;
 
+use log;
+
 use findshlibs::{SharedLibrary, SharedLibraryId, TargetSharedLibrary, TARGET_SUPPORTED};
 
 use sentry_types::protocol::latest::Context;
