@@ -313,6 +313,7 @@ fn collect_samples(
                     continue;
                 }
                 if thread.lock().is_ok() {
+                    println!("Thread lock is ok");
                     let frames: Vec<u64> = unwinder
                         .cursor(&thread)
                         .unwrap()
