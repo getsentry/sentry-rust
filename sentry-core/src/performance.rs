@@ -563,14 +563,16 @@ impl Transaction {
                     #[cfg(all(feature = "profiling", target_os = "linux"))]
                     if let Some(sample_profile) = sample_profile {
                         if !sample_profile.profile.samples.is_empty(){
-                            envelope.add_item(sample_profile);
+                            //envelope.add_item(sample_profile);
+                            let pr = serde_json::to_string(&sample_profile)?;
+                            println!("{}", pr);
                         }
                         else {
                             sentry_debug!("the profile is being dropped because it contains no samples");
                         }
                     }
 
-                    client.send_envelope(envelope)
+                    //client.send_envelope(envelope)
                 }
             }
         }}
