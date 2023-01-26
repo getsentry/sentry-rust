@@ -6,8 +6,6 @@ use std::sync::Arc;
 use std::sync::RwLock;
 use std::time::SystemTime;
 
-use log;
-
 use findshlibs::{SharedLibrary, SharedLibraryId, TargetSharedLibrary, TARGET_SUPPORTED};
 
 use sentry_types::protocol::latest::Context;
@@ -336,7 +334,7 @@ fn collect_samples(
                             });
                         }
                     }
-                    Err(err) => log::debug!("Error: cannot lock thread {}", err),
+                    Err(err) => println!("Error: {}", err),
                 }
             } // end thread looping
         }
