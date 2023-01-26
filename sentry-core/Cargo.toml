@@ -26,8 +26,16 @@ client = ["rand"]
 # and macros actually expand features (and extern crate) where they are used!
 debug-logs = ["dep:log"]
 test = ["client"]
-profiling = ["pprof", "build_id", "uuid", "sys-info", "findshlibs", "rustc_version_runtime", "libc", "indexmap"]
-frame-pointer = ["pprof?/frame-pointer"]
+profiling = [
+    "remoteprocess",
+    "build_id",
+    "uuid",
+    "sys-info",
+    "findshlibs",
+    "rustc_version_runtime",
+    "libc",
+    "indexmap",
+]
 
 [dependencies]
 log = { version = "0.4.8", optional = true, features = ["std"] }
@@ -44,14 +52,21 @@ rustc_version_runtime = { version = "0.2.1", optional = true }
 indexmap = { version = "1.9.1", optional = true }
 
 [target.'cfg(target_family = "unix")'.dependencies]
-pprof = { version = "0.11.0", optional = true, default-features = false }
 libc = { version = "^0.2.66", optional = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+remoteprocess = { version = "0.4.11", features = ["unwind"], optional = true }
+nix = { version = "0.26", default-features = false, features = ["signal"] }
+
 
 [dev-dependencies]
 # Because we re-export all the public API in `sentry`, we actually run all the
 # doctests using the `sentry` crate. This also takes care of the doctest
 # limitation documented in https://github.com/rust-lang/rust/issues/45599.
-sentry = { path = "../sentry", default-features = false, features = ["test", "transport"] }
+sentry = { path = "../sentry", default-features = false, features = [
+    "test",
+    "transport",
+] }
 thiserror = "1.0.15"
 anyhow = "1.0.30"
 tokio = { version = "1.0", features = ["rt", "rt-multi-thread", "macros"] }

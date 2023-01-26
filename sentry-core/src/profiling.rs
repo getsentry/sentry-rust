@@ -2,6 +2,9 @@ use indexmap::set::IndexSet;
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::sync::RwLock;
+use std::time::SystemTime;
 
 use findshlibs::{SharedLibrary, SharedLibraryId, TargetSharedLibrary, TARGET_SUPPORTED};
 
@@ -20,15 +23,19 @@ use crate::Client;
 
 static PROFILER_RUNNING: AtomicBool = AtomicBool::new(false);
 
-pub(crate) struct ProfilerGuard(pprof::ProfilerGuard<'static>);
+pub(crate) struct Profiler {
+    data: Arc<RwLock<Vec<UnresolvedFrames>>>,
+    start_time: SystemTime,
+    running: Arc<AtomicBool>,
+}
 
-impl fmt::Debug for ProfilerGuard {
+impl fmt::Debug for Profiler {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "[ProfilerGuard]")
+        write!(f, "[Profiler]")
     }
 }
 
-pub(crate) fn start_profiling(client: &Client) -> Option<ProfilerGuard> {
+pub(crate) fn start_profiling(client: &Client) -> Option<Profiler> {
     // if profiling is not enabled or the profile was not sampled
     // return None immediately
     if !client.options().enable_profiling
@@ -42,52 +49,40 @@ pub(crate) fn start_profiling(client: &Client) -> Option<ProfilerGuard> {
     if let Ok(false) =
         PROFILER_RUNNING.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
     {
-        let profile_guard_builder = pprof::ProfilerGuardBuilder::default()
-            .frequency(100)
-            .blocklist(&["libc", "libgcc", "pthread", "vdso"])
-            .build();
+        let profiler = Profiler {
+            data: Arc::new(RwLock::new(Vec::with_capacity(1024))),
+            start_time: SystemTime::now(),
+            running: Arc::new(AtomicBool::new(true)),
+        };
 
-        match profile_guard_builder {
-            Ok(guard_builder) => return Some(ProfilerGuard(guard_builder)),
-            Err(err) => {
-                sentry_debug!(
-                    "could not start the profiler due to the following error: {:?}",
-                    err
-                );
-                PROFILER_RUNNING.store(false, Ordering::SeqCst);
-            }
-        }
+        let running_arc = profiler.running.clone();
+        let data_arc = profiler.data.clone();
+
+        std::thread::spawn(|| collect_samples(running_arc, data_arc, 100));
+
+        return Some(profiler);
     }
     None
 }
 
 pub(crate) fn finish_profiling(
     transaction: &mut Transaction,
-    profiler_guard: ProfilerGuard,
+    profiler: Profiler,
     trace_id: TraceId,
 ) -> Option<SampleProfile> {
-    let sample_profile = match profiler_guard.0.report().build_unresolved() {
-        Ok(report) => {
-            let prof = get_profile_from_report(&report, trace_id, transaction);
-            transaction.contexts.insert(
-                "profile".to_string(),
-                Context::Profile(Box::new(ProfileContext {
-                    profile_id: prof.event_id,
-                })),
-            );
-            Some(prof)
-        }
-        Err(err) => {
-            sentry_debug!(
-                "could not build the profile result due to the error: {}",
-                err
-            );
-            None
-        }
-    };
+    // stop profiler
+    profiler.running.store(false, Ordering::SeqCst);
+    let sample_profile = get_sample_profile(profiler, trace_id, transaction);
+
+    transaction.contexts.insert(
+        "profile".to_string(),
+        Context::Profile(Box::new(ProfileContext {
+            profile_id: sample_profile.event_id,
+        })),
+    );
 
     PROFILER_RUNNING.store(false, Ordering::SeqCst);
-    sample_profile
+    Some(sample_profile)
 }
 
 /// Converts an ELF object identifier into a `DebugId`.
@@ -177,28 +172,24 @@ pub fn debug_images() -> Vec<DebugImage> {
     images
 }
 
-fn get_profile_from_report(
-    rep: &pprof::UnresolvedReport,
+fn get_sample_profile(
+    profiler: Profiler,
     trace_id: TraceId,
     transaction: &Transaction,
 ) -> SampleProfile {
-    use std::time::SystemTime;
+    let sample_rl = profiler.data.read().unwrap();
 
-    let mut samples: Vec<Sample> = Vec::with_capacity(rep.data.len());
-    let mut stacks: Vec<Vec<u32>> = Vec::with_capacity(rep.data.len());
+    let mut samples: Vec<Sample> = Vec::with_capacity(sample_rl.len());
+    let mut stacks: Vec<Vec<u32>> = Vec::with_capacity(sample_rl.len());
     let mut address_to_frame_idx: IndexSet<_> = IndexSet::new();
     let mut thread_metadata: HashMap<String, ThreadMetadata> = HashMap::new();
 
-    for sample in rep.data.keys() {
+    for sample in sample_rl.iter() {
         let stack = sample
             .frames
             .iter()
-            .map(|frame| {
-                #[cfg(feature = "frame-pointer")]
-                let instruction_addr = frame.ip as *mut core::ffi::c_void;
-                #[cfg(not(feature = "frame-pointer"))]
-                let instruction_addr = frame.ip();
-
+            .map(|frame_ip| {
+                let instruction_addr = *frame_ip as *mut core::ffi::c_void;
                 address_to_frame_idx.insert_full(instruction_addr).0 as u32
             })
             .collect();
@@ -208,8 +199,8 @@ fn get_profile_from_report(
             stack_id: (stacks.len() - 1) as u32,
             thread_id: sample.thread_id,
             elapsed_since_start_ns: sample
-                .sample_timestamp
-                .duration_since(rep.timing.start_time)
+                .timestamp
+                .duration_since(profiler.start_time)
                 .unwrap()
                 .as_nanos() as u64,
         });
@@ -218,8 +209,9 @@ fn get_profile_from_report(
             .entry(sample.thread_id.to_string())
             .or_insert(ThreadMetadata {
                 name: Some(
-                    String::from_utf8_lossy(&sample.thread_name[0..sample.thread_name_length])
-                        .into_owned(),
+                    sample.thread_id.to_string(),
+                    //String::from_utf8_lossy(&sample.thread_name[0..sample.thread_name_length])
+                    //    .into_owned(),
                 ),
             });
     }
@@ -249,7 +241,7 @@ fn get_profile_from_report(
 
         event_id: uuid::Uuid::new_v4(),
         release: transaction.release.clone().unwrap_or_default().into(),
-        timestamp: rep.timing.start_time,
+        timestamp: profiler.start_time,
         transactions: vec![TransactionMetadata {
             id: transaction.event_id,
             name: transaction.name.clone().unwrap_or_default(),
@@ -258,7 +250,7 @@ fn get_profile_from_report(
             relative_end_ns: transaction
                 .timestamp
                 .unwrap_or_else(SystemTime::now)
-                .duration_since(rep.timing.start_time)
+                .duration_since(profiler.start_time)
                 .unwrap()
                 .as_nanos() as u64,
             active_thread_id: transaction.active_thread_id.unwrap_or(0),
@@ -277,5 +269,60 @@ fn get_profile_from_report(
                 .collect(),
             thread_metadata,
         },
+    }
+}
+
+struct UnresolvedFrames {
+    thread_id: u64,
+    timestamp: SystemTime,
+    frames: Vec<u64>,
+}
+
+//#[cfg(feature = "unwind")]
+fn collect_samples(
+    running: Arc<AtomicBool>,
+    data: Arc<RwLock<Vec<UnresolvedFrames>>>,
+    frequency: u64,
+) {
+    use std::{thread, time::Duration};
+
+    let pid = nix::unistd::Pid::this().as_raw() as i32;
+    let collector_tid = unsafe { libc::syscall(libc::SYS_gettid) as i32 };
+
+    let interval = 1e3 as u64 / frequency;
+
+    // Create a new handle to the process
+    let process = remoteprocess::Process::new(pid).unwrap();
+    // Create a stack unwind object, and use it to get the stack for each thread
+    let unwinder = process.unwinder().unwrap();
+
+    while running.load(Ordering::SeqCst) {
+        if let Some(threads) = process.threads().ok() {
+            for thread in threads.iter() {
+                let tid = thread.id().unwrap();
+                let timestamp = SystemTime::now();
+                if tid == collector_tid {
+                    continue;
+                }
+
+                if thread.lock().is_ok() {
+                    let frames: Vec<u64> = unwinder
+                        .cursor(&thread)
+                        .unwrap()
+                        .into_iter()
+                        .filter_map(|ip| ip.ok())
+                        .collect();
+
+                    if let Ok(mut write_guard) = data.try_write() {
+                        write_guard.push(UnresolvedFrames {
+                            thread_id: tid as u64,
+                            timestamp,
+                            frames,
+                        });
+                    }
+                }
+            } // end thread looping
+        }
+        thread::sleep(Duration::from_millis(interval));
     }
 }
