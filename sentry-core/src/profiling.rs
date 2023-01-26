@@ -71,6 +71,7 @@ pub(crate) fn finish_profiling(
     profiler: Profiler,
     trace_id: TraceId,
 ) -> Option<SampleProfile> {
+    println!("finish profiling!");
     // stop profiler
     profiler.running.store(false, Ordering::SeqCst);
     let sample_profile = get_sample_profile(profiler, trace_id, transaction);
@@ -296,7 +297,7 @@ fn collect_samples(
     let process = remoteprocess::Process::new(pid).unwrap();
     // Create a stack unwind object, and use it to get the stack for each thread
     let unwinder = process.unwinder().unwrap();
-
+    println!("Collector thread id {} should be skipped", collector_tid);
     while running.load(Ordering::SeqCst) {
         println!("Stacks collection");
         if let Some(threads) = process.threads().ok() {
