@@ -15,5 +15,5 @@ fn main() {
     });
 
     let id = sentry::capture_message("An HTTP request failed.", sentry::Level::Error);
-    println!("sent event {}", id);
+    println!("sent event {id}");
 }

@@ -24,7 +24,7 @@ macro_rules! impl_into {
 }
 impl<'a> Serializer for MapSerializer<'a> {
     fn emit_arguments(&mut self, key: Key, val: &fmt::Arguments) -> slog::Result {
-        self.0.insert(key.into(), format!("{}", val).into());
+        self.0.insert(key.into(), val.to_string().into());
         Ok(())
     }
 

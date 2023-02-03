@@ -793,7 +793,7 @@ mod tests {
         );
 
         let trace = SentryTrace(Default::default(), Default::default(), None);
-        let parsed = parse_sentry_trace(&format!("{}", trace));
+        let parsed = parse_sentry_trace(&trace.to_string());
         assert_eq!(parsed, Some(trace));
     }
 
