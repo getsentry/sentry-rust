@@ -26,7 +26,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         f,
         "pub const RUSTC_VERSION: Option<&'static str> = {};",
         if let Ok(version) = version() {
-            format!("Some(\"{}\")", version)
+            format!("Some(\"{version}\")")
         } else {
             "None".into()
         }
@@ -45,7 +45,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Channel::Beta => "beta",
                 Channel::Stable => "stable",
             };
-            format!("Some(\"{}\")", chan)
+            format!("Some(\"{chan}\")")
         } else {
             "None".into()
         }
@@ -54,11 +54,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     writeln!(f, "/// The platform identifier.")?;
     writeln!(
         f,
-        "#[allow(unused)] pub const PLATFORM: &str = \"{}\";",
-        platform
+        "#[allow(unused)] pub const PLATFORM: &str = \"{platform}\";"
     )?;
     writeln!(f, "/// The CPU architecture identifier.")?;
-    writeln!(f, "pub const ARCH: &str = \"{}\";", arch)?;
+    writeln!(f, "pub const ARCH: &str = \"{arch}\";")?;
 
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=Cargo.toml");

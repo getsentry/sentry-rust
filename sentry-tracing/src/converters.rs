@@ -89,7 +89,7 @@ impl Visit for FieldVisitor {
     }
 
     fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
-        self.record(field, format!("{:?}", value));
+        self.record(field, format!("{value:?}"));
     }
 }
 

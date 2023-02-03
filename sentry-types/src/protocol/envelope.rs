@@ -270,7 +270,7 @@ impl Envelope {
         // write the headers:
         let event_id = self.uuid();
         match event_id {
-            Some(uuid) => writeln!(writer, r#"{{"event_id":"{}"}}"#, uuid)?,
+            Some(uuid) => writeln!(writer, r#"{{"event_id":"{uuid}"}}"#)?,
             _ => writeln!(writer, "{{}}")?,
         }
 

@@ -138,10 +138,10 @@ impl fmt::Display for Auth {
             write!(f, ", sentry_timestamp={}", datetime_to_timestamp(&ts))?;
         }
         if let Some(ref client) = self.client {
-            write!(f, ", sentry_client={}", client)?;
+            write!(f, ", sentry_client={client}")?;
         }
         if let Some(ref secret) = self.secret {
-            write!(f, ", sentry_secret={}", secret)?;
+            write!(f, ", sentry_secret={secret}")?;
         }
         Ok(())
     }

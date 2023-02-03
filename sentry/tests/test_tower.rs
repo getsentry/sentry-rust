@@ -38,12 +38,12 @@ fn test_tower_hub() {
             .service_fn(|req: String| async move {
                 // This breadcrumb should not be seen in any other hub
                 sentry::add_breadcrumb(Breadcrumb {
-                    message: Some(format!("Got request with arg: {}", req)),
+                    message: Some(format!("Got request with arg: {req}")),
                     level: Level::Info,
                     ..Default::default()
                 });
                 sentry::capture_message("Request failed", Level::Error);
-                Err::<(), _>(format!("Can't greet {}, sorry.", req))
+                Err::<(), _>(format!("Can't greet {req}, sorry."))
             });
 
         let rt = tokio::runtime::Builder::new_current_thread()

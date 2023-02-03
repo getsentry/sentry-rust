@@ -39,7 +39,7 @@ fn main() -> io::Result<()> {
     runtime.block_on(async move {
         let addr = "127.0.0.1:3001";
 
-        println!("Starting server on http://{}", addr);
+        println!("Starting server on http://{addr}");
 
         HttpServer::new(|| {
             App::new()

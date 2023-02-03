@@ -53,8 +53,7 @@ pub mod ts_seconds_float {
                 }
             }
             Err(_) => Err(ser::Error::custom(format!(
-                "invalid `SystemTime` instance: {:?}",
-                st
+                "invalid `SystemTime` instance: {st:?}"
             ))),
         }
     }
@@ -74,7 +73,7 @@ pub mod ts_seconds_float {
         {
             match timestamp_to_datetime(value) {
                 Some(st) => Ok(st),
-                None => Err(E::custom(format!("invalid timestamp: {}", value))),
+                None => Err(E::custom(format!("invalid timestamp: {value}"))),
             }
         }
 
@@ -82,11 +81,11 @@ pub mod ts_seconds_float {
         where
             E: de::Error,
         {
-            let value = value.try_into().map_err(|e| E::custom(format!("{}", e)))?;
+            let value = value.try_into().map_err(|e| E::custom(format!("{e}")))?;
             let duration = Duration::from_secs(value);
             match SystemTime::UNIX_EPOCH.checked_add(duration) {
                 Some(st) => Ok(st),
-                None => Err(E::custom(format!("invalid timestamp: {}", value))),
+                None => Err(E::custom(format!("invalid timestamp: {value}"))),
             }
         }
 
@@ -97,7 +96,7 @@ pub mod ts_seconds_float {
             let duration = Duration::from_secs(value);
             match SystemTime::UNIX_EPOCH.checked_add(duration) {
                 Some(st) => Ok(st),
-                None => Err(E::custom(format!("invalid timestamp: {}", value))),
+                None => Err(E::custom(format!("invalid timestamp: {value}"))),
             }
         }
 
@@ -138,8 +137,7 @@ pub mod ts_rfc3339 {
         {
             Some(formatted) => serializer.serialize_str(&formatted),
             None => Err(ser::Error::custom(format!(
-                "invalid `SystemTime` instance: {:?}",
-                st
+                "invalid `SystemTime` instance: {st:?}"
             ))),
         }
     }
@@ -157,9 +155,8 @@ pub mod ts_rfc3339 {
         where
             E: de::Error,
         {
-            let dt = OffsetDateTime::parse(v, &Rfc3339).map_err(|e| E::custom(format!("{}", e)))?;
-            let secs =
-                u64::try_from(dt.unix_timestamp()).map_err(|e| E::custom(format!("{}", e)))?;
+            let dt = OffsetDateTime::parse(v, &Rfc3339).map_err(|e| E::custom(format!("{e}")))?;
+            let secs = u64::try_from(dt.unix_timestamp()).map_err(|e| E::custom(format!("{e}")))?;
             let nanos = dt.nanosecond();
             let duration = Duration::new(secs, nanos);
             SystemTime::UNIX_EPOCH
