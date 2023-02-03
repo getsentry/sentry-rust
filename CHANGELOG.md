@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Breaking changes
+
+- `debug_images` is now a default feature. ([#545](https://github.com/getsentry/sentry-rust/pull/545)
+
 ## 0.29.2
 
 ### Various fixes & improvements
