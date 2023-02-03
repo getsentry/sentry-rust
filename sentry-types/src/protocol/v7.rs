@@ -351,8 +351,8 @@ impl From<u16> for ThreadId {
 impl fmt::Display for ThreadId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            ThreadId::Int(i) => write!(f, "{}", i),
-            ThreadId::String(ref s) => write!(f, "{}", s),
+            ThreadId::Int(i) => write!(f, "{i}"),
+            ThreadId::String(ref s) => write!(f, "{s}"),
         }
     }
 }
@@ -821,7 +821,7 @@ impl fmt::Display for IpAddress {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             IpAddress::Auto => write!(f, "{{{{auto}}}}"),
-            IpAddress::Exact(ref addr) => write!(f, "{}", addr),
+            IpAddress::Exact(ref addr) => write!(f, "{addr}"),
         }
     }
 }
@@ -1362,7 +1362,7 @@ impl Default for SpanId {
         let mut buf = [0; 8];
 
         getrandom::getrandom(&mut buf)
-            .unwrap_or_else(|err| panic!("could not retrieve random bytes for SpanId: {}", err));
+            .unwrap_or_else(|err| panic!("could not retrieve random bytes for SpanId: {err}"));
 
         Self(buf)
     }
@@ -1408,7 +1408,7 @@ impl Default for TraceId {
         let mut buf = [0; 16];
 
         getrandom::getrandom(&mut buf)
-            .unwrap_or_else(|err| panic!("could not retrieve random bytes for TraceId: {}", err));
+            .unwrap_or_else(|err| panic!("could not retrieve random bytes for TraceId: {err}"));
 
         Self(buf)
     }

@@ -149,11 +149,11 @@ impl fmt::Display for Dsn {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}://{}:", self.scheme, self.public_key)?;
         if let Some(ref secret_key) = self.secret_key {
-            write!(f, "{}", secret_key)?;
+            write!(f, "{secret_key}")?;
         }
         write!(f, "@{}", self.host)?;
         if let Some(ref port) = self.port {
-            write!(f, ":{}", port)?;
+            write!(f, ":{port}")?;
         }
         write!(f, "{}{}", self.path, self.project_id)?;
         Ok(())
@@ -179,7 +179,7 @@ impl FromStr for Dsn {
             .map_err(ParseDsnError::InvalidProjectId)?;
         let path = match path_segments.next().unwrap_or("") {
             "" | "/" => "/".into(),
-            other => format!("/{}/", other),
+            other => format!("/{other}/"),
         };
 
         let public_key = match url.username() {

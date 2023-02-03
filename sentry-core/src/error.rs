@@ -97,7 +97,7 @@ pub fn event_from_error<E: Error + ?Sized>(err: &E) -> Event<'static> {
 }
 
 fn exception_from_error<E: Error + ?Sized>(err: &E) -> Exception {
-    let dbg = format!("{:?}", err);
+    let dbg = format!("{err:?}");
     let value = err.to_string();
 
     // A generic `anyhow::msg` will just `Debug::fmt` the `String` that you feed
@@ -106,7 +106,7 @@ fn exception_from_error<E: Error + ?Sized>(err: &E) -> Exception {
     // To work around this, we check if the `Debug::fmt` of the complete error
     // matches its `Display::fmt`, in which case there is no type to parse and
     // we will just be using `Error`.
-    let ty = if dbg == format!("{:?}", value) {
+    let ty = if dbg == format!("{value:?}") {
         String::from("Error")
     } else {
         parse_type_from_debug(&dbg).to_owned()
@@ -140,7 +140,7 @@ fn test_parse_type_from_debug() {
     use parse_type_from_debug as parse;
     #[derive(Debug)]
     struct MyStruct;
-    let err = format!("{:?}", MyStruct);
+    let err = format!("{MyStruct:?}");
     assert_eq!(parse(&err), "MyStruct");
 
     let err = format!("{:?}", "NaN".parse::<usize>().unwrap_err());

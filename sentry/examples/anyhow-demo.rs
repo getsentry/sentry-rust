@@ -11,7 +11,7 @@ fn main() {
     });
 
     if let Err(err) = execute() {
-        println!("error: {}", err);
+        println!("error: {err}");
         sentry_anyhow::capture_anyhow(&err);
     }
 }
