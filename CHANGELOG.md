@@ -6,6 +6,10 @@
 
 - `debug_images` is now a default feature. ([#545](https://github.com/getsentry/sentry-rust/pull/545)
 
+**Fixes**:
+
+- Envelopes will be discarded rather than blocking if the transport channel fills up. ([#546](https://github.com/getsentry/sentry-rust/pull/546))
+
 ## 0.29.2
 
 ### Various fixes & improvements
