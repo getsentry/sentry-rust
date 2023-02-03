@@ -69,7 +69,7 @@ impl CurlHttpTransport {
             let mut retry_after = None;
             let mut sentry_header = None;
             let mut headers = curl::easy::List::new();
-            headers.append(&format!("X-Sentry-Auth: {}", auth)).unwrap();
+            headers.append(&format!("X-Sentry-Auth: {auth}")).unwrap();
             headers.append("Expect:").unwrap();
             handle.http_headers(headers).unwrap();
             handle.upload(true).unwrap();

@@ -143,7 +143,7 @@ pub fn debug_images() -> Vec<DebugImage> {
                 .unwrap_or_else(|_| "<main>".to_string());
         }
 
-        let code_id = shlib.id().map(|id| CodeId::new(format!("{}", id)));
+        let code_id = shlib.id().map(|id| CodeId::new(id.to_string()));
         let debug_name = shlib.debug_name().map(|n| n.to_string_lossy().to_string());
 
         // For windows, the `virtual_memory_bias` actually returns the real
@@ -271,7 +271,7 @@ fn get_profile_from_report(
                 .into_iter()
                 .map(|address| -> RustFrame {
                     RustFrame {
-                        instruction_addr: format!("{:p}", address),
+                        instruction_addr: format!("{address:p}"),
                     }
                 })
                 .collect(),
