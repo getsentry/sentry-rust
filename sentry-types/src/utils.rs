@@ -156,8 +156,7 @@ pub mod ts_rfc3339 {
             E: de::Error,
         {
             let dt = OffsetDateTime::parse(v, &Rfc3339).map_err(|e| E::custom(format!("{e}")))?;
-            let secs =
-                u64::try_from(dt.unix_timestamp()).map_err(|e| E::custom(format!("{e}")))?;
+            let secs = u64::try_from(dt.unix_timestamp()).map_err(|e| E::custom(format!("{e}")))?;
             let nanos = dt.nanosecond();
             let duration = Duration::new(secs, nanos);
             SystemTime::UNIX_EPOCH
