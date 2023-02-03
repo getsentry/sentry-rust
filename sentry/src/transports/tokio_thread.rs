@@ -89,7 +89,7 @@ impl TransportThread {
         // reason, trying to send an envelope would block everything. We'd rather
         // drop the envelope in that case.
         if let Err(e) = self.sender.try_send(Task::SendEnvelope(envelope)) {
-            eprintln!("envelope dropped: {e}");
+            sentry_debug!("envelope dropped: {e}");
         }
     }
 
