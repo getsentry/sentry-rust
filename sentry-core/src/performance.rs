@@ -1,9 +1,6 @@
 use std::collections::BTreeMap;
-use std::ops::Deref;
-use std::ops::DerefMut;
-use std::sync::Arc;
-use std::sync::Mutex;
-use std::sync::MutexGuard;
+use std::ops::{Deref, DerefMut};
+use std::sync::{Arc, Mutex, MutexGuard};
 
 #[cfg(all(feature = "profiling", target_family = "unix"))]
 use crate::profiling;
