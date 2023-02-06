@@ -152,14 +152,39 @@ impl From<SampleProfile> for EnvelopeItem {
 /// An Iterator over the items of an Envelope.
 #[derive(Clone)]
 pub struct EnvelopeItemIter<'s> {
-    inner: std::slice::Iter<'s, EnvelopeItem>,
+    inner: Option<std::slice::Iter<'s, EnvelopeItem>>,
 }
 
 impl<'s> Iterator for EnvelopeItemIter<'s> {
     type Item = &'s EnvelopeItem;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.inner.next()
+        self.inner.as_mut()?.next()
+    }
+}
+
+/// The items contained in an [`Envelope`].
+///
+/// This may be a vector of [`EnvelopeItem`]s (the standard case)
+/// or a binary blob.
+#[derive(Debug, Clone, PartialEq)]
+enum Items {
+    EnvelopeItems(Vec<EnvelopeItem>),
+    Raw(Vec<u8>),
+}
+
+impl Default for Items {
+    fn default() -> Self {
+        Self::EnvelopeItems(Default::default())
+    }
+}
+
+impl Items {
+    fn is_empty(&self) -> bool {
+        match self {
+            Items::EnvelopeItems(items) => items.is_empty(),
+            Items::Raw(bytes) => bytes.is_empty(),
+        }
     }
 }
 
@@ -174,7 +199,7 @@ impl<'s> Iterator for EnvelopeItemIter<'s> {
 #[derive(Clone, Default, Debug, PartialEq)]
 pub struct Envelope {
     event_id: Option<Uuid>,
-    items: Vec<EnvelopeItem>,
+    items: Items,
 }
 
 impl Envelope {
@@ -188,6 +213,11 @@ impl Envelope {
     where
         I: Into<EnvelopeItem>,
     {
+        let Items::EnvelopeItems(ref mut items) = self.items else {
+            eprintln!("WARNING: This envelope contains raw items. Adding an item is not supported.");
+            return;
+        };
+
         let item = item.into();
         if self.event_id.is_none() {
             if let EnvelopeItem::Event(ref event) = item {
@@ -196,14 +226,17 @@ impl Envelope {
                 self.event_id = Some(transaction.event_id);
             }
         }
-        self.items.push(item);
+        items.push(item);
     }
 
     /// Create an [`Iterator`] over all the [`EnvelopeItem`]s.
     pub fn items(&self) -> EnvelopeItemIter {
-        EnvelopeItemIter {
-            inner: self.items.iter(),
-        }
+        let inner = match &self.items {
+            Items::EnvelopeItems(items) => Some(items.iter()),
+            Items::Raw(_) => None,
+        };
+
+        EnvelopeItemIter { inner }
     }
 
     /// Returns the Envelopes Uuid, if any.
@@ -215,13 +248,14 @@ impl Envelope {
     ///
     /// [`Event`]: struct.Event.html
     pub fn event(&self) -> Option<&Event<'static>> {
-        self.items
-            .iter()
-            .filter_map(|item| match item {
-                EnvelopeItem::Event(event) => Some(event),
-                _ => None,
-            })
-            .next()
+        let Items::EnvelopeItems(ref items) = self.items else {
+            return None;
+        };
+
+        items.iter().find_map(|item| match item {
+            EnvelopeItem::Event(event) => Some(event),
+            _ => None,
+        })
     }
 
     /// Filters the Envelope's [`EnvelopeItem`]s based on a predicate,
@@ -236,8 +270,12 @@ impl Envelope {
     where
         P: FnMut(&EnvelopeItem) -> bool,
     {
+        let Items::EnvelopeItems(items) = self.items else {
+            return None;
+        };
+
         let mut filtered = Envelope::new();
-        for item in self.items {
+        for item in items {
             if predicate(&item) {
                 filtered.add_item(item);
             }
@@ -246,9 +284,9 @@ impl Envelope {
         // filter again, removing attachments which do not make any sense without
         // an event/transaction
         if filtered.uuid().is_none() {
-            filtered
-                .items
-                .retain(|item| !matches!(item, EnvelopeItem::Attachment(..)))
+            if let Items::EnvelopeItems(ref mut items) = filtered.items {
+                items.retain(|item| !matches!(item, EnvelopeItem::Attachment(..)))
+            }
         }
 
         if filtered.items.is_empty() {
@@ -265,8 +303,6 @@ impl Envelope {
     where
         W: Write,
     {
-        let mut item_buf = Vec::new();
-
         // write the headers:
         let event_id = self.uuid();
         match event_id {
@@ -274,44 +310,52 @@ impl Envelope {
             _ => writeln!(writer, "{{}}")?,
         }
 
-        // write each item:
-        for item in &self.items {
-            // we write them to a temporary buffer first, since we need their length
-            match item {
-                EnvelopeItem::Event(event) => serde_json::to_writer(&mut item_buf, event)?,
-                EnvelopeItem::SessionUpdate(session) => {
-                    serde_json::to_writer(&mut item_buf, session)?
-                }
-                EnvelopeItem::SessionAggregates(aggregates) => {
-                    serde_json::to_writer(&mut item_buf, aggregates)?
-                }
-                EnvelopeItem::Transaction(transaction) => {
-                    serde_json::to_writer(&mut item_buf, transaction)?
-                }
-                EnvelopeItem::Attachment(attachment) => {
-                    attachment.to_writer(&mut writer)?;
+        match &self.items {
+            Items::Raw(bytes) => writer.write_all(bytes)?,
+            Items::EnvelopeItems(items) => {
+                let mut item_buf = Vec::new();
+                // write each item:
+                for item in items {
+                    // we write them to a temporary buffer first, since we need their length
+                    match item {
+                        EnvelopeItem::Event(event) => serde_json::to_writer(&mut item_buf, event)?,
+                        EnvelopeItem::SessionUpdate(session) => {
+                            serde_json::to_writer(&mut item_buf, session)?
+                        }
+                        EnvelopeItem::SessionAggregates(aggregates) => {
+                            serde_json::to_writer(&mut item_buf, aggregates)?
+                        }
+                        EnvelopeItem::Transaction(transaction) => {
+                            serde_json::to_writer(&mut item_buf, transaction)?
+                        }
+                        EnvelopeItem::Attachment(attachment) => {
+                            attachment.to_writer(&mut writer)?;
+                            writeln!(writer)?;
+                            continue;
+                        }
+                        EnvelopeItem::Profile(profile) => {
+                            serde_json::to_writer(&mut item_buf, profile)?
+                        }
+                    }
+                    let item_type = match item {
+                        EnvelopeItem::Event(_) => "event",
+                        EnvelopeItem::SessionUpdate(_) => "session",
+                        EnvelopeItem::SessionAggregates(_) => "sessions",
+                        EnvelopeItem::Transaction(_) => "transaction",
+                        EnvelopeItem::Attachment(_) => unreachable!(),
+                        EnvelopeItem::Profile(_) => "profile",
+                    };
+                    writeln!(
+                        writer,
+                        r#"{{"type":"{}","length":{}}}"#,
+                        item_type,
+                        item_buf.len()
+                    )?;
+                    writer.write_all(&item_buf)?;
                     writeln!(writer)?;
-                    continue;
+                    item_buf.clear();
                 }
-                EnvelopeItem::Profile(profile) => serde_json::to_writer(&mut item_buf, profile)?,
             }
-            let item_type = match item {
-                EnvelopeItem::Event(_) => "event",
-                EnvelopeItem::SessionUpdate(_) => "session",
-                EnvelopeItem::SessionAggregates(_) => "sessions",
-                EnvelopeItem::Transaction(_) => "transaction",
-                EnvelopeItem::Attachment(_) => unreachable!(),
-                EnvelopeItem::Profile(_) => "profile",
-            };
-            writeln!(
-                writer,
-                r#"{{"type":"{}","length":{}}}"#,
-                item_type,
-                item_buf.len()
-            )?;
-            writer.write_all(&item_buf)?;
-            writeln!(writer)?;
-            item_buf.clear();
         }
 
         Ok(())
@@ -338,6 +382,18 @@ impl Envelope {
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Envelope, EnvelopeError> {
         let bytes = std::fs::read(path).map_err(|_| EnvelopeError::UnexpectedEof)?;
         Envelope::from_slice(&bytes)
+    }
+
+    /// Creates a new Envelope from path without attempting to parse any items.
+    ///
+    /// The resulting Envelope's `items` will just be a binary blob.
+    pub fn from_path_raw<P: AsRef<Path>>(path: P) -> Result<Self, EnvelopeError> {
+        let mut bytes = std::fs::read(path).map_err(|_| EnvelopeError::UnexpectedEof)?;
+        let (header, offset) = Self::parse_header(&bytes)?;
+        Ok(Self {
+            event_id: header.event_id,
+            items: Items::Raw(bytes.drain(offset..).collect()),
+        })
     }
 
     fn parse_header(slice: &[u8]) -> Result<(EnvelopeHeader, usize), EnvelopeError> {
