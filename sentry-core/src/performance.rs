@@ -643,6 +643,13 @@ impl Span {
     ///
     /// Since [`Data`] implements `Deref` and `DerefMut`, this can be used to read and mutate
     /// the span data.
+    ///
+    /// # Concurrency
+    /// In order to obtain any kind of reference to the `data` field,
+    /// a `Mutex` needs to be locked. The returned `Data` holds on to this lock
+    /// for as long as it lives. Therefore you must take care not to keep the returned
+    /// `Data` around too long or it will never relinquish the lock and you may run into
+    /// a deadlock.
     pub fn data(&self) -> Data {
         Data(self.span.lock().unwrap())
     }
