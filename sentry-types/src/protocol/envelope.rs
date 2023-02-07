@@ -163,6 +163,31 @@ impl<'s> Iterator for EnvelopeItemIter<'s> {
     }
 }
 
+/// The items contained in an [`Envelope`].
+///
+/// This may be a vector of [`EnvelopeItem`]s (the standard case)
+/// or a binary blob.
+#[derive(Debug, Clone, PartialEq)]
+enum Items {
+    EnvelopeItems(Vec<EnvelopeItem>),
+    Raw(Vec<u8>),
+}
+
+impl Default for Items {
+    fn default() -> Self {
+        Self::EnvelopeItems(Default::default())
+    }
+}
+
+impl Items {
+    fn is_empty(&self) -> bool {
+        match self {
+            Items::EnvelopeItems(items) => items.is_empty(),
+            Items::Raw(bytes) => bytes.is_empty(),
+        }
+    }
+}
+
 /// A Sentry Envelope.
 ///
 /// An Envelope is the data format that Sentry uses for Ingestion. It can contain
@@ -174,7 +199,7 @@ impl<'s> Iterator for EnvelopeItemIter<'s> {
 #[derive(Clone, Default, Debug, PartialEq)]
 pub struct Envelope {
     event_id: Option<Uuid>,
-    items: Vec<EnvelopeItem>,
+    items: Items,
 }
 
 impl Envelope {
@@ -188,6 +213,11 @@ impl Envelope {
     where
         I: Into<EnvelopeItem>,
     {
+        let Items::EnvelopeItems(ref mut items) = self.items else {
+            eprintln!("WARNING: This envelope contains raw items. Adding an item is not supported.");
+            return;
+        };
+
         let item = item.into();
         if self.event_id.is_none() {
             if let EnvelopeItem::Event(ref event) = item {
@@ -196,14 +226,17 @@ impl Envelope {
                 self.event_id = Some(transaction.event_id);
             }
         }
-        self.items.push(item);
+        items.push(item);
     }
 
     /// Create an [`Iterator`] over all the [`EnvelopeItem`]s.
     pub fn items(&self) -> EnvelopeItemIter {
-        EnvelopeItemIter {
-            inner: self.items.iter(),
-        }
+        let inner = match &self.items {
+            Items::EnvelopeItems(items) => items.iter(),
+            Items::Raw(_) => [].iter(),
+        };
+
+        EnvelopeItemIter { inner }
     }
 
     /// Returns the Envelopes Uuid, if any.
@@ -215,13 +248,14 @@ impl Envelope {
     ///
     /// [`Event`]: struct.Event.html
     pub fn event(&self) -> Option<&Event<'static>> {
-        self.items
-            .iter()
-            .filter_map(|item| match item {
-                EnvelopeItem::Event(event) => Some(event),
-                _ => None,
-            })
-            .next()
+        let Items::EnvelopeItems(ref items) = self.items else {
+            return None;
+        };
+
+        items.iter().find_map(|item| match item {
+            EnvelopeItem::Event(event) => Some(event),
+            _ => None,
+        })
     }
 
     /// Filters the Envelope's [`EnvelopeItem`]s based on a predicate,
@@ -236,8 +270,12 @@ impl Envelope {
     where
         P: FnMut(&EnvelopeItem) -> bool,
     {
+        let Items::EnvelopeItems(items) = self.items else {
+            return None;
+        };
+
         let mut filtered = Envelope::new();
-        for item in self.items {
+        for item in items {
             if predicate(&item) {
                 filtered.add_item(item);
             }
@@ -246,9 +284,9 @@ impl Envelope {
         // filter again, removing attachments which do not make any sense without
         // an event/transaction
         if filtered.uuid().is_none() {
-            filtered
-                .items
-                .retain(|item| !matches!(item, EnvelopeItem::Attachment(..)))
+            if let Items::EnvelopeItems(ref mut items) = filtered.items {
+                items.retain(|item| !matches!(item, EnvelopeItem::Attachment(..)))
+            }
         }
 
         if filtered.items.is_empty() {
@@ -265,8 +303,6 @@ impl Envelope {
     where
         W: Write,
     {
-        let mut item_buf = Vec::new();
-
         // write the headers:
         let event_id = self.uuid();
         match event_id {
@@ -274,8 +310,14 @@ impl Envelope {
             _ => writeln!(writer, "{{}}")?,
         }
 
+        let items = match &self.items {
+            Items::Raw(bytes) => return writer.write_all(bytes).map(|_| ()),
+            Items::EnvelopeItems(items) => items,
+        };
+
+        let mut item_buf = Vec::new();
         // write each item:
-        for item in &self.items {
+        for item in items {
             // we write them to a temporary buffer first, since we need their length
             match item {
                 EnvelopeItem::Event(event) => serde_json::to_writer(&mut item_buf, event)?,
@@ -338,6 +380,18 @@ impl Envelope {
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Envelope, EnvelopeError> {
         let bytes = std::fs::read(path).map_err(|_| EnvelopeError::UnexpectedEof)?;
         Envelope::from_slice(&bytes)
+    }
+
+    /// Creates a new Envelope from path without attempting to parse anything.
+    ///
+    /// The resulting Envelope will have no `event_id` and the file contents will
+    /// be contained verbatim in the `items` field.
+    pub fn from_path_raw<P: AsRef<Path>>(path: P) -> Result<Self, EnvelopeError> {
+        let bytes = std::fs::read(path).map_err(|_| EnvelopeError::UnexpectedEof)?;
+        Ok(Self {
+            event_id: None,
+            items: Items::Raw(bytes),
+        })
     }
 
     fn parse_header(slice: &[u8]) -> Result<(EnvelopeHeader, usize), EnvelopeError> {
