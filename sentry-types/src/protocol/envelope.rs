@@ -152,14 +152,14 @@ impl From<SampleProfile> for EnvelopeItem {
 /// An Iterator over the items of an Envelope.
 #[derive(Clone)]
 pub struct EnvelopeItemIter<'s> {
-    inner: Option<std::slice::Iter<'s, EnvelopeItem>>,
+    inner: std::slice::Iter<'s, EnvelopeItem>,
 }
 
 impl<'s> Iterator for EnvelopeItemIter<'s> {
     type Item = &'s EnvelopeItem;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.inner.as_mut()?.next()
+        self.inner.next()
     }
 }
 
@@ -232,8 +232,8 @@ impl Envelope {
     /// Create an [`Iterator`] over all the [`EnvelopeItem`]s.
     pub fn items(&self) -> EnvelopeItemIter {
         let inner = match &self.items {
-            Items::EnvelopeItems(items) => Some(items.iter()),
-            Items::Raw(_) => None,
+            Items::EnvelopeItems(items) => items.iter(),
+            Items::Raw(_) => [].iter(),
         };
 
         EnvelopeItemIter { inner }
