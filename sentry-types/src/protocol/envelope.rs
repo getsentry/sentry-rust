@@ -310,52 +310,50 @@ impl Envelope {
             _ => writeln!(writer, "{{}}")?,
         }
 
-        match &self.items {
-            Items::Raw(bytes) => writer.write_all(bytes)?,
-            Items::EnvelopeItems(items) => {
-                let mut item_buf = Vec::new();
-                // write each item:
-                for item in items {
-                    // we write them to a temporary buffer first, since we need their length
-                    match item {
-                        EnvelopeItem::Event(event) => serde_json::to_writer(&mut item_buf, event)?,
-                        EnvelopeItem::SessionUpdate(session) => {
-                            serde_json::to_writer(&mut item_buf, session)?
-                        }
-                        EnvelopeItem::SessionAggregates(aggregates) => {
-                            serde_json::to_writer(&mut item_buf, aggregates)?
-                        }
-                        EnvelopeItem::Transaction(transaction) => {
-                            serde_json::to_writer(&mut item_buf, transaction)?
-                        }
-                        EnvelopeItem::Attachment(attachment) => {
-                            attachment.to_writer(&mut writer)?;
-                            writeln!(writer)?;
-                            continue;
-                        }
-                        EnvelopeItem::Profile(profile) => {
-                            serde_json::to_writer(&mut item_buf, profile)?
-                        }
-                    }
-                    let item_type = match item {
-                        EnvelopeItem::Event(_) => "event",
-                        EnvelopeItem::SessionUpdate(_) => "session",
-                        EnvelopeItem::SessionAggregates(_) => "sessions",
-                        EnvelopeItem::Transaction(_) => "transaction",
-                        EnvelopeItem::Attachment(_) => unreachable!(),
-                        EnvelopeItem::Profile(_) => "profile",
-                    };
-                    writeln!(
-                        writer,
-                        r#"{{"type":"{}","length":{}}}"#,
-                        item_type,
-                        item_buf.len()
-                    )?;
-                    writer.write_all(&item_buf)?;
-                    writeln!(writer)?;
-                    item_buf.clear();
+        let items = match &self.items {
+            Items::Raw(bytes) => return writer.write_all(bytes).map(|_| ()),
+            Items::EnvelopeItems(items) => items,
+        };
+
+        let mut item_buf = Vec::new();
+        // write each item:
+        for item in items {
+            // we write them to a temporary buffer first, since we need their length
+            match item {
+                EnvelopeItem::Event(event) => serde_json::to_writer(&mut item_buf, event)?,
+                EnvelopeItem::SessionUpdate(session) => {
+                    serde_json::to_writer(&mut item_buf, session)?
                 }
+                EnvelopeItem::SessionAggregates(aggregates) => {
+                    serde_json::to_writer(&mut item_buf, aggregates)?
+                }
+                EnvelopeItem::Transaction(transaction) => {
+                    serde_json::to_writer(&mut item_buf, transaction)?
+                }
+                EnvelopeItem::Attachment(attachment) => {
+                    attachment.to_writer(&mut writer)?;
+                    writeln!(writer)?;
+                    continue;
+                }
+                EnvelopeItem::Profile(profile) => serde_json::to_writer(&mut item_buf, profile)?,
             }
+            let item_type = match item {
+                EnvelopeItem::Event(_) => "event",
+                EnvelopeItem::SessionUpdate(_) => "session",
+                EnvelopeItem::SessionAggregates(_) => "sessions",
+                EnvelopeItem::Transaction(_) => "transaction",
+                EnvelopeItem::Attachment(_) => unreachable!(),
+                EnvelopeItem::Profile(_) => "profile",
+            };
+            writeln!(
+                writer,
+                r#"{{"type":"{}","length":{}}}"#,
+                item_type,
+                item_buf.len()
+            )?;
+            writer.write_all(&item_buf)?;
+            writeln!(writer)?;
+            item_buf.clear();
         }
 
         Ok(())
