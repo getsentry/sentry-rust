@@ -5,6 +5,7 @@
 **Features**:
 
 - `debug_images` is now a default feature. ([#545](https://github.com/getsentry/sentry-rust/pull/545)
+- Added a `from_path_raw` function to `Envelope` that reads an envelope from a file without parsing anything. ([#549](https://github.com/getsentry/sentry-rust/pull/549))
 
 **Fixes**:
 
