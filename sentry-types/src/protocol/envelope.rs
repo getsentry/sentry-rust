@@ -382,15 +382,15 @@ impl Envelope {
         Envelope::from_slice(&bytes)
     }
 
-    /// Creates a new Envelope from path without attempting to parse any items.
+    /// Creates a new Envelope from path without attempting to parse anything.
     ///
-    /// The resulting Envelope's `items` will just be a binary blob.
+    /// The resulting Envelope will have no `event_id` and the file contents will
+    /// be contained verbatim in the `items` field.
     pub fn from_path_raw<P: AsRef<Path>>(path: P) -> Result<Self, EnvelopeError> {
-        let mut bytes = std::fs::read(path).map_err(|_| EnvelopeError::UnexpectedEof)?;
-        let (header, offset) = Self::parse_header(&bytes)?;
+        let bytes = std::fs::read(path).map_err(|_| EnvelopeError::UnexpectedEof)?;
         Ok(Self {
-            event_id: header.event_id,
-            items: Items::Raw(bytes.drain(offset..).collect()),
+            event_id: None,
+            items: Items::Raw(bytes),
         })
     }
 
