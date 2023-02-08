@@ -1,5 +1,6 @@
-use std::sync::Arc;
-use std::sync::Mutex;
+use std::collections::BTreeMap;
+use std::ops::{Deref, DerefMut};
+use std::sync::{Arc, Mutex, MutexGuard};
 
 #[cfg(all(feature = "profiling", target_family = "unix"))]
 use crate::profiling;
@@ -601,6 +602,23 @@ impl Transaction {
     }
 }
 
+/// A smart pointer to a span's [`data` field](protocol::Span::data).
+pub struct Data<'a>(MutexGuard<'a, protocol::Span>);
+
+impl<'a> Deref for Data<'a> {
+    type Target = BTreeMap<String, protocol::Value>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0.data
+    }
+}
+
+impl<'a> DerefMut for Data<'a> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0.data
+    }
+}
+
 /// A running Performance Monitoring Span.
 ///
 /// The span needs to be explicitly finished via [`Span::finish`], otherwise it
@@ -619,6 +637,21 @@ impl Span {
     pub fn set_data(&self, key: &str, value: protocol::Value) {
         let mut span = self.span.lock().unwrap();
         span.data.insert(key.into(), value);
+    }
+
+    /// Returns a smart pointer to the span's [`data` field](protocol::Span::data).
+    ///
+    /// Since [`Data`] implements `Deref` and `DerefMut`, this can be used to read and mutate
+    /// the span data.
+    ///
+    /// # Concurrency
+    /// In order to obtain any kind of reference to the `data` field,
+    /// a `Mutex` needs to be locked. The returned `Data` holds on to this lock
+    /// for as long as it lives. Therefore you must take care not to keep the returned
+    /// `Data` around too long or it will never relinquish the lock and you may run into
+    /// a deadlock.
+    pub fn data(&self) -> Data {
+        Data(self.span.lock().unwrap())
     }
 
     /// Get the TransactionContext of the Span.
