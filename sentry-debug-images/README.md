@@ -22,7 +22,7 @@ let integration = sentry_debug_images::DebugImagesIntegration::new()
     .filter(|event| event.level >= Level::Warning);
 ```
 
-[`Event`]: https://docs.rs/sentry-debug-images/0.29.2/sentry_debug_images/sentry_core::protocol::Event
+[`Event`]: https://docs.rs/sentry-debug-images/0.29.3/sentry_debug_images/sentry_core::protocol::Event
 
 ## Resources
 
