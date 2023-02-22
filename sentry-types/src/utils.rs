@@ -13,7 +13,7 @@ pub fn datetime_to_timestamp(st: &SystemTime) -> f64 {
 }
 
 pub fn timestamp_to_datetime(ts: f64) -> Option<SystemTime> {
-    let duration = Duration::from_secs_f64(ts);
+    let duration = Duration::try_from_secs_f64(ts).ok()?;
     SystemTime::UNIX_EPOCH.checked_add(duration)
 }
 
