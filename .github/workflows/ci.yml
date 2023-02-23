@@ -67,7 +67,7 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
         rust: [1.60.0]
 
-    name: Check/Test MSRV (${{ matrix.rust }}) on ${{ matrix.os }}
+    name: Check / Test MSRV on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
 
     steps:
