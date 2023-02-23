@@ -13,7 +13,11 @@ pub fn datetime_to_timestamp(st: &SystemTime) -> f64 {
 }
 
 pub fn timestamp_to_datetime(ts: f64) -> Option<SystemTime> {
-    let duration = Duration::try_from_secs_f64(ts).ok()?;
+    // Starting from Rust 1.66.0 it is possible to use `Duration::try_from_secs_f64`.
+    if ts == f64::INFINITY || ts < 0.0 || ts > Duration::MAX.as_secs_f64() {
+        return None;
+    }
+    let duration = Duration::from_secs_f64(ts);
     SystemTime::UNIX_EPOCH.checked_add(duration)
 }
 
