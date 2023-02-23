@@ -192,3 +192,16 @@ pub mod ts_rfc3339_opt {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::timestamp_to_datetime;
+
+    #[test]
+    fn test_timestamp_to_datetime() {
+        assert!(timestamp_to_datetime(-10000.0).is_none());
+        assert!(timestamp_to_datetime(f64::INFINITY).is_none());
+        assert!(timestamp_to_datetime(f64::MAX).is_none());
+        assert!(timestamp_to_datetime(123123123.0).is_some());
+    }
+}
