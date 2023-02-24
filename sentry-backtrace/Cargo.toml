@@ -10,7 +10,7 @@ description = """
 Sentry integration and utilities for dealing with stacktraces.
 """
 edition = "2021"
-rust-version = "1.60"
+rust-version = "1.66"
 
 [dependencies]
 backtrace = "0.3.44"

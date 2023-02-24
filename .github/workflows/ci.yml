@@ -15,7 +15,7 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - run: rustup toolchain install stable --profile minimal --component rustfmt --component clippy --no-self-update
+      - run: rustup component add rustfmt clippy
 
       - uses: Swatinem/rust-cache@v2
 
@@ -30,19 +30,13 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        rust: [stable]
 
-    name: Check feature permutations using Rust ${{ matrix.rust }} on ${{ matrix.os }}
+    name: Check feature permutations using Rust stable on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-
-    env:
-      RUSTFLAGS: -Dwarnings
 
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
-
-      - run: rustup toolchain install ${{ matrix.rust }} --profile minimal --no-self-update
 
       - uses: Swatinem/rust-cache@v2
 
@@ -53,16 +47,13 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        rust: [stable]
 
-    name: Test using Rust ${{ matrix.rust }} on ${{ matrix.os }}
+    name: Test using Rust stable on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
-
-      - run: rustup toolchain install ${{ matrix.rust }} --profile minimal --no-self-update
 
       - uses: Swatinem/rust-cache@v2
 
@@ -74,19 +65,19 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        rust: [1.60.0]
+        rust: [1.66.0]
 
     name: Check / Test MSRV on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-
-    env:
-      RUSTFLAGS: -Dwarnings
 
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - run: rustup toolchain install ${{ matrix.rust }} --profile minimal --no-self-update
+      - name: Install rust ${{ matrix.rust }} toolchain
+        run: |
+          rustup toolchain install ${{ matrix.rust }} --profile minimal --no-self-update
+          rustup default ${{ matrix.rust }}
 
       - uses: Swatinem/rust-cache@v2
 
@@ -101,7 +92,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - run: rustup toolchain install stable --profile minimal --component llvm-tools-preview --no-self-update
+      - run: rustup component add llvm-tools-preview
 
       - uses: Swatinem/rust-cache@v2
 
@@ -123,7 +114,7 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - run: rustup toolchain install stable --profile minimal --component rust-docs --no-self-update
+      - run: rustup component add rust-docs
 
       - uses: Swatinem/rust-cache@v2
 
