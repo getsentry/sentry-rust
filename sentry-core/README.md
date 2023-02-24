@@ -102,7 +102,7 @@ functionality.
 [Sentry]: https://sentry.io/
 [`sentry`]: https://crates.io/crates/sentry
 [Unified API]: https://develop.sentry.dev/sdk/unified-api/
-[`test`]: https://docs.rs/sentry-core/0.29.3/sentry_core/test/index.html
+[`test`]: https://docs.rs/sentry-core/0.30.0/sentry_core/test/index.html
 
 ## Resources
 
