@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.30.0
+
+**Breaking Changes**:
+
+- The minimum supported Rust version was bumped to **1.66.0** due to CI workflow misconfiguration.
+
+**Fixes**:
+
+- Switch to checked version of `from_secs_f64` in `timestamp_to_datetime` function to prevent panics (#554) by @olksdr
+
+**Internal**:
+
+- Disable unnecessary default regex features for `sentry-backtrace` (#552) by @xfix
+- Use correct Rust toolchain for MSRV jobs (#555) by @kamilogorek
+
 ## 0.29.3
 
 **Features**:
