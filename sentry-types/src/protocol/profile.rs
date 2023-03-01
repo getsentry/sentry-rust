@@ -19,10 +19,6 @@ pub struct TransactionMetadata {
     pub name: String,
     /// Trace ID
     pub trace_id: TraceId,
-    /// Transaction start timestamp in nanoseconds relative to the start of the profiler
-    pub relative_start_ns: u64,
-    /// Transaction end timestamp in nanoseconds relative to the start of the profiler
-    pub relative_end_ns: u64,
     /// ID of the thread in which the transaction started
     #[serde(default)]
     pub active_thread_id: u64,
@@ -138,7 +134,6 @@ pub struct SampleProfile {
     /// Timestamp at which the profiler started
     pub timestamp: SystemTime,
 
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    /// List of transactions associated with this profile
-    pub transactions: Vec<TransactionMetadata>,
+    /// Transaction associated with this profile
+    pub transaction: TransactionMetadata,
 }

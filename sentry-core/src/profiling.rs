@@ -182,8 +182,6 @@ fn get_profile_from_report(
     trace_id: TraceId,
     transaction: &Transaction,
 ) -> SampleProfile {
-    use std::time::SystemTime;
-
     let mut samples: Vec<Sample> = Vec::with_capacity(rep.data.len());
     let mut stacks: Vec<Vec<u32>> = Vec::with_capacity(rep.data.len());
     let mut address_to_frame_idx: IndexSet<_> = IndexSet::new();
@@ -250,19 +248,12 @@ fn get_profile_from_report(
         event_id: uuid::Uuid::new_v4(),
         release: transaction.release.clone().unwrap_or_default().into(),
         timestamp: rep.timing.start_time,
-        transactions: vec![TransactionMetadata {
+        transaction: TransactionMetadata {
             id: transaction.event_id,
             name: transaction.name.clone().unwrap_or_default(),
             trace_id,
-            relative_start_ns: 0,
-            relative_end_ns: transaction
-                .timestamp
-                .unwrap_or_else(SystemTime::now)
-                .duration_since(rep.timing.start_time)
-                .unwrap()
-                .as_nanos() as u64,
             active_thread_id: transaction.active_thread_id.unwrap_or(0),
-        }],
+        },
         platform: "rust".to_string(),
         profile: Profile {
             samples,
