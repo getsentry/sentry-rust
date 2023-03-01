@@ -250,19 +250,12 @@ fn get_profile_from_report(
         event_id: uuid::Uuid::new_v4(),
         release: transaction.release.clone().unwrap_or_default().into(),
         timestamp: rep.timing.start_time,
-        transactions: vec![TransactionMetadata {
+        transaction: TransactionMetadata {
             id: transaction.event_id,
             name: transaction.name.clone().unwrap_or_default(),
             trace_id,
-            relative_start_ns: 0,
-            relative_end_ns: transaction
-                .timestamp
-                .unwrap_or_else(SystemTime::now)
-                .duration_since(rep.timing.start_time)
-                .unwrap()
-                .as_nanos() as u64,
             active_thread_id: transaction.active_thread_id.unwrap_or(0),
-        }],
+        },
         platform: "rust".to_string(),
         profile: Profile {
             samples,
