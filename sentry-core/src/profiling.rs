@@ -182,8 +182,6 @@ fn get_profile_from_report(
     trace_id: TraceId,
     transaction: &Transaction,
 ) -> SampleProfile {
-    use std::time::SystemTime;
-
     let mut samples: Vec<Sample> = Vec::with_capacity(rep.data.len());
     let mut stacks: Vec<Vec<u32>> = Vec::with_capacity(rep.data.len());
     let mut address_to_frame_idx: IndexSet<_> = IndexSet::new();
