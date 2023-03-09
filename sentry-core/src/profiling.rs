@@ -17,6 +17,7 @@ use sentry_types::{CodeId, DebugId, Uuid};
 
 #[cfg(feature = "client")]
 use crate::Client;
+use crate::TransactionContext;
 
 static PROFILER_RUNNING: AtomicBool = AtomicBool::new(false);
 
@@ -28,12 +29,10 @@ impl fmt::Debug for ProfilerGuard {
     }
 }
 
-pub(crate) fn start_profiling(client: &Client) -> Option<ProfilerGuard> {
+pub(crate) fn start_profiling(client: &Client, ctx: &TransactionContext) -> Option<ProfilerGuard> {
     // if profiling is not enabled or the profile was not sampled
     // return None immediately
-    if !client.options().enable_profiling
-        || !client.sample_should_send(client.options().profiles_sample_rate)
-    {
+    if !client.options().enable_profiling || !client.is_profile_sampled(ctx) {
         return None;
     }
 

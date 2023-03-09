@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use crate::constants::USER_AGENT;
-use crate::performance::TracesSampler;
+use crate::performance::{ProfilesSampler, TracesSampler};
 use crate::protocol::{Breadcrumb, Event};
 use crate::types::Dsn;
 use crate::{Integration, IntoDsn, TransportFactory};
@@ -87,6 +87,10 @@ pub struct ClientOptions {
     /// This represents the probability that a sampled transaction
     /// will send a profile to Sentry
     pub profiles_sample_rate: f32,
+    /// If given, called with a TransactionContext for each profile to determine the sampling rate.
+    ///
+    /// Return a sample rate between 0.0 and 1.0 for the profile in question.
+    pub profiles_sampler: Option<Arc<ProfilesSampler>>,
     /// Maximum number of breadcrumbs. (defaults to 100)
     pub max_breadcrumbs: usize,
     /// Attaches stacktraces to messages.
@@ -247,6 +251,7 @@ impl Default for ClientOptions {
             traces_sampler: None,
             enable_profiling: false,
             profiles_sample_rate: 0.0,
+            profiles_sampler: None,
             max_breadcrumbs: 100,
             attach_stacktrace: false,
             send_default_pii: false,
