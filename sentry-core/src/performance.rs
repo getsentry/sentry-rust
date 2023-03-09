@@ -384,6 +384,7 @@ fn transaction_sample_rate(
     }
 }
 
+#[cfg(all(feature = "profiling", target_family = "unix"))]
 fn profile_sample_rate(
     profile_sampler: Option<&ProfilesSampler>,
     ctx: &TransactionContext,
@@ -407,6 +408,7 @@ impl Client {
         ))
     }
 
+    #[cfg(all(feature = "profiling", target_family = "unix"))]
     pub(crate) fn is_profile_sampled(&self, ctx: &TransactionContext) -> bool {
         let client_options = self.options();
         self.sample_should_send(profile_sample_rate(
