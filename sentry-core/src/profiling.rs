@@ -206,7 +206,7 @@ fn get_profile_from_report(
             thread_id: sample.thread_id,
             elapsed_since_start_ns: sample
                 .sample_timestamp
-                .duration_since(rep.timing.start_time)
+                .duration_since(transaction.start_timestamp)
                 .unwrap()
                 .as_nanos() as u64,
         });
@@ -246,7 +246,7 @@ fn get_profile_from_report(
 
         event_id: uuid::Uuid::new_v4(),
         release: transaction.release.clone().unwrap_or_default().into(),
-        timestamp: rep.timing.start_time,
+        timestamp: transaction.start_timestamp,
         transaction: TransactionMetadata {
             id: transaction.event_id,
             name: transaction.name.clone().unwrap_or_default(),
