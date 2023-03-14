@@ -185,6 +185,8 @@ fn get_profile_from_report(
     let mut stacks: Vec<Vec<u32>> = Vec::with_capacity(rep.data.len());
     let mut address_to_frame_idx: IndexSet<_> = IndexSet::new();
     let mut thread_metadata: HashMap<String, ThreadMetadata> = HashMap::new();
+    // map form thread id to number of samples for that thread
+    let mut thread_samples: HashMap<u64, u64> = HashMap::new();
 
     for sample in rep.data.keys() {
         let stack = sample
@@ -211,6 +213,11 @@ fn get_profile_from_report(
                 .as_nanos() as u64,
         });
 
+        thread_samples
+            .entry(sample.thread_id)
+            .and_modify(|count| *count += 1)
+            .or_insert(1);
+
         thread_metadata
             .entry(sample.thread_id.to_string())
             .or_insert(ThreadMetadata {
@@ -220,6 +227,8 @@ fn get_profile_from_report(
                 ),
             });
     }
+
+    samples.retain(|s| thread_samples.get(&s.thread_id).unwrap() > &1);
 
     SampleProfile {
         version: Version::V1,
