@@ -648,11 +648,12 @@ pub struct Exception {
 pub struct ParseLevelError;
 
 /// Represents the level of severity of an event or breadcrumb.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub enum Level {
     /// Indicates very spammy debug information.
     Debug,
     /// Informational messages.
+    #[default]
     Info,
     /// A warning.
     Warning,
@@ -660,12 +661,6 @@ pub enum Level {
     Error,
     /// Similar to error but indicates a critical event that usually causes a shutdown.
     Fatal,
-}
-
-impl Default for Level {
-    fn default() -> Level {
-        Level::Info
-    }
 }
 
 impl str::FromStr for Level {
@@ -785,9 +780,10 @@ impl Default for Breadcrumb {
 }
 
 /// An IP address, either IPv4, IPv6 or Auto.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash, Default)]
 pub enum IpAddress {
     /// The IP address needs to be infered from the user's context.
+    #[default]
     Auto,
     /// The exact given IP address (v4 or v6).
     Exact(IpAddr),
@@ -808,12 +804,6 @@ impl cmp::PartialOrd<IpAddr> for IpAddress {
             IpAddress::Auto => None,
             IpAddress::Exact(ref addr) => addr.partial_cmp(other),
         }
-    }
-}
-
-impl Default for IpAddress {
-    fn default() -> IpAddress {
-        IpAddress::Auto
     }
 }
 
