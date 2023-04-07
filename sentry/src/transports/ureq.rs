@@ -43,16 +43,18 @@ impl UreqHttpTransport {
         let agent = agent.unwrap_or_else(|| {
             let mut builder = AgentBuilder::new();
 
-            if options.accept_invalid_certs {
-                #[cfg(feature = "native-tls")]
-                {
-                    let tls_connector = TlsConnector::builder()
-                        .danger_accept_invalid_certs(true)
-                        .build()
-                        .unwrap();
-                    builder = builder.tls_connector(Arc::new(tls_connector));
+            #[cfg(feature = "native-tls")]
+            {
+                let mut tls_connector_builder = TlsConnector::builder();
+
+                if options.accept_invalid_certs {
+                    tls_connector_builder.danger_accept_invalid_certs(true);
                 }
 
+                builder = builder.tls_connector(Arc::new(tls_connector_builder.build().unwrap()));
+            }
+
+            if options.accept_invalid_certs {
                 #[cfg(feature = "rustls")]
                 {
                     struct NoVerifier;
