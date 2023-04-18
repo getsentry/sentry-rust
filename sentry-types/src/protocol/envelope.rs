@@ -303,17 +303,17 @@ impl Envelope {
     where
         W: Write,
     {
+        let items = match &self.items {
+            Items::Raw(bytes) => return writer.write_all(bytes).map(|_| ()),
+            Items::EnvelopeItems(items) => items,
+        };
+
         // write the headers:
         let event_id = self.uuid();
         match event_id {
             Some(uuid) => writeln!(writer, r#"{{"event_id":"{uuid}"}}"#)?,
             _ => writeln!(writer, "{{}}")?,
         }
-
-        let items = match &self.items {
-            Items::Raw(bytes) => return writer.write_all(bytes).map(|_| ()),
-            Items::EnvelopeItems(items) => items,
-        };
 
         let mut item_buf = Vec::new();
         // write each item:
@@ -376,6 +376,14 @@ impl Envelope {
         Ok(envelope)
     }
 
+    /// Creates a new raw Envelope from the given buffer.
+    pub fn from_bytes_raw(bytes: Vec<u8>) -> Result<Self, EnvelopeError> {
+        Ok(Self {
+            event_id: None,
+            items: Items::Raw(bytes),
+        })
+    }
+
     /// Creates a new Envelope from path.
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Envelope, EnvelopeError> {
         let bytes = std::fs::read(path).map_err(|_| EnvelopeError::UnexpectedEof)?;
@@ -388,10 +396,7 @@ impl Envelope {
     /// be contained verbatim in the `items` field.
     pub fn from_path_raw<P: AsRef<Path>>(path: P) -> Result<Self, EnvelopeError> {
         let bytes = std::fs::read(path).map_err(|_| EnvelopeError::UnexpectedEof)?;
-        Ok(Self {
-            event_id: None,
-            items: Items::Raw(bytes),
-        })
+        Self::from_bytes_raw(bytes)
     }
 
     fn parse_header(slice: &[u8]) -> Result<(EnvelopeHeader, usize), EnvelopeError> {
@@ -538,6 +543,23 @@ mod test {
     #[test]
     fn test_empty() {
         assert_eq!(to_str(Envelope::new()), "{}\n");
+    }
+
+    #[test]
+    fn raw_roundtrip() {
+        let buf = r#"{"event_id":"22d00b3f-d1b1-4b5d-8d20-49d138cd8a9c"}
+{"type":"event","length":74}
+{"event_id":"22d00b3fd1b14b5d8d2049d138cd8a9c","timestamp":1595256674.296}
+"#;
+        let envelope = Envelope::from_bytes_raw(buf.to_string().into_bytes()).unwrap();
+        let serialized = to_str(envelope);
+        assert_eq!(&serialized, buf);
+
+        let random_invalid_bytes = b"oh stahp!\0\x01\x02";
+        let envelope = Envelope::from_bytes_raw(random_invalid_bytes.to_vec()).unwrap();
+        let mut serialized = Vec::new();
+        envelope.to_writer(&mut serialized).unwrap();
+        assert_eq!(&serialized, random_invalid_bytes);
     }
 
     #[test]
