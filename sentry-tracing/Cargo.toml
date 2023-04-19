@@ -1,6 +1,6 @@
 [package]
 name = "sentry-tracing"
-version = "0.30.0"
+version = "0.31.0"
 authors = ["Sentry <hello@sentry.io>"]
 license = "Apache-2.0"
 readme = "README.md"
@@ -13,7 +13,7 @@ edition = "2021"
 rust-version = "1.66"
 
 [dependencies]
-sentry-core = { version = "0.30.0", path = "../sentry-core", features = ["client"] }
+sentry-core = { version = "0.31.0", path = "../sentry-core", features = ["client"] }
 tracing-core = "0.1"
 tracing-subscriber = { version = "0.3.1", default-features = false, features = ["std"] }
 
