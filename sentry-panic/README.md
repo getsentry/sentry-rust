@@ -22,8 +22,6 @@ might optionally create a sentry `Event` out of a `PanicInfo`.
 let integration = sentry_panic::PanicIntegration::default().add_extractor(|info| None);
 ```
 
-If a panic handler is already configured when `sentry_panic` is initialized, `sentry_panic` will invoke that handler after it uploads the panic event.
-
 ## Resources
 
 License: Apache-2.0
