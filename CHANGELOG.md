@@ -1,5 +1,27 @@
 # Changelog
 
+## Unreleased
+
+**Breaking Changes**:
+
+- Aligned profiling-related protocol types.
+
+**Features**:
+
+- Added a `ProfilesSampler` to the `ClientOptions`.
+
+**Fixes**:
+
+- Fix building `ureq` transport without the `native-tls` feature.
+- Fixed serialization of raw `Envelope`s, and added a new `from_bytes_raw` constructor.
+
+**Thank you**:
+
+Features, fixes and improvements in this release have been contributed by:
+
+- [@bryanlarsen](https://github.com/bryanlarsen)
+- [@jose-acevedoflores](https://github.com/jose-acevedoflores)
+
 ## 0.30.0
 
 **Breaking Changes**:
