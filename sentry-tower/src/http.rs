@@ -154,7 +154,7 @@ where
             let headers = request.headers().into_iter().flat_map(|(header, value)| {
                 value.to_str().ok().map(|value| (header.as_str(), value))
             });
-            let tx_name = format!("{} {}", request.method(), request.uri().path());
+            let tx_name = format!("{} {}", request.method(), path_from_request(&request));
             Some(sentry_core::TransactionContext::continue_from_headers(
                 &tx_name,
                 "http.server",
@@ -170,6 +170,15 @@ where
             future: self.service.call(request),
         }
     }
+}
+
+fn path_from_request<B>(request: &Request<B>) -> &str {
+    #[cfg(feature = "axum-matched-path")]
+    if let Some(matched_path) = request.extensions().get::<axum::extract::MatchedPath>() {
+        return matched_path.as_str();
+    }
+
+    request.uri().path()
 }
 
 fn map_status(status: StatusCode) -> protocol::SpanStatus {
