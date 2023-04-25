@@ -14,7 +14,7 @@ rust-version = "1.66"
 
 [features]
 http = ["dep:http", "pin-project", "url"]
-axum-matched-path = ["axum/matched-path"]
+axum-matched-path = ["http", "axum/matched-path"]
 
 [dependencies]
 axum = { version = "0.6", optional = true }
