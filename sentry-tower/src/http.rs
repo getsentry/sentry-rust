@@ -86,20 +86,21 @@ where
         let slf = self.project();
         if let Some((sentry_req, trx_ctx)) = slf.on_first_poll.take() {
             sentry_core::configure_scope(|scope| {
+                if let Some(trx_ctx) = trx_ctx {
+                    let transaction: sentry_core::TransactionOrSpan =
+                        sentry_core::start_transaction(trx_ctx).into();
+                    transaction.set_request(sentry_req.clone());
+                    let parent_span = scope.get_span();
+                    scope.set_span(Some(transaction.clone()));
+                    *slf.transaction = Some((transaction, parent_span));
+                }
+
                 scope.add_event_processor(move |mut event| {
                     if event.request.is_none() {
                         event.request = Some(sentry_req.clone());
                     }
                     Some(event)
                 });
-
-                if let Some(trx_ctx) = trx_ctx {
-                    let transaction: sentry_core::TransactionOrSpan =
-                        sentry_core::start_transaction(trx_ctx).into();
-                    let parent_span = scope.get_span();
-                    scope.set_span(Some(transaction.clone()));
-                    *slf.transaction = Some((transaction, parent_span));
-                }
             });
         }
         match slf.future.poll(cx) {
