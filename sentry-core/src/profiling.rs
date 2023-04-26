@@ -5,8 +5,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use findshlibs::{SharedLibrary, SharedLibraryId, TargetSharedLibrary, TARGET_SUPPORTED};
 
-use sentry_types::protocol::latest::Context;
-use sentry_types::protocol::latest::ProfileContext;
 use sentry_types::protocol::v7::Profile;
 use sentry_types::protocol::v7::{
     DebugImage, DebugMeta, DeviceMetadata, OSMetadata, RuntimeMetadata, RustFrame, Sample,
