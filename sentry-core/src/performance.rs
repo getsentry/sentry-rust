@@ -581,7 +581,7 @@ impl Transaction {
                     // then call finish_profiling to return the profile
                     #[cfg(all(feature = "profiling", target_family = "unix"))]
                     let sample_profile = inner.profiler_guard.take().and_then(|profiler_guard| {
-                        profiling::finish_profiling(&mut transaction, profiler_guard, inner.context.trace_id)
+                        profiling::finish_profiling(&transaction, profiler_guard, inner.context.trace_id)
                     });
                     drop(inner);
 

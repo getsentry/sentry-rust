@@ -61,21 +61,12 @@ pub(crate) fn start_profiling(client: &Client, ctx: &TransactionContext) -> Opti
 }
 
 pub(crate) fn finish_profiling(
-    transaction: &mut Transaction,
+    transaction: &Transaction,
     profiler_guard: ProfilerGuard,
     trace_id: TraceId,
 ) -> Option<SampleProfile> {
     let sample_profile = match profiler_guard.0.report().build_unresolved() {
-        Ok(report) => {
-            let prof = get_profile_from_report(&report, trace_id, transaction);
-            transaction.contexts.insert(
-                "profile".to_string(),
-                Context::Profile(Box::new(ProfileContext {
-                    profile_id: prof.event_id,
-                })),
-            );
-            Some(prof)
-        }
+        Ok(report) => Some(get_profile_from_report(&report, trace_id, transaction)),
         Err(err) => {
             sentry_debug!(
                 "could not build the profile result due to the error: {}",
