@@ -26,6 +26,7 @@ use crate::utils::{ts_rfc3339_opt, ts_seconds_float};
 
 pub use super::attachment::*;
 pub use super::envelope::*;
+pub use super::monitor::*;
 pub use super::profile::*;
 pub use super::session::*;
 
