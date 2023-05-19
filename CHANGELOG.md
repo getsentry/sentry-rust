@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+**Features**:
+
+- Add a new `(tower-)axum-matched-path` feature to use the `MatchedPath` as transaction name, along with attaching the request metadata to the transaction.
+
+**Fixes**:
+
+- Fix rate-limiting/filtering of raw envelopes.
+
+**Thank you**:
+
+Features, fixes and improvements in this release have been contributed by:
+
+- [@Turbo87](https://github.com/Turbo87)
+
 ## 0.31.0
 
 **Breaking Changes**:
