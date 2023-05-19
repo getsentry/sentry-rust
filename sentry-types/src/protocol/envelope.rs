@@ -107,7 +107,7 @@ pub enum EnvelopeItem {
     /// See the [Attachment Item documentation](https://develop.sentry.dev/sdk/envelopes/#attachment)
     /// for more details.
     Attachment(Attachment),
-    /// An Profile Item.
+    /// A Profile Item.
     Profile(SampleProfile),
     // TODO:
     // etc…
