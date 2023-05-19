@@ -109,6 +109,8 @@ pub enum EnvelopeItem {
     Attachment(Attachment),
     /// A Profile Item.
     Profile(SampleProfile),
+    /// This is a sentinel item used to `filter` raw envelopes.
+    Raw,
     // TODO:
     // etc…
 }
@@ -213,12 +215,15 @@ impl Envelope {
     where
         I: Into<EnvelopeItem>,
     {
+        let item = item.into();
+
         let Items::EnvelopeItems(ref mut items) = self.items else {
-            eprintln!("WARNING: This envelope contains raw items. Adding an item is not supported.");
+            if item != EnvelopeItem::Raw {
+                eprintln!("WARNING: This envelope contains raw items. Adding an item is not supported.");
+            }
             return;
         };
 
-        let item = item.into();
         if self.event_id.is_none() {
             if let EnvelopeItem::Event(ref event) = item {
                 self.event_id = Some(event.event_id);
@@ -271,7 +276,7 @@ impl Envelope {
         P: FnMut(&EnvelopeItem) -> bool,
     {
         let Items::EnvelopeItems(items) = self.items else {
-            return None;
+            return if predicate(&EnvelopeItem::Raw) { Some(self) } else { None };
         };
 
         let mut filtered = Envelope::new();
@@ -336,13 +341,16 @@ impl Envelope {
                     continue;
                 }
                 EnvelopeItem::Profile(profile) => serde_json::to_writer(&mut item_buf, profile)?,
+                EnvelopeItem::Raw => {
+                    continue;
+                }
             }
             let item_type = match item {
                 EnvelopeItem::Event(_) => "event",
                 EnvelopeItem::SessionUpdate(_) => "session",
                 EnvelopeItem::SessionAggregates(_) => "sessions",
                 EnvelopeItem::Transaction(_) => "transaction",
-                EnvelopeItem::Attachment(_) => unreachable!(),
+                EnvelopeItem::Attachment(_) | EnvelopeItem::Raw => unreachable!(),
                 EnvelopeItem::Profile(_) => "profile",
             };
             writeln!(

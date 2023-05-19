@@ -34,21 +34,28 @@ fn main_span1() {
     thread::spawn(move || {
         thread::sleep(Duration::from_millis(50));
 
-        thread_span1();
+        thread_span1("foo");
 
         tracing::error!("Holy shit everything is on fire!");
     });
     thread::sleep(Duration::from_millis(100));
 
-    main_span2()
+    main_span2(SomeArgument::default())
 }
 
 #[tracing::instrument]
-fn thread_span1() {
+fn thread_span1(_arg: &str) {
     thread::sleep(Duration::from_millis(200));
 }
 
 #[tracing::instrument]
-fn main_span2() {
+fn main_span2(_arg: SomeArgument) {
     thread::sleep(Duration::from_millis(200));
+}
+
+#[derive(Debug, Default)]
+struct SomeArgument {
+    _a: u32,
+    _b: bool,
+    _c: &'static str,
 }
