@@ -4,9 +4,9 @@ use serde::Deserialize;
 use thiserror::Error;
 use uuid::Uuid;
 
-use super::{
-    attachment::AttachmentType,
-    v7::{Attachment, Event, SampleProfile, SessionAggregates, SessionUpdate, Transaction},
+use super::v7::{
+    Attachment, AttachmentType, Event, MonitorCheckIn, SampleProfile, SessionAggregates,
+    SessionUpdate, Transaction,
 };
 
 /// Raised if a envelope cannot be parsed from a given input.
@@ -61,6 +61,9 @@ enum EnvelopeItemType {
     /// A Profile Item Type
     #[serde(rename = "profile")]
     Profile,
+    /// A Monitor Check In Item Type
+    #[serde(rename = "check_in")]
+    MonitorCheckIn,
 }
 
 /// An Envelope Item Header.
@@ -109,6 +112,8 @@ pub enum EnvelopeItem {
     Attachment(Attachment),
     /// A Profile Item.
     Profile(SampleProfile),
+    /// A MonitorCheckIn item.
+    MonitorCheckIn(MonitorCheckIn),
     /// This is a sentinel item used to `filter` raw envelopes.
     Raw,
     // TODO:
@@ -148,6 +153,12 @@ impl From<Attachment> for EnvelopeItem {
 impl From<SampleProfile> for EnvelopeItem {
     fn from(profile: SampleProfile) -> Self {
         EnvelopeItem::Profile(profile)
+    }
+}
+
+impl From<MonitorCheckIn> for EnvelopeItem {
+    fn from(check_in: MonitorCheckIn) -> Self {
+        EnvelopeItem::MonitorCheckIn(check_in)
     }
 }
 
@@ -341,6 +352,9 @@ impl Envelope {
                     continue;
                 }
                 EnvelopeItem::Profile(profile) => serde_json::to_writer(&mut item_buf, profile)?,
+                EnvelopeItem::MonitorCheckIn(check_in) => {
+                    serde_json::to_writer(&mut item_buf, check_in)?
+                }
                 EnvelopeItem::Raw => {
                     continue;
                 }
@@ -352,6 +366,7 @@ impl Envelope {
                 EnvelopeItem::Transaction(_) => "transaction",
                 EnvelopeItem::Attachment(_) | EnvelopeItem::Raw => unreachable!(),
                 EnvelopeItem::Profile(_) => "profile",
+                EnvelopeItem::MonitorCheckIn(_) => "check_in",
             };
             writeln!(
                 writer,
@@ -493,6 +508,9 @@ impl Envelope {
                 ty: header.attachment_type,
             })),
             EnvelopeItemType::Profile => serde_json::from_slice(payload).map(EnvelopeItem::Profile),
+            EnvelopeItemType::MonitorCheckIn => {
+                serde_json::from_slice(payload).map(EnvelopeItem::MonitorCheckIn)
+            }
         }
         .map_err(EnvelopeError::InvalidItemPayload)?;
 
@@ -523,6 +541,14 @@ impl From<Transaction<'static>> for Envelope {
     }
 }
 
+impl From<MonitorCheckIn> for Envelope {
+    fn from(check_in: MonitorCheckIn) -> Self {
+        let mut envelope = Self::default();
+        envelope.add_item(check_in);
+        envelope
+    }
+}
+
 #[cfg(test)]
 mod test {
     use std::str::FromStr;
@@ -532,7 +558,10 @@ mod test {
     use time::OffsetDateTime;
 
     use super::*;
-    use crate::protocol::v7::{Level, SessionAttributes, SessionStatus, Span};
+    use crate::protocol::v7::{
+        Level, MonitorCheckInStatus, MonitorConfig, MonitorSchedule, SessionAttributes,
+        SessionStatus, Span,
+    };
 
     fn to_str(envelope: Envelope) -> String {
         let mut vec = Vec::new();
@@ -645,6 +674,35 @@ mod test {
             r#"{"event_id":"22d00b3f-d1b1-4b5d-8d20-49d138cd8a9c"}
 {"type":"transaction","length":200}
 {"event_id":"22d00b3fd1b14b5d8d2049d138cd8a9c","start_timestamp":1595256674.296,"spans":[{"span_id":"d42cee9fc3e74f5c","trace_id":"335e53d614474acc9f89e632b776cc28","start_timestamp":1595256674.296}]}
+"#
+        )
+    }
+
+    #[test]
+    fn test_monitor_checkin() {
+        let check_in_id = Uuid::parse_str("22d00b3f-d1b1-4b5d-8d20-49d138cd8a9c").unwrap();
+
+        let check_in = MonitorCheckIn {
+            check_in_id,
+            monitor_slug: "my-monitor".into(),
+            status: MonitorCheckInStatus::Ok,
+            duration: Some(123.4),
+            environment: Some("production".into()),
+            monitor_config: Some(MonitorConfig {
+                schedule: MonitorSchedule::Crontab {
+                    value: "12 0 * * *".into(),
+                },
+                checkin_margin: Some(5),
+                max_runtime: Some(30),
+                timezone: Some("UTC".into()),
+            }),
+        };
+        let envelope: Envelope = check_in.into();
+        assert_eq!(
+            to_str(envelope),
+            r#"{}
+{"type":"check_in","length":259}
+{"check_in_id":"22d00b3fd1b14b5d8d2049d138cd8a9c","monitor_slug":"my-monitor","status":"ok","environment":"production","duration":123.4,"monitor_config":{"schedule":{"type":"crontab","value":"12 0 * * *"},"checkin_margin":5,"max_runtime":30,"timezone":"UTC"}}
 "#
         )
     }
