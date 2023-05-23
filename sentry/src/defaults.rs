@@ -55,7 +55,7 @@ pub fn apply_defaults(mut opts: ClientOptions) -> ClientOptions {
         #[cfg(feature = "backtrace")]
         {
             integrations.push(Arc::new(
-                sentry_backtrace::AttachStacktraceIntegration::default(),
+                sentry_backtrace::AttachStacktraceIntegration {},
             ));
         }
         #[cfg(feature = "debug-images")]
@@ -75,7 +75,7 @@ pub fn apply_defaults(mut opts: ClientOptions) -> ClientOptions {
         #[cfg(feature = "backtrace")]
         {
             integrations.push(Arc::new(
-                sentry_backtrace::ProcessStacktraceIntegration::default(),
+                sentry_backtrace::ProcessStacktraceIntegration {},
             ));
         }
         integrations.extend(opts.integrations.into_iter());
