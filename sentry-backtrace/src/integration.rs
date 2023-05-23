@@ -18,7 +18,7 @@ pub struct ProcessStacktraceIntegration;
 impl ProcessStacktraceIntegration {
     /// Creates a new Integration to process stacktraces.
     pub fn new() -> Self {
-        Self::default()
+        Self
     }
 }
 
@@ -59,7 +59,7 @@ pub struct AttachStacktraceIntegration;
 impl AttachStacktraceIntegration {
     /// Creates a new Integration to attach stacktraces to Events.
     pub fn new() -> Self {
-        Self::default()
+        Self
     }
 }
 
