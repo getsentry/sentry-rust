@@ -54,9 +54,7 @@ pub fn apply_defaults(mut opts: ClientOptions) -> ClientOptions {
         let mut integrations: Vec<Arc<dyn Integration>> = vec![];
         #[cfg(feature = "backtrace")]
         {
-            integrations.push(Arc::new(
-                sentry_backtrace::AttachStacktraceIntegration {},
-            ));
+            integrations.push(Arc::new(sentry_backtrace::AttachStacktraceIntegration {}));
         }
         #[cfg(feature = "debug-images")]
         {
@@ -74,9 +72,7 @@ pub fn apply_defaults(mut opts: ClientOptions) -> ClientOptions {
         }
         #[cfg(feature = "backtrace")]
         {
-            integrations.push(Arc::new(
-                sentry_backtrace::ProcessStacktraceIntegration {},
-            ));
+            integrations.push(Arc::new(sentry_backtrace::ProcessStacktraceIntegration {}));
         }
         integrations.extend(opts.integrations.into_iter());
         opts.integrations = integrations;
