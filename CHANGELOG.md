@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.31.2
+
+### Various fixes & improvements
+
+- feat(crons): Add monitor check-in types to sentry-types (#577) by @evanpurkhiser
+
 ## 0.31.1
 
 **Features**:
