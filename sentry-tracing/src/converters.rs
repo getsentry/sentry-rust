@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::error::Error;
 
 use sentry_core::protocol::{Event, Exception, Mechanism, Thread, Value};
-use sentry_core::{event_from_error, Breadcrumb, Hub, Level};
+use sentry_core::{event_from_error, Breadcrumb, Level};
 use tracing_core::field::{Field, Visit};
 use tracing_core::{span, Subscriber};
 use tracing_subscriber::layer::Context;
@@ -193,7 +193,7 @@ where
         let mut thread = Thread::default();
 
         #[cfg(feature = "backtrace")]
-        if let Some(client) = Hub::current().client() {
+        if let Some(client) = sentry_core::Hub::current().client() {
             if client.options().attach_stacktrace {
                 thread = sentry_backtrace::current_thread(true);
             }

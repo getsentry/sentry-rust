@@ -106,7 +106,7 @@ fn test_tracing() {
 
 #[tracing::instrument(fields(span_field))]
 fn function() {
-    tracing::Span::current().record("span_field", "some data");
+    tracing::Span::current().record("span_field", &"some data");
 }
 
 #[test]
