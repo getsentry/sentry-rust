@@ -18,6 +18,16 @@ fn convert_tracing_level(level: &tracing_core::Level) -> Level {
     }
 }
 
+fn level_to_exception_type(level: &tracing_core::Level) -> &'static str {
+    match *level {
+        tracing_core::Level::TRACE => "tracing::trace!",
+        tracing_core::Level::DEBUG => "tracing::debug!",
+        tracing_core::Level::INFO => "tracing::info!",
+        tracing_core::Level::WARN => "tracing::warn!",
+        tracing_core::Level::ERROR => "tracing::error!",
+    }
+}
+
 /// Extracts the message and metadata from an event
 fn extract_event_data(event: &tracing_core::Event) -> (Option<String>, FieldVisitor) {
     // Find message of the event, if any
@@ -112,8 +122,13 @@ fn tags_from_event(fields: &mut BTreeMap<String, Value>) -> BTreeMap<String, Str
     fields.retain(|key, value| {
         let Some(key) = key.strip_prefix("tags.") else { return true };
         let string = match value {
+            Value::Bool(b) => b.to_string(),
+            Value::Number(n) => n.to_string(),
             Value::String(s) => std::mem::take(s),
-            _ => return true,
+            // remove null entries since empty tags are not allowed
+            Value::Null => return false,
+            // keep entries that cannot be represented as simple string
+            Value::Array(_) | Value::Object(_) => return true,
         };
 
         tags.insert(key.to_owned(), string);
@@ -178,7 +193,7 @@ pub fn exception_from_event<S>(event: &tracing_core::Event, _ctx: Context<S>) ->
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
-    // TODO: Exception records in Sentry need a valid type, value and full stack trace to support
+    // Exception records in Sentry need a valid type, value and full stack trace to support
     // proper grouping and issue metadata generation. tracing_core::Record does not contain sufficient
     // information for this. However, it may contain a serialized error which we can parse to emit
     // an exception record.
@@ -188,6 +203,10 @@ where
         mut json_values,
     } = visitor;
 
+    // If there are both a message and an exception, then add the message as synthetic wrapper
+    // around the exception to support proper grouping. If configured, also add the current stack
+    // trace to this exception directly, since it points to the place where the exception is
+    // captured.
     if !exceptions.is_empty() && message.is_some() {
         #[allow(unused_mut)]
         let mut thread = Thread::default();
@@ -200,7 +219,7 @@ where
         }
 
         let exception = Exception {
-            ty: "tracing::error!".to_owned(),
+            ty: level_to_exception_type(event.metadata().level()).to_owned(),
             value: message.take(),
             module: event.metadata().module_path().map(str::to_owned),
             stacktrace: thread.stacktrace,
