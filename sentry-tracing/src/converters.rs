@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 use std::error::Error;
 
-use sentry_core::protocol::{Event, Exception, Value};
-use sentry_core::{event_from_error, Breadcrumb, Level};
+use sentry_core::protocol::{Event, Exception, Mechanism, Thread, Value};
+use sentry_core::{event_from_error, Breadcrumb, Hub, Level};
 use tracing_core::field::{Field, Visit};
 use tracing_core::{span, Subscriber};
 use tracing_subscriber::layer::Context;
@@ -106,9 +106,27 @@ pub fn breadcrumb_from_event(event: &tracing_core::Event) -> Breadcrumb {
     }
 }
 
+fn tags_from_event(fields: &mut BTreeMap<String, Value>) -> BTreeMap<String, String> {
+    let mut tags = BTreeMap::new();
+
+    fields.retain(|key, value| {
+        let Some(key) = key.strip_prefix("tags.") else { return true };
+        let string = match value {
+            Value::String(s) => std::mem::take(s),
+            _ => return true,
+        };
+
+        tags.insert(key.to_owned(), string);
+
+        false
+    });
+
+    tags
+}
+
 fn contexts_from_event(
     event: &tracing_core::Event,
-    event_tags: BTreeMap<String, Value>,
+    fields: BTreeMap<String, Value>,
 ) -> BTreeMap<String, sentry_core::protocol::Context> {
     let event_meta = event.metadata();
     let mut location_map = BTreeMap::new();
@@ -123,10 +141,10 @@ fn contexts_from_event(
     }
 
     let mut context = BTreeMap::new();
-    if !event_tags.is_empty() {
+    if !fields.is_empty() {
         context.insert(
-            "Rust Tracing Tags".to_string(),
-            sentry_core::protocol::Context::Other(event_tags),
+            "Rust Tracing Fields".to_string(),
+            sentry_core::protocol::Context::Other(fields),
         );
     }
     if !location_map.is_empty() {
@@ -143,12 +161,13 @@ pub fn event_from_event<S>(event: &tracing_core::Event, _ctx: Context<S>) -> Eve
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
-    let (message, visitor) = extract_event_data(event);
+    let (message, mut visitor) = extract_event_data(event);
 
     Event {
         logger: Some(event.metadata().target().to_owned()),
         level: convert_tracing_level(event.metadata().level()),
         message,
+        tags: tags_from_event(&mut visitor.json_values),
         contexts: contexts_from_event(event, visitor.json_values),
         ..Default::default()
     }
@@ -163,13 +182,53 @@ where
     // proper grouping and issue metadata generation. tracing_core::Record does not contain sufficient
     // information for this. However, it may contain a serialized error which we can parse to emit
     // an exception record.
-    let (message, visitor) = extract_event_data(event);
+    let (mut message, visitor) = extract_event_data(event);
+    let FieldVisitor {
+        mut exceptions,
+        mut json_values,
+    } = visitor;
+
+    if !exceptions.is_empty() && message.is_some() {
+        #[allow(unused_mut)]
+        let mut thread = Thread::default();
+
+        #[cfg(feature = "backtrace")]
+        if let Some(client) = Hub::current().client() {
+            if client.options().attach_stacktrace {
+                thread = sentry_backtrace::current_thread(true);
+            }
+        }
+
+        let exception = Exception {
+            ty: "tracing::error!".to_owned(),
+            value: message.take(),
+            module: event.metadata().module_path().map(str::to_owned),
+            stacktrace: thread.stacktrace,
+            raw_stacktrace: thread.raw_stacktrace,
+            thread_id: thread.id,
+            mechanism: Some(Mechanism {
+                synthetic: Some(true),
+                ..Mechanism::default()
+            }),
+        };
+
+        exceptions.push(exception);
+    }
+
+    if let Some(exception) = exceptions.last_mut() {
+        exception
+            .mechanism
+            .get_or_insert_with(Mechanism::default)
+            .ty = "tracing".to_owned();
+    }
+
     Event {
         logger: Some(event.metadata().target().to_owned()),
         level: convert_tracing_level(event.metadata().level()),
         message,
-        exception: visitor.exceptions.into(),
-        contexts: contexts_from_event(event, visitor.json_values),
+        exception: exceptions.into(),
+        tags: tags_from_event(&mut json_values),
+        contexts: contexts_from_event(event, json_values),
         ..Default::default()
     }
 }

@@ -24,7 +24,7 @@ rustdoc-args = ["--cfg", "doc_cfg"]
 default = ["backtrace", "contexts", "debug-images", "panic", "transport"]
 
 # default integrations
-backtrace = ["sentry-backtrace"]
+backtrace = ["sentry-backtrace", "sentry-tracing?/backtrace"]
 contexts = ["sentry-contexts"]
 panic = ["sentry-panic"]
 # other integrations

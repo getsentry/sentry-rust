@@ -16,6 +16,8 @@ const WELL_KNOWN_SYS_MODULES: &[&str] = &[
     // these are well-known library frames
     "anyhow::",
     "log::",
+    "tokio::",
+    "tracing_core::",
 ];
 
 const WELL_KNOWN_BORDER_FRAMES: &[&str] = &[
@@ -24,6 +26,7 @@ const WELL_KNOWN_BORDER_FRAMES: &[&str] = &[
     // well-known library frames
     "anyhow::",
     "<sentry_log::Logger as log::Log>::log",
+    "tracing_core::",
 ];
 
 /// A helper function to trim a stacktrace.
