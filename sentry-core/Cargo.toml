@@ -1,6 +1,6 @@
 [package]
 name = "sentry-core"
-version = "0.31.2"
+version = "0.31.3"
 authors = ["Sentry <hello@sentry.io>"]
 license = "Apache-2.0"
 readme = "README.md"
@@ -33,7 +33,7 @@ frame-pointer = ["pprof?/frame-pointer"]
 log = { version = "0.4.8", optional = true, features = ["std"] }
 once_cell = "1"
 rand = { version = "0.8.1", optional = true }
-sentry-types = { version = "0.31.2", path = "../sentry-types" }
+sentry-types = { version = "0.31.3", path = "../sentry-types" }
 serde = { version = "1.0.104", features = ["derive"] }
 serde_json = { version = "1.0.46" }
 uuid = { version = "1.0.0", features = ["v4", "serde"], optional = true }

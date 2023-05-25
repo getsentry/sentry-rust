@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.31.3
+
+### Various fixes & improvements
+
+- feat(tracing): Improve structure for tracing errors (#585) by @jan-auer
+
 ## 0.31.2
 
 ### Various fixes & improvements
