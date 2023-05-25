@@ -45,7 +45,7 @@ fn test_tracing() {
         event.breadcrumbs[0].message,
         Some("Hello Tracing World!".into())
     );
-    match event.contexts.get("Rust Tracing Tags").unwrap() {
+    match event.contexts.get("Rust Tracing Fields").unwrap() {
         Context::Other(tags) => {
             let value = Value::String("tagvalue".to_string());
             assert_eq!(*tags.get("tagname").unwrap(), value);
@@ -84,7 +84,7 @@ fn test_tracing() {
         event.exception[0].value,
         Some("invalid digit found in string".into())
     );
-    match event.contexts.get("Rust Tracing Tags").unwrap() {
+    match event.contexts.get("Rust Tracing Fields").unwrap() {
         Context::Other(tags) => {
             let value = Value::String("tagvalue".to_string());
             assert_eq!(*tags.get("tagname").unwrap(), value);
