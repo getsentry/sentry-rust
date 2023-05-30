@@ -26,4 +26,5 @@ sentry-backtrace = { version = "0.31.3", path = "../sentry-backtrace", optional 
 log = "0.4"
 sentry = { path = "../sentry", default-features = false, features = ["test"] }
 tracing = "0.1"
+tracing-subscriber = { version = "0.3.1", features = ["fmt", "registry"] }
 tokio = { version = "1.8", features = ["rt-multi-thread", "macros", "time"] }
