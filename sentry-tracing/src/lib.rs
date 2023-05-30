@@ -126,7 +126,7 @@
 //!     }
 //! }
 //!
-//! // This creates a nested transaction linked to `outer`.
+//! // This creates spans inside the outer transaction, unless called directly.
 //! #[tracing::instrument]
 //! async fn inner(i: u32) {
 //!     // Also works, since log events are ingested by the tracing system
