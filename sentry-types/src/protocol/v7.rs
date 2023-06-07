@@ -16,8 +16,7 @@ use std::str;
 use std::time::SystemTime;
 
 use self::debugid::{CodeId, DebugId};
-use serde::Serializer;
-use serde::{Deserialize, Serialize};
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
 use url::Url;
 use uuid::Uuid;
@@ -1477,6 +1476,60 @@ into_context!(Trace, TraceContext);
 into_context!(Gpu, GpuContext);
 into_context!(Profile, ProfileContext);
 
+const INFERABLE_CONTEXTS: &[&str] = &[
+    "device", "os", "runtime", "app", "browser", "trace", "gpu", "profile",
+];
+
+struct ContextsVisitor;
+
+impl<'de> de::Visitor<'de> for ContextsVisitor {
+    type Value = Map<String, Context>;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("contexts object")
+    }
+
+    fn visit_map<A>(self, mut access: A) -> Result<Self::Value, A::Error>
+    where
+        A: de::MapAccess<'de>,
+    {
+        let mut map: Map<String, Context> = Map::new();
+
+        while let Some((key, mut value)) = access.next_entry::<String, Value>()? {
+            let typed_value = value
+                .as_object_mut()
+                .map(|ctx| {
+                    if !ctx.contains_key("type") {
+                        let type_key = if INFERABLE_CONTEXTS.contains(&key.as_str()) {
+                            key.clone().into()
+                        } else {
+                            Value::String("unknown".into())
+                        };
+                        ctx.insert(String::from("type"), type_key);
+                    }
+                    ctx.to_owned()
+                })
+                .ok_or_else(|| de::Error::custom("expected valid `context` object"))?;
+
+            match serde_json::from_value(serde_json::to_value(typed_value).unwrap()) {
+                Ok(context) => {
+                    map.insert(key, context);
+                }
+                Err(e) => return Err(de::Error::custom(e.to_string())),
+            }
+        }
+
+        Ok(map)
+    }
+}
+
+fn deserialize_contexts<'de, D>(deserializer: D) -> Result<Map<String, Context>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    deserializer.deserialize_map(ContextsVisitor {})
+}
+
 mod event {
     use super::*;
 
@@ -1578,7 +1631,11 @@ pub struct Event<'a> {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub request: Option<Request>,
     /// Optional contexts.
-    #[serde(default, skip_serializing_if = "Map::is_empty")]
+    #[serde(
+        default,
+        skip_serializing_if = "Map::is_empty",
+        deserialize_with = "deserialize_contexts"
+    )]
     pub contexts: Map<String, Context>,
     /// List of breadcrumbs to send along.
     #[serde(default, skip_serializing_if = "Values::is_empty")]
@@ -1943,7 +2000,11 @@ pub struct Transaction<'a> {
     /// The collection of finished spans part of this transaction.
     pub spans: Vec<Span>,
     /// Optional contexts.
-    #[serde(default, skip_serializing_if = "Map::is_empty")]
+    #[serde(
+        default,
+        skip_serializing_if = "Map::is_empty",
+        deserialize_with = "deserialize_contexts"
+    )]
     pub contexts: Map<String, Context>,
     /// Optionally HTTP request data to be sent along.
     #[serde(default, skip_serializing_if = "Option::is_none")]

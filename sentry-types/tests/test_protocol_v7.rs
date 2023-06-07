@@ -1379,6 +1379,75 @@ mod test_contexts {
              \"contexts\":{\"other\":{\"type\":\"unknown\",\"aha\":\"oho\"}}}"
         );
     }
+
+    #[test]
+    fn test_typeless_context() {
+        let payload = r#"
+            {
+                "event_id": "d43e86c96e424a93a4fbda156dd17341",
+                "timestamp": 1514103120,
+                "contexts": {
+                    "device": {
+                        "name": "iphone",
+                        "family": "iphone",
+                        "model": "iphone7,3",
+                        "model_id": "AH223",
+                        "arch": "arm64"
+                    },
+                    "os": { "name": "iOS", "version": "11.4.2", "build": "ADSA23" },
+                    "runtime": { "name": "magicvm", "version": "5.3" },
+                    "app": {
+                        "app_start_time": "2018-02-08T22:21:57Z",
+                        "build_type": "testflight",
+                        "app_name": "Baz App",
+                        "app_version": "1.0",
+                        "app_build": "100001"
+                    },
+                    "browser": { "name": "Chrome", "version": "59.0.3071" },
+                    "gpu": {
+                        "name": "AMD Radeon Pro 560",
+                        "vendor_name": "Apple",
+                        "memory_size": 4096
+                    },
+                    "trace": {
+                        "trace_id": "12312012123120121231201212312012",
+                        "span_id": "0415201309082013",
+                        "parent_span_id": null,
+                        "description": "<OrganizationContext>",
+                        "op": "http.server"
+                    },
+                    "random": { "aha": "oho" }
+                }
+            }
+        "#;
+
+        let event: v7::Event = serde_json::from_str(payload).unwrap();
+        let ctx = event.contexts;
+
+        assert!(ctx.contains_key("device"));
+        assert_eq!(ctx.get("device").unwrap().type_name(), "device");
+
+        assert!(ctx.contains_key("os"));
+        assert_eq!(ctx.get("os").unwrap().type_name(), "os");
+
+        assert!(ctx.contains_key("runtime"));
+        assert_eq!(ctx.get("runtime").unwrap().type_name(), "runtime");
+
+        assert!(ctx.contains_key("app"));
+        assert_eq!(ctx.get("app").unwrap().type_name(), "app");
+
+        assert!(ctx.contains_key("browser"));
+        assert_eq!(ctx.get("browser").unwrap().type_name(), "browser");
+
+        assert!(ctx.contains_key("trace"));
+        assert_eq!(ctx.get("trace").unwrap().type_name(), "trace");
+
+        assert!(ctx.contains_key("gpu"));
+        assert_eq!(ctx.get("gpu").unwrap().type_name(), "gpu");
+
+        assert!(ctx.contains_key("random"));
+        assert_eq!(ctx.get("random").unwrap().type_name(), "unknown");
+    }
 }
 
 #[test]
