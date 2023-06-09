@@ -2,6 +2,8 @@ use std::collections::BTreeMap;
 use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, Mutex, MutexGuard};
 
+use sentry_types::protocol::latest::Context;
+
 #[cfg(all(feature = "profiling", target_family = "unix"))]
 use crate::profiling;
 
@@ -265,6 +267,32 @@ impl TransactionOrSpan {
         }
     }
 
+    /// Removes extra information for a key.
+    pub fn remove_data(&self, key: &str) {
+        match self {
+            TransactionOrSpan::Transaction(transaction) => transaction.remove_data(key),
+            TransactionOrSpan::Span(span) => span.remove_data(key),
+        }
+    }
+
+    /// Sets a tag to a specific value.
+    pub fn set_tag<V: ToString>(&self, key: &str, value: V) {
+        match self {
+            TransactionOrSpan::Transaction(transaction) => transaction.set_tag(key, value),
+            TransactionOrSpan::Span(span) => span.set_tag(key, value),
+        }
+    }
+
+    /// Removes a tag.
+    ///
+    /// If the tag is not set, does nothing.
+    pub fn remove_tag(&self, key: &str) {
+        match self {
+            TransactionOrSpan::Transaction(transaction) => transaction.remove_tag(key),
+            TransactionOrSpan::Span(span) => span.remove_tag(key),
+        }
+    }
+
     /// Get the TransactionContext of the Transaction/Span.
     ///
     /// Note that this clones the underlying value.
@@ -516,6 +544,48 @@ impl Transaction {
         }
     }
 
+    /// Removes extra information for a key.
+    pub fn remove_data(&self, key: &str) {
+        let mut inner = self.inner.lock().unwrap();
+        if let Some(transaction) = inner.transaction.as_mut() {
+            transaction.extra.remove(key);
+        }
+    }
+
+    /// Sets a tag to a specific value.
+    pub fn set_tag<V: ToString>(&self, key: &str, value: V) {
+        let mut inner = self.inner.lock().unwrap();
+        if let Some(transaction) = inner.transaction.as_mut() {
+            transaction.tags.insert(key.to_string(), value.to_string());
+        }
+    }
+
+    /// Removes a tag.
+    ///
+    /// If the tag is not set, does nothing.
+    pub fn remove_tag(&self, key: &str) {
+        let mut inner = self.inner.lock().unwrap();
+        if let Some(transaction) = inner.transaction.as_mut() {
+            transaction.tags.remove(key);
+        }
+    }
+
+    /// Sets a context for a key.
+    pub fn set_context<C: Into<Context>>(&self, key: &str, value: C) {
+        let mut inner = self.inner.lock().unwrap();
+        if let Some(transaction) = inner.transaction.as_mut() {
+            transaction.contexts.insert(key.to_string(), value.into());
+        }
+    }
+
+    /// Removes a context for a key.
+    pub fn remove_context(&self, key: &str) {
+        let mut inner = self.inner.lock().unwrap();
+        if let Some(transaction) = inner.transaction.as_mut() {
+            transaction.contexts.remove(key);
+        }
+    }
+
     /// Get the TransactionContext of the Transaction.
     ///
     /// Note that this clones the underlying value.
@@ -664,6 +734,26 @@ impl Span {
     pub fn set_data(&self, key: &str, value: protocol::Value) {
         let mut span = self.span.lock().unwrap();
         span.data.insert(key.into(), value);
+    }
+
+    /// Removes data for the specified key.
+    pub fn remove_data(&self, key: &str) {
+        let mut span = self.span.lock().unwrap();
+        span.data.remove(key);
+    }
+
+    /// Sets a tag to a specific value.
+    pub fn set_tag<V: ToString>(&self, key: &str, value: V) {
+        let mut span = self.span.lock().unwrap();
+        span.tags.insert(key.to_string(), value.to_string());
+    }
+
+    /// Removes a tag.
+    ///
+    /// If the tag is not set, does nothing.
+    pub fn remove_tag(&self, key: &str) {
+        let mut span = self.span.lock().unwrap();
+        span.tags.remove(key);
     }
 
     /// Returns a smart pointer to the span's [`data` field](protocol::Span::data).

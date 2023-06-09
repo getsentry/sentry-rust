@@ -197,6 +197,10 @@ impl Scope {
     /// Sets a tag to a specific value.
     pub fn set_tag<V: ToString>(&mut self, key: &str, value: V) {
         Arc::make_mut(&mut self.tags).insert(key.to_string(), value.to_string());
+
+        if let Some(ref transaction_or_span) = *self.span {
+            transaction_or_span.set_tag(key, value);
+        }
     }
 
     /// Removes a tag.
@@ -204,26 +208,47 @@ impl Scope {
     /// If the tag is not set, does nothing.
     pub fn remove_tag(&mut self, key: &str) {
         Arc::make_mut(&mut self.tags).remove(key);
+
+        if let Some(ref transaction_or_span) = *self.span {
+            transaction_or_span.remove_tag(key);
+        }
     }
 
     /// Sets a context for a key.
     pub fn set_context<C: Into<Context>>(&mut self, key: &str, value: C) {
-        Arc::make_mut(&mut self.contexts).insert(key.to_string(), value.into());
+        let context = value.into();
+        Arc::make_mut(&mut self.contexts).insert(key.to_string(), context.clone());
+
+        if let Some(TransactionOrSpan::Transaction(ref transaction)) = *self.span {
+            transaction.set_context(key, context);
+        }
     }
 
     /// Removes a context for a key.
     pub fn remove_context(&mut self, key: &str) {
         Arc::make_mut(&mut self.contexts).remove(key);
+
+        if let Some(TransactionOrSpan::Transaction(ref transaction)) = *self.span {
+            transaction.remove_context(key);
+        }
     }
 
-    /// Sets a extra to a specific value.
+    /// Sets an extra to a specific value.
     pub fn set_extra(&mut self, key: &str, value: Value) {
-        Arc::make_mut(&mut self.extra).insert(key.to_string(), value);
+        Arc::make_mut(&mut self.extra).insert(key.to_string(), value.clone());
+
+        if let Some(ref transaction_or_span) = *self.span {
+            transaction_or_span.set_data(key, value);
+        }
     }
 
-    /// Removes a extra.
+    /// Removes an extra.
     pub fn remove_extra(&mut self, key: &str) {
         Arc::make_mut(&mut self.extra).remove(key);
+
+        if let Some(ref transaction_or_span) = *self.span {
+            transaction_or_span.remove_data(key);
+        }
     }
 
     /// Add an event processor to the scope.
