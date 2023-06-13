@@ -4,7 +4,7 @@ use std::fmt;
 use std::sync::{Arc, Mutex, PoisonError, RwLock};
 
 use crate::performance::TransactionOrSpan;
-use crate::protocol::{Attachment, Breadcrumb, Context, Event, Level, User, Value};
+use crate::protocol::{Attachment, Breadcrumb, Context, Event, Level, Transaction, User, Value};
 use crate::session::Session;
 use crate::Client;
 
@@ -300,6 +300,21 @@ impl Scope {
         }
 
         Some(event)
+    }
+
+    /// Applies the contained scoped data to fill a transaction.
+    pub fn apply_to_transaction(&self, transaction: &mut Transaction<'static>) {
+        transaction
+            .extra
+            .extend(self.extra.iter().map(|(k, v)| (k.to_owned(), v.to_owned())));
+        transaction
+            .tags
+            .extend(self.tags.iter().map(|(k, v)| (k.to_owned(), v.to_owned())));
+        transaction.contexts.extend(
+            self.contexts
+                .iter()
+                .map(|(k, v)| (k.to_owned(), v.to_owned())),
+        );
     }
 
     /// Set the given [`TransactionOrSpan`] as the active span for this scope.

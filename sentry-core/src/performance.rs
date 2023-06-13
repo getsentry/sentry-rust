@@ -571,7 +571,7 @@ impl Transaction {
                         .contexts
                         .insert("trace".into(), inner.context.clone().into());
 
-                    // TODO: apply the scope to the transaction, whatever that means
+                    Hub::current().with_current_scope(|scope| scope.apply_to_transaction(&mut transaction));
                     let opts = client.options();
                     transaction.release = opts.release.clone();
                     transaction.environment = opts.environment.clone();
