@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Various fixes & improvements
+
+- Apply scope metadata to transactions (#590) by @loewenheim
+
 ## 0.31.3
 
 ### Various fixes & improvements
