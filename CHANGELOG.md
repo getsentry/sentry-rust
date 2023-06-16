@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.31.5
+
+### Various fixes & improvements
+
+- chore(deps): bump rustls (#592) by @utkarshgupta137
+
 ## 0.31.4
 
 ### Various fixes & improvements
