@@ -36,8 +36,6 @@ tower = ["sentry-tower"]
 tower-http = ["tower", "sentry-tower/http"]
 tower-axum-matched-path = ["tower-http", "sentry-tower/axum-matched-path"]
 tracing = ["sentry-tracing"]
-profiling = ["sentry-core/profiling"]
-frame-pointer = ["sentry-core/frame-pointer"]
 # other features
 test = ["sentry-core/test"]
 debug-logs = ["dep:log", "sentry-core/debug-logs"]

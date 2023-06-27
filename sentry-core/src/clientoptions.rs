@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use crate::constants::USER_AGENT;
-use crate::performance::{ProfilesSampler, TracesSampler};
+use crate::performance::TracesSampler;
 use crate::protocol::{Breadcrumb, Event};
 use crate::types::Dsn;
 use crate::{Integration, IntoDsn, TransportFactory};
@@ -80,17 +80,6 @@ pub struct ClientOptions {
     /// Return a sample rate between 0.0 and 1.0 for the transaction in question.
     /// Takes priority over the `sample_rate`.
     pub traces_sampler: Option<Arc<TracesSampler>>,
-    /// Enables profiling
-    pub enable_profiling: bool,
-    /// The sample rate for profiling a transactions. (0.0 - 1.0, defaults to 0.0)
-    ///
-    /// This represents the probability that a sampled transaction
-    /// will send a profile to Sentry
-    pub profiles_sample_rate: f32,
-    /// If given, called with a TransactionContext for each profile to determine the sampling rate.
-    ///
-    /// Return a sample rate between 0.0 and 1.0 for the profile in question.
-    pub profiles_sampler: Option<Arc<ProfilesSampler>>,
     /// Maximum number of breadcrumbs. (defaults to 100)
     pub max_breadcrumbs: usize,
     /// Attaches stacktraces to messages.
@@ -213,8 +202,6 @@ impl fmt::Debug for ClientOptions {
                     .as_ref()
                     .map(|arc| std::ptr::addr_of!(**arc)),
             )
-            .field("enable_profiling", &self.enable_profiling)
-            .field("profiles_sample_rate", &self.profiles_sample_rate)
             .field("max_breadcrumbs", &self.max_breadcrumbs)
             .field("attach_stacktrace", &self.attach_stacktrace)
             .field("send_default_pii", &self.send_default_pii)
@@ -249,9 +236,6 @@ impl Default for ClientOptions {
             sample_rate: 1.0,
             traces_sample_rate: 0.0,
             traces_sampler: None,
-            enable_profiling: false,
-            profiles_sample_rate: 0.0,
-            profiles_sampler: None,
             max_breadcrumbs: 100,
             attach_stacktrace: false,
             send_default_pii: false,

@@ -150,9 +150,6 @@ pub use crate::client::Client;
 #[cfg(feature = "test")]
 pub mod test;
 
-#[cfg(all(feature = "profiling", not(target_os = "windows")))]
-mod profiling;
-
 // public api from other crates
 #[doc(inline)]
 pub use sentry_types as types;
