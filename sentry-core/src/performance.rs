@@ -2,9 +2,6 @@ use std::collections::BTreeMap;
 use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, Mutex, MutexGuard};
 
-#[cfg(all(feature = "profiling", target_family = "unix"))]
-use crate::profiling;
-
 use crate::{protocol, Hub};
 
 #[cfg(feature = "client")]
@@ -230,9 +227,6 @@ impl TransactionContext {
 /// or ignore it.
 pub type TracesSampler = dyn Fn(&TransactionContext) -> f32 + Send + Sync;
 
-/// Same as TracesSampler but for profiles
-pub type ProfilesSampler = TracesSampler;
-
 // global API types:
 
 /// A wrapper that groups a [`Transaction`] and a [`Span`] together.
@@ -360,8 +354,6 @@ pub(crate) struct TransactionInner {
     sampled: bool,
     pub(crate) context: protocol::TraceContext,
     pub(crate) transaction: Option<protocol::Transaction<'static>>,
-    #[cfg(all(feature = "profiling", target_family = "unix"))]
-    pub(crate) profiler_guard: Option<profiling::ProfilerGuard>,
 }
 
 type TransactionArc = Arc<Mutex<TransactionInner>>;
@@ -384,18 +376,6 @@ fn transaction_sample_rate(
     }
 }
 
-#[cfg(all(feature = "profiling", target_family = "unix"))]
-fn profile_sample_rate(
-    profile_sampler: Option<&ProfilesSampler>,
-    ctx: &TransactionContext,
-    profiles_sample_rate: f32,
-) -> f32 {
-    match (profile_sampler, profiles_sample_rate) {
-        (Some(profile_sampler), _) => profile_sampler(ctx),
-        (None, profiles_sample_rate) => profiles_sample_rate,
-    }
-}
-
 /// Determine whether the new transaction should be sampled.
 #[cfg(feature = "client")]
 impl Client {
@@ -405,16 +385,6 @@ impl Client {
             client_options.traces_sampler.as_deref(),
             ctx,
             client_options.traces_sample_rate,
-        ))
-    }
-
-    #[cfg(all(feature = "profiling", target_family = "unix"))]
-    pub(crate) fn is_profile_sampled(&self, ctx: &TransactionContext) -> bool {
-        let client_options = self.options();
-        self.sample_should_send(profile_sample_rate(
-            client_options.traces_sampler.as_deref(),
-            ctx,
-            client_options.profiles_sample_rate,
         ))
     }
 }
@@ -437,14 +407,6 @@ impl Transaction {
                 client.is_transaction_sampled(&ctx),
                 Some(protocol::Transaction {
                     name: Some(ctx.name.clone()),
-                    #[cfg(all(feature = "profiling", target_family = "unix"))]
-                    active_thread_id: Some(
-                        // NOTE: `pthread_t` is a `usize`, so clippy is wrong complaining about this cast
-                        #[allow(clippy::unnecessary_cast)]
-                        unsafe {
-                            libc::pthread_self() as u64
-                        },
-                    ),
                     ..Default::default()
                 }),
             ),
@@ -454,7 +416,7 @@ impl Transaction {
         let context = protocol::TraceContext {
             trace_id: ctx.trace_id,
             parent_span_id: ctx.parent_span_id,
-            op: Some(ctx.op.clone()),
+            op: Some(ctx.op),
             ..Default::default()
         };
 
@@ -464,16 +426,6 @@ impl Transaction {
             transaction = None;
             client = None;
         }
-        // if the transaction was sampled then a profile, linked to the transaction,
-        // might as well be sampled
-        #[cfg(all(feature = "profiling", target_family = "unix"))]
-        let profiler_guard = if sampled {
-            client
-                .as_deref()
-                .and_then(|cli| profiling::start_profiling(cli, &ctx))
-        } else {
-            None
-        };
 
         Self {
             inner: Arc::new(Mutex::new(TransactionInner {
@@ -481,8 +433,6 @@ impl Transaction {
                 sampled,
                 context,
                 transaction,
-                #[cfg(all(feature = "profiling", target_family = "unix"))]
-                profiler_guard,
             })),
         }
     }
@@ -502,8 +452,6 @@ impl Transaction {
                 sampled,
                 context,
                 transaction: None,
-                #[cfg(all(feature = "profiling", target_family = "unix"))]
-                profiler_guard: None,
             })),
         }
     }
@@ -577,26 +525,10 @@ impl Transaction {
                     transaction.environment = opts.environment.clone();
                     transaction.sdk = Some(std::borrow::Cow::Owned(client.sdk_info.clone()));
 
-                    // if the profiler is running for the given transaction
-                    // then call finish_profiling to return the profile
-                    #[cfg(all(feature = "profiling", target_family = "unix"))]
-                    let sample_profile = inner.profiler_guard.take().and_then(|profiler_guard| {
-                        profiling::finish_profiling(&transaction, profiler_guard, inner.context.trace_id)
-                    });
                     drop(inner);
 
                     let mut envelope = protocol::Envelope::new();
                     envelope.add_item(transaction);
-
-                    #[cfg(all(feature = "profiling", target_family = "unix"))]
-                    if let Some(sample_profile) = sample_profile {
-                        if !sample_profile.profile.samples.is_empty(){
-                            envelope.add_item(sample_profile);
-                        }
-                        else {
-                            sentry_debug!("the profile is being dropped because it contains no samples");
-                        }
-                    }
 
                     client.send_envelope(envelope)
                 }

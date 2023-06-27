@@ -26,8 +26,6 @@ client = ["rand"]
 # and macros actually expand features (and extern crate) where they are used!
 debug-logs = ["dep:log"]
 test = ["client"]
-profiling = ["pprof", "build_id", "uuid", "sys-info", "findshlibs", "rustc_version_runtime", "libc", "indexmap"]
-frame-pointer = ["pprof?/frame-pointer"]
 
 [dependencies]
 log = { version = "0.4.8", optional = true, features = ["std"] }
@@ -37,15 +35,6 @@ sentry-types = { version = "0.31.5", path = "../sentry-types" }
 serde = { version = "1.0.104", features = ["derive"] }
 serde_json = { version = "1.0.46" }
 uuid = { version = "1.0.0", features = ["v4", "serde"], optional = true }
-sys-info = { version = "0.9.1", optional = true }
-build_id = { version = "0.2.1", optional = true }
-findshlibs = { version = "=0.10.2", optional = true }
-rustc_version_runtime = { version = "0.2.1", optional = true }
-indexmap = { version = "1.9.1", optional = true }
-
-[target.'cfg(target_family = "unix")'.dependencies]
-pprof = { version = "0.11.0", optional = true, default-features = false }
-libc = { version = "^0.2.66", optional = true }
 
 [dev-dependencies]
 # Because we re-export all the public API in `sentry`, we actually run all the

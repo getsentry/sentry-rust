@@ -12,7 +12,6 @@ pub struct RateLimiter {
     session: Option<SystemTime>,
     transaction: Option<SystemTime>,
     attachment: Option<SystemTime>,
-    profile: Option<SystemTime>,
 }
 
 impl RateLimiter {
@@ -57,7 +56,6 @@ impl RateLimiter {
                     "session" => self.session = new_time,
                     "transaction" => self.transaction = new_time,
                     "attachment" => self.attachment = new_time,
-                    "profile" => self.profile = new_time,
                     _ => {}
                 }
             }
@@ -91,7 +89,6 @@ impl RateLimiter {
             RateLimitingCategory::Session => self.session,
             RateLimitingCategory::Transaction => self.transaction,
             RateLimitingCategory::Attachment => self.attachment,
-            RateLimitingCategory::Profile => self.profile,
         }?;
         time_left.duration_since(SystemTime::now()).ok()
     }
@@ -115,7 +112,6 @@ impl RateLimiter {
                 }
                 EnvelopeItem::Transaction(_) => RateLimitingCategory::Transaction,
                 EnvelopeItem::Attachment(_) => RateLimitingCategory::Attachment,
-                EnvelopeItem::Profile(_) => RateLimitingCategory::Profile,
                 _ => RateLimitingCategory::Any,
             })
         })
@@ -135,8 +131,6 @@ pub enum RateLimitingCategory {
     Transaction,
     /// Rate Limit pertaining to Attachments.
     Attachment,
-    /// Rate Limit pertaining to Profiles.
-    Profile,
 }
 
 #[cfg(test)]

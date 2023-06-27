@@ -26,7 +26,6 @@ use crate::utils::{ts_rfc3339_opt, ts_seconds_float};
 pub use super::attachment::*;
 pub use super::envelope::*;
 pub use super::monitor::*;
-pub use super::profile::*;
 pub use super::session::*;
 
 /// An arbitrary (JSON) value.
@@ -1098,8 +1097,6 @@ pub enum Context {
     Trace(Box<TraceContext>),
     /// GPU data
     Gpu(Box<GpuContext>),
-    /// Profiling data
-    Profile(Box<ProfileContext>),
     /// Generic other context data.
     #[serde(rename = "unknown")]
     Other(Map<String, Value>),
@@ -1116,7 +1113,6 @@ impl Context {
             Context::Browser(..) => "browser",
             Context::Trace(..) => "trace",
             Context::Gpu(..) => "gpu",
-            Context::Profile(..) => "profile",
             Context::Other(..) => "unknown",
         }
     }
@@ -1335,13 +1331,6 @@ pub struct GpuContext {
     pub other: Map<String, Value>,
 }
 
-/// Profile context.
-#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
-pub struct ProfileContext {
-    /// The profile ID.
-    pub profile_id: Uuid,
-}
-
 /// Holds the identifier for a Span
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, Eq, PartialEq, Hash)]
 #[serde(try_from = "String", into = "String")]
@@ -1474,11 +1463,8 @@ into_context!(Runtime, RuntimeContext);
 into_context!(Browser, BrowserContext);
 into_context!(Trace, TraceContext);
 into_context!(Gpu, GpuContext);
-into_context!(Profile, ProfileContext);
 
-const INFERABLE_CONTEXTS: &[&str] = &[
-    "device", "os", "runtime", "app", "browser", "trace", "gpu", "profile",
-];
+const INFERABLE_CONTEXTS: &[&str] = &["device", "os", "runtime", "app", "browser", "trace", "gpu"];
 
 struct ContextsVisitor;
 
@@ -2009,9 +1995,6 @@ pub struct Transaction<'a> {
     /// Optionally HTTP request data to be sent along.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub request: Option<Request>,
-    /// ID of the thread where the transaction was started
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub active_thread_id: Option<u64>,
 }
 
 impl<'a> Default for Transaction<'a> {
@@ -2030,7 +2013,6 @@ impl<'a> Default for Transaction<'a> {
             spans: Default::default(),
             contexts: Default::default(),
             request: Default::default(),
-            active_thread_id: Default::default(),
         }
     }
 }
@@ -2057,7 +2039,6 @@ impl<'a> Transaction<'a> {
             spans: self.spans,
             contexts: self.contexts,
             request: self.request,
-            active_thread_id: self.active_thread_id,
         }
     }
 

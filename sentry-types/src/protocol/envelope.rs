@@ -5,8 +5,8 @@ use thiserror::Error;
 use uuid::Uuid;
 
 use super::v7::{
-    Attachment, AttachmentType, Event, MonitorCheckIn, SampleProfile, SessionAggregates,
-    SessionUpdate, Transaction,
+    Attachment, AttachmentType, Event, MonitorCheckIn, SessionAggregates, SessionUpdate,
+    Transaction,
 };
 
 /// Raised if a envelope cannot be parsed from a given input.
@@ -58,9 +58,6 @@ enum EnvelopeItemType {
     /// An Attachment Item type.
     #[serde(rename = "attachment")]
     Attachment,
-    /// A Profile Item Type
-    #[serde(rename = "profile")]
-    Profile,
     /// A Monitor Check In Item Type
     #[serde(rename = "check_in")]
     MonitorCheckIn,
@@ -110,8 +107,6 @@ pub enum EnvelopeItem {
     /// See the [Attachment Item documentation](https://develop.sentry.dev/sdk/envelopes/#attachment)
     /// for more details.
     Attachment(Attachment),
-    /// A Profile Item.
-    Profile(SampleProfile),
     /// A MonitorCheckIn item.
     MonitorCheckIn(MonitorCheckIn),
     /// This is a sentinel item used to `filter` raw envelopes.
@@ -147,12 +142,6 @@ impl From<Transaction<'static>> for EnvelopeItem {
 impl From<Attachment> for EnvelopeItem {
     fn from(attachment: Attachment) -> Self {
         EnvelopeItem::Attachment(attachment)
-    }
-}
-
-impl From<SampleProfile> for EnvelopeItem {
-    fn from(profile: SampleProfile) -> Self {
-        EnvelopeItem::Profile(profile)
     }
 }
 
@@ -351,7 +340,6 @@ impl Envelope {
                     writeln!(writer)?;
                     continue;
                 }
-                EnvelopeItem::Profile(profile) => serde_json::to_writer(&mut item_buf, profile)?,
                 EnvelopeItem::MonitorCheckIn(check_in) => {
                     serde_json::to_writer(&mut item_buf, check_in)?
                 }
@@ -365,7 +353,6 @@ impl Envelope {
                 EnvelopeItem::SessionAggregates(_) => "sessions",
                 EnvelopeItem::Transaction(_) => "transaction",
                 EnvelopeItem::Attachment(_) | EnvelopeItem::Raw => unreachable!(),
-                EnvelopeItem::Profile(_) => "profile",
                 EnvelopeItem::MonitorCheckIn(_) => "check_in",
             };
             writeln!(
@@ -507,7 +494,6 @@ impl Envelope {
                 content_type: header.content_type,
                 ty: header.attachment_type,
             })),
-            EnvelopeItemType::Profile => serde_json::from_slice(payload).map(EnvelopeItem::Profile),
             EnvelopeItemType::MonitorCheckIn => {
                 serde_json::from_slice(payload).map(EnvelopeItem::MonitorCheckIn)
             }
