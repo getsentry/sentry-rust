@@ -1958,6 +1958,9 @@ pub struct Transaction<'a> {
     /// An optional environment identifier.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub environment: Option<Cow<'a, str>>,
+    /// Optionally user data to be sent along.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user: Option<User>,
     /// Optional tags to be attached to the event.
     #[serde(default, skip_serializing_if = "Map::is_empty")]
     pub tags: Map<String, String>,
@@ -2002,6 +2005,7 @@ impl<'a> Default for Transaction<'a> {
         Transaction {
             event_id: event::default_id(),
             name: Default::default(),
+            user: Default::default(),
             tags: Default::default(),
             extra: Default::default(),
             release: Default::default(),
@@ -2028,6 +2032,7 @@ impl<'a> Transaction<'a> {
         Transaction {
             event_id: self.event_id,
             name: self.name,
+            user: self.user,
             tags: self.tags,
             extra: self.extra,
             release: self.release.map(|x| Cow::Owned(x.into_owned())),

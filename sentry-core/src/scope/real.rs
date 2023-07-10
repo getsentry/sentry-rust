@@ -304,6 +304,12 @@ impl Scope {
 
     /// Applies the contained scoped data to fill a transaction.
     pub fn apply_to_transaction(&self, transaction: &mut Transaction<'static>) {
+        if transaction.user.is_none() {
+            if let Some(user) = self.user.as_deref() {
+                transaction.user = Some(user.clone());
+            }
+        }
+
         transaction
             .extra
             .extend(self.extra.iter().map(|(k, v)| (k.to_owned(), v.to_owned())));
