@@ -65,7 +65,7 @@
 //! | `transport`       | ✅      |                |            |                                                                                          |
 //! | `anyhow`          |         | 🔌             |            |                                                                                          |
 //! | `test`            |         |                |            |                                                                                          |
-//! | `debug-images`    |         | 🔌             |            |                                                                                          |
+//! | `debug-images`    | ✅      | 🔌             |            |                                                                                          |
 //! | `log`             |         | 🔌             |            | Requires extra setup; See [`sentry-log`]'s documentation.                                |
 //! | `debug-logs`      |         |                | ❗         | Requires extra setup; See [`sentry-log`]'s documentation.                                |
 //! | `slog`            |         | 🔌             |            | Requires extra setup; See [`sentry-slog`]'s documentation.                               |
@@ -87,11 +87,11 @@
 //! - `contexts`: Enables capturing device, OS, and Rust contexts.
 //! - `panic`: Enables support for capturing panics.
 //! - `transport`: Enables the default transport, which is currently `reqwest` with `native-tls`.
+//! - `debug-images`: Enables capturing metadata about the loaded shared libraries.
 //!
 //! ## Debugging/Testing
 //! - `anyhow`: Enables support for the `anyhow` crate.
 //! - `test`: Enables testing support.
-//! - `debug-images`: Attaches a list of loaded libraries to events (currently only supported on Unix).
 //!
 //! ## Logging
 //! - `log`: Enables support for the `log` crate.
