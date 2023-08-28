@@ -32,7 +32,7 @@ impl SurfHttpTransport {
     }
 
     fn new_internal(options: &ClientOptions, client: Option<SurfClient>) -> Self {
-        let mut client = client.unwrap_or_else(SurfClient::new);
+        let mut client = client.unwrap_or_default();
         if options.accept_invalid_certs {
             let hc = HttpClient::builder()
                 .ssl_options(SslOption::DANGER_ACCEPT_INVALID_CERTS)
