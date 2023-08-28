@@ -11,7 +11,7 @@ Sentry integration for os, device, and rust contexts.
 """
 build = "build.rs"
 edition = "2021"
-rust-version = "1.66"
+rust-version = "1.67"
 
 [dependencies]
 sentry-core = { version = "0.31.5", path = "../sentry-core" }

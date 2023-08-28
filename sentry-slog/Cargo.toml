@@ -10,7 +10,7 @@ description = """
 Sentry integration for the slog crate.
 """
 edition = "2021"
-rust-version = "1.66"
+rust-version = "1.67"
 
 [dependencies]
 sentry-core = { version = "0.31.5", path = "../sentry-core" }

@@ -14,34 +14,34 @@ static HASH_FUNC_RE: Lazy<Regex> = Lazy::new(|| {
 
 static CRATE_HASH_RE: Lazy<Regex> = Lazy::new(|| {
     Regex::new(
-        r#"(?x)
+        r"(?x)
         \b(\[[a-f0-9]{16}\])
-    "#,
+    ",
     )
     .unwrap()
 });
 
 static CRATE_RE: Lazy<Regex> = Lazy::new(|| {
     Regex::new(
-        r#"(?x)
+        r"(?x)
         ^
         (?:_?<)?           # trait impl syntax
         (?:\w+\ as \ )?    # anonymous implementor
         ([a-zA-Z0-9_]+?)   # crate name
         (?:\.\.|::|\[)     # crate delimiter (.. or :: or [)
-    "#,
+    ",
     )
     .unwrap()
 });
 
 static COMMON_RUST_SYMBOL_ESCAPES_RE: Lazy<Regex> = Lazy::new(|| {
     Regex::new(
-        r#"(?x)
+        r"(?x)
         \$
             (SP|BP|RF|LT|GT|LP|RP|C|
                 u7e|u20|u27|u5b|u5d|u7b|u7d|u3b|u2b|u22)
         \$
-    "#,
+    ",
     )
     .unwrap()
 });
