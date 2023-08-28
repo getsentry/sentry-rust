@@ -53,7 +53,7 @@ fn test_auth_from_iterator() {
     cont.insert("sentry_client", "raven-js/3.23.3");
     cont.insert("sentry_key", "4bb5d94de752a36b8b87851a3f82726a");
 
-    let auth = Auth::from_pairs(cont.into_iter()).unwrap();
+    let auth = Auth::from_pairs(cont).unwrap();
     assert_eq!(auth.timestamp(), None);
     assert_eq!(auth.client_agent(), Some("raven-js/3.23.3"));
     assert_eq!(auth.version(), 7);
@@ -90,7 +90,7 @@ fn test_auth_to_json() {
     cont.insert("sentry_client", "raven-js/3.23.3");
     cont.insert("sentry_key", "4bb5d94de752a36b8b87851a3f82726a");
 
-    let auth = Auth::from_pairs(cont.into_iter()).unwrap();
+    let auth = Auth::from_pairs(cont).unwrap();
     assert_eq!(
         serde_json::to_string(&auth).expect("could not serialize").as_str(),
         "{\"sentry_client\":\"raven-js/3.23.3\",\"sentry_version\":7,\"sentry_key\":\"4bb5d94de752a36b8b87851a3f82726a\",\"sentry_secret\":null}"

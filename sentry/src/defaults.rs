@@ -74,7 +74,7 @@ pub fn apply_defaults(mut opts: ClientOptions) -> ClientOptions {
         {
             integrations.push(Arc::new(sentry_backtrace::ProcessStacktraceIntegration));
         }
-        integrations.extend(opts.integrations.into_iter());
+        integrations.extend(opts.integrations);
         opts.integrations = integrations;
     }
     if opts.dsn.is_none() {

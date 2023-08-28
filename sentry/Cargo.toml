@@ -10,7 +10,7 @@ description = """
 Sentry (getsentry.com) client for rust ;)
 """
 edition = "2021"
-rust-version = "1.66"
+rust-version = "1.67"
 autoexamples = true
 
 # To build locally:
@@ -73,7 +73,7 @@ tokio = { version = "1.0", features = ["rt"], optional = true }
 ureq = { version = "2.7.0", optional = true, default-features = false }
 native-tls = { version = "0.2.8", optional = true }
 rustls = { version = "0.21.2", optional = true, features = ["dangerous_configuration"] }
-webpki-roots = { version = "0.23.0", optional = true }
+webpki-roots = { version = "0.25.1", optional = true }
 
 [dev-dependencies]
 sentry-anyhow = { path = "../sentry-anyhow" }
