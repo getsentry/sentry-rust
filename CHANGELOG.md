@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.31.6
+
+### Various fixes & improvements
+
+- Apply clippy fixes and cherry-pick PRs (#610) by @Swatinem
+- ref: Apply user field from scope to transaction event (#596) by @kamilogorek
+- Remove profiling support (#595) by @viglia
+- chore: upgrade webpki-roots 0.22.5 -> 0.23.0 (#593) by @boxdot
+
 ## 0.31.5
 
 ### Various fixes & improvements
