@@ -12,6 +12,9 @@ Sentry integration for tracing and tracing-subscriber crates.
 edition = "2021"
 rust-version = "1.68"
 
+[package.metadata.docs.rs]
+all-features = true
+
 [features]
 default = []
 backtrace = ["dep:sentry-backtrace"]

@@ -12,6 +12,9 @@ Sentry integration for tower-based crates.
 edition = "2021"
 rust-version = "1.68"
 
+[package.metadata.docs.rs]
+all-features = true
+
 [features]
 http = ["dep:http", "pin-project", "url"]
 axum-matched-path = ["http", "axum/matched-path"]
