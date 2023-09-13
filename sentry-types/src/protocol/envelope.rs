@@ -219,7 +219,9 @@ impl Envelope {
 
         let Items::EnvelopeItems(ref mut items) = self.items else {
             if item != EnvelopeItem::Raw {
-                eprintln!("WARNING: This envelope contains raw items. Adding an item is not supported.");
+                eprintln!(
+                    "WARNING: This envelope contains raw items. Adding an item is not supported."
+                );
             }
             return;
         };
@@ -276,7 +278,11 @@ impl Envelope {
         P: FnMut(&EnvelopeItem) -> bool,
     {
         let Items::EnvelopeItems(items) = self.items else {
-            return if predicate(&EnvelopeItem::Raw) { Some(self) } else { None };
+            return if predicate(&EnvelopeItem::Raw) {
+                Some(self)
+            } else {
+                None
+            };
         };
 
         let mut filtered = Envelope::new();
