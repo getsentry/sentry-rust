@@ -1,6 +1,6 @@
 [package]
 name = "sentry-tracing"
-version = "0.31.6"
+version = "0.31.7"
 authors = ["Sentry <hello@sentry.io>"]
 license = "Apache-2.0"
 readme = "README.md"
@@ -20,10 +20,10 @@ default = []
 backtrace = ["dep:sentry-backtrace"]
 
 [dependencies]
-sentry-core = { version = "0.31.6", path = "../sentry-core", features = ["client"] }
+sentry-core = { version = "0.31.7", path = "../sentry-core", features = ["client"] }
 tracing-core = "0.1"
 tracing-subscriber = { version = "0.3.1", default-features = false, features = ["std"] }
-sentry-backtrace = { version = "0.31.6", path = "../sentry-backtrace", optional = true }
+sentry-backtrace = { version = "0.31.7", path = "../sentry-backtrace", optional = true }
 
 [dev-dependencies]
 log = "0.4"

@@ -1,6 +1,6 @@
 [package]
 name = "sentry-log"
-version = "0.31.6"
+version = "0.31.7"
 authors = ["Sentry <hello@sentry.io>"]
 license = "Apache-2.0"
 readme = "README.md"
@@ -13,7 +13,7 @@ edition = "2021"
 rust-version = "1.68"
 
 [dependencies]
-sentry-core = { version = "0.31.6", path = "../sentry-core" }
+sentry-core = { version = "0.31.7", path = "../sentry-core" }
 log = { version = "0.4.8", features = ["std"] }
 
 [dev-dependencies]
