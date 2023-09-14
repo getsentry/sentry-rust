@@ -92,7 +92,7 @@ fn is_false(val: &bool) -> bool {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct SessionUpdate<'a> {
     /// The session identifier.
-    #[serde(rename = "sid", default = "Uuid::new_v4")]
+    #[serde(rename = "sid", default = "crate::random_uuid")]
     pub session_id: Uuid,
 
     /// The distinct identifier. Should be device or user ID.

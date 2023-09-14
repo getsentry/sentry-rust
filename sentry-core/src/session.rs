@@ -14,7 +14,7 @@ use crate::protocol::{
     SessionStatus, SessionUpdate,
 };
 use crate::scope::StackLayer;
-use crate::types::Uuid;
+use crate::types::random_uuid;
 use crate::{Client, Envelope};
 
 #[derive(Clone, Debug)]
@@ -50,7 +50,7 @@ impl Session {
         Some(Self {
             client: client.clone(),
             session_update: SessionUpdate {
-                session_id: Uuid::new_v4(),
+                session_id: random_uuid(),
                 distinct_id,
                 sequence: None,
                 timestamp: None,

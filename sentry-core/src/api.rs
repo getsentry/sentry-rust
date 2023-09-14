@@ -17,9 +17,9 @@ use crate::{Hub, Integration, IntoBreadcrumbs, Scope};
 ///
 /// ```
 /// use sentry::protocol::{Event, Level};
-/// use sentry::types::Uuid;
+/// use sentry::types::{Uuid, random_uuid};
 ///
-/// let uuid = Uuid::new_v4();
+/// let uuid = random_uuid();
 /// let event = Event {
 ///     event_id: uuid,
 ///     message: Some("Hello World!".into()),

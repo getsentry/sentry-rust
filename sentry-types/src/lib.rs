@@ -52,3 +52,8 @@ pub use crate::project_id::*;
 // Re-export external types and traits for convenience
 pub use debugid::*;
 pub use uuid::{Uuid, Variant as UuidVariant, Version as UuidVersion};
+
+/// Generates a random [Uuid] using a thread local RNG.
+pub fn random_uuid() -> Uuid {
+    uuid::Builder::from_random_bytes(rand::random()).into_uuid()
+}
