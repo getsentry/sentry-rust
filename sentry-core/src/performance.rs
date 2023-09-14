@@ -406,7 +406,7 @@ impl Transaction {
             Some(client) => (
                 client.is_transaction_sampled(&ctx),
                 Some(protocol::Transaction {
-                    name: Some(ctx.name.clone()),
+                    name: Some(ctx.name),
                     ..Default::default()
                 }),
             ),

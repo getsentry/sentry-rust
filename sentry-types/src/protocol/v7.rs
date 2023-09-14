@@ -1338,12 +1338,7 @@ pub struct SpanId([u8; 8]);
 
 impl Default for SpanId {
     fn default() -> Self {
-        let mut buf = [0; 8];
-
-        getrandom::getrandom(&mut buf)
-            .unwrap_or_else(|err| panic!("could not retrieve random bytes for SpanId: {err}"));
-
-        Self(buf)
+        Self(rand::random())
     }
 }
 
@@ -1384,12 +1379,7 @@ pub struct TraceId([u8; 16]);
 
 impl Default for TraceId {
     fn default() -> Self {
-        let mut buf = [0; 16];
-
-        getrandom::getrandom(&mut buf)
-            .unwrap_or_else(|err| panic!("could not retrieve random bytes for TraceId: {err}"));
-
-        Self(buf)
+        Self(rand::random())
     }
 }
 
@@ -1520,7 +1510,7 @@ mod event {
     use super::*;
 
     pub fn default_id() -> Uuid {
-        Uuid::new_v4()
+        uuid::Builder::from_random_bytes(rand::random()).into_uuid()
     }
 
     pub fn serialize_id<S: Serializer>(uuid: &Uuid, serializer: S) -> Result<S::Ok, S::Error> {

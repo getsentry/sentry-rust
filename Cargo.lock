@@ -2818,8 +2818,8 @@ name = "sentry-types"
 version = "0.31.6"
 dependencies = [
  "debugid",
- "getrandom 0.2.10",
  "hex",
+ "rand 0.8.5",
  "serde",
  "serde_json",
  "thiserror",
