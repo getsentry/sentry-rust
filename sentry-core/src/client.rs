@@ -8,6 +8,7 @@ use std::time::Duration;
 
 use rand::random;
 use sentry_types::protocol::v7::SessionUpdate;
+use sentry_types::random_uuid;
 
 use crate::constants::SDK_INFO;
 use crate::protocol::{ClientSdkInfo, Event};
@@ -161,7 +162,7 @@ impl Client {
         // event_id and sdk_info are set before the processors run so that the
         // processors can poke around in that data.
         if event.event_id.is_nil() {
-            event.event_id = Uuid::new_v4();
+            event.event_id = random_uuid();
         }
 
         if event.sdk.is_none() {

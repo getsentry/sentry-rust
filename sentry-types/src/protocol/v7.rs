@@ -1510,7 +1510,7 @@ mod event {
     use super::*;
 
     pub fn default_id() -> Uuid {
-        uuid::Builder::from_random_bytes(rand::random()).into_uuid()
+        crate::random_uuid()
     }
 
     pub fn serialize_id<S: Serializer>(uuid: &Uuid, serializer: S) -> Result<S::Ok, S::Error> {
