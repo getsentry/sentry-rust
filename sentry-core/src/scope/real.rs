@@ -10,6 +10,7 @@ use crate::Client;
 
 #[derive(Debug)]
 pub struct Stack {
+    top: StackLayer,
     layers: Vec<StackLayer>,
 }
 
@@ -77,29 +78,31 @@ pub struct StackLayer {
 impl Stack {
     pub fn from_client_and_scope(client: Option<Arc<Client>>, scope: Arc<Scope>) -> Stack {
         Stack {
-            layers: vec![StackLayer { client, scope }],
+            top: StackLayer { client, scope },
+            layers: vec![],
         }
     }
 
     pub fn push(&mut self) {
-        let layer = self.layers[self.layers.len() - 1].clone();
+        let layer = self.top.clone();
         self.layers.push(layer);
     }
 
     pub fn pop(&mut self) {
-        if self.layers.len() <= 1 {
+        if self.layers.is_empty() {
             panic!("Pop from empty stack");
         }
-        self.layers.pop().unwrap();
+        self.top = self.layers.pop().unwrap();
     }
 
+    #[inline(always)]
     pub fn top(&self) -> &StackLayer {
-        &self.layers[self.layers.len() - 1]
+        &self.top
     }
 
+    #[inline(always)]
     pub fn top_mut(&mut self) -> &mut StackLayer {
-        let top = self.layers.len() - 1;
-        &mut self.layers[top]
+        &mut self.top
     }
 
     pub fn depth(&self) -> usize {
