@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.31.7
 
 ### Various fixes & improvements
 - The minimum supported Rust version was bumped to **1.68.0** due to requirements from dependencies. (#612)
