@@ -124,6 +124,8 @@ mod defaults;
 mod init;
 pub mod transports;
 
+pub mod types_v2;
+
 // re-export from core
 #[doc(inline)]
 pub use sentry_core::*;
