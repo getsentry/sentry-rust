@@ -4,7 +4,9 @@ use serde::Deserialize;
 use thiserror::Error;
 use uuid::Uuid;
 
-use super::v7::{
+use super::v7 as protocol;
+
+use protocol::{
     Attachment, AttachmentType, Event, MonitorCheckIn, SessionAggregates, SessionUpdate,
     Transaction,
 };
@@ -42,6 +44,7 @@ struct EnvelopeHeader {
 
 /// An Envelope Item Type.
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize)]
+#[non_exhaustive]
 enum EnvelopeItemType {
     /// An Event Item type.
     #[serde(rename = "event")]
@@ -61,6 +64,10 @@ enum EnvelopeItemType {
     /// A Monitor Check In Item Type
     #[serde(rename = "check_in")]
     MonitorCheckIn,
+    /// A Metrics Item type.
+    #[cfg(feature = "UNSTABLE_metrics")]
+    #[serde(rename = "statsd")]
+    Metrics,
 }
 
 /// An Envelope Item Header.
@@ -109,6 +116,9 @@ pub enum EnvelopeItem {
     Attachment(Attachment),
     /// A MonitorCheckIn item.
     MonitorCheckIn(MonitorCheckIn),
+    /// A Metrics Item.
+    #[cfg(feature = "UNSTABLE_metrics")]
+    Metrics(Vec<u8>),
     /// This is a sentinel item used to `filter` raw envelopes.
     Raw,
     // TODO:
@@ -349,6 +359,8 @@ impl Envelope {
                 EnvelopeItem::MonitorCheckIn(check_in) => {
                     serde_json::to_writer(&mut item_buf, check_in)?
                 }
+                #[cfg(feature = "UNSTABLE_metrics")]
+                EnvelopeItem::Metrics(metrics) => item_buf.extend_from_slice(metrics.as_bytes()),
                 EnvelopeItem::Raw => {
                     continue;
                 }
@@ -358,8 +370,10 @@ impl Envelope {
                 EnvelopeItem::SessionUpdate(_) => "session",
                 EnvelopeItem::SessionAggregates(_) => "sessions",
                 EnvelopeItem::Transaction(_) => "transaction",
-                EnvelopeItem::Attachment(_) | EnvelopeItem::Raw => unreachable!(),
                 EnvelopeItem::MonitorCheckIn(_) => "check_in",
+                #[cfg(feature = "UNSTABLE_metrics")]
+                EnvelopeItem::Metrics(_) => "statsd",
+                EnvelopeItem::Attachment(_) | EnvelopeItem::Raw => unreachable!(),
             };
             writeln!(
                 writer,
@@ -503,6 +517,8 @@ impl Envelope {
             EnvelopeItemType::MonitorCheckIn => {
                 serde_json::from_slice(payload).map(EnvelopeItem::MonitorCheckIn)
             }
+            #[cfg(feature = "UNSTABLE_metrics")]
+            EnvelopeItemType::Metrics => EnvelopeItem::Metrics(payload.into()),
         }
         .map_err(EnvelopeError::InvalidItemPayload)?;
 

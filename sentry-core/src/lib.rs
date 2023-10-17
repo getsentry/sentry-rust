@@ -141,6 +141,8 @@ pub use crate::transport::{Transport, TransportFactory};
 mod client;
 #[cfg(feature = "client")]
 mod hub_impl;
+#[cfg(all(feature = "client", feature = "UNSTABLE_metrics"))]
+mod metrics;
 #[cfg(feature = "client")]
 mod session;
 #[cfg(feature = "client")]
