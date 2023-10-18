@@ -651,32 +651,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "bstr"
-version = "1.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c79ad7fb2dd38f3dabd76b09c6a5a20c038fc0213ef1e9afd30eb777f120f019"
-dependencies = [
- "memchr",
- "serde",
-]
-
-[[package]]
 name = "bumpalo"
 version = "3.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a3e2c3daef883ecc1b5d58c15adae93470a91d425f3532ba1695849656af3fc1"
-
-[[package]]
-name = "bytecount"
-version = "0.6.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad152d03a2c813c80bb94fedbf3a3f02b28f793e39e7c214c8a0bcc196343de7"
-
-[[package]]
-name = "byteorder"
-version = "1.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 
 [[package]]
 name = "bytes"
@@ -729,16 +707,6 @@ name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
-
-[[package]]
-name = "chrono"
-version = "0.4.31"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f2c685bad3eb3d45a01354cedb7d5faa66194d1d58ba6e267a8de788f79db38"
-dependencies = [
- "num-traits",
- "serde",
-]
 
 [[package]]
 name = "ciborium"
@@ -1422,19 +1390,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6fb8d784f27acf97159b40fc4db5ecd8aa23b9ad5ef69cdd136d3bc80665f0c0"
 
 [[package]]
-name = "globset"
-version = "0.4.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "759c97c1e17c55525b57192c06a267cda0ac5210b222d6b82189a2338fa1c13d"
-dependencies = [
- "aho-corasick",
- "bstr",
- "fnv",
- "log",
- "regex",
-]
-
-[[package]]
 name = "gloo-timers"
 version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1472,28 +1427,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eabb4a44450da02c90444cf74558da904edde8fb4e9035a9a6a4e15445af0bd7"
 
 [[package]]
-name = "hash32"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "47d60b12902ba28e2730cd37e95b8c9223af2808df9e902d4df49588d1470606"
-dependencies = [
- "byteorder",
-]
-
-[[package]]
 name = "hashbrown"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
-
-[[package]]
-name = "hashbrown"
-version = "0.13.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43a3c133739dddd0d2990f9a4bdf8eb4b21ef50e4851ca85ab661199821d510e"
-dependencies = [
- "ahash",
-]
 
 [[package]]
 name = "hashbrown"
@@ -1919,15 +1856,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b5e6163cb8c49088c2c36f57875e58ccd8c87c7427f7fbd50ea6710b2f3f2e8f"
 dependencies = [
  "value-bag",
-]
-
-[[package]]
-name = "lru"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "71e7d46de488603ffdd5f30afbc64fbba2378214a2c3a2fb83abf3d33126df17"
-dependencies = [
- "hashbrown 0.13.2",
 ]
 
 [[package]]
@@ -2481,99 +2409,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dbb5fb1acd8a1a18b3dd5be62d25485eb770e05afb408a9627d14d451bae12da"
 
 [[package]]
-name = "relay-base-schema"
-version = "23.10.0"
-source = "git+https://github.com/getsentry/relay#e188c586f81a641a00596a7b39ff87802e835e77"
-dependencies = [
- "relay-common",
- "relay-protocol",
- "serde",
-]
-
-[[package]]
-name = "relay-common"
-version = "23.10.0"
-source = "git+https://github.com/getsentry/relay#e188c586f81a641a00596a7b39ff87802e835e77"
-dependencies = [
- "chrono",
- "globset",
- "lru",
- "once_cell",
- "parking_lot",
- "regex",
- "sentry-types 0.31.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde",
-]
-
-[[package]]
-name = "relay-log"
-version = "23.10.0"
-source = "git+https://github.com/getsentry/relay#e188c586f81a641a00596a7b39ff87802e835e77"
-dependencies = [
- "sentry-core 0.31.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "tracing",
-]
-
-[[package]]
-name = "relay-metrics"
-version = "23.10.0"
-source = "git+https://github.com/getsentry/relay#e188c586f81a641a00596a7b39ff87802e835e77"
-dependencies = [
- "bytecount",
- "fnv",
- "hash32",
- "itertools",
- "relay-base-schema",
- "relay-common",
- "relay-log",
- "relay-statsd",
- "relay-system",
- "serde",
- "serde_json",
- "smallvec",
- "thiserror",
- "tokio",
-]
-
-[[package]]
-name = "relay-protocol"
-version = "23.10.0"
-source = "git+https://github.com/getsentry/relay#e188c586f81a641a00596a7b39ff87802e835e77"
-dependencies = [
- "num-traits",
- "relay-common",
- "serde",
- "serde_json",
- "smallvec",
- "unicase",
- "uuid",
-]
-
-[[package]]
-name = "relay-statsd"
-version = "23.10.0"
-source = "git+https://github.com/getsentry/relay#e188c586f81a641a00596a7b39ff87802e835e77"
-dependencies = [
- "cadence",
- "crossbeam-channel",
- "parking_lot",
- "rand 0.8.5",
- "relay-log",
-]
-
-[[package]]
-name = "relay-system"
-version = "23.10.0"
-source = "git+https://github.com/getsentry/relay#e188c586f81a641a00596a7b39ff87802e835e77"
-dependencies = [
- "futures",
- "once_cell",
- "relay-log",
- "relay-statsd",
- "tokio",
-]
-
-[[package]]
 name = "reqwest"
 version = "0.11.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2830,7 +2665,7 @@ dependencies = [
  "sentry-anyhow",
  "sentry-backtrace",
  "sentry-contexts",
- "sentry-core 0.31.7",
+ "sentry-core",
  "sentry-debug-images",
  "sentry-log",
  "sentry-panic",
@@ -2856,7 +2691,7 @@ dependencies = [
  "futures",
  "futures-util",
  "sentry",
- "sentry-core 0.31.7",
+ "sentry-core",
  "tokio",
 ]
 
@@ -2867,7 +2702,7 @@ dependencies = [
  "anyhow",
  "sentry",
  "sentry-backtrace",
- "sentry-core 0.31.7",
+ "sentry-core",
 ]
 
 [[package]]
@@ -2877,7 +2712,7 @@ dependencies = [
  "backtrace",
  "once_cell",
  "regex",
- "sentry-core 0.31.7",
+ "sentry-core",
 ]
 
 [[package]]
@@ -2889,7 +2724,7 @@ dependencies = [
  "os_info",
  "rustc_version 0.4.0",
  "sentry",
- "sentry-core 0.31.7",
+ "sentry-core",
  "uname",
 ]
 
@@ -2905,9 +2740,8 @@ dependencies = [
  "once_cell",
  "rand 0.8.5",
  "rayon",
- "relay-metrics",
  "sentry",
- "sentry-types 0.31.7",
+ "sentry-types",
  "serde",
  "serde_json",
  "thiserror",
@@ -2916,24 +2750,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "sentry-core"
-version = "0.31.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f51264e4013ed9b16558cce43917b983fa38170de2ca480349ceb57d71d6053"
-dependencies = [
- "once_cell",
- "sentry-types 0.31.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "sentry-debug-images"
 version = "0.31.7"
 dependencies = [
  "findshlibs",
  "once_cell",
- "sentry-core 0.31.7",
+ "sentry-core",
 ]
 
 [[package]]
@@ -2943,7 +2765,7 @@ dependencies = [
  "log",
  "pretty_env_logger",
  "sentry",
- "sentry-core 0.31.7",
+ "sentry-core",
 ]
 
 [[package]]
@@ -2952,7 +2774,7 @@ version = "0.31.7"
 dependencies = [
  "sentry",
  "sentry-backtrace",
- "sentry-core 0.31.7",
+ "sentry-core",
 ]
 
 [[package]]
@@ -2961,7 +2783,7 @@ version = "0.31.7"
 dependencies = [
  "erased-serde",
  "sentry",
- "sentry-core 0.31.7",
+ "sentry-core",
  "serde",
  "serde_json",
  "slog",
@@ -2978,7 +2800,7 @@ dependencies = [
  "prost",
  "sentry",
  "sentry-anyhow",
- "sentry-core 0.31.7",
+ "sentry-core",
  "tokio",
  "tonic",
  "tower",
@@ -2994,7 +2816,7 @@ dependencies = [
  "log",
  "sentry",
  "sentry-backtrace",
- "sentry-core 0.31.7",
+ "sentry-core",
  "tokio",
  "tracing",
  "tracing-core",
@@ -3004,23 +2826,6 @@ dependencies = [
 [[package]]
 name = "sentry-types"
 version = "0.31.7"
-dependencies = [
- "debugid",
- "hex",
- "rand 0.8.5",
- "serde",
- "serde_json",
- "thiserror",
- "time 0.3.28",
- "url",
- "uuid",
-]
-
-[[package]]
-name = "sentry-types"
-version = "0.31.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e663b3eb62ddfc023c9cf5432daf5f1a4f6acb1df4d78dd80b740b32dd1a740"
 dependencies = [
  "debugid",
  "hex",
@@ -3197,9 +3002,6 @@ name = "smallvec"
 version = "1.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "62bb4feee49fdd9f707ef802e22365a35de4b7b299de4763d44bfea899442ff9"
-dependencies = [
- "serde",
-]
 
 [[package]]
 name = "socket2"
@@ -3521,7 +3323,6 @@ dependencies = [
  "signal-hook-registry",
  "socket2 0.5.4",
  "tokio-macros",
- "tracing",
  "windows-sys",
 ]
 

@@ -360,7 +360,7 @@ impl Envelope {
                     serde_json::to_writer(&mut item_buf, check_in)?
                 }
                 #[cfg(feature = "UNSTABLE_metrics")]
-                EnvelopeItem::Metrics(metrics) => item_buf.extend_from_slice(metrics.as_bytes()),
+                EnvelopeItem::Metrics(metrics) => item_buf.extend_from_slice(metrics),
                 EnvelopeItem::Raw => {
                     continue;
                 }
@@ -518,7 +518,7 @@ impl Envelope {
                 serde_json::from_slice(payload).map(EnvelopeItem::MonitorCheckIn)
             }
             #[cfg(feature = "UNSTABLE_metrics")]
-            EnvelopeItemType::Metrics => EnvelopeItem::Metrics(payload.into()),
+            EnvelopeItemType::Metrics => Ok(EnvelopeItem::Metrics(payload.into())),
         }
         .map_err(EnvelopeError::InvalidItemPayload)?;
 

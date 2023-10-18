@@ -147,6 +147,8 @@ mod metrics;
 mod session;
 #[cfg(feature = "client")]
 pub use crate::client::Client;
+#[cfg(all(feature = "client", feature = "UNSTABLE_metrics"))]
+pub use crate::metrics::SentryMetricSink;
 
 // test utilities
 #[cfg(feature = "test")]
