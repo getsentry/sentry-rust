@@ -13,6 +13,10 @@ use sentry_types::protocol::latest::{Envelope, EnvelopeItem};
 use crate::client::TransportArc;
 use crate::{Client, Hub};
 
+/// A [`cadence`] compatible [`MetricSink`].
+///
+/// This will ingest all the emitted metrics to Sentry as well as forward them
+/// to the inner [`MetricSink`].
 #[derive(Debug)]
 pub struct SentryMetricSink<S> {
     client: Arc<Client>,
@@ -20,6 +24,7 @@ pub struct SentryMetricSink<S> {
 }
 
 impl<S> SentryMetricSink<S> {
+    /// Creates a new [`SentryMetricSink`], wrapping the given [`MetricSink`].
     pub fn try_new(sink: S) -> Result<Self, S> {
         let hub = Hub::current();
         let Some(client) = hub.client() else {
@@ -101,7 +106,7 @@ struct GaugeValue {
 enum BucketValue {
     Counter(f64),
     Distribution(Vec<f64>),
-    Set(BTreeSet<u32>),
+    Set(BTreeSet<String>),
     Gauge(GaugeValue),
 }
 impl BucketValue {
@@ -120,7 +125,7 @@ impl BucketValue {
     }
 
     fn set_from_str(value: &str) -> BucketValue {
-        todo!()
+        BucketValue::Set([value.into()].into())
     }
 
     fn merge(&mut self, other: BucketValue) -> Result<(), ()> {
