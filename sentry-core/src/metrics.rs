@@ -293,6 +293,10 @@ impl MetricFlusher {
     }
 
     fn flush_buckets(buckets: AggregateMetrics, transport: &TransportArc) {
+        if buckets.is_empty() {
+            return;
+        }
+
         fn format_payload(buckets: AggregateMetrics) -> std::io::Result<Vec<u8>> {
             use std::io::Write;
             let mut out = vec![];
