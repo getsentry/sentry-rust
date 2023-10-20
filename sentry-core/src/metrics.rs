@@ -161,7 +161,7 @@ struct BucketKey {
 type AggregateMetrics = BTreeMap<BucketKey, BucketValue>;
 
 enum Task {
-    SendMetrics((BucketKey, BucketValue)),
+    RecordMetric((BucketKey, BucketValue)),
     Flush,
     Shutdown,
 }
@@ -239,7 +239,7 @@ impl MetricFlusher {
         }
 
         if let Some(parsed_metric) = parse(metric) {
-            let _ = self.sender.send(Task::SendMetrics(parsed_metric));
+            let _ = self.sender.send(Task::RecordMetric(parsed_metric));
         }
     }
 
@@ -257,9 +257,7 @@ impl MetricFlusher {
                 return;
             }
 
-            let timeout = FLUSH_INTERVAL
-                .checked_sub(last_flush.elapsed())
-                .unwrap_or_else(|| Duration::from_secs(0));
+            let timeout = FLUSH_INTERVAL.saturating_sub(last_flush.elapsed());
 
             match receiver.recv_timeout(timeout) {
                 Err(RecvTimeoutError::Timeout) | Ok(Task::Flush) => {
@@ -267,7 +265,7 @@ impl MetricFlusher {
                     Self::flush_buckets(std::mem::take(&mut buckets), &transport);
                     last_flush = Instant::now();
                 }
-                Ok(Task::SendMetrics((mut key, value))) => {
+                Ok(Task::RecordMetric((mut key, value))) => {
                     // aggregate
                     let rounding_interval = FLUSH_INTERVAL.as_secs();
                     let rounded_timestamp = (key.timestamp / rounding_interval) * rounding_interval;
@@ -388,17 +386,16 @@ mod tests {
         assert_eq!(envelopes.len(), 1);
 
         let mut items = envelopes[0].items();
-        if let Some(EnvelopeItem::Metrics(metrics)) = items.next() {
-            let metrics = from_utf8(metrics).unwrap();
-
-            println!("{metrics}");
-
-            assert!(metrics.contains("sentry.test.count.with.tags:1|c|#foo:bar|T"));
-            assert!(metrics.contains("sentry.test.some.count:11|c|T"));
-            assert!(metrics.contains("sentry.test.some.distr:1:2:3|d|T"));
-        } else {
+        let Some(EnvelopeItem::Metrics(metrics)) = items.next() else {
             panic!("expected metrics");
-        }
+        };
+        let metrics = from_utf8(metrics).unwrap();
+
+        println!("{metrics}");
+
+        assert!(metrics.contains("sentry.test.count.with.tags:1|c|#foo:bar|T"));
+        assert!(metrics.contains("sentry.test.some.count:11|c|T"));
+        assert!(metrics.contains("sentry.test.some.distr:1:2:3|d|T"));
         assert_eq!(items.next(), None);
     }
 }
