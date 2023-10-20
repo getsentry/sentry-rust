@@ -107,6 +107,8 @@ pub enum EnvelopeItem {
     /// See the [Attachment Item documentation](https://develop.sentry.dev/sdk/envelopes/#attachment)
     /// for more details.
     Attachment(Attachment),
+    /// A formatted statsd item
+    Statsd(Vec<u8>),
     /// A MonitorCheckIn item.
     MonitorCheckIn(MonitorCheckIn),
     /// This is a sentinel item used to `filter` raw envelopes.
@@ -349,6 +351,7 @@ impl Envelope {
                 EnvelopeItem::MonitorCheckIn(check_in) => {
                     serde_json::to_writer(&mut item_buf, check_in)?
                 }
+                EnvelopeItem::Statsd(ref payload) => item_buf.write_all(payload)?,
                 EnvelopeItem::Raw => {
                     continue;
                 }
@@ -360,6 +363,7 @@ impl Envelope {
                 EnvelopeItem::Transaction(_) => "transaction",
                 EnvelopeItem::Attachment(_) | EnvelopeItem::Raw => unreachable!(),
                 EnvelopeItem::MonitorCheckIn(_) => "check_in",
+                EnvelopeItem::Statsd(_) => "statsd",
             };
             writeln!(
                 writer,

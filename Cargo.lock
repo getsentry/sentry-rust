@@ -1229,6 +1229,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "fuchsia-cprng"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a06f77d526c1a601b7c4cdd98f54b5eaabffc14d5f2f0296febdc7f357c6d3ba"
+
+[[package]]
 name = "futures"
 version = "0.3.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2270,6 +2276,29 @@ dependencies = [
 
 [[package]]
 name = "rand"
+version = "0.3.23"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "64ac302d8f83c0c1974bf758f6b041c6c8ada916fbb44a609158ca8b064cc76c"
+dependencies = [
+ "libc",
+ "rand 0.4.6",
+]
+
+[[package]]
+name = "rand"
+version = "0.4.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "552840b97013b1a26992c11eac34bdd778e464601a4c2054b5f0bff7c6761293"
+dependencies = [
+ "fuchsia-cprng",
+ "libc",
+ "rand_core 0.3.1",
+ "rdrand",
+ "winapi",
+]
+
+[[package]]
+name = "rand"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6a6b1679d49b24bbfe0c803429aa1874472f50d9b363131f0e89fc356b544d03"
@@ -2311,6 +2340,21 @@ dependencies = [
  "ppv-lite86",
  "rand_core 0.6.4",
 ]
+
+[[package]]
+name = "rand_core"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a6fdeb83b075e8266dcc8762c22776f6877a63111121f5f8c7411e5be7eed4b"
+dependencies = [
+ "rand_core 0.4.2",
+]
+
+[[package]]
+name = "rand_core"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9c33a3c44ca05fa6f1807d8e6743f3824e8509beca625669633be0acbdf509dc"
 
 [[package]]
 name = "rand_core"
@@ -2359,6 +2403,15 @@ dependencies = [
  "crossbeam-deque",
  "crossbeam-utils",
  "num_cpus",
+]
+
+[[package]]
+name = "rdrand"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "678054eb77286b51581ba43620cc911abf02758c91f93f479767aed0f90458b2"
+dependencies = [
+ "rand_core 0.3.1",
 ]
 
 [[package]]
@@ -2454,6 +2507,15 @@ dependencies = [
  "untrusted",
  "web-sys",
  "winapi",
+]
+
+[[package]]
+name = "rng"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "daa6bba2ae9b3232e194e86d9a407e28c5d02fdfb85ea0e7e2e60f4d1e78aff2"
+dependencies = [
+ "rand 0.3.23",
 ]
 
 [[package]]
@@ -2640,7 +2702,7 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "sentry"
-version = "0.31.6"
+version = "0.31.7"
 dependencies = [
  "actix-web",
  "anyhow",
@@ -2676,7 +2738,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-actix"
-version = "0.31.6"
+version = "0.31.7"
 dependencies = [
  "actix-web",
  "futures",
@@ -2688,7 +2750,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-anyhow"
-version = "0.31.6"
+version = "0.31.7"
 dependencies = [
  "anyhow",
  "sentry",
@@ -2698,7 +2760,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-backtrace"
-version = "0.31.6"
+version = "0.31.7"
 dependencies = [
  "backtrace",
  "once_cell",
@@ -2708,7 +2770,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-contexts"
-version = "0.31.6"
+version = "0.31.7"
 dependencies = [
  "hostname",
  "libc",
@@ -2721,7 +2783,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-core"
-version = "0.31.6"
+version = "0.31.7"
 dependencies = [
  "anyhow",
  "criterion",
@@ -2730,6 +2792,7 @@ dependencies = [
  "once_cell",
  "rand 0.8.5",
  "rayon",
+ "rng",
  "sentry",
  "sentry-types",
  "serde",
@@ -2741,7 +2804,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-debug-images"
-version = "0.31.6"
+version = "0.31.7"
 dependencies = [
  "findshlibs",
  "once_cell",
@@ -2750,7 +2813,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-log"
-version = "0.31.6"
+version = "0.31.7"
 dependencies = [
  "log",
  "pretty_env_logger",
@@ -2760,7 +2823,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-panic"
-version = "0.31.6"
+version = "0.31.7"
 dependencies = [
  "sentry",
  "sentry-backtrace",
@@ -2769,7 +2832,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-slog"
-version = "0.31.6"
+version = "0.31.7"
 dependencies = [
  "erased-serde",
  "sentry",
@@ -2781,7 +2844,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-tower"
-version = "0.31.6"
+version = "0.31.7"
 dependencies = [
  "anyhow",
  "axum",
@@ -2801,7 +2864,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-tracing"
-version = "0.31.6"
+version = "0.31.7"
 dependencies = [
  "log",
  "sentry",
@@ -2815,7 +2878,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-types"
-version = "0.31.6"
+version = "0.31.7"
 dependencies = [
  "debugid",
  "hex",

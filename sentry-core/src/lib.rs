@@ -122,6 +122,7 @@ mod intodsn;
 mod performance;
 mod scope;
 mod transport;
+mod units;
 
 // public api or exports from this crate
 pub use crate::api::*;
@@ -145,6 +146,8 @@ mod hub_impl;
 mod session;
 #[cfg(feature = "client")]
 pub use crate::client::Client;
+#[cfg(feature = "client")]
+mod metrics;
 
 // test utilities
 #[cfg(feature = "test")]

@@ -11,6 +11,7 @@ use sentry_types::protocol::v7::SessionUpdate;
 use sentry_types::random_uuid;
 
 use crate::constants::SDK_INFO;
+use crate::metrics::MetricsAggregator;
 use crate::protocol::{ClientSdkInfo, Event};
 use crate::session::SessionFlusher;
 use crate::types::{Dsn, Uuid};
@@ -45,6 +46,7 @@ pub struct Client {
     options: ClientOptions,
     transport: TransportArc,
     session_flusher: RwLock<Option<SessionFlusher>>,
+    pub(crate) metrics_aggregator: RwLock<Option<MetricsAggregator>>,
     integrations: Vec<(TypeId, Arc<dyn Integration>)>,
     pub(crate) sdk_info: ClientSdkInfo,
 }
@@ -65,10 +67,12 @@ impl Clone for Client {
             transport.clone(),
             self.options.session_mode,
         )));
+        let metrics_aggregator = RwLock::new(Some(MetricsAggregator::new(transport.clone())));
         Client {
             options: self.options.clone(),
             transport,
             session_flusher,
+            metrics_aggregator,
             integrations: self.integrations.clone(),
             sdk_info: self.sdk_info.clone(),
         }
@@ -136,10 +140,12 @@ impl Client {
             transport.clone(),
             options.session_mode,
         )));
+        let metrics_aggregator = RwLock::new(Some(MetricsAggregator::new(transport.clone())));
         Client {
             options,
             transport,
             session_flusher,
+            metrics_aggregator,
             integrations,
             sdk_info,
         }
@@ -313,6 +319,9 @@ impl Client {
         if let Some(ref flusher) = *self.session_flusher.read().unwrap() {
             flusher.flush();
         }
+        if let Some(ref aggregator) = *self.metrics_aggregator.read().unwrap() {
+            aggregator.flush();
+        }
         if let Some(ref transport) = *self.transport.read().unwrap() {
             transport.flush(timeout.unwrap_or(self.options.shutdown_timeout))
         } else {
@@ -329,6 +338,7 @@ impl Client {
     /// `shutdown_timeout` in the client options.
     pub fn close(&self, timeout: Option<Duration>) -> bool {
         drop(self.session_flusher.write().unwrap().take());
+        drop(self.metrics_aggregator.write().unwrap().take());
         let transport_opt = self.transport.write().unwrap().take();
         if let Some(transport) = transport_opt {
             sentry_debug!("client close; request transport to shut down");
