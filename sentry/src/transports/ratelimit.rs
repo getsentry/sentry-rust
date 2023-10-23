@@ -115,7 +115,7 @@ impl RateLimiter {
                 }
                 EnvelopeItem::Transaction(_) => RateLimitingCategory::Transaction,
                 EnvelopeItem::Attachment(_) => RateLimitingCategory::Attachment,
-                EnvelopeItem::Statsd(_) => RateLimitingCategory::Statsd,
+                EnvelopeItem::Metrics(_) => RateLimitingCategory::Statsd,
                 _ => RateLimitingCategory::Any,
             })
         })
