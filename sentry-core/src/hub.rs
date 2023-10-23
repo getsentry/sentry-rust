@@ -11,7 +11,7 @@ use crate::{Integration, IntoBreadcrumbs, Scope, ScopeGuard};
 /// The central object that can manages scopes and clients.
 ///
 /// This can be used to capture events and manage the scope.  This object is
-/// [`Send`][std::marker::Send] and [`Sync`][std::marker::Sync] so it can be used from
+/// [`Send`] and [`Sync`] so it can be used from
 /// multiple threads if needed.
 ///
 /// Each thread has its own thread-local ( see [`Hub::current`]) hub, which is
