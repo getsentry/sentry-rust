@@ -252,11 +252,6 @@ impl MetricFlusher {
         let mut last_flush = Instant::now();
 
         loop {
-            if shutdown.load(Ordering::SeqCst) {
-                Self::flush_buckets(buckets, &transport);
-                return;
-            }
-
             let timeout = FLUSH_INTERVAL.saturating_sub(last_flush.elapsed());
 
             match receiver.recv_timeout(timeout) {
@@ -286,6 +281,11 @@ impl MetricFlusher {
                     Self::flush_buckets(buckets, &transport);
                     return;
                 }
+            }
+
+            if shutdown.load(Ordering::SeqCst) {
+                Self::flush_buckets(buckets, &transport);
+                return;
             }
         }
     }
