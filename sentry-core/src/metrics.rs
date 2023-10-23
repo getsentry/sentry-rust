@@ -1,7 +1,6 @@
 use std::collections::btree_map::Entry;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{sync_channel, Receiver, RecvTimeoutError, SyncSender};
 use std::sync::Arc;
 use std::thread::{self, JoinHandle};
@@ -168,7 +167,6 @@ enum Task {
 
 pub struct MetricFlusher {
     sender: SyncSender<Task>,
-    shutdown: Arc<AtomicBool>,
     handle: Option<JoinHandle<()>>,
 }
 
@@ -177,18 +175,12 @@ const FLUSH_INTERVAL: Duration = Duration::from_secs(10);
 impl MetricFlusher {
     pub fn new(transport: TransportArc) -> Self {
         let (sender, receiver) = sync_channel(30);
-        let shutdown = Arc::new(AtomicBool::new(false));
-        let shutdown_worker = shutdown.clone();
         let handle = thread::Builder::new()
             .name("sentry-metrics".into())
-            .spawn(move || Self::worker_thread(receiver, shutdown_worker, transport))
+            .spawn(move || Self::worker_thread(receiver, transport))
             .ok();
 
-        Self {
-            sender,
-            shutdown,
-            handle,
-        }
+        Self { sender, handle }
     }
 
     pub fn send_metric(&self, metric: &str) {
@@ -247,7 +239,7 @@ impl MetricFlusher {
         let _ = self.sender.send(Task::Flush);
     }
 
-    fn worker_thread(receiver: Receiver<Task>, shutdown: Arc<AtomicBool>, transport: TransportArc) {
+    fn worker_thread(receiver: Receiver<Task>, transport: TransportArc) {
         let mut buckets = AggregateMetrics::new();
         let mut last_flush = Instant::now();
 
@@ -281,11 +273,6 @@ impl MetricFlusher {
                     Self::flush_buckets(buckets, &transport);
                     return;
                 }
-            }
-
-            if shutdown.load(Ordering::SeqCst) {
-                Self::flush_buckets(buckets, &transport);
-                return;
             }
         }
     }
@@ -349,7 +336,6 @@ impl MetricFlusher {
 
 impl Drop for MetricFlusher {
     fn drop(&mut self) {
-        self.shutdown.store(true, Ordering::SeqCst);
         let _ = self.sender.send(Task::Shutdown);
         if let Some(handle) = self.handle.take() {
             handle.join().unwrap();
