@@ -105,9 +105,11 @@
 //!
 //! ## Usage with `tower-http`
 //!
-//! The `http` feature offers another layer which will attach request details
-//! onto captured events, and optionally start a new performance monitoring
-//! transaction based on the incoming HTTP headers.
+//! The `http` feature of the `sentry-tower` crate offers another layer which will attach
+//! request details onto captured events, and optionally start a new performance monitoring
+//! transaction based on the incoming HTTP headers.  When using the tower integration via
+//! `sentry::integrations::tower`, this feature can also be enabled using the `tower-http`
+//! feature of the `sentry` crate instead of the `tower` feature.
 //!
 //! The created transaction will automatically use the request URI as its name.
 //! This is sometimes not desirable in case the request URI contains unique IDs
