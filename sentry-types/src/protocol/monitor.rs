@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize, Serializer};
 use uuid::Uuid;
 
+use crate::crontab_validator;
+
 /// Represents the status of the monitor check-in
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -37,6 +39,21 @@ pub enum MonitorSchedule {
         /// The interval unit of the value.
         unit: MonitorIntervalUnit,
     },
+}
+
+impl MonitorSchedule {
+    /// Attempts to create a MonitorSchedule from a provided crontab_str. If the crontab_str is a
+    /// valid crontab schedule, we return the MonitorSchedule wrapped in a Some variant. Otherwise,
+    /// we return None.
+    pub fn from_crontab(crontab_str: &str) -> Option<Self> {
+        if crontab_validator::validate(crontab_str) {
+            Some(Self::Crontab {
+                value: String::from(crontab_str),
+            })
+        } else {
+            None
+        }
+    }
 }
 
 /// The unit for the interval schedule type
