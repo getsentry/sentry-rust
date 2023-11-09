@@ -99,8 +99,6 @@ pub fn validate(crontab: &str) -> bool {
         return false;
     }
 
-    //let x: Box<dyn Error> = Box::new(CrontabParseError {});
-
     lists
         .iter()
         .zip(ALLOWED_VALUES)
