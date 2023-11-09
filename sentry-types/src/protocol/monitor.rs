@@ -1,7 +1,47 @@
+use std::fmt::Display;
+
 use serde::{Deserialize, Serialize, Serializer};
 use uuid::Uuid;
 
 use crate::crontab_validator;
+
+/// Error type for errors with parsing a crontab schedule
+#[derive(Debug)]
+pub struct CrontabParseError {
+    invalid_crontab: String,
+}
+
+impl Display for CrontabParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "\"{}\" is not a valid crontab schedule.\n\t \
+            For help determining why this schedule is invalid, you can use this site: \
+            https://crontab.guru/#{}",
+            self.invalid_crontab,
+            self.invalid_crontab
+                .split_whitespace()
+                .collect::<Vec<_>>()
+                .join("_"),
+        )
+    }
+}
+
+impl CrontabParseError {
+    /// Constructs a new CrontabParseError from a given invalid crontab string
+    ///
+    /// ## Example
+    /// ```
+    /// use sentry_types::protocol::v7::CrontabParseError;
+    ///
+    /// let error = CrontabParseError::new("* * * *");
+    /// ```
+    pub fn new(invalid_crontab: &str) -> Self {
+        Self {
+            invalid_crontab: String::from(invalid_crontab),
+        }
+    }
+}
 
 /// Represents the status of the monitor check-in
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
@@ -43,15 +83,33 @@ pub enum MonitorSchedule {
 
 impl MonitorSchedule {
     /// Attempts to create a MonitorSchedule from a provided crontab_str. If the crontab_str is a
-    /// valid crontab schedule, we return the MonitorSchedule wrapped in a Some variant. Otherwise,
-    /// we return None.
-    pub fn from_crontab(crontab_str: &str) -> Option<Self> {
+    /// valid crontab schedule, we return a Result containing the MonitorSchedule; otherwise, we
+    /// return a Result containing a CrontabParseError.
+    ///
+    /// ## Example with valid crontab
+    /// ```
+    /// use sentry_types::protocol::v7::MonitorSchedule;
+    ///
+    /// // Create a crontab that runs every other day of the month at midnight.
+    /// let result = MonitorSchedule::from_crontab("0 0 */2 * *");
+    /// assert!(result.is_ok())
+    /// ```
+    ///
+    /// ## Example with an invalid crontab
+    /// ```
+    /// use sentry_types::protocol::v7::MonitorSchedule;
+    ///
+    /// // Invalid crontab.
+    /// let result = MonitorSchedule::from_crontab("invalid");
+    /// assert!(result.is_err());
+    /// ```
+    pub fn from_crontab(crontab_str: &str) -> Result<Self, CrontabParseError> {
         if crontab_validator::validate(crontab_str) {
-            Some(Self::Crontab {
+            Ok(Self::Crontab {
                 value: String::from(crontab_str),
             })
         } else {
-            None
+            Err(CrontabParseError::new(crontab_str))
         }
     }
 }
