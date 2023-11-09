@@ -1,9 +1,19 @@
-use std::collections::HashSet;
+use std::fmt::{self, Display};
+use std::ops::RangeInclusive;
+use std::{collections::HashSet, error::Error};
 
 #[derive(PartialEq, Eq, Hash)]
 enum CronToken<'a> {
     Numeric(u64),
     Alphabetic(&'a str),
+}
+
+struct SegmentAllowedValues<'a> {
+    /// Range of permitted numeric values
+    numeric_range: RangeInclusive<u64>,
+
+    /// Allowed alphabetic single values
+    single_values: &'a [&'a str],
 }
 
 const MONTHS: &[&str] = &[
@@ -12,68 +22,139 @@ const MONTHS: &[&str] = &[
 
 const DAYS: &[&str] = &["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
-fn value_is_allowed(value: &str, allowed_values: &HashSet<CronToken>) -> bool {
-    match value.parse::<u64>() {
-        Ok(numeric_value) => allowed_values.contains(&CronToken::Numeric(numeric_value)),
-        Err(_) => allowed_values.contains(&CronToken::Alphabetic(&value.to_lowercase())),
+const ALLOWED_VALUES: &[&SegmentAllowedValues] = &[
+    &SegmentAllowedValues {
+        numeric_range: 0..=59,
+        single_values: &[],
+    },
+    &SegmentAllowedValues {
+        numeric_range: 0..=23,
+        single_values: &[],
+    },
+    &SegmentAllowedValues {
+        numeric_range: 1..=31,
+        single_values: &[],
+    },
+    &SegmentAllowedValues {
+        numeric_range: 1..=12,
+        single_values: MONTHS,
+    },
+    &SegmentAllowedValues {
+        numeric_range: 0..=6,
+        single_values: DAYS,
+    },
+];
+
+fn validate_range(range: &str, allowed_values: &SegmentAllowedValues) -> bool {
+    if range == "*" {
+        return true;
+    }
+
+    let range_limits: Vec<_> = range.split('-').map(str::parse::<u64>).collect();
+
+    range_limits.len() == 2
+        && range_limits.iter().all(|limit| {
+            limit
+                .as_ref()
+                .is_ok_and(|limit| allowed_values.numeric_range.contains(limit))
+        })
+        && range_limits[0].as_ref().unwrap() <= range_limits[1].as_ref().unwrap()
+}
+
+fn validate_step(step: &str) -> bool {
+    match step.parse::<u64>() {
+        Ok(value) => value > 0,
+        Err(_) => false,
     }
 }
 
-fn validate_range(range: &str, allowed_values: &HashSet<CronToken>) -> bool {
-    range == "*"
-        || range // TODO: Validate that the last range bound is after the previous one.
-            .splitn(2, "-")
-            .all(|bound| value_is_allowed(bound, allowed_values))
-}
-
-/// A valid step is None or Some positive value
-fn validate_step(step: &Option<&str>) -> bool {
-    match *step {
-        Some(value) => match value.parse::<u64>() {
-            Ok(value) => value > 0,
-            Err(_) => false,
-        },
-        None => true,
-    }
-}
-
-fn validate_steprange(steprange: &str, allowed_values: &HashSet<CronToken>) -> bool {
+fn validate_steprange(steprange: &str, allowed_values: &SegmentAllowedValues) -> bool {
     let mut steprange_split = steprange.splitn(2, "/");
-    let range = match steprange_split.next() {
-        Some(range) => range,
-        None => {
-            return false;
-        }
+    let range_is_valid = match steprange_split.next() {
+        Some(range) => validate_range(range, allowed_values),
+        None => false,
     };
-    let range_is_valid = validate_range(range, allowed_values);
-    let step = steprange_split.next();
 
-    range_is_valid && validate_step(&step)
+    range_is_valid
+        && match steprange_split.next() {
+            Some(step) => validate_step(step),
+            None => true,
+        }
 }
 
-fn validate_segment(segment: &str, allowed_values: &HashSet<CronToken>) -> bool {
-    segment
-        .split(",")
-        .all(|steprange| validate_steprange(steprange, &allowed_values))
+fn validate_listitem(listitem: &str, allowed_values: &SegmentAllowedValues) -> bool {
+    match listitem.parse::<u64>() {
+        Ok(value) => allowed_values.numeric_range.contains(&value),
+        Err(_) => validate_steprange(listitem, allowed_values),
+    }
+}
+
+fn validate_list(list: &str, allowed_values: &SegmentAllowedValues) -> bool {
+    list.split(",")
+        .all(|listitem| validate_listitem(listitem, &allowed_values))
+}
+
+fn validate_segment(segment: &str, allowed_values: &SegmentAllowedValues) -> bool {
+    allowed_values
+        .single_values
+        .contains(&segment.to_lowercase().as_ref())
+        || validate_list(segment, allowed_values)
 }
 
 pub fn validate(crontab: &str) -> bool {
-    let allowed_values = vec![
-        (0..60).map(CronToken::Numeric).collect(),
-        (0..24).map(CronToken::Numeric).collect(),
-        (1..32).map(CronToken::Numeric).collect(),
-        (1..13)
-            .map(CronToken::Numeric)
-            .chain(MONTHS.iter().map(|&month| CronToken::Alphabetic(month)))
-            .collect(),
-        (0..8)
-            .map(CronToken::Numeric)
-            .chain(DAYS.iter().map(|&day| CronToken::Alphabetic(day)))
-            .collect(),
-    ];
+    let lists: Vec<_> = crontab.split_whitespace().collect();
+    if lists.len() != 5 {
+        return false;
+    }
 
-    crontab
-        .split_whitespace()
-        .zip(allowed_values)
-        .all(|(segment, allowed_values)| validate_segment(segment, &allowed_values))
+    //let x: Box<dyn Error> = Box::new(CrontabParseError {});
+
+    lists
+        .iter()
+        .zip(ALLOWED_VALUES)
+        .all(|(segment, allowed_values)| validate_segment(segment, allowed_values))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rstest::rstest;
+
+    #[rstest]
+    #[case("* * * * *", true)]
+    #[case(" *  *  *      *    * ", true)]
+    #[case("invalid", false)]
+    #[case("", false)]
+    #[case("* * * *", false)]
+    #[case("* * * * * *", false)]
+    #[case("0 0 1 1 0", true)]
+    #[case("0 0 0 1 0", false)]
+    #[case("0 0 1 0 0", false)]
+    #[case("59 23 31 12 6", true)]
+    #[case("0 0 1 may sun", true)]
+    #[case("0 0 1 may sat,sun", false)]
+    #[case("0 0 1 may,jun sat", false)]
+    #[case("0 0 1 fri sun", false)]
+    #[case("0 0 1 JAN WED", true)]
+    #[case("0,24 5,23,6 1,2,3,31 1,2 5,6", true)]
+    #[case("0-20 * * * *", true)]
+    #[case("20-0 * * * *", false)]
+    #[case("0-20/3 * * * *", true)]
+    #[case("20/3 * * * *", false)]
+    #[case("*/3 * * * *", true)]
+    #[case("*/3,2 * * * *", true)]
+    #[case("*/foo * * * *", false)]
+    #[case("1-foo * * * *", false)]
+    #[case("foo-34 * * * *", false)]
+    fn test_parse(#[case] crontab: &str, #[case] expected: bool) {
+        assert_eq!(
+            validate(crontab),
+            expected,
+            "\"{crontab}\" is {}a valid crontab",
+            match expected {
+                true => "",
+                false => "not ",
+            },
+        );
+    }
 }
