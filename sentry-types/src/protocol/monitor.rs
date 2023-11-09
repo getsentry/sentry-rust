@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{error::Error, fmt::Display};
 
 use serde::{Deserialize, Serialize, Serializer};
 use uuid::Uuid;
@@ -26,6 +26,8 @@ impl Display for CrontabParseError {
         )
     }
 }
+
+impl Error for CrontabParseError {}
 
 impl CrontabParseError {
     /// Constructs a new CrontabParseError from a given invalid crontab string
