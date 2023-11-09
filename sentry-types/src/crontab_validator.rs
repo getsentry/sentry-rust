@@ -1,12 +1,4 @@
-use std::fmt::{self, Display};
 use std::ops::RangeInclusive;
-use std::{collections::HashSet, error::Error};
-
-#[derive(PartialEq, Eq, Hash)]
-enum CronToken<'a> {
-    Numeric(u64),
-    Alphabetic(&'a str),
-}
 
 struct SegmentAllowedValues<'a> {
     /// Range of permitted numeric values
@@ -69,7 +61,7 @@ fn validate_step(step: &str) -> bool {
 }
 
 fn validate_steprange(steprange: &str, allowed_values: &SegmentAllowedValues) -> bool {
-    let mut steprange_split = steprange.splitn(2, "/");
+    let mut steprange_split = steprange.splitn(2, '/');
     let range_is_valid = match steprange_split.next() {
         Some(range) => validate_range(range, allowed_values),
         None => false,
@@ -90,8 +82,8 @@ fn validate_listitem(listitem: &str, allowed_values: &SegmentAllowedValues) -> b
 }
 
 fn validate_list(list: &str, allowed_values: &SegmentAllowedValues) -> bool {
-    list.split(",")
-        .all(|listitem| validate_listitem(listitem, &allowed_values))
+    list.split(',')
+        .all(|listitem| validate_listitem(listitem, allowed_values))
 }
 
 fn validate_segment(segment: &str, allowed_values: &SegmentAllowedValues) -> bool {
