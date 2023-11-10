@@ -40,6 +40,7 @@
 mod macros;
 
 mod auth;
+mod crontab_validator;
 mod dsn;
 mod project_id;
 pub mod protocol;
