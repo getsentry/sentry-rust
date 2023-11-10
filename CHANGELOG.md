@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.31.8
+
+### Various fixes & improvements
+
+- MonitorSchedule constructor that validates crontab syntax (#625) by @szokeasaurusrex
+- fix(docs): Fix some doc errors that slipped in (#623) by @flub
+- docs(tower): Mention how to enable http feature from sentry crate (#622) by @flub
+- build(deps): bump rustix from 0.37.23 to 0.37.25 (#619) by @dependabot
+
 ## 0.31.7
 
 ### Various fixes & improvements
