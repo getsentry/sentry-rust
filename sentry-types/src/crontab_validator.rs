@@ -45,10 +45,9 @@ fn validate_range(range: &str, allowed_values: &SegmentAllowedValues) -> bool {
     let range_limits: Vec<_> = range.split('-').map(str::parse::<u64>).collect();
 
     range_limits.len() == 2
-        && range_limits.iter().all(|limit| {
-            limit
-                .as_ref()
-                .is_ok_and(|limit| allowed_values.numeric_range.contains(limit))
+        && range_limits.iter().all(|limit| match limit {
+            Ok(limit) => allowed_values.numeric_range.contains(limit),
+            Err(_) => false,
         })
         && range_limits[0].as_ref().unwrap() <= range_limits[1].as_ref().unwrap()
 }
