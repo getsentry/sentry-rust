@@ -40,7 +40,7 @@ dependencies = [
  "flate2",
  "futures-core",
  "h2",
- "http",
+ "http 0.2.9",
  "httparse",
  "httpdate",
  "itoa",
@@ -75,7 +75,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d66ff4d247d2b160861fa2866457e85706833527840e4133f8f49aa423a38799"
 dependencies = [
  "bytestring",
- "http",
+ "http 0.2.9",
  "regex",
  "serde",
  "tracing",
@@ -513,7 +513,7 @@ dependencies = [
  "bitflags 1.3.2",
  "bytes 1.5.0",
  "futures-util",
- "http",
+ "http 0.2.9",
  "http-body",
  "hyper",
  "itoa",
@@ -543,7 +543,7 @@ dependencies = [
  "async-trait",
  "bytes 1.5.0",
  "futures-util",
- "http",
+ "http 0.2.9",
  "http-body",
  "mime",
  "rustversion",
@@ -1415,7 +1415,7 @@ dependencies = [
  "futures-core",
  "futures-sink",
  "futures-util",
- "http",
+ "http 0.2.9",
  "indexmap",
  "slab",
  "tokio",
@@ -1505,13 +1505,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "http"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b32afd38673a8016f7c9ae69e5af41a58f81b1d31689040f2f1959594ce194ea"
+dependencies = [
+ "bytes 1.5.0",
+ "fnv",
+ "itoa",
+]
+
+[[package]]
 name = "http-body"
 version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d5f38f16d184e36f2408a55281cd658ecbd3ca05cce6d6510a176eca393e26d1"
 dependencies = [
  "bytes 1.5.0",
- "http",
+ "http 0.2.9",
  "pin-project-lite",
 ]
 
@@ -1588,7 +1599,7 @@ dependencies = [
  "futures-core",
  "futures-util",
  "h2",
- "http",
+ "http 0.2.9",
  "http-body",
  "httparse",
  "httpdate",
@@ -1608,7 +1619,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8d78e1e73ec14cf7375674f74d7dde185c8206fd9dea6fb6295e8a98098aaa97"
 dependencies = [
  "futures-util",
- "http",
+ "http 0.2.9",
  "hyper",
  "rustls",
  "tokio",
@@ -1705,7 +1716,7 @@ dependencies = [
  "encoding_rs",
  "flume",
  "futures-lite",
- "http",
+ "http 0.2.9",
  "log",
  "mime",
  "once_cell",
@@ -2429,7 +2440,7 @@ dependencies = [
  "futures-core",
  "futures-util",
  "h2",
- "http",
+ "http 0.2.9",
  "http-body",
  "hyper",
  "hyper-rustls",
@@ -2687,7 +2698,7 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "sentry"
-version = "0.31.7"
+version = "0.31.8"
 dependencies = [
  "actix-web",
  "anyhow",
@@ -2723,7 +2734,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-actix"
-version = "0.31.7"
+version = "0.31.8"
 dependencies = [
  "actix-web",
  "futures",
@@ -2735,7 +2746,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-anyhow"
-version = "0.31.7"
+version = "0.31.8"
 dependencies = [
  "anyhow",
  "sentry",
@@ -2745,7 +2756,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-backtrace"
-version = "0.31.7"
+version = "0.31.8"
 dependencies = [
  "backtrace",
  "once_cell",
@@ -2755,7 +2766,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-contexts"
-version = "0.31.7"
+version = "0.31.8"
 dependencies = [
  "hostname",
  "libc",
@@ -2768,7 +2779,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-core"
-version = "0.31.7"
+version = "0.31.8"
 dependencies = [
  "anyhow",
  "criterion",
@@ -2788,7 +2799,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-debug-images"
-version = "0.31.7"
+version = "0.31.8"
 dependencies = [
  "findshlibs",
  "once_cell",
@@ -2797,7 +2808,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-log"
-version = "0.31.7"
+version = "0.31.8"
 dependencies = [
  "log",
  "pretty_env_logger",
@@ -2807,7 +2818,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-panic"
-version = "0.31.7"
+version = "0.31.8"
 dependencies = [
  "sentry",
  "sentry-backtrace",
@@ -2816,7 +2827,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-slog"
-version = "0.31.7"
+version = "0.31.8"
 dependencies = [
  "erased-serde",
  "sentry",
@@ -2828,11 +2839,11 @@ dependencies = [
 
 [[package]]
 name = "sentry-tower"
-version = "0.31.7"
+version = "0.31.8"
 dependencies = [
  "anyhow",
  "axum",
- "http",
+ "http 1.0.0",
  "pin-project",
  "prost",
  "sentry",
@@ -2848,7 +2859,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-tracing"
-version = "0.31.7"
+version = "0.31.8"
 dependencies = [
  "log",
  "sentry",
@@ -2862,7 +2873,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-types"
-version = "0.31.7"
+version = "0.31.8"
 dependencies = [
  "debugid",
  "hex",
@@ -3444,7 +3455,7 @@ dependencies = [
  "futures-core",
  "futures-util",
  "h2",
- "http",
+ "http 0.2.9",
  "http-body",
  "hyper",
  "hyper-timeout",
