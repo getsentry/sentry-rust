@@ -1,6 +1,6 @@
 [package]
 name = "sentry-contexts"
-version = "0.31.8"
+version = "0.32.0"
 authors = ["Sentry <hello@sentry.io>"]
 license = "Apache-2.0"
 readme = "README.md"
@@ -14,7 +14,7 @@ edition = "2021"
 rust-version = "1.68"
 
 [dependencies]
-sentry-core = { version = "0.31.8", path = "../sentry-core" }
+sentry-core = { version = "0.32.0", path = "../sentry-core" }
 libc = "0.2.66"
 hostname = "0.3.0"
 
