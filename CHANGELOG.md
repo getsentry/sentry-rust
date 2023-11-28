@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Features**:
+
+- Updated `sentry-tower` dependencies, including `axum` and `http`.
+
 ## 0.31.8
 
 ### Various fixes & improvements
@@ -12,6 +18,7 @@
 ## 0.31.7
 
 ### Various fixes & improvements
+
 - The minimum supported Rust version was bumped to **1.68.0** due to requirements from dependencies. (#612)
 
 ## 0.31.6
