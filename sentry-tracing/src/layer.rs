@@ -108,6 +108,12 @@ impl<S> SentryLayer<S> {
     }
 
     /// Enable every parent span's attributes to be sent along with own event's attributes.
+    ///
+    /// Note that the root span is considered a [transaction][sentry_core::protocol::Transaction]
+    /// so its context will only be grabbed only if you set the transaction to be sampled.
+    /// The most straightforward way to do this is to set
+    /// the [traces_sample_rate][sentry_core::ClientOptions::traces_sample_rate] to `1.0`
+    /// while configuring your sentry client.
     #[must_use]
     pub fn enable_span_attributes(mut self) -> Self {
         self.with_span_attributes = true;

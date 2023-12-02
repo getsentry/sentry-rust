@@ -72,7 +72,12 @@ where
                         }
                     }
                     TransactionOrSpan::Transaction(transaction) => {
-                        // TODO: extract data from transaction
+                        for (key, value) in transaction.data().iter() {
+                            if key != "message" {
+                                let key = format!("{}:{}", name, key);
+                                visitor.json_values.insert(key, value.clone());
+                            }
+                        }
                     }
                 }
             }

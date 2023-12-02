@@ -399,6 +399,25 @@ pub struct Transaction {
     pub(crate) inner: TransactionArc,
 }
 
+/// Iterable for a transaction's [`extra` field](protocol::Transaction::extra).
+pub struct TransactionData<'a>(MutexGuard<'a, TransactionInner>);
+
+impl<'a> TransactionData<'a> {
+    /// Iterate over the `extra` map
+    /// of the [transaction][protocol::Transaction].
+    ///
+    /// If the transaction not sampled for sending,
+    /// the metadata will not be populated at all
+    /// so the produced iterator is empty.
+    pub fn iter(&self) -> Box<dyn Iterator<Item = (&String, &protocol::Value)> + '_> {
+        if let Some(ref rx) = self.0.transaction {
+            Box::new(rx.extra.iter())
+        } else {
+            Box::new(std::iter::empty())
+        }
+    }
+}
+
 impl Transaction {
     #[cfg(feature = "client")]
     fn new(mut client: Option<Arc<Client>>, ctx: TransactionContext) -> Self {
@@ -462,6 +481,18 @@ impl Transaction {
         if let Some(transaction) = inner.transaction.as_mut() {
             transaction.extra.insert(key.into(), value);
         }
+    }
+
+    /// Returns an iterating accessor to the transaction's [`extra` field](protocol::Transaction::extra).
+    ///
+    /// # Concurrency
+    /// In order to obtain any kind of reference to the `extra` field,
+    /// a `Mutex` needs to be locked. The returned `TransactionData` holds on to this lock
+    /// for as long as it lives. Therefore you must take care not to keep the returned
+    /// `TransactionData` around too long or it will never relinquish the lock and you may run into
+    /// a deadlock.
+    pub fn data(&self) -> TransactionData {
+        TransactionData(self.inner.lock().unwrap())
     }
 
     /// Get the TransactionContext of the Transaction.
