@@ -108,14 +108,6 @@ impl<S> SentryLayer<S> {
     }
 
     /// Enable every parent span's attributes to be sent along with own event's attributes.
-    ///
-    /// Note that the higher the span in the span chain, the more precedence its values have.
-    ///
-    /// E.g.:
-    /// - if the event has a field _foo_ and one of its spans
-    ///   has attribute with the same name, the span's value will be used;
-    /// - if the direct parent has a field _bar_ and one of its parent span
-    ///   has attribute with the same name, the parent span's value will be used.
     #[must_use]
     pub fn enable_span_attributes(mut self) -> Self {
         self.with_span_attributes = true;

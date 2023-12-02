@@ -51,8 +51,6 @@ where
         .and_then(|v| v.as_str().map(|s| s.to_owned()));
 
     // Add the context fields of every parent span.
-    // Higher spans' values have higher precedence
-    // in the case of field name clashes.
     let current_span = ctx.as_ref().and_then(|ctx| {
         event
             .parent()
@@ -61,13 +59,20 @@ where
     });
     if let Some(span) = current_span {
         for span in span.scope() {
+            let name = span.name();
             let ext = span.extensions();
             if let Some(span_data) = ext.get::<SentrySpanData>() {
-                if let TransactionOrSpan::Span(span) = &span_data.sentry_span {
-                    for (key, value) in span.data().iter() {
-                        if key != "message" {
-                            visitor.json_values.insert(key.clone(), value.clone());
+                match &span_data.sentry_span {
+                    TransactionOrSpan::Span(span) => {
+                        for (key, value) in span.data().iter() {
+                            if key != "message" {
+                                let key = format!("{}:{}", name, key);
+                                visitor.json_values.insert(key, value.clone());
+                            }
                         }
+                    }
+                    TransactionOrSpan::Transaction(transaction) => {
+                        // TODO: extract data from transaction
                     }
                 }
             }
