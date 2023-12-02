@@ -61,6 +61,8 @@ pub struct SentryLayer<S> {
     event_mapper: Option<EventMapper<S>>,
 
     span_filter: Box<dyn Fn(&Metadata) -> bool + Send + Sync>,
+
+    with_span_attributes: bool,
 }
 
 impl<S> SentryLayer<S> {
@@ -104,6 +106,21 @@ impl<S> SentryLayer<S> {
         self.span_filter = Box::new(filter);
         self
     }
+
+    /// Enable every parent span's attributes to be sent along with own event's attributes.
+    ///
+    /// Note that the higher the span in the span chain, the more precedence its values have.
+    ///
+    /// E.g.:
+    /// - if the event has a field _foo_ and one of its spans
+    ///   has attribute with the same name, the span's value will be used;
+    /// - if the direct parent has a field _bar_ and one of its parent span
+    ///   has attribute with the same name, the parent span's value will be used.
+    #[must_use]
+    pub fn enable_span_attributes(mut self) -> Self {
+        self.with_span_attributes = true;
+        self
+    }
 }
 
 impl<S> Default for SentryLayer<S>
@@ -116,6 +133,8 @@ where
             event_mapper: None,
 
             span_filter: Box::new(default_span_filter),
+
+            with_span_attributes: false,
         }
     }
 }
@@ -123,8 +142,8 @@ where
 /// Data that is attached to the tracing Spans `extensions`, in order to
 /// `finish` the corresponding sentry span `on_close`, and re-set its parent as
 /// the *current* span.
-struct SentrySpanData {
-    sentry_span: TransactionOrSpan,
+pub(super) struct SentrySpanData {
+    pub(super) sentry_span: TransactionOrSpan,
     parent_sentry_span: Option<TransactionOrSpan>,
 }
 
@@ -135,12 +154,19 @@ where
     fn on_event(&self, event: &Event, ctx: Context<'_, S>) {
         let item = match &self.event_mapper {
             Some(mapper) => mapper(event, ctx),
-            None => match (self.event_filter)(event.metadata()) {
-                EventFilter::Ignore => EventMapping::Ignore,
-                EventFilter::Breadcrumb => EventMapping::Breadcrumb(breadcrumb_from_event(event)),
-                EventFilter::Event => EventMapping::Event(event_from_event(event, ctx)),
-                EventFilter::Exception => EventMapping::Event(exception_from_event(event, ctx)),
-            },
+            None => {
+                let span_ctx = self.with_span_attributes.then_some(ctx);
+                match (self.event_filter)(event.metadata()) {
+                    EventFilter::Ignore => EventMapping::Ignore,
+                    EventFilter::Breadcrumb => {
+                        EventMapping::Breadcrumb(breadcrumb_from_event(event, span_ctx))
+                    }
+                    EventFilter::Event => EventMapping::Event(event_from_event(event, span_ctx)),
+                    EventFilter::Exception => {
+                        EventMapping::Event(exception_from_event(event, span_ctx))
+                    }
+                }
+            }
         };
 
         match item {
