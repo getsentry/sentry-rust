@@ -32,13 +32,7 @@ fn level_to_exception_type(level: &tracing_core::Level) -> &'static str {
 
 /// Extracts the message and metadata from an event
 /// and also optionally from its spans chain.
-fn extract_event_data<S>(
-    event: &tracing_core::Event,
-    ctx: Option<Context<S>>,
-) -> (Option<String>, FieldVisitor)
-where
-    S: Subscriber + for<'a> LookupSpan<'a>,
-{
+fn extract_event_data(event: &tracing_core::Event) -> (Option<String>, FieldVisitor) {
     // Find message of the event, if any
     let mut visitor = FieldVisitor::default();
     event.record(&mut visitor);
@@ -49,6 +43,18 @@ where
         // the error message is attached to the field "error".
         .or_else(|| visitor.json_values.remove("error"))
         .and_then(|v| v.as_str().map(|s| s.to_owned()));
+
+    (message, visitor)
+}
+
+fn extract_event_data_with_context<S>(
+    event: &tracing_core::Event,
+    ctx: Option<Context<S>>,
+) -> (Option<String>, FieldVisitor)
+where
+    S: Subscriber + for<'a> LookupSpan<'a>,
+{
+    let (message, mut visitor) = extract_event_data(event);
 
     // Add the context fields of every parent span.
     let current_span = ctx.as_ref().and_then(|ctx| {
@@ -147,14 +153,8 @@ impl Visit for FieldVisitor {
 }
 
 /// Creates a [`Breadcrumb`] from a given [`tracing_core::Event`]
-pub fn breadcrumb_from_event<'context, S>(
-    event: &tracing_core::Event,
-    _ctx: impl Into<Option<Context<'context, S>>>,
-) -> Breadcrumb
-where
-    S: Subscriber + for<'a> LookupSpan<'a>,
-{
-    let (message, visitor) = extract_event_data::<S>(event, None);
+pub fn breadcrumb_from_event(event: &tracing_core::Event) -> Breadcrumb {
+    let (message, visitor) = extract_event_data(event);
     Breadcrumb {
         category: Some(event.metadata().target().to_owned()),
         ty: "log".into(),
@@ -230,7 +230,7 @@ pub fn event_from_event<'context, S>(
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
-    let (message, mut visitor) = extract_event_data(event, ctx.into());
+    let (message, mut visitor) = extract_event_data_with_context(event, ctx.into());
 
     Event {
         logger: Some(event.metadata().target().to_owned()),
@@ -254,7 +254,7 @@ where
     // proper grouping and issue metadata generation. tracing_core::Record does not contain sufficient
     // information for this. However, it may contain a serialized error which we can parse to emit
     // an exception record.
-    let (mut message, visitor) = extract_event_data(event, ctx.into());
+    let (mut message, visitor) = extract_event_data_with_context(event, ctx.into());
     let FieldVisitor {
         mut exceptions,
         mut json_values,

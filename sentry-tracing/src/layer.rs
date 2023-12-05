@@ -157,7 +157,7 @@ where
                 match (self.event_filter)(event.metadata()) {
                     EventFilter::Ignore => EventMapping::Ignore,
                     EventFilter::Breadcrumb => {
-                        EventMapping::Breadcrumb(breadcrumb_from_event(event, span_ctx))
+                        EventMapping::Breadcrumb(breadcrumb_from_event(event))
                     }
                     EventFilter::Event => EventMapping::Event(event_from_event(event, span_ctx)),
                     EventFilter::Exception => {
