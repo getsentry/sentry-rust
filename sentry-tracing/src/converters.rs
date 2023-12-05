@@ -147,7 +147,10 @@ impl Visit for FieldVisitor {
 }
 
 /// Creates a [`Breadcrumb`] from a given [`tracing_core::Event`]
-pub fn breadcrumb_from_event<S>(event: &tracing_core::Event, _ctx: Option<Context<S>>) -> Breadcrumb
+pub fn breadcrumb_from_event<'context, S>(
+    event: &tracing_core::Event,
+    _ctx: impl Into<Option<Context<'context, S>>>,
+) -> Breadcrumb
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
@@ -220,11 +223,14 @@ fn contexts_from_event(
 }
 
 /// Creates an [`Event`] from a given [`tracing_core::Event`]
-pub fn event_from_event<S>(event: &tracing_core::Event, ctx: Option<Context<S>>) -> Event<'static>
+pub fn event_from_event<'context, S>(
+    event: &tracing_core::Event,
+    ctx: impl Into<Option<Context<'context, S>>>,
+) -> Event<'static>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
-    let (message, mut visitor) = extract_event_data(event, ctx);
+    let (message, mut visitor) = extract_event_data(event, ctx.into());
 
     Event {
         logger: Some(event.metadata().target().to_owned()),
@@ -237,9 +243,9 @@ where
 }
 
 /// Creates an exception [`Event`] from a given [`tracing_core::Event`]
-pub fn exception_from_event<S>(
+pub fn exception_from_event<'context, S>(
     event: &tracing_core::Event,
-    ctx: Option<Context<S>>,
+    ctx: impl Into<Option<Context<'context, S>>>,
 ) -> Event<'static>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
@@ -248,7 +254,7 @@ where
     // proper grouping and issue metadata generation. tracing_core::Record does not contain sufficient
     // information for this. However, it may contain a serialized error which we can parse to emit
     // an exception record.
-    let (mut message, visitor) = extract_event_data(event, ctx);
+    let (mut message, visitor) = extract_event_data(event, ctx.into());
     let FieldVisitor {
         mut exceptions,
         mut json_values,
