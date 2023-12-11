@@ -15,7 +15,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use sentry_types::protocol::latest::{Envelope, EnvelopeItem};
 
 use crate::client::TransportArc;
-use crate::Hub;
+use crate::{ClientOptions, Hub};
 
 pub use crate::units::*;
 
@@ -658,19 +658,34 @@ fn parse_metric_opt(string: &str) -> Option<Metric> {
     Some(builder.finish())
 }
 
+pub(crate) type TagMap = BTreeMap<MetricStr, MetricStr>;
+
+fn get_default_tags(options: &ClientOptions) -> TagMap {
+    let mut tags = TagMap::new();
+    if let Some(ref release) = options.release {
+        tags.insert("release".into(), release.clone());
+    }
+    if let Some(ref environment) = options.environment {
+        tags.insert("environment".into(), environment.clone());
+    }
+    tags
+}
+
 pub(crate) struct MetricAggregator {
     inner: Arc<Mutex<AggregatorInner>>,
     handle: Option<JoinHandle<()>>,
 }
 
 impl MetricAggregator {
-    pub fn new(transport: TransportArc) -> Self {
+    pub fn new(transport: TransportArc, options: &ClientOptions) -> Self {
+        let default_tags = get_default_tags(options);
+
         let inner = Arc::new(Mutex::new(AggregatorInner::new()));
         let inner_clone = Arc::clone(&inner);
 
         let handle = thread::Builder::new()
             .name("sentry-metrics".into())
-            .spawn(move || Self::worker_thread(inner_clone, transport))
+            .spawn(move || Self::worker_thread(inner_clone, transport, default_tags))
             .expect("failed to spawn thread");
 
         Self {
@@ -719,7 +734,7 @@ impl MetricAggregator {
         }
     }
 
-    fn worker_thread(inner: Arc<Mutex<AggregatorInner>>, transport: TransportArc) {
+    fn worker_thread(inner: Arc<Mutex<AggregatorInner>>, transport: TransportArc, tags: TagMap) {
         let mut running = true;
 
         while running {
@@ -734,15 +749,15 @@ impl MetricAggregator {
             };
 
             if !buckets.is_empty() {
-                Self::flush_buckets(buckets, &transport);
+                Self::flush_buckets(buckets, &transport, &tags);
             }
         }
     }
 
-    fn flush_buckets(buckets: BucketMap, transport: &TransportArc) {
+    fn flush_buckets(buckets: BucketMap, transport: &TransportArc, tags: &TagMap) {
         // The transport is usually available when flush is called. Prefer a short lock and worst
         // case throw away the result rather than blocking the transport for too long.
-        if let Ok(output) = Self::format_payload(buckets) {
+        if let Ok(output) = Self::format_payload(buckets, tags) {
             let mut envelope = Envelope::new();
             envelope.add_item(EnvelopeItem::Metrics(output));
 
@@ -752,7 +767,7 @@ impl MetricAggregator {
         }
     }
 
-    fn format_payload(buckets: BucketMap) -> std::io::Result<Vec<u8>> {
+    fn format_payload(buckets: BucketMap, tags: &TagMap) -> std::io::Result<Vec<u8>> {
         use std::io::Write;
         let mut out = vec![];
 
@@ -787,14 +802,13 @@ impl MetricAggregator {
 
             write!(&mut out, "|{}", key.ty.as_str())?;
 
-            if !key.tags.is_empty() {
-                write!(&mut out, "|#")?;
-                for (i, (k, v)) in key.tags.into_iter().enumerate() {
-                    if i > 0 {
-                        write!(&mut out, ",")?;
-                    }
-                    write!(&mut out, "{}:{}", SafeKey(k.as_ref()), SaveVal(v.as_ref()))?;
+            for (i, (k, v)) in key.tags.iter().chain(tags).enumerate() {
+                match i {
+                    0 => write!(&mut out, "|#")?,
+                    _ => write!(&mut out, ",")?,
                 }
+
+                write!(&mut out, "{}:{}", SafeKey(k.as_ref()), SaveVal(v.as_ref()))?;
             }
 
             writeln!(&mut out, "|T{}", key.timestamp)?;
@@ -845,7 +859,8 @@ impl<'s> fmt::Display for SaveVal<'s> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test::with_captured_envelopes;
+    use crate::test::{with_captured_envelopes, with_captured_envelopes_options};
+    use crate::ClientOptions;
 
     /// Returns the current system time and rounded bucket timestamp.
     fn current_time() -> (SystemTime, u64) {
@@ -885,5 +900,32 @@ mod tests {
 
         let metrics = get_single_metrics(&envelopes);
         assert_eq!(metrics, format!("requests:3|c|#foo:bar|T{ts}"));
+    }
+
+    #[test]
+    fn test_default_tags() {
+        let (time, ts) = current_time();
+
+        let options = ClientOptions {
+            release: Some("myapp@1.0.0".into()),
+            environment: Some("production".into()),
+            ..Default::default()
+        };
+
+        let envelopes = with_captured_envelopes_options(
+            || {
+                Metric::count("requests")
+                    .with_tag("foo", "bar")
+                    .with_time(time)
+                    .send();
+            },
+            options,
+        );
+
+        let metrics = get_single_metrics(&envelopes);
+        assert_eq!(
+            metrics,
+            format!("requests:1|c|#foo:bar,environment:production,release:myapp@1.0.0|T{ts}")
+        );
     }
 }

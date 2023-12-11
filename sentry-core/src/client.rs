@@ -70,7 +70,10 @@ impl Clone for Client {
             self.options.session_mode,
         )));
         #[cfg(feature = "UNSTABLE_metrics")]
-        let metric_aggregator = RwLock::new(Some(MetricAggregator::new(transport.clone())));
+        let metric_aggregator = RwLock::new(Some(MetricAggregator::new(
+            transport.clone(),
+            &self.options,
+        )));
         Client {
             options: self.options.clone(),
             transport,
@@ -146,7 +149,8 @@ impl Client {
         )));
 
         #[cfg(feature = "UNSTABLE_metrics")]
-        let metric_aggregator = RwLock::new(Some(MetricAggregator::new(transport.clone())));
+        let metric_aggregator =
+            RwLock::new(Some(MetricAggregator::new(transport.clone(), &options)));
 
         Client {
             options,
