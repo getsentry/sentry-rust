@@ -448,7 +448,10 @@ impl MetricAggregator {
         let mut out = vec![];
 
         for (key, value) in buckets.into_iter().flat_map(|(_, v)| v) {
-            write!(&mut out, "{}@{}", SafeKey(key.name.as_ref()), key.unit)?;
+            write!(&mut out, "{}", SafeKey(key.name.as_ref()))?;
+            if key.unit != MetricUnit::None {
+                write!(&mut out, "@{}", key.unit)?;
+            }
 
             match value {
                 BucketValue::Counter(c) => {

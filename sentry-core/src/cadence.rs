@@ -71,7 +71,7 @@ fn parse_metric(string: &str) -> Option<Metric> {
 
     for component in components {
         if let Some('#') = component.chars().next() {
-            for pair in string.get(1..)?.split(',') {
+            for pair in component.get(1..)?.split(',') {
                 let mut key_value = pair.splitn(2, ':');
 
                 let key = key_value.next()?.to_owned();
