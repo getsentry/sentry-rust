@@ -144,7 +144,7 @@ mod client;
 #[cfg(feature = "client")]
 mod hub_impl;
 #[cfg(all(feature = "client", feature = "UNSTABLE_metrics"))]
-mod metrics;
+pub mod metrics;
 #[cfg(feature = "client")]
 mod session;
 #[cfg(all(feature = "client", feature = "UNSTABLE_metrics"))]
