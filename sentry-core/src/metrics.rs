@@ -9,6 +9,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use sentry_types::protocol::latest::{Envelope, EnvelopeItem};
 
 use crate::client::TransportArc;
+use crate::Hub;
 
 use crate::units::DurationUnit;
 pub use crate::units::MetricUnit;
@@ -343,6 +344,12 @@ impl MetricBuilder {
 
     pub fn finish(self) -> Metric {
         self.metric
+    }
+
+    pub fn send(self) {
+        if let Some(client) = Hub::current().client() {
+            client.add_metric(self.finish());
+        }
     }
 }
 
