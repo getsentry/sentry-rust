@@ -39,7 +39,7 @@ where
     S: MetricSink,
 {
     fn emit(&self, metric: &str) -> std::io::Result<usize> {
-        self.client.send_metric(metric);
+        self.client.add_metric(metric);
         self.sink.emit(metric)
     }
 
@@ -165,14 +165,15 @@ enum Task {
     Shutdown,
 }
 
-pub struct MetricFlusher {
+pub struct MetricAggregator {
     sender: SyncSender<Task>,
     handle: Option<JoinHandle<()>>,
 }
 
+const BUCKET_INTERVAL: Duration = Duration::from_secs(10);
 const FLUSH_INTERVAL: Duration = Duration::from_secs(10);
 
-impl MetricFlusher {
+impl MetricAggregator {
     pub fn new(transport: TransportArc) -> Self {
         let (sender, receiver) = sync_channel(30);
         let handle = thread::Builder::new()
@@ -183,7 +184,7 @@ impl MetricFlusher {
         Self { sender, handle }
     }
 
-    pub fn send_metric(&self, metric: &str) {
+    pub fn add(&self, metric: &str) {
         fn mk_value(ty: MetricType, value: &str) -> Option<BucketValue> {
             Some(match ty {
                 MetricType::Counter => BucketValue::Counter(value.parse().ok()?),
@@ -254,7 +255,7 @@ impl MetricFlusher {
                 }
                 Ok(Task::RecordMetric((mut key, value))) => {
                     // aggregate
-                    let rounding_interval = FLUSH_INTERVAL.as_secs();
+                    let rounding_interval = BUCKET_INTERVAL.as_secs();
                     let rounded_timestamp = (key.timestamp / rounding_interval) * rounding_interval;
 
                     key.timestamp = rounded_timestamp;
@@ -334,7 +335,7 @@ impl MetricFlusher {
     }
 }
 
-impl Drop for MetricFlusher {
+impl Drop for MetricAggregator {
     fn drop(&mut self) {
         let _ = self.sender.send(Task::Shutdown);
         if let Some(handle) = self.handle.take() {

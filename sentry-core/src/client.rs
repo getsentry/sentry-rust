@@ -12,7 +12,7 @@ use sentry_types::random_uuid;
 
 use crate::constants::SDK_INFO;
 #[cfg(feature = "UNSTABLE_metrics")]
-use crate::metrics::MetricFlusher;
+use crate::metrics::MetricAggregator;
 use crate::protocol::{ClientSdkInfo, Event};
 use crate::session::SessionFlusher;
 use crate::types::{Dsn, Uuid};
@@ -48,7 +48,7 @@ pub struct Client {
     transport: TransportArc,
     session_flusher: RwLock<Option<SessionFlusher>>,
     #[cfg(feature = "UNSTABLE_metrics")]
-    metrics_flusher: RwLock<Option<MetricFlusher>>,
+    metric_aggregator: RwLock<Option<MetricAggregator>>,
     integrations: Vec<(TypeId, Arc<dyn Integration>)>,
     pub(crate) sdk_info: ClientSdkInfo,
 }
@@ -70,13 +70,13 @@ impl Clone for Client {
             self.options.session_mode,
         )));
         #[cfg(feature = "UNSTABLE_metrics")]
-        let metrics_flusher = RwLock::new(Some(MetricFlusher::new(transport.clone())));
+        let metric_aggregator = RwLock::new(Some(MetricAggregator::new(transport.clone())));
         Client {
             options: self.options.clone(),
             transport,
             session_flusher,
             #[cfg(feature = "UNSTABLE_metrics")]
-            metrics_flusher,
+            metric_aggregator,
             integrations: self.integrations.clone(),
             sdk_info: self.sdk_info.clone(),
         }
@@ -146,14 +146,14 @@ impl Client {
         )));
 
         #[cfg(feature = "UNSTABLE_metrics")]
-        let metrics_flusher = RwLock::new(Some(MetricFlusher::new(transport.clone())));
+        let metric_aggregator = RwLock::new(Some(MetricAggregator::new(transport.clone())));
 
         Client {
             options,
             transport,
             session_flusher,
             #[cfg(feature = "UNSTABLE_metrics")]
-            metrics_flusher,
+            metric_aggregator,
             integrations,
             sdk_info,
         }
@@ -323,9 +323,9 @@ impl Client {
     }
 
     #[cfg(feature = "UNSTABLE_metrics")]
-    pub(crate) fn send_metric(&self, metric: &str) {
-        if let Some(ref flusher) = *self.metrics_flusher.read().unwrap() {
-            flusher.send_metric(metric)
+    pub(crate) fn add_metric(&self, metric: &str) {
+        if let Some(ref aggregator) = *self.metric_aggregator.read().unwrap() {
+            aggregator.add(metric)
         }
     }
 
@@ -335,7 +335,7 @@ impl Client {
             flusher.flush();
         }
         #[cfg(feature = "UNSTABLE_metrics")]
-        if let Some(ref flusher) = *self.metrics_flusher.read().unwrap() {
+        if let Some(ref flusher) = *self.metric_aggregator.read().unwrap() {
             flusher.flush();
         }
         if let Some(ref transport) = *self.transport.read().unwrap() {
@@ -355,7 +355,7 @@ impl Client {
     pub fn close(&self, timeout: Option<Duration>) -> bool {
         drop(self.session_flusher.write().unwrap().take());
         #[cfg(feature = "UNSTABLE_metrics")]
-        drop(self.metrics_flusher.write().unwrap().take());
+        drop(self.metric_aggregator.write().unwrap().take());
         let transport_opt = self.transport.write().unwrap().take();
         if let Some(transport) = transport_opt {
             sentry_debug!("client close; request transport to shut down");
