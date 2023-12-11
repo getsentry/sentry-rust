@@ -4,7 +4,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt;
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use sentry_types::protocol::latest::{Envelope, EnvelopeItem};
 
@@ -299,6 +299,10 @@ impl Metric {
         MetricBuilder { metric }
     }
 
+    pub fn parse_statsd(string: &str) -> Result<Self, ParseMetricError> {
+        parse_metric_opt(string).ok_or(ParseMetricError(()))
+    }
+
     pub fn incr(name: impl Into<MetricStr>) -> MetricBuilder {
         Self::build(name, MetricValue::Counter(1.0))
     }
@@ -351,6 +355,52 @@ impl MetricBuilder {
             client.add_metric(self.finish());
         }
     }
+}
+
+#[derive(Debug)]
+pub struct ParseMetricError(());
+
+impl std::error::Error for ParseMetricError {}
+
+impl fmt::Display for ParseMetricError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("invalid metric string")
+    }
+}
+
+fn parse_metric_opt(string: &str) -> Option<Metric> {
+    let mut components = string.split('|');
+
+    let (mri_str, value_str) = components.next()?.split_once(':')?;
+    let (name, unit) = match mri_str.split_once('@') {
+        Some((name, unit_str)) => (name, unit_str.parse().ok()?),
+        None => (mri_str, MetricUnit::None),
+    };
+
+    let ty = components.next().and_then(|s| s.parse().ok())?;
+    let value = match ty {
+        MetricType::Counter => MetricValue::Counter(value_str.parse().ok()?),
+        MetricType::Distribution => MetricValue::Distribution(value_str.parse().ok()?),
+        MetricType::Set => MetricValue::Set(value_str.parse().ok()?),
+        MetricType::Gauge => MetricValue::Gauge(value_str.parse().ok()?),
+    };
+
+    let mut builder = Metric::build(name.to_owned(), value).with_unit(unit);
+
+    for component in components {
+        if let Some('#') = component.chars().next() {
+            for pair in component.get(1..)?.split(',') {
+                let mut key_value = pair.splitn(2, ':');
+
+                let key = key_value.next()?.to_owned();
+                let value = key_value.next().unwrap_or_default().to_owned();
+
+                builder = builder.with_tag(key, value);
+            }
+        }
+    }
+
+    Some(builder.finish())
 }
 
 pub struct MetricAggregator {

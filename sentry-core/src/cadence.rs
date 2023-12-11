@@ -2,8 +2,7 @@ use std::sync::Arc;
 
 use cadence::MetricSink;
 
-use crate::metrics::{Metric, MetricType, MetricValue};
-use crate::units::MetricUnit;
+use crate::metrics::Metric;
 use crate::{Client, Hub};
 
 /// A [`cadence`] compatible [`MetricSink`].
@@ -31,7 +30,7 @@ where
     S: MetricSink,
 {
     fn emit(&self, string: &str) -> std::io::Result<usize> {
-        if let Some(metric) = parse_metric(string) {
+        if let Ok(metric) = Metric::parse_statsd(string) {
             self.client.add_metric(metric);
         }
 
@@ -48,41 +47,6 @@ where
             ))
         }
     }
-}
-
-fn parse_metric(string: &str) -> Option<Metric> {
-    let mut components = string.split('|');
-
-    let (mri_str, value_str) = components.next()?.split_once(':')?;
-    let (name, unit) = match mri_str.split_once('@') {
-        Some((name, unit_str)) => (name, unit_str.parse().ok()?),
-        None => (mri_str, MetricUnit::None),
-    };
-
-    let ty = components.next().and_then(|s| s.parse().ok())?;
-    let value = match ty {
-        MetricType::Counter => MetricValue::Counter(value_str.parse().ok()?),
-        MetricType::Distribution => MetricValue::Distribution(value_str.parse().ok()?),
-        MetricType::Set => MetricValue::Set(value_str.parse().ok()?),
-        MetricType::Gauge => MetricValue::Gauge(value_str.parse().ok()?),
-    };
-
-    let mut builder = Metric::build(name.to_owned(), value).with_unit(unit);
-
-    for component in components {
-        if let Some('#') = component.chars().next() {
-            for pair in component.get(1..)?.split(',') {
-                let mut key_value = pair.splitn(2, ':');
-
-                let key = key_value.next()?.to_owned();
-                let value = key_value.next().unwrap_or_default().to_owned();
-
-                builder = builder.with_tag(key, value);
-            }
-        }
-    }
-
-    Some(builder.finish())
 }
 
 #[cfg(test)]
