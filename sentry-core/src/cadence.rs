@@ -17,12 +17,10 @@ pub struct SentryMetricSink<S> {
 impl<S> SentryMetricSink<S> {
     /// Creates a new [`SentryMetricSink`], wrapping the given [`MetricSink`].
     pub fn try_new(sink: S) -> Result<Self, S> {
-        let hub = Hub::current();
-        let Some(client) = hub.client() else {
-            return Err(sink);
-        };
-
-        Ok(Self { client, sink })
+        match Hub::current().client() {
+            Some(client) => Ok(Self { client, sink }),
+            None => Err(sink),
+        }
     }
 }
 

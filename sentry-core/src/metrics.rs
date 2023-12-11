@@ -9,6 +9,9 @@ use sentry_types::protocol::latest::{Envelope, EnvelopeItem};
 
 use crate::client::TransportArc;
 
+const BUCKET_INTERVAL: Duration = Duration::from_secs(10);
+const FLUSH_INTERVAL: Duration = Duration::from_secs(10);
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum MetricType {
     Counter,
@@ -56,12 +59,14 @@ struct GaugeValue {
     sum: f64,
     count: u64,
 }
+
 enum BucketValue {
     Counter(f64),
     Distribution(Vec<f64>),
     Set(BTreeSet<String>),
     Gauge(GaugeValue),
 }
+
 impl BucketValue {
     fn distribution(val: f64) -> BucketValue {
         Self::Distribution(vec![val])
@@ -89,7 +94,9 @@ impl BucketValue {
             (BucketValue::Distribution(d1), BucketValue::Distribution(d2)) => {
                 d1.extend(d2);
             }
-            (BucketValue::Set(s1), BucketValue::Set(s2)) => s1.extend(s2),
+            (BucketValue::Set(s1), BucketValue::Set(s2)) => {
+                s1.extend(s2);
+            }
             (BucketValue::Gauge(g1), BucketValue::Gauge(g2)) => {
                 g1.last = g2.last;
                 g1.min = g1.min.min(g2.min);
@@ -99,6 +106,7 @@ impl BucketValue {
             }
             _ => return Err(()),
         }
+
         Ok(())
     }
 }
@@ -123,9 +131,6 @@ pub struct MetricAggregator {
     sender: mpsc::SyncSender<Task>,
     handle: Option<JoinHandle<()>>,
 }
-
-const BUCKET_INTERVAL: Duration = Duration::from_secs(10);
-const FLUSH_INTERVAL: Duration = Duration::from_secs(10);
 
 impl MetricAggregator {
     pub fn new(transport: TransportArc) -> Self {
