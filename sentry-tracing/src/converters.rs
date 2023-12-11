@@ -2,11 +2,13 @@ use std::collections::BTreeMap;
 use std::error::Error;
 
 use sentry_core::protocol::{Event, Exception, Mechanism, Thread, Value};
-use sentry_core::{event_from_error, Breadcrumb, Level};
+use sentry_core::{event_from_error, Breadcrumb, Level, TransactionOrSpan};
 use tracing_core::field::{Field, Visit};
 use tracing_core::{span, Subscriber};
 use tracing_subscriber::layer::Context;
 use tracing_subscriber::registry::LookupSpan;
+
+use super::layer::SentrySpanData;
 
 /// Converts a [`tracing_core::Level`] to a Sentry [`Level`]
 fn convert_tracing_level(level: &tracing_core::Level) -> Level {
@@ -29,6 +31,7 @@ fn level_to_exception_type(level: &tracing_core::Level) -> &'static str {
 }
 
 /// Extracts the message and metadata from an event
+/// and also optionally from its spans chain.
 fn extract_event_data(event: &tracing_core::Event) -> (Option<String>, FieldVisitor) {
     // Find message of the event, if any
     let mut visitor = FieldVisitor::default();
@@ -40,6 +43,52 @@ fn extract_event_data(event: &tracing_core::Event) -> (Option<String>, FieldVisi
         // the error message is attached to the field "error".
         .or_else(|| visitor.json_values.remove("error"))
         .and_then(|v| v.as_str().map(|s| s.to_owned()));
+
+    (message, visitor)
+}
+
+fn extract_event_data_with_context<S>(
+    event: &tracing_core::Event,
+    ctx: Option<Context<S>>,
+) -> (Option<String>, FieldVisitor)
+where
+    S: Subscriber + for<'a> LookupSpan<'a>,
+{
+    let (message, mut visitor) = extract_event_data(event);
+
+    // Add the context fields of every parent span.
+    let current_span = ctx.as_ref().and_then(|ctx| {
+        event
+            .parent()
+            .and_then(|id| ctx.span(id))
+            .or_else(|| ctx.lookup_current())
+    });
+    if let Some(span) = current_span {
+        for span in span.scope() {
+            let name = span.name();
+            let ext = span.extensions();
+            if let Some(span_data) = ext.get::<SentrySpanData>() {
+                match &span_data.sentry_span {
+                    TransactionOrSpan::Span(span) => {
+                        for (key, value) in span.data().iter() {
+                            if key != "message" {
+                                let key = format!("{}:{}", name, key);
+                                visitor.json_values.insert(key, value.clone());
+                            }
+                        }
+                    }
+                    TransactionOrSpan::Transaction(transaction) => {
+                        for (key, value) in transaction.data().iter() {
+                            if key != "message" {
+                                let key = format!("{}:{}", name, key);
+                                visitor.json_values.insert(key, value.clone());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     (message, visitor)
 }
@@ -174,11 +223,14 @@ fn contexts_from_event(
 }
 
 /// Creates an [`Event`] from a given [`tracing_core::Event`]
-pub fn event_from_event<S>(event: &tracing_core::Event, _ctx: Context<S>) -> Event<'static>
+pub fn event_from_event<'context, S>(
+    event: &tracing_core::Event,
+    ctx: impl Into<Option<Context<'context, S>>>,
+) -> Event<'static>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
-    let (message, mut visitor) = extract_event_data(event);
+    let (message, mut visitor) = extract_event_data_with_context(event, ctx.into());
 
     Event {
         logger: Some(event.metadata().target().to_owned()),
@@ -191,7 +243,10 @@ where
 }
 
 /// Creates an exception [`Event`] from a given [`tracing_core::Event`]
-pub fn exception_from_event<S>(event: &tracing_core::Event, _ctx: Context<S>) -> Event<'static>
+pub fn exception_from_event<'context, S>(
+    event: &tracing_core::Event,
+    ctx: impl Into<Option<Context<'context, S>>>,
+) -> Event<'static>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
@@ -199,7 +254,7 @@ where
     // proper grouping and issue metadata generation. tracing_core::Record does not contain sufficient
     // information for this. However, it may contain a serialized error which we can parse to emit
     // an exception record.
-    let (mut message, visitor) = extract_event_data(event);
+    let (mut message, visitor) = extract_event_data_with_context(event, ctx.into());
     let FieldVisitor {
         mut exceptions,
         mut json_values,

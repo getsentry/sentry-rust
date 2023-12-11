@@ -1,8 +1,24 @@
 # Changelog
 
+## 0.32.0
+
+**Features**:
+
+- Updated `sentry-tower` dependencies, including `axum` and `http`.
+
+## 0.31.8
+
+### Various fixes & improvements
+
+- MonitorSchedule constructor that validates crontab syntax (#625) by @szokeasaurusrex
+- fix(docs): Fix some doc errors that slipped in (#623) by @flub
+- docs(tower): Mention how to enable http feature from sentry crate (#622) by @flub
+- build(deps): bump rustix from 0.37.23 to 0.37.25 (#619) by @dependabot
+
 ## 0.31.7
 
 ### Various fixes & improvements
+
 - The minimum supported Rust version was bumped to **1.68.0** due to requirements from dependencies. (#612)
 
 ## 0.31.6

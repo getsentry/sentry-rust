@@ -10,9 +10,8 @@ use crate::{Integration, IntoBreadcrumbs, Scope, ScopeGuard};
 
 /// The central object that can manages scopes and clients.
 ///
-/// This can be used to capture events and manage the scope.  This object is
-/// [`Send`] and [`Sync`] so it can be used from
-/// multiple threads if needed.
+/// This can be used to capture events and manage the scope.  This object is [`Send`] and
+/// [`Sync`] so it can be used from multiple threads if needed.
 ///
 /// Each thread has its own thread-local ( see [`Hub::current`]) hub, which is
 /// automatically derived from the main hub ([`Hub::main`]).

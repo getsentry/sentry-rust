@@ -1,6 +1,6 @@
 [package]
 name = "sentry-tower"
-version = "0.31.7"
+version = "0.32.0"
 authors = ["Sentry <hello@sentry.io>"]
 license = "Apache-2.0"
 readme = "README.md"
@@ -20,19 +20,19 @@ http = ["dep:http", "pin-project", "url"]
 axum-matched-path = ["http", "axum/matched-path"]
 
 [dependencies]
-axum = { version = "0.6", optional = true }
+axum = { version = "0.7", optional = true }
 tower-layer = "0.3"
 tower-service = "0.3"
-http = { version = "0.2.6", optional = true }
+http = { version = "1.0.0", optional = true }
 pin-project = { version = "1.0.10", optional = true }
-sentry-core = { version = "0.31.7", path = "../sentry-core", default-features = false, features = ["client"] }
+sentry-core = { version = "0.32.0", path = "../sentry-core", default-features = false, features = ["client"] }
 url = { version = "2.2.2", optional = true }
 
 [dev-dependencies]
 anyhow = "1"
-prost = "0.11"
+prost = "0.12.3"
 sentry = { path = "../sentry", default-features = false, features = ["test"] }
 sentry-anyhow = { path = "../sentry-anyhow" }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
-tonic = { version = "0.8", features = ["transport"] }
+tonic = { version = "0.10.2", features = ["transport"] }
 tower = { version = "0.4", features = ["util", "timeout"] }

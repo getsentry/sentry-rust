@@ -94,14 +94,16 @@ Server::builder()
 
 ### Usage with `tower-http`
 
-The `http` feature offers another layer which will attach request details
-onto captured events, and optionally start a new performance monitoring
-transaction based on the incoming HTTP headers.
+The `http` feature of the `sentry-tower` crate offers another layer which will attach
+request details onto captured events, and optionally start a new performance monitoring
+transaction based on the incoming HTTP headers.  When using the tower integration via
+`sentry::integrations::tower`, this feature can also be enabled using the `tower-http`
+feature of the `sentry` crate instead of the `tower` feature.
 
 The created transaction will automatically use the request URI as its name.
 This is sometimes not desirable in case the request URI contains unique IDs
 or similar. In this case, users should manually override the transaction name
-in the request handler using the [`Scope::set_transaction`](https://docs.rs/sentry-tower/0.31.7/sentry_tower/sentry_core::Scope::set_transaction)
+in the request handler using the [`Scope::set_transaction`](https://docs.rs/sentry-tower/0.32.0/sentry_tower/sentry_core::Scope::set_transaction)
 method.
 
 When combining both layers, take care of the ordering of both. For example
