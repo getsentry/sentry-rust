@@ -841,3 +841,49 @@ impl<'s> fmt::Display for SaveVal<'s> {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test::with_captured_envelopes;
+
+    /// Returns the current system time and rounded bucket timestamp.
+    fn current_time() -> (SystemTime, u64) {
+        let now = SystemTime::now();
+        let timestamp = now.duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
+        let timestamp = timestamp / 10 * 10;
+
+        (now, timestamp)
+    }
+
+    fn get_single_metrics(envelopes: &[Envelope]) -> &str {
+        assert_eq!(envelopes.len(), 1, "expected exactly one envelope");
+
+        let mut items = envelopes[0].items();
+        let Some(EnvelopeItem::Metrics(payload)) = items.next() else {
+            panic!("expected metrics item");
+        };
+
+        std::str::from_utf8(payload).unwrap().trim()
+    }
+
+    #[test]
+    fn test_counter() {
+        let (time, ts) = current_time();
+
+        let envelopes = with_captured_envelopes(|| {
+            Metric::count("requests")
+                .with_tag("foo", "bar")
+                .with_time(time)
+                .send();
+
+            Metric::incr("requests", 2.0)
+                .with_tag("foo", "bar")
+                .with_time(time)
+                .send();
+        });
+
+        let metrics = get_single_metrics(&envelopes);
+        assert_eq!(metrics, format!("requests:3|c|#foo:bar|T{ts}"));
+    }
+}
