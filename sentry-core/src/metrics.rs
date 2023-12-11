@@ -408,25 +408,22 @@ impl MetricAggregator {
     }
 
     fn worker_thread(inner: Arc<Mutex<AggregatorInner>>, transport: TransportArc) {
-        loop {
-            let mut guard = inner.lock().unwrap();
-            let should_stop = !guard.running;
+        let mut running = true;
 
-            let last_flush = Instant::now();
-            let buckets = guard.take_buckets();
-            drop(guard);
+        while running {
+            // Park instead of sleep so we can wake the thread up. Do not account for delays during
+            // flushing, since we benefit from some drift to spread out metric submissions.
+            thread::park_timeout(FLUSH_INTERVAL);
+
+            let buckets = {
+                let mut guard = inner.lock().unwrap();
+                running = guard.running;
+                guard.take_buckets()
+            };
 
             if !buckets.is_empty() {
                 Self::flush_buckets(buckets, &transport);
             }
-
-            if should_stop {
-                break;
-            }
-
-            // Park instead of sleep so we can wake the thread up
-            let park_time = FLUSH_INTERVAL.saturating_sub(last_flush.elapsed());
-            thread::park_timeout(park_time);
         }
     }
 
@@ -499,6 +496,7 @@ impl Drop for MetricAggregator {
     fn drop(&mut self) {
         self.inner.lock().unwrap().running = false;
         if let Some(handle) = self.handle.take() {
+            handle.thread().unpark();
             handle.join().unwrap();
         }
     }
