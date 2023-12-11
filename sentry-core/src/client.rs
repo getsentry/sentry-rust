@@ -12,7 +12,7 @@ use sentry_types::random_uuid;
 
 use crate::constants::SDK_INFO;
 #[cfg(feature = "UNSTABLE_metrics")]
-use crate::metrics::MetricAggregator;
+use crate::metrics::{self, MetricAggregator};
 use crate::protocol::{ClientSdkInfo, Event};
 use crate::session::SessionFlusher;
 use crate::types::{Dsn, Uuid};
@@ -323,7 +323,7 @@ impl Client {
     }
 
     #[cfg(feature = "UNSTABLE_metrics")]
-    pub(crate) fn add_metric(&self, metric: &str) {
+    pub fn add_metric(&self, metric: metrics::Metric) {
         if let Some(ref aggregator) = *self.metric_aggregator.read().unwrap() {
             aggregator.add(metric)
         }

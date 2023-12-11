@@ -147,6 +147,8 @@ mod hub_impl;
 mod metrics;
 #[cfg(feature = "client")]
 mod session;
+#[cfg(all(feature = "client", feature = "UNSTABLE_metrics"))]
+mod units;
 #[cfg(all(feature = "client", feature = "UNSTABLE_cadence"))]
 pub use crate::cadence::SentryMetricSink;
 #[cfg(feature = "client")]

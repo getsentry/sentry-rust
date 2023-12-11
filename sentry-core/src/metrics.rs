@@ -1,7 +1,8 @@
-use std::collections::btree_map::Entry;
-use std::collections::{BTreeMap, BTreeSet};
+use std::borrow::Cow;
+use std::collections::hash_map::{DefaultHasher, Entry};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt;
-use std::sync::mpsc;
+use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
@@ -9,11 +10,15 @@ use sentry_types::protocol::latest::{Envelope, EnvelopeItem};
 
 use crate::client::TransportArc;
 
-const BUCKET_INTERVAL: Duration = Duration::from_secs(10);
-const FLUSH_INTERVAL: Duration = Duration::from_secs(10);
+use crate::units::DurationUnit;
+pub use crate::units::MetricUnit;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-enum MetricType {
+const BUCKET_INTERVAL: Duration = Duration::from_secs(10);
+const FLUSH_INTERVAL: Duration = Duration::from_secs(5);
+const MAX_WEIGHT: usize = 100_000;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub(crate) enum MetricType {
     Counter,
     Distribution,
     Set,
@@ -52,253 +57,474 @@ impl std::str::FromStr for MetricType {
     }
 }
 
-struct GaugeValue {
-    last: f64,
-    min: f64,
-    max: f64,
-    sum: f64,
-    count: u64,
+/// Type used for Counter metric
+pub type CounterType = f64;
+
+/// Type of distribution entries
+pub type DistributionType = f64;
+
+/// Type used for set elements in Set metric
+pub type SetType = u32;
+
+/// Type used for Gauge entries
+pub type GaugeType = f64;
+
+/// A snapshot of values.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct GaugeValue {
+    /// The last value reported in the bucket.
+    ///
+    /// This aggregation is not commutative.
+    pub last: GaugeType,
+    /// The minimum value reported in the bucket.
+    pub min: GaugeType,
+    /// The maximum value reported in the bucket.
+    pub max: GaugeType,
+    /// The sum of all values reported in the bucket.
+    pub sum: GaugeType,
+    /// The number of times this bucket was updated with a new value.
+    pub count: u64,
+}
+
+impl GaugeValue {
+    /// Creates a gauge snapshot from a single value.
+    pub fn single(value: GaugeType) -> Self {
+        Self {
+            last: value,
+            min: value,
+            max: value,
+            sum: value,
+            count: 1,
+        }
+    }
+
+    /// Inserts a new value into the gauge.
+    pub fn insert(&mut self, value: GaugeType) {
+        self.last = value;
+        self.min = self.min.min(value);
+        self.max = self.max.max(value);
+        self.sum += value;
+        self.count += 1;
+    }
 }
 
 enum BucketValue {
-    Counter(f64),
-    Distribution(Vec<f64>),
-    Set(BTreeSet<String>),
+    Counter(CounterType),
+    Distribution(Vec<DistributionType>),
+    Set(BTreeSet<SetType>),
     Gauge(GaugeValue),
 }
 
 impl BucketValue {
-    fn distribution(val: f64) -> BucketValue {
-        Self::Distribution(vec![val])
-    }
-
-    fn gauge(val: f64) -> BucketValue {
-        Self::Gauge(GaugeValue {
-            last: val,
-            min: val,
-            max: val,
-            sum: val,
-            count: 1,
-        })
-    }
-
-    fn set_from_str(value: &str) -> BucketValue {
-        BucketValue::Set([value.into()].into())
-    }
-
-    fn merge(&mut self, other: BucketValue) -> Result<(), ()> {
-        match (self, other) {
-            (BucketValue::Counter(c1), BucketValue::Counter(c2)) => {
+    pub fn insert(&mut self, value: MetricValue) -> usize {
+        match (self, value) {
+            (Self::Counter(c1), MetricValue::Counter(c2)) => {
                 *c1 += c2;
+                0
             }
-            (BucketValue::Distribution(d1), BucketValue::Distribution(d2)) => {
-                d1.extend(d2);
+            (Self::Distribution(d1), MetricValue::Distribution(d2)) => {
+                d1.push(d2);
+                1
             }
-            (BucketValue::Set(s1), BucketValue::Set(s2)) => {
-                s1.extend(s2);
+            (Self::Set(s1), MetricValue::Set(s2)) => {
+                if s1.insert(s2) {
+                    1
+                } else {
+                    0
+                }
             }
-            (BucketValue::Gauge(g1), BucketValue::Gauge(g2)) => {
-                g1.last = g2.last;
-                g1.min = g1.min.min(g2.min);
-                g1.max = g1.max.max(g2.max);
-                g1.sum += g2.sum;
-                g1.count += g2.count;
+            (Self::Gauge(g1), MetricValue::Gauge(g2)) => {
+                g1.insert(g2);
+                0
             }
-            _ => return Err(()),
+            _ => panic!("invalid metric type"),
         }
+    }
 
-        Ok(())
+    pub fn weight(&self) -> usize {
+        match self {
+            BucketValue::Counter(_) => 1,
+            BucketValue::Distribution(v) => v.len(),
+            BucketValue::Set(v) => v.len(),
+            BucketValue::Gauge(_) => 5,
+        }
     }
 }
 
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
-struct BucketKey {
-    timestamp: u64,
-    ty: MetricType,
-    name: String,
-    tags: String,
+impl From<MetricValue> for BucketValue {
+    fn from(value: MetricValue) -> Self {
+        match value {
+            MetricValue::Counter(v) => Self::Counter(v),
+            MetricValue::Distribution(v) => Self::Distribution(vec![v]),
+            MetricValue::Gauge(v) => Self::Gauge(GaugeValue::single(v)),
+            MetricValue::Set(v) => Self::Set(std::iter::once(v).collect()),
+        }
+    }
 }
 
-type AggregateMetrics = BTreeMap<BucketKey, BucketValue>;
+pub type MetricStr = Cow<'static, str>;
 
-enum Task {
-    RecordMetric((BucketKey, BucketValue)),
-    Flush,
-    Shutdown,
+type Timestamp = u64;
+
+#[derive(PartialEq, Eq, Hash)]
+struct BucketKey {
+    timestamp: Timestamp,
+    ty: MetricType,
+    name: MetricStr,
+    unit: MetricUnit,
+    tags: BTreeMap<MetricStr, MetricStr>,
+}
+
+#[derive(Debug)]
+pub enum MetricValue {
+    Counter(CounterType),
+    Distribution(DistributionType),
+    Gauge(GaugeType),
+    Set(SetType),
+}
+
+impl MetricValue {
+    /// Returns a bucket value representing a set with a single given string value.
+    pub fn set_from_str(string: &str) -> Self {
+        Self::Set(hash_set_value(string))
+    }
+
+    /// Returns a bucket value representing a set with a single given value.
+    pub fn set_from_display(display: impl fmt::Display) -> Self {
+        Self::Set(hash_set_value(&display.to_string()))
+    }
+
+    fn ty(&self) -> MetricType {
+        match self {
+            Self::Counter(_) => MetricType::Counter,
+            Self::Distribution(_) => MetricType::Distribution,
+            Self::Gauge(_) => MetricType::Gauge,
+            Self::Set(_) => MetricType::Set,
+        }
+    }
+}
+
+/// Hashes the given set value.
+///
+/// Sets only guarantee 32-bit accuracy, but arbitrary strings are allowed on the protocol. Upon
+/// parsing, they are hashed and only used as hashes subsequently.
+fn hash_set_value(string: &str) -> u32 {
+    use std::hash::Hasher;
+    let mut hasher = DefaultHasher::default();
+    hasher.write(string.as_bytes());
+    hasher.finish() as u32
+}
+
+type BucketMap = BTreeMap<Timestamp, HashMap<BucketKey, BucketValue>>;
+
+struct AggregatorInner {
+    buckets: BucketMap,
+    weight: usize,
+    running: bool,
+    force_flush: bool,
+}
+
+impl AggregatorInner {
+    pub fn new() -> Self {
+        Self {
+            buckets: BTreeMap::new(),
+            weight: 0,
+            running: true,
+            force_flush: false,
+        }
+    }
+
+    pub fn add(&mut self, mut key: BucketKey, value: MetricValue) {
+        // Floor timestamp to bucket interval
+        key.timestamp /= BUCKET_INTERVAL.as_secs();
+        key.timestamp *= BUCKET_INTERVAL.as_secs();
+
+        match self.buckets.entry(key.timestamp).or_default().entry(key) {
+            Entry::Occupied(mut e) => self.weight += e.get_mut().insert(value),
+            Entry::Vacant(e) => self.weight += e.insert(value.into()).weight(),
+        }
+    }
+
+    pub fn take_buckets(&mut self) -> BucketMap {
+        if self.force_flush || !self.running {
+            self.weight = 0;
+            self.force_flush = false;
+            std::mem::take(&mut self.buckets)
+        } else {
+            let timestamp = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .saturating_sub(FLUSH_INTERVAL)
+                .as_secs();
+
+            // Split all buckets after the cutoff time. `split` contains newer buckets, which should
+            // remain, so swap them. After the swap, `split` contains all older buckets.
+            let mut split = self.buckets.split_off(&timestamp);
+            std::mem::swap(&mut split, &mut self.buckets);
+
+            self.weight -= split
+                .values()
+                .flat_map(|map| map.values())
+                .map(|bucket| bucket.weight())
+                .sum::<usize>();
+
+            split
+        }
+    }
+
+    pub fn weight(&self) -> usize {
+        self.weight
+    }
+}
+
+pub struct Metric {
+    name: MetricStr,
+    unit: MetricUnit,
+    value: MetricValue,
+    tags: BTreeMap<MetricStr, MetricStr>,
+    time: Option<SystemTime>,
+}
+
+impl Metric {
+    pub fn build(name: impl Into<MetricStr>, value: MetricValue) -> MetricBuilder {
+        let metric = Metric {
+            name: name.into(),
+            unit: MetricUnit::None,
+            value,
+            tags: BTreeMap::new(),
+            time: None,
+        };
+
+        MetricBuilder { metric }
+    }
+
+    pub fn incr(name: impl Into<MetricStr>) -> MetricBuilder {
+        Self::build(name, MetricValue::Counter(1.0))
+    }
+
+    pub fn timing(name: impl Into<MetricStr>, timing: Duration) -> MetricBuilder {
+        Self::build(name, MetricValue::Distribution(timing.as_secs_f64()))
+            .with_unit(MetricUnit::Duration(DurationUnit::Second))
+    }
+
+    pub fn distribution(name: impl Into<MetricStr>, value: f64) -> MetricBuilder {
+        Self::build(name, MetricValue::Distribution(value))
+    }
+
+    pub fn set(name: impl Into<MetricStr>, string: &str) -> MetricBuilder {
+        Self::build(name, MetricValue::set_from_str(string))
+    }
+
+    pub fn gauge(name: impl Into<MetricStr>, value: f64) -> MetricBuilder {
+        Self::build(name, MetricValue::Gauge(value))
+    }
+}
+
+#[must_use]
+pub struct MetricBuilder {
+    metric: Metric,
+}
+
+impl MetricBuilder {
+    pub fn with_unit(mut self, unit: MetricUnit) -> Self {
+        self.metric.unit = unit;
+        self
+    }
+
+    pub fn with_tag(mut self, name: impl Into<MetricStr>, value: impl Into<MetricStr>) -> Self {
+        self.metric.tags.insert(name.into(), value.into());
+        self
+    }
+
+    pub fn with_time(mut self, time: SystemTime) -> Self {
+        self.metric.time = Some(time);
+        self
+    }
+
+    pub fn finish(self) -> Metric {
+        self.metric
+    }
 }
 
 pub struct MetricAggregator {
-    sender: mpsc::SyncSender<Task>,
+    inner: Arc<Mutex<AggregatorInner>>,
     handle: Option<JoinHandle<()>>,
 }
 
 impl MetricAggregator {
     pub fn new(transport: TransportArc) -> Self {
-        let (sender, receiver) = mpsc::sync_channel(30);
+        let inner = Arc::new(Mutex::new(AggregatorInner::new()));
+        let inner_clone = Arc::clone(&inner);
+
         let handle = thread::Builder::new()
             .name("sentry-metrics".into())
-            .spawn(move || Self::worker_thread(receiver, transport))
-            .ok();
+            .spawn(move || Self::worker_thread(inner_clone, transport))
+            .expect("failed to spawn thread");
 
-        Self { sender, handle }
+        Self {
+            inner,
+            handle: Some(handle),
+        }
     }
 
-    pub fn add(&self, metric: &str) {
-        fn mk_value(ty: MetricType, value: &str) -> Option<BucketValue> {
-            Some(match ty {
-                MetricType::Counter => BucketValue::Counter(value.parse().ok()?),
-                MetricType::Distribution => BucketValue::distribution(value.parse().ok()?),
-                MetricType::Set => BucketValue::set_from_str(value),
-                MetricType::Gauge => BucketValue::gauge(value.parse().ok()?),
-            })
-        }
+    pub fn add(&self, metric: Metric) {
+        let Metric {
+            name,
+            unit,
+            value,
+            tags,
+            time,
+        } = metric;
 
-        fn parse(metric: &str) -> Option<(BucketKey, BucketValue)> {
-            let mut components = metric.split('|');
-            let mut values = components.next()?.split(':');
-            let name = values.next()?;
+        let timestamp = time
+            .unwrap_or_else(SystemTime::now)
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
 
-            let ty: MetricType = components.next().and_then(|s| s.parse().ok())?;
-            let mut value = mk_value(ty, values.next()?)?;
+        let key = BucketKey {
+            timestamp,
+            ty: value.ty(),
+            name,
+            unit,
+            tags,
+        };
 
-            for value_s in values {
-                value.merge(mk_value(ty, value_s)?).ok()?;
+        let mut guard = self.inner.lock().unwrap();
+        guard.add(key, value);
+
+        if guard.weight() > MAX_WEIGHT {
+            if let Some(ref handle) = self.handle {
+                handle.thread().unpark();
             }
-
-            let mut tags = "";
-            let mut timestamp = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs();
-
-            for component in components {
-                if let Some(component_tags) = component.strip_prefix('#') {
-                    tags = component_tags;
-                } else if let Some(component_timestamp) = component.strip_prefix('T') {
-                    timestamp = component_timestamp.parse().ok()?;
-                }
-            }
-
-            Some((
-                BucketKey {
-                    timestamp,
-                    ty,
-                    name: name.into(),
-                    tags: tags.into(),
-                },
-                value,
-            ))
-        }
-
-        if let Some(parsed_metric) = parse(metric) {
-            let _ = self.sender.send(Task::RecordMetric(parsed_metric));
         }
     }
 
     pub fn flush(&self) {
-        let _ = self.sender.send(Task::Flush);
+        self.inner.lock().unwrap().force_flush = true;
+        if let Some(ref handle) = self.handle {
+            handle.thread().unpark();
+        }
     }
 
-    fn worker_thread(receiver: mpsc::Receiver<Task>, transport: TransportArc) {
-        let mut buckets = AggregateMetrics::new();
-        let mut last_flush = Instant::now();
-
+    fn worker_thread(inner: Arc<Mutex<AggregatorInner>>, transport: TransportArc) {
         loop {
-            let timeout = FLUSH_INTERVAL.saturating_sub(last_flush.elapsed());
+            let mut guard = inner.lock().unwrap();
+            let should_stop = !guard.running;
 
-            match receiver.recv_timeout(timeout) {
-                Err(_) | Ok(Task::Flush) => {
-                    // flush
-                    Self::flush_buckets(std::mem::take(&mut buckets), &transport);
-                    last_flush = Instant::now();
-                }
-                Ok(Task::RecordMetric((mut key, value))) => {
-                    // aggregate
-                    let rounding_interval = BUCKET_INTERVAL.as_secs();
-                    let rounded_timestamp = (key.timestamp / rounding_interval) * rounding_interval;
+            let last_flush = Instant::now();
+            let buckets = guard.take_buckets();
+            drop(guard);
 
-                    key.timestamp = rounded_timestamp;
+            if !buckets.is_empty() {
+                Self::flush_buckets(buckets, &transport);
+            }
 
-                    match buckets.entry(key) {
-                        Entry::Occupied(mut entry) => {
-                            let _ = entry.get_mut().merge(value);
-                        }
-                        Entry::Vacant(entry) => {
-                            entry.insert(value);
-                        }
-                    }
-                }
-                _ => {
-                    // shutdown
-                    Self::flush_buckets(buckets, &transport);
-                    return;
-                }
+            if should_stop {
+                break;
+            }
+
+            // Park instead of sleep so we can wake the thread up
+            let park_time = FLUSH_INTERVAL.saturating_sub(last_flush.elapsed());
+            thread::park_timeout(park_time);
+        }
+    }
+
+    fn flush_buckets(buckets: BucketMap, transport: &TransportArc) {
+        // The transport is usually available when flush is called. Prefer a short lock and worst
+        // case throw away the result rather than blocking the transport for too long.
+        if let Ok(output) = Self::format_payload(buckets) {
+            let mut envelope = Envelope::new();
+            envelope.add_item(EnvelopeItem::Metrics(output));
+
+            if let Some(ref transport) = *transport.read().unwrap() {
+                transport.send_envelope(envelope);
             }
         }
     }
 
-    fn flush_buckets(buckets: AggregateMetrics, transport: &TransportArc) {
-        if buckets.is_empty() {
-            return;
-        }
+    fn format_payload(buckets: BucketMap) -> std::io::Result<Vec<u8>> {
+        use std::io::Write;
+        let mut out = vec![];
 
-        fn format_payload(buckets: AggregateMetrics) -> std::io::Result<Vec<u8>> {
-            use std::io::Write;
-            let mut out = vec![];
-            for (key, value) in buckets {
-                write!(&mut out, "{}", key.name)?;
+        for (key, value) in buckets.into_iter().flat_map(|(_, v)| v) {
+            write!(&mut out, "{}@{}", SafeKey(key.name.as_ref()), key.unit)?;
 
-                match value {
-                    BucketValue::Counter(c) => {
-                        write!(&mut out, ":{}", c)?;
-                    }
-                    BucketValue::Distribution(d) => {
-                        for v in d {
-                            write!(&mut out, ":{}", v)?;
-                        }
-                    }
-                    BucketValue::Set(s) => {
-                        for v in s {
-                            write!(&mut out, ":{}", v)?;
-                        }
-                    }
-                    BucketValue::Gauge(g) => {
-                        write!(
-                            &mut out,
-                            ":{}:{}:{}:{}:{}",
-                            g.last, g.min, g.max, g.sum, g.count
-                        )?;
+            match value {
+                BucketValue::Counter(c) => {
+                    write!(&mut out, ":{}", c)?;
+                }
+                BucketValue::Distribution(d) => {
+                    for v in d {
+                        write!(&mut out, ":{}", v)?;
                     }
                 }
-
-                write!(&mut out, "|{}", key.ty.as_str())?;
-                if !key.tags.is_empty() {
-                    write!(&mut out, "|#{}", key.tags)?;
+                BucketValue::Set(s) => {
+                    for v in s {
+                        write!(&mut out, ":{}", v)?;
+                    }
                 }
-                writeln!(&mut out, "|T{}", key.timestamp)?;
+                BucketValue::Gauge(g) => {
+                    write!(
+                        &mut out,
+                        ":{}:{}:{}:{}:{}",
+                        g.last, g.min, g.max, g.sum, g.count
+                    )?;
+                }
             }
 
-            Ok(out)
+            write!(&mut out, "|{}", key.ty.as_str())?;
+
+            if !key.tags.is_empty() {
+                write!(&mut out, "|#")?;
+                for (i, (k, v)) in key.tags.into_iter().enumerate() {
+                    if i > 0 {
+                        write!(&mut out, ",")?;
+                    }
+                    write!(&mut out, "{}:{}", SafeKey(k.as_ref()), SaveVal(v.as_ref()))?;
+                }
+            }
+
+            writeln!(&mut out, "|T{}", key.timestamp)?;
         }
 
-        let Ok(output) = format_payload(buckets) else {
-            return;
-        };
-
-        let mut envelope = Envelope::new();
-        envelope.add_item(EnvelopeItem::Metrics(output));
-
-        if let Some(ref transport) = *transport.read().unwrap() {
-            transport.send_envelope(envelope);
-        }
+        Ok(out)
     }
 }
 
 impl Drop for MetricAggregator {
     fn drop(&mut self) {
-        let _ = self.sender.send(Task::Shutdown);
+        self.inner.lock().unwrap().running = false;
         if let Some(handle) = self.handle.take() {
             handle.join().unwrap();
         }
+    }
+}
+
+struct SafeKey<'s>(&'s str);
+
+impl<'s> fmt::Display for SafeKey<'s> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for c in self.0.chars() {
+            if c.is_ascii_alphanumeric() || ['_', '-', '.', '/'].contains(&c) {
+                write!(f, "{}", c)?;
+            }
+        }
+        Ok(())
+    }
+}
+
+struct SaveVal<'s>(&'s str);
+
+impl<'s> fmt::Display for SaveVal<'s> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for c in self.0.chars() {
+            if c.is_alphanumeric()
+                || ['_', ':', '/', '@', '.', '{', '}', '[', ']', '$', '-'].contains(&c)
+            {
+                write!(f, "{}", c)?;
+            }
+        }
+        Ok(())
     }
 }
