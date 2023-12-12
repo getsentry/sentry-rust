@@ -619,18 +619,17 @@ fn parse_metric_opt(string: &str) -> Option<Metric> {
     Some(builder.finish())
 }
 
-/// UNIX timestamp used for buckets.
-type Timestamp = u64;
-
 /// Composite bucket key for [`BucketMap`].
 #[derive(Debug, PartialEq, Eq, Hash)]
 struct BucketKey {
-    timestamp: Timestamp,
     ty: MetricType,
     name: MetricStr,
     unit: MetricUnit,
     tags: BTreeMap<MetricStr, MetricStr>,
 }
+
+/// UNIX timestamp used for buckets.
+type Timestamp = u64;
 
 /// A nested map storing metric buckets.
 ///
@@ -665,12 +664,12 @@ impl SharedAggregatorState {
     ///
     /// The bucket timestamp is rounded to the nearest bucket interval. Note that this does NOT
     /// automatically flush the aggregator if the weight exceeds the weight threshold.
-    pub fn add(&mut self, mut key: BucketKey, value: MetricValue) {
+    pub fn add(&mut self, mut timestamp: Timestamp, key: BucketKey, value: MetricValue) {
         // Floor timestamp to bucket interval
-        key.timestamp /= BUCKET_INTERVAL.as_secs();
-        key.timestamp *= BUCKET_INTERVAL.as_secs();
+        timestamp /= BUCKET_INTERVAL.as_secs();
+        timestamp *= BUCKET_INTERVAL.as_secs();
 
-        match self.buckets.entry(key.timestamp).or_default().entry(key) {
+        match self.buckets.entry(timestamp).or_default().entry(key) {
             Entry::Occupied(mut e) => self.weight += e.get_mut().insert(value),
             Entry::Vacant(e) => self.weight += e.insert(value.into()).weight(),
         }
@@ -772,47 +771,49 @@ impl Worker {
         use std::io::Write;
         let mut out = vec![];
 
-        for (key, value) in buckets.into_iter().flat_map(|(_, v)| v) {
-            write!(&mut out, "{}", SafeKey(key.name.as_ref()))?;
-            if key.unit != MetricUnit::None {
-                write!(&mut out, "@{}", key.unit)?;
-            }
-
-            match value {
-                BucketValue::Counter(c) => {
-                    write!(&mut out, ":{}", c)?;
+        for (timestamp, buckets) in buckets {
+            for (key, value) in buckets {
+                write!(&mut out, "{}", SafeKey(key.name.as_ref()))?;
+                if key.unit != MetricUnit::None {
+                    write!(&mut out, "@{}", key.unit)?;
                 }
-                BucketValue::Distribution(d) => {
-                    for v in d {
-                        write!(&mut out, ":{}", v)?;
+
+                match value {
+                    BucketValue::Counter(c) => {
+                        write!(&mut out, ":{}", c)?;
+                    }
+                    BucketValue::Distribution(d) => {
+                        for v in d {
+                            write!(&mut out, ":{}", v)?;
+                        }
+                    }
+                    BucketValue::Set(s) => {
+                        for v in s {
+                            write!(&mut out, ":{}", v)?;
+                        }
+                    }
+                    BucketValue::Gauge(g) => {
+                        write!(
+                            &mut out,
+                            ":{}:{}:{}:{}:{}",
+                            g.last, g.min, g.max, g.sum, g.count
+                        )?;
                     }
                 }
-                BucketValue::Set(s) => {
-                    for v in s {
-                        write!(&mut out, ":{}", v)?;
+
+                write!(&mut out, "|{}", key.ty.as_str())?;
+
+                for (i, (k, v)) in key.tags.iter().chain(&self.default_tags).enumerate() {
+                    match i {
+                        0 => write!(&mut out, "|#")?,
+                        _ => write!(&mut out, ",")?,
                     }
+
+                    write!(&mut out, "{}:{}", SafeKey(k.as_ref()), SafeVal(v.as_ref()))?;
                 }
-                BucketValue::Gauge(g) => {
-                    write!(
-                        &mut out,
-                        ":{}:{}:{}:{}:{}",
-                        g.last, g.min, g.max, g.sum, g.count
-                    )?;
-                }
+
+                writeln!(&mut out, "|T{}", timestamp)?;
             }
-
-            write!(&mut out, "|{}", key.ty.as_str())?;
-
-            for (i, (k, v)) in key.tags.iter().chain(&self.default_tags).enumerate() {
-                match i {
-                    0 => write!(&mut out, "|#")?,
-                    _ => write!(&mut out, ",")?,
-                }
-
-                write!(&mut out, "{}:{}", SafeKey(k.as_ref()), SafeVal(v.as_ref()))?;
-            }
-
-            writeln!(&mut out, "|T{}", key.timestamp)?;
         }
 
         Ok(out)
@@ -871,7 +872,6 @@ impl MetricAggregator {
             .as_secs();
 
         let key = BucketKey {
-            timestamp,
             ty: value.ty(),
             name,
             unit,
@@ -879,7 +879,7 @@ impl MetricAggregator {
         };
 
         let mut guard = self.local_worker.shared.lock().unwrap();
-        guard.add(key, value);
+        guard.add(timestamp, key, value);
 
         if guard.weight() > MAX_WEIGHT {
             if let Some(ref handle) = self.handle {
