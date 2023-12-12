@@ -768,6 +768,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "cadence"
+version = "0.29.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f39286bc075b023101dccdb79456a1334221c768b8faede0c2aff7ed29a9482d"
+dependencies = [
+ "crossbeam-channel",
+]
+
+[[package]]
 name = "cast"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -984,6 +993,16 @@ checksum = "6b50826342786a51a89e2da3a28f1c32b06e387201bc2d19791f622c673706b1"
 dependencies = [
  "cast",
  "itertools 0.10.5",
+]
+
+[[package]]
+name = "crossbeam-channel"
+version = "0.5.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a33c2bf77f2df06183c3aa30d1e96c0695a313d4f9c453cc3762a6db39f99200"
+dependencies = [
+ "cfg-if",
+ "crossbeam-utils",
 ]
 
 [[package]]
@@ -2920,7 +2939,7 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "sentry"
-version = "0.31.8"
+version = "0.32.0"
 dependencies = [
  "actix-web",
  "anyhow",
@@ -2956,7 +2975,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-actix"
-version = "0.31.8"
+version = "0.32.0"
 dependencies = [
  "actix-web",
  "futures",
@@ -2968,7 +2987,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-anyhow"
-version = "0.31.8"
+version = "0.32.0"
 dependencies = [
  "anyhow",
  "sentry",
@@ -2978,7 +2997,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-backtrace"
-version = "0.31.8"
+version = "0.32.0"
 dependencies = [
  "backtrace",
  "once_cell",
@@ -2988,7 +3007,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-contexts"
-version = "0.31.8"
+version = "0.32.0"
 dependencies = [
  "hostname",
  "libc",
@@ -3001,9 +3020,10 @@ dependencies = [
 
 [[package]]
 name = "sentry-core"
-version = "0.31.8"
+version = "0.32.0"
 dependencies = [
  "anyhow",
+ "cadence",
  "criterion",
  "futures",
  "log",
@@ -3021,7 +3041,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-debug-images"
-version = "0.31.8"
+version = "0.32.0"
 dependencies = [
  "findshlibs",
  "once_cell",
@@ -3030,7 +3050,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-log"
-version = "0.31.8"
+version = "0.32.0"
 dependencies = [
  "log",
  "pretty_env_logger",
@@ -3040,7 +3060,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-panic"
-version = "0.31.8"
+version = "0.32.0"
 dependencies = [
  "sentry",
  "sentry-backtrace",
@@ -3049,7 +3069,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-slog"
-version = "0.31.8"
+version = "0.32.0"
 dependencies = [
  "erased-serde",
  "sentry",
@@ -3061,7 +3081,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-tower"
-version = "0.31.8"
+version = "0.32.0"
 dependencies = [
  "anyhow",
  "axum 0.7.1",
@@ -3081,7 +3101,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-tracing"
-version = "0.31.8"
+version = "0.32.0"
 dependencies = [
  "log",
  "sentry",
@@ -3095,7 +3115,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-types"
-version = "0.31.8"
+version = "0.32.0"
 dependencies = [
  "debugid",
  "hex",

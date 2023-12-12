@@ -136,13 +136,19 @@ pub use crate::performance::*;
 pub use crate::scope::{Scope, ScopeGuard};
 pub use crate::transport::{Transport, TransportFactory};
 
+#[cfg(all(feature = "client", feature = "UNSTABLE_cadence"))]
+pub mod cadence;
 // client feature
 #[cfg(feature = "client")]
 mod client;
 #[cfg(feature = "client")]
 mod hub_impl;
+#[cfg(all(feature = "client", feature = "UNSTABLE_metrics"))]
+pub mod metrics;
 #[cfg(feature = "client")]
 mod session;
+#[cfg(all(feature = "client", feature = "UNSTABLE_metrics"))]
+mod units;
 #[cfg(feature = "client")]
 pub use crate::client::Client;
 

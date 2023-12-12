@@ -12,6 +12,7 @@ pub struct RateLimiter {
     session: Option<SystemTime>,
     transaction: Option<SystemTime>,
     attachment: Option<SystemTime>,
+    statsd: Option<SystemTime>,
 }
 
 impl RateLimiter {
@@ -56,6 +57,7 @@ impl RateLimiter {
                     "session" => self.session = new_time,
                     "transaction" => self.transaction = new_time,
                     "attachment" => self.attachment = new_time,
+                    "statsd" => self.statsd = new_time,
                     _ => {}
                 }
             }
@@ -89,6 +91,7 @@ impl RateLimiter {
             RateLimitingCategory::Session => self.session,
             RateLimitingCategory::Transaction => self.transaction,
             RateLimitingCategory::Attachment => self.attachment,
+            RateLimitingCategory::Statsd => self.statsd,
         }?;
         time_left.duration_since(SystemTime::now()).ok()
     }
@@ -112,6 +115,8 @@ impl RateLimiter {
                 }
                 EnvelopeItem::Transaction(_) => RateLimitingCategory::Transaction,
                 EnvelopeItem::Attachment(_) => RateLimitingCategory::Attachment,
+                #[cfg(feature = "UNSTABLE_metrics")]
+                EnvelopeItem::Statsd(_) => RateLimitingCategory::Statsd,
                 _ => RateLimitingCategory::Any,
             })
         })
@@ -131,6 +136,9 @@ pub enum RateLimitingCategory {
     Transaction,
     /// Rate Limit pertaining to Attachments.
     Attachment,
+    /// Rate Limit pertaining to metrics.
+    #[allow(unused)]
+    Statsd,
 }
 
 #[cfg(test)]
@@ -149,8 +157,8 @@ mod tests {
 
         rl.update_from_sentry_header(
             r#"
-                30::bar, 
-                120:invalid:invalid, 
+                30::bar,
+                120:invalid:invalid,
                 4711:foo;bar;baz;security:project
             "#,
         );
