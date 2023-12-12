@@ -340,8 +340,8 @@ impl Client {
             flusher.flush();
         }
         #[cfg(feature = "UNSTABLE_metrics")]
-        if let Some(ref flusher) = *self.metric_aggregator.read().unwrap() {
-            flusher.flush();
+        if let Some(ref aggregator) = *self.metric_aggregator.read().unwrap() {
+            aggregator.flush();
         }
         if let Some(ref transport) = *self.transport.read().unwrap() {
             transport.flush(timeout.unwrap_or(self.options.shutdown_timeout))

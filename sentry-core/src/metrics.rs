@@ -734,26 +734,28 @@ struct Worker {
 
 impl Worker {
     pub fn run(self) {
-        let mut running = true;
-
-        while running {
+        loop {
             // Park instead of sleep so we can wake the thread up. Do not account for delays during
             // flushing, since we benefit from some drift to spread out metric submissions.
             thread::park_timeout(FLUSH_INTERVAL);
 
             let buckets = {
                 let mut guard = self.shared.lock().unwrap();
-                running = guard.running;
+                if !guard.running {
+                    break;
+                }
                 guard.take_buckets()
             };
 
-            if !buckets.is_empty() {
-                self.flush_buckets(buckets);
-            }
+            self.flush_buckets(buckets);
         }
     }
 
     pub fn flush_buckets(&self, buckets: BucketMap) {
+        if buckets.is_empty() {
+            return;
+        }
+
         // The transport is usually available when flush is called. Prefer a short lock and worst
         // case throw away the result rather than blocking the transport for too long.
         if let Ok(output) = self.format_payload(buckets) {
@@ -828,19 +830,19 @@ impl fmt::Debug for Worker {
 
 #[derive(Debug)]
 pub(crate) struct MetricAggregator {
-    shared: Arc<Mutex<SharedAggregatorState>>,
+    local_worker: Worker,
     handle: Option<JoinHandle<()>>,
 }
 
 impl MetricAggregator {
     pub fn new(transport: TransportArc, options: &ClientOptions) -> Self {
-        let shared = Arc::new(Mutex::new(SharedAggregatorState::new()));
-
         let worker = Worker {
-            shared: Arc::clone(&shared),
+            shared: Arc::new(Mutex::new(SharedAggregatorState::new())),
             default_tags: get_default_tags(options),
             transport,
         };
+
+        let local_worker = worker.clone();
 
         let handle = thread::Builder::new()
             .name("sentry-metrics".into())
@@ -848,7 +850,7 @@ impl MetricAggregator {
             .expect("failed to spawn thread");
 
         Self {
-            shared,
+            local_worker,
             handle: Some(handle),
         }
     }
@@ -876,7 +878,7 @@ impl MetricAggregator {
             tags,
         };
 
-        let mut guard = self.shared.lock().unwrap();
+        let mut guard = self.local_worker.shared.lock().unwrap();
         guard.add(key, value);
 
         if guard.weight() > MAX_WEIGHT {
@@ -888,16 +890,26 @@ impl MetricAggregator {
     }
 
     pub fn flush(&self) {
-        self.shared.lock().unwrap().force_flush = true;
-        if let Some(ref handle) = self.handle {
-            handle.thread().unpark();
-        }
+        let buckets = {
+            let mut guard = self.local_worker.shared.lock().unwrap();
+            guard.force_flush = true;
+            guard.take_buckets()
+        };
+
+        self.local_worker.flush_buckets(buckets);
     }
 }
 
 impl Drop for MetricAggregator {
     fn drop(&mut self) {
-        self.shared.lock().unwrap().running = false;
+        let buckets = {
+            let mut guard = self.local_worker.shared.lock().unwrap();
+            guard.running = false;
+            guard.take_buckets()
+        };
+
+        self.local_worker.flush_buckets(buckets);
+
         if let Some(handle) = self.handle.take() {
             handle.thread().unpark();
             handle.join().unwrap();
