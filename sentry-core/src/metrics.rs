@@ -458,6 +458,7 @@ impl SharedAggregatorState {
 ///     client.add_metric(metric);
 /// }
 /// ```
+#[derive(Debug)]
 pub struct Metric {
     /// The name of the metric, identifying it in Sentry.
     ///
@@ -609,6 +610,7 @@ impl Metric {
 /// Use one of the [`Metric`] constructors to create a new builder. See the struct-level docs for
 /// examples of how to build metrics.
 #[must_use]
+#[derive(Debug)]
 pub struct MetricBuilder {
     metric: Metric,
 }
