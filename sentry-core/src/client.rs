@@ -326,7 +326,7 @@ impl Client {
         }
     }
 
-    /// Captures a metric and sends it to Sentry after a short delay.
+    /// Captures a metric and sends it to Sentry on the next flush.
     #[cfg(feature = "UNSTABLE_metrics")]
     pub fn add_metric(&self, metric: metrics::Metric) {
         if let Some(ref aggregator) = *self.metric_aggregator.read().unwrap() {

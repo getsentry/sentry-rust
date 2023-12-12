@@ -67,16 +67,16 @@ const MAX_WEIGHT: usize = 100_000;
 pub type MetricStr = Cow<'static, str>;
 
 /// Type used for [`MetricValue::Counter`].
-pub type CounterType = f64;
+pub type CounterValue = f64;
 
 /// Type used for [`MetricValue::Distribution`].
-pub type DistributionType = f64;
+pub type DistributionValue = f64;
 
 /// Type used for [`MetricValue::Set`].
-pub type SetType = u32;
+pub type SetValue = u32;
 
 /// Type used for [`MetricValue::Gauge`].
-pub type GaugeType = f64;
+pub type GaugeValue = f64;
 
 /// The value of a [`Metric`], indicating its type.
 #[derive(Debug)]
@@ -93,7 +93,7 @@ pub enum MetricValue {
     ///
     /// Metric::build("my.counter", MetricValue::Counter(1.0)).send();
     /// ```
-    Counter(CounterType),
+    Counter(CounterValue),
 
     /// Builds a statistical distribution over values reported.
     ///
@@ -108,7 +108,7 @@ pub enum MetricValue {
     ///
     /// Metric::build("my.distribution", MetricValue::Distribution(42.0)).send();
     /// ```
-    Distribution(DistributionType),
+    Distribution(DistributionValue),
 
     /// Counts the number of unique reported values.
     ///
@@ -127,7 +127,7 @@ pub enum MetricValue {
     ///
     /// Metric::build("my.set", MetricValue::set_from_str("foo")).send();
     /// ```
-    Set(SetType),
+    Set(SetValue),
 
     /// Stores absolute snapshots of values.
     ///
@@ -143,7 +143,7 @@ pub enum MetricValue {
     ///
     /// Metric::build("my.gauge", MetricValue::Gauge(42.0)).send();
     /// ```
-    Gauge(GaugeType),
+    Gauge(GaugeValue),
 }
 
 impl MetricValue {
@@ -221,24 +221,24 @@ impl std::str::FromStr for MetricType {
 
 /// A snapshot of values.
 #[derive(Clone, Copy, Debug, PartialEq)]
-struct GaugeValue {
+struct GaugeSummary {
     /// The last value reported in the bucket.
     ///
     /// This aggregation is not commutative.
-    pub last: GaugeType,
+    pub last: GaugeValue,
     /// The minimum value reported in the bucket.
-    pub min: GaugeType,
+    pub min: GaugeValue,
     /// The maximum value reported in the bucket.
-    pub max: GaugeType,
+    pub max: GaugeValue,
     /// The sum of all values reported in the bucket.
-    pub sum: GaugeType,
+    pub sum: GaugeValue,
     /// The number of times this bucket was updated with a new value.
     pub count: u64,
 }
 
-impl GaugeValue {
+impl GaugeSummary {
     /// Creates a gauge snapshot from a single value.
-    pub fn single(value: GaugeType) -> Self {
+    pub fn single(value: GaugeValue) -> Self {
         Self {
             last: value,
             min: value,
@@ -249,7 +249,7 @@ impl GaugeValue {
     }
 
     /// Inserts a new value into the gauge.
-    pub fn insert(&mut self, value: GaugeType) {
+    pub fn insert(&mut self, value: GaugeValue) {
         self.last = value;
         self.min = self.min.min(value);
         self.max = self.max.max(value);
@@ -261,10 +261,10 @@ impl GaugeValue {
 /// The aggregated value of a [`Metric`] bucket.
 #[derive(Debug)]
 enum BucketValue {
-    Counter(CounterType),
-    Distribution(Vec<DistributionType>),
-    Set(BTreeSet<SetType>),
-    Gauge(GaugeValue),
+    Counter(CounterValue),
+    Distribution(Vec<DistributionValue>),
+    Set(BTreeSet<SetValue>),
+    Gauge(GaugeSummary),
 }
 
 impl BucketValue {
@@ -310,102 +310,9 @@ impl From<MetricValue> for BucketValue {
         match value {
             MetricValue::Counter(v) => Self::Counter(v),
             MetricValue::Distribution(v) => Self::Distribution(vec![v]),
-            MetricValue::Gauge(v) => Self::Gauge(GaugeValue::single(v)),
-            MetricValue::Set(v) => Self::Set(std::iter::once(v).collect()),
+            MetricValue::Gauge(v) => Self::Gauge(GaugeSummary::single(v)),
+            MetricValue::Set(v) => Self::Set(BTreeSet::from([v])),
         }
-    }
-}
-
-/// UNIX timestamp used for buckets.
-type Timestamp = u64;
-
-/// Composite bucket key for [`BucketMap`].
-#[derive(Debug, PartialEq, Eq, Hash)]
-struct BucketKey {
-    timestamp: Timestamp,
-    ty: MetricType,
-    name: MetricStr,
-    unit: MetricUnit,
-    tags: BTreeMap<MetricStr, MetricStr>,
-}
-
-/// A nested map storing metric buckets.
-///
-/// This map consists of two levels:
-///  1. The rounded UNIX timestamp of buckets.
-///  2. The metric buckets themselves with a corresponding timestamp.
-///
-/// This structure allows for efficient dequeueing of buckets that are older than a certain
-/// threshold. The buckets are dequeued in order of their timestamp, so the oldest buckets are
-/// dequeued first.
-type BucketMap = BTreeMap<Timestamp, HashMap<BucketKey, BucketValue>>;
-
-#[derive(Debug)]
-struct SharedAggregatorState {
-    buckets: BucketMap,
-    weight: usize,
-    running: bool,
-    force_flush: bool,
-}
-
-impl SharedAggregatorState {
-    pub fn new() -> Self {
-        Self {
-            buckets: BTreeMap::new(),
-            weight: 0,
-            running: true,
-            force_flush: false,
-        }
-    }
-
-    /// Adds a new bucket to the aggregator.
-    ///
-    /// The bucket timestamp is rounded to the nearest bucket interval. Note that this does NOT
-    /// automatically flush the aggregator if the weight exceeds the weight threshold.
-    pub fn add(&mut self, mut key: BucketKey, value: MetricValue) {
-        // Floor timestamp to bucket interval
-        key.timestamp /= BUCKET_INTERVAL.as_secs();
-        key.timestamp *= BUCKET_INTERVAL.as_secs();
-
-        match self.buckets.entry(key.timestamp).or_default().entry(key) {
-            Entry::Occupied(mut e) => self.weight += e.get_mut().insert(value),
-            Entry::Vacant(e) => self.weight += e.insert(value.into()).weight(),
-        }
-    }
-
-    /// Removes and returns all buckets that are ready to flush.
-    ///
-    /// Buckets are ready to flush as soon as their time window has closed. For example, a bucket
-    /// from timestamps `[4600, 4610)` is ready to flush immediately at `4610`.
-    pub fn take_buckets(&mut self) -> BucketMap {
-        if self.force_flush || !self.running {
-            self.weight = 0;
-            self.force_flush = false;
-            std::mem::take(&mut self.buckets)
-        } else {
-            let timestamp = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default()
-                .saturating_sub(BUCKET_INTERVAL)
-                .as_secs();
-
-            // Split all buckets after the cutoff time. `split` contains newer buckets, which should
-            // remain, so swap them. After the swap, `split` contains all older buckets.
-            let mut split = self.buckets.split_off(&timestamp);
-            std::mem::swap(&mut split, &mut self.buckets);
-
-            self.weight -= split
-                .values()
-                .flat_map(|map| map.values())
-                .map(|bucket| bucket.weight())
-                .sum::<usize>();
-
-            split
-        }
-    }
-
-    pub fn weight(&self) -> usize {
-        self.weight
     }
 }
 
@@ -712,7 +619,100 @@ fn parse_metric_opt(string: &str) -> Option<Metric> {
     Some(builder.finish())
 }
 
-pub(crate) type TagMap = BTreeMap<MetricStr, MetricStr>;
+/// UNIX timestamp used for buckets.
+type Timestamp = u64;
+
+/// Composite bucket key for [`BucketMap`].
+#[derive(Debug, PartialEq, Eq, Hash)]
+struct BucketKey {
+    timestamp: Timestamp,
+    ty: MetricType,
+    name: MetricStr,
+    unit: MetricUnit,
+    tags: BTreeMap<MetricStr, MetricStr>,
+}
+
+/// A nested map storing metric buckets.
+///
+/// This map consists of two levels:
+///  1. The rounded UNIX timestamp of buckets.
+///  2. The metric buckets themselves with a corresponding timestamp.
+///
+/// This structure allows for efficient dequeueing of buckets that are older than a certain
+/// threshold. The buckets are dequeued in order of their timestamp, so the oldest buckets are
+/// dequeued first.
+type BucketMap = BTreeMap<Timestamp, HashMap<BucketKey, BucketValue>>;
+
+#[derive(Debug)]
+struct SharedAggregatorState {
+    buckets: BucketMap,
+    weight: usize,
+    running: bool,
+    force_flush: bool,
+}
+
+impl SharedAggregatorState {
+    pub fn new() -> Self {
+        Self {
+            buckets: BTreeMap::new(),
+            weight: 0,
+            running: true,
+            force_flush: false,
+        }
+    }
+
+    /// Adds a new bucket to the aggregator.
+    ///
+    /// The bucket timestamp is rounded to the nearest bucket interval. Note that this does NOT
+    /// automatically flush the aggregator if the weight exceeds the weight threshold.
+    pub fn add(&mut self, mut key: BucketKey, value: MetricValue) {
+        // Floor timestamp to bucket interval
+        key.timestamp /= BUCKET_INTERVAL.as_secs();
+        key.timestamp *= BUCKET_INTERVAL.as_secs();
+
+        match self.buckets.entry(key.timestamp).or_default().entry(key) {
+            Entry::Occupied(mut e) => self.weight += e.get_mut().insert(value),
+            Entry::Vacant(e) => self.weight += e.insert(value.into()).weight(),
+        }
+    }
+
+    /// Removes and returns all buckets that are ready to flush.
+    ///
+    /// Buckets are ready to flush as soon as their time window has closed. For example, a bucket
+    /// from timestamps `[4600, 4610)` is ready to flush immediately at `4610`.
+    pub fn take_buckets(&mut self) -> BucketMap {
+        if self.force_flush || !self.running {
+            self.weight = 0;
+            self.force_flush = false;
+            std::mem::take(&mut self.buckets)
+        } else {
+            let timestamp = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .saturating_sub(BUCKET_INTERVAL)
+                .as_secs();
+
+            // Split all buckets after the cutoff time. `split` contains newer buckets, which should
+            // remain, so swap them. After the swap, `split` contains all older buckets.
+            let mut split = self.buckets.split_off(&timestamp);
+            std::mem::swap(&mut split, &mut self.buckets);
+
+            self.weight -= split
+                .values()
+                .flat_map(|map| map.values())
+                .map(|bucket| bucket.weight())
+                .sum::<usize>();
+
+            split
+        }
+    }
+
+    pub fn weight(&self) -> usize {
+        self.weight
+    }
+}
+
+type TagMap = BTreeMap<MetricStr, MetricStr>;
 
 fn get_default_tags(options: &ClientOptions) -> TagMap {
     let mut tags = TagMap::new();
