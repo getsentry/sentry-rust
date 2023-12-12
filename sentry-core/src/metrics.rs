@@ -259,6 +259,7 @@ impl GaugeValue {
 }
 
 /// The aggregated value of a [`Metric`] bucket.
+#[derive(Debug)]
 enum BucketValue {
     Counter(CounterType),
     Distribution(Vec<DistributionType>),
@@ -319,7 +320,7 @@ impl From<MetricValue> for BucketValue {
 type Timestamp = u64;
 
 /// Composite bucket key for [`BucketMap`].
-#[derive(PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 struct BucketKey {
     timestamp: Timestamp,
     ty: MetricType,
@@ -339,14 +340,15 @@ struct BucketKey {
 /// dequeued first.
 type BucketMap = BTreeMap<Timestamp, HashMap<BucketKey, BucketValue>>;
 
-struct AggregatorInner {
+#[derive(Debug)]
+struct SharedAggregatorState {
     buckets: BucketMap,
     weight: usize,
     running: bool,
     force_flush: bool,
 }
 
-impl AggregatorInner {
+impl SharedAggregatorState {
     pub fn new() -> Self {
         Self {
             buckets: BTreeMap::new(),
@@ -721,71 +723,15 @@ fn get_default_tags(options: &ClientOptions) -> TagMap {
     tags
 }
 
-pub(crate) struct MetricAggregator {
-    inner: Arc<Mutex<AggregatorInner>>,
-    handle: Option<JoinHandle<()>>,
+#[derive(Clone)]
+struct Worker {
+    shared: Arc<Mutex<SharedAggregatorState>>,
+    default_tags: TagMap,
+    transport: TransportArc,
 }
 
-impl MetricAggregator {
-    pub fn new(transport: TransportArc, options: &ClientOptions) -> Self {
-        let default_tags = get_default_tags(options);
-
-        let inner = Arc::new(Mutex::new(AggregatorInner::new()));
-        let inner_clone = Arc::clone(&inner);
-
-        let handle = thread::Builder::new()
-            .name("sentry-metrics".into())
-            .spawn(move || Self::worker_thread(inner_clone, transport, default_tags))
-            .expect("failed to spawn thread");
-
-        Self {
-            inner,
-            handle: Some(handle),
-        }
-    }
-
-    pub fn add(&self, metric: Metric) {
-        let Metric {
-            name,
-            unit,
-            value,
-            tags,
-            time,
-        } = metric;
-
-        let timestamp = time
-            .unwrap_or_else(SystemTime::now)
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
-
-        let key = BucketKey {
-            timestamp,
-            ty: value.ty(),
-            name,
-            unit,
-            tags,
-        };
-
-        let mut guard = self.inner.lock().unwrap();
-        guard.add(key, value);
-
-        if guard.weight() > MAX_WEIGHT {
-            if let Some(ref handle) = self.handle {
-                guard.force_flush = true;
-                handle.thread().unpark();
-            }
-        }
-    }
-
-    pub fn flush(&self) {
-        self.inner.lock().unwrap().force_flush = true;
-        if let Some(ref handle) = self.handle {
-            handle.thread().unpark();
-        }
-    }
-
-    fn worker_thread(inner: Arc<Mutex<AggregatorInner>>, transport: TransportArc, tags: TagMap) {
+impl Worker {
+    pub fn run(self) {
         let mut running = true;
 
         while running {
@@ -794,31 +740,31 @@ impl MetricAggregator {
             thread::park_timeout(FLUSH_INTERVAL);
 
             let buckets = {
-                let mut guard = inner.lock().unwrap();
+                let mut guard = self.shared.lock().unwrap();
                 running = guard.running;
                 guard.take_buckets()
             };
 
             if !buckets.is_empty() {
-                Self::flush_buckets(buckets, &transport, &tags);
+                self.flush_buckets(buckets);
             }
         }
     }
 
-    fn flush_buckets(buckets: BucketMap, transport: &TransportArc, tags: &TagMap) {
+    pub fn flush_buckets(&self, buckets: BucketMap) {
         // The transport is usually available when flush is called. Prefer a short lock and worst
         // case throw away the result rather than blocking the transport for too long.
-        if let Ok(output) = Self::format_payload(buckets, tags) {
+        if let Ok(output) = self.format_payload(buckets) {
             let mut envelope = Envelope::new();
             envelope.add_item(EnvelopeItem::Metrics(output));
 
-            if let Some(ref transport) = *transport.read().unwrap() {
+            if let Some(ref transport) = *self.transport.read().unwrap() {
                 transport.send_envelope(envelope);
             }
         }
     }
 
-    fn format_payload(buckets: BucketMap, tags: &TagMap) -> std::io::Result<Vec<u8>> {
+    fn format_payload(&self, buckets: BucketMap) -> std::io::Result<Vec<u8>> {
         use std::io::Write;
         let mut out = vec![];
 
@@ -853,7 +799,7 @@ impl MetricAggregator {
 
             write!(&mut out, "|{}", key.ty.as_str())?;
 
-            for (i, (k, v)) in key.tags.iter().chain(tags).enumerate() {
+            for (i, (k, v)) in key.tags.iter().chain(&self.default_tags).enumerate() {
                 match i {
                     0 => write!(&mut out, "|#")?,
                     _ => write!(&mut out, ",")?,
@@ -869,9 +815,87 @@ impl MetricAggregator {
     }
 }
 
+impl fmt::Debug for Worker {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Worker")
+            .field("transport", &format_args!("ArcTransport"))
+            .field("default_tags", &self.default_tags)
+            .finish()
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct MetricAggregator {
+    shared: Arc<Mutex<SharedAggregatorState>>,
+    handle: Option<JoinHandle<()>>,
+}
+
+impl MetricAggregator {
+    pub fn new(transport: TransportArc, options: &ClientOptions) -> Self {
+        let shared = Arc::new(Mutex::new(SharedAggregatorState::new()));
+
+        let worker = Worker {
+            shared: Arc::clone(&shared),
+            default_tags: get_default_tags(options),
+            transport,
+        };
+
+        let handle = thread::Builder::new()
+            .name("sentry-metrics".into())
+            .spawn(move || worker.run())
+            .expect("failed to spawn thread");
+
+        Self {
+            shared,
+            handle: Some(handle),
+        }
+    }
+
+    pub fn add(&self, metric: Metric) {
+        let Metric {
+            name,
+            unit,
+            value,
+            tags,
+            time,
+        } = metric;
+
+        let timestamp = time
+            .unwrap_or_else(SystemTime::now)
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+
+        let key = BucketKey {
+            timestamp,
+            ty: value.ty(),
+            name,
+            unit,
+            tags,
+        };
+
+        let mut guard = self.shared.lock().unwrap();
+        guard.add(key, value);
+
+        if guard.weight() > MAX_WEIGHT {
+            if let Some(ref handle) = self.handle {
+                guard.force_flush = true;
+                handle.thread().unpark();
+            }
+        }
+    }
+
+    pub fn flush(&self) {
+        self.shared.lock().unwrap().force_flush = true;
+        if let Some(ref handle) = self.handle {
+            handle.thread().unpark();
+        }
+    }
+}
+
 impl Drop for MetricAggregator {
     fn drop(&mut self) {
-        self.inner.lock().unwrap().running = false;
+        self.shared.lock().unwrap().running = false;
         if let Some(handle) = self.handle.take() {
             handle.thread().unpark();
             handle.join().unwrap();
