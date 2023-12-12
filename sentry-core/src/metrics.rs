@@ -47,7 +47,7 @@
 use std::borrow::Cow;
 use std::collections::hash_map::{DefaultHasher, Entry};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
-use std::fmt;
+use std::fmt::{self, Write};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -850,7 +850,7 @@ impl MetricAggregator {
                     _ => write!(&mut out, ",")?,
                 }
 
-                write!(&mut out, "{}:{}", SafeKey(k.as_ref()), SaveVal(v.as_ref()))?;
+                write!(&mut out, "{}:{}", SafeKey(k.as_ref()), SafeVal(v.as_ref()))?;
             }
 
             writeln!(&mut out, "|T{}", key.timestamp)?;
@@ -870,39 +870,57 @@ impl Drop for MetricAggregator {
     }
 }
 
+fn safe_fmt<F>(f: &mut fmt::Formatter<'_>, string: &str, mut check: F) -> fmt::Result
+where
+    F: FnMut(char) -> bool,
+{
+    let mut valid = true;
+
+    for c in string.chars() {
+        if check(c) {
+            valid = true;
+            f.write_char(c)?;
+        } else if valid {
+            valid = false;
+            f.write_char('_')?;
+        }
+    }
+
+    Ok(())
+}
+
+// Helper that serializes a string into a safe format for metric names or tag keys.
 struct SafeKey<'s>(&'s str);
 
 impl<'s> fmt::Display for SafeKey<'s> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for c in self.0.chars() {
-            if c.is_ascii_alphanumeric() || ['_', '-', '.', '/'].contains(&c) {
-                write!(f, "{}", c)?;
-            }
-        }
-        Ok(())
+        safe_fmt(f, self.0, |c| {
+            c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | '.' | '/')
+        })
     }
 }
 
-struct SaveVal<'s>(&'s str);
+// Helper that serializes a string into a safe format for tag values.
+struct SafeVal<'s>(&'s str);
 
-impl<'s> fmt::Display for SaveVal<'s> {
+impl<'s> fmt::Display for SafeVal<'s> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for c in self.0.chars() {
-            if c.is_alphanumeric()
-                || ['_', ':', '/', '@', '.', '{', '}', '[', ']', '$', '-'].contains(&c)
-            {
-                write!(f, "{}", c)?;
-            }
-        }
-        Ok(())
+        safe_fmt(f, self.0, |c| {
+            c.is_alphanumeric()
+                || matches!(
+                    c,
+                    '_' | ':' | '/' | '@' | '.' | '{' | '}' | '[' | ']' | '$' | '-'
+                )
+        })
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::test::{with_captured_envelopes, with_captured_envelopes_options};
     use crate::ClientOptions;
+
+    use super::*;
 
     /// Returns the current system time and rounded bucket timestamp.
     fn current_time() -> (SystemTime, u64) {
@@ -931,12 +949,13 @@ mod tests {
         let envelopes = with_captured_envelopes(|| {
             Metric::count("my.metric")
                 .with_tag("foo", "bar")
+                .with_tag("and", "more")
                 .with_time(time)
                 .send();
         });
 
         let metrics = get_single_metrics(&envelopes);
-        assert_eq!(metrics, format!("my.metric:1|c|#foo:bar|T{ts}"));
+        assert_eq!(metrics, format!("my.metric:1|c|#and:more,foo:bar|T{ts}"));
     }
 
     #[test]
@@ -952,6 +971,48 @@ mod tests {
 
         let metrics = get_single_metrics(&envelopes);
         assert_eq!(metrics, format!("my.metric@custom:1|c|T{ts}"));
+    }
+
+    #[test]
+    fn test_metric_sanitation() {
+        let (time, ts) = current_time();
+
+        let envelopes = with_captured_envelopes(|| {
+            Metric::count("my$$$metric").with_time(time).send();
+        });
+
+        let metrics = get_single_metrics(&envelopes);
+        assert_eq!(metrics, format!("my_metric:1|c|T{ts}"));
+    }
+
+    #[test]
+    fn test_tag_sanitation() {
+        let (time, ts) = current_time();
+
+        let envelopes = with_captured_envelopes(|| {
+            Metric::count("my.metric")
+                .with_tag("foo-bar$$$blub", "%$föö{}")
+                .with_time(time)
+                .send();
+        });
+
+        let metrics = get_single_metrics(&envelopes);
+        assert_eq!(
+            metrics,
+            format!("my.metric:1|c|#foo-bar_blub:_$föö{{}}|T{ts}")
+        );
+    }
+
+    #[test]
+    fn test_own_namespace() {
+        let (time, ts) = current_time();
+
+        let envelopes = with_captured_envelopes(|| {
+            Metric::count("ns/my.metric").with_time(time).send();
+        });
+
+        let metrics = get_single_metrics(&envelopes);
+        assert_eq!(metrics, format!("ns/my.metric:1|c|T{ts}"));
     }
 
     #[test]
@@ -1055,5 +1116,21 @@ mod tests {
 
         let metrics = get_single_metrics(&envelopes);
         assert_eq!(metrics, format!("my.metric:1.5:1:2:4.5:3|g|T{ts}"));
+    }
+
+    #[test]
+    fn test_multiple() {
+        let (time, ts) = current_time();
+
+        let envelopes = with_captured_envelopes(|| {
+            Metric::count("my.metric").with_time(time).send();
+            Metric::distribution("my.dist", 2.0).with_time(time).send();
+        });
+
+        let metrics = get_single_metrics(&envelopes);
+        println!("{metrics}");
+
+        assert!(metrics.contains(&format!("my.metric:1|c|T{ts}")));
+        assert!(metrics.contains(&format!("my.dist:2|d|T{ts}")));
     }
 }
