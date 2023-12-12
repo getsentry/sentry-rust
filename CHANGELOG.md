@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+**Features**:
+
+- Add experimental implementations for Sentry metrics and a cadence sink. These
+  require to use the `UNSTABLE_metrics` and `UNSTABLE_cadence` feature flags.
+  Note that these APIs are still under development and subject to change.
+
 ## 0.32.0
 
 **Features**:
