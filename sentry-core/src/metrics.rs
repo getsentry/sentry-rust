@@ -590,6 +590,16 @@ impl Metric {
     pub fn gauge(name: impl Into<MetricStr>, value: f64) -> MetricBuilder {
         Self::build(name, MetricValue::Gauge(value))
     }
+
+    /// Sends the metric to the current client.
+    ///
+    /// When building a metric, you can use [`MetricBuilder::send`] to send the metric directly. If
+    /// there is no client on the current [`Hub`], the metric is dropped.
+    pub fn send(self) {
+        if let Some(client) = Hub::current().client() {
+            client.add_metric(self);
+        }
+    }
 }
 
 /// A builder for metrics.
@@ -644,11 +654,10 @@ impl MetricBuilder {
 
     /// Sends the metric to the current client.
     ///
-    /// If there is no client on the current [`Hub`], the metric is dropped.
+    /// This is a shorthand for `.finish().send()`. If there is no client on the current [`Hub`],
+    /// the metric is dropped.
     pub fn send(self) {
-        if let Some(client) = Hub::current().client() {
-            client.add_metric(self.finish());
-        }
+        self.finish().send()
     }
 }
 
