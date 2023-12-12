@@ -116,7 +116,7 @@ impl RateLimiter {
                 EnvelopeItem::Transaction(_) => RateLimitingCategory::Transaction,
                 EnvelopeItem::Attachment(_) => RateLimitingCategory::Attachment,
                 #[cfg(feature = "UNSTABLE_metrics")]
-                EnvelopeItem::Metrics(_) => RateLimitingCategory::Statsd,
+                EnvelopeItem::Statsd(_) => RateLimitingCategory::Statsd,
                 _ => RateLimitingCategory::Any,
             })
         })
@@ -157,8 +157,8 @@ mod tests {
 
         rl.update_from_sentry_header(
             r#"
-                30::bar, 
-                120:invalid:invalid, 
+                30::bar,
+                120:invalid:invalid,
                 4711:foo;bar;baz;security:project
             "#,
         );

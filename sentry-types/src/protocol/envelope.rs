@@ -118,7 +118,7 @@ pub enum EnvelopeItem {
     MonitorCheckIn(MonitorCheckIn),
     /// A Metrics Item.
     #[cfg(feature = "UNSTABLE_metrics")]
-    Metrics(Vec<u8>),
+    Statsd(Vec<u8>),
     /// This is a sentinel item used to `filter` raw envelopes.
     Raw,
     // TODO:
@@ -360,7 +360,7 @@ impl Envelope {
                     serde_json::to_writer(&mut item_buf, check_in)?
                 }
                 #[cfg(feature = "UNSTABLE_metrics")]
-                EnvelopeItem::Metrics(metrics) => item_buf.extend_from_slice(metrics),
+                EnvelopeItem::Statsd(statsd) => item_buf.extend_from_slice(statsd),
                 EnvelopeItem::Raw => {
                     continue;
                 }
@@ -372,7 +372,7 @@ impl Envelope {
                 EnvelopeItem::Transaction(_) => "transaction",
                 EnvelopeItem::MonitorCheckIn(_) => "check_in",
                 #[cfg(feature = "UNSTABLE_metrics")]
-                EnvelopeItem::Metrics(_) => "statsd",
+                EnvelopeItem::Statsd(_) => "statsd",
                 EnvelopeItem::Attachment(_) | EnvelopeItem::Raw => unreachable!(),
             };
             writeln!(
@@ -518,7 +518,7 @@ impl Envelope {
                 serde_json::from_slice(payload).map(EnvelopeItem::MonitorCheckIn)
             }
             #[cfg(feature = "UNSTABLE_metrics")]
-            EnvelopeItemType::Metrics => Ok(EnvelopeItem::Metrics(payload.into())),
+            EnvelopeItemType::Metrics => Ok(EnvelopeItem::Statsd(payload.into())),
         }
         .map_err(EnvelopeError::InvalidItemPayload)?;
 

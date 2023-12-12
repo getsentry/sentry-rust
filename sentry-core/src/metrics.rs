@@ -758,7 +758,7 @@ impl Worker {
         // case throw away the result rather than blocking the transport for too long.
         if let Ok(output) = self.format_payload(buckets) {
             let mut envelope = Envelope::new();
-            envelope.add_item(EnvelopeItem::Metrics(output));
+            envelope.add_item(EnvelopeItem::Statsd(output));
 
             if let Some(ref transport) = *self.transport.read().unwrap() {
                 transport.send_envelope(envelope);
@@ -970,7 +970,7 @@ mod tests {
         assert_eq!(envelopes.len(), 1, "expected exactly one envelope");
 
         let mut items = envelopes[0].items();
-        let Some(EnvelopeItem::Metrics(payload)) = items.next() else {
+        let Some(EnvelopeItem::Statsd(payload)) = items.next() else {
             panic!("expected metrics item");
         };
 

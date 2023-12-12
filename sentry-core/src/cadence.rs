@@ -147,7 +147,7 @@ mod tests {
         assert_eq!(envelopes.len(), 1);
 
         let mut items = envelopes[0].items();
-        let Some(EnvelopeItem::Metrics(metrics)) = items.next() else {
+        let Some(EnvelopeItem::Statsd(metrics)) = items.next() else {
             panic!("expected metrics");
         };
         let metrics = std::str::from_utf8(metrics).unwrap();
