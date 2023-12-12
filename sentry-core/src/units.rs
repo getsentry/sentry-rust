@@ -6,10 +6,12 @@ use std::fmt;
 /// The unit of measurement of a metric value.
 ///
 /// Units augment metric values by giving them a magnitude and semantics. There are certain types of
-/// units that are subdivided in their precision, such as the [`DurationUnit`] for time
-/// measurements.
+/// units that are subdivided in their precision:
+///  - [`DurationUnit`]: time durations
+///  - [`InformationUnit`]: sizes of information
+///  - [`FractionUnit`]: fractions
 ///
-/// Units and their precisions are uniquely represented by a string identifier.
+/// You are not restricted to these units, but can use any `&'static str` or `String` as a unit.
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Default)]
 pub enum MetricUnit {
     /// A time duration, defaulting to `"millisecond"`.

@@ -1,8 +1,48 @@
 //! Utilities to track metrics in Sentry.
 //!
-//! Metrics allow you to track the custom values related to the behavior and performance of your
-//! application and send them to Sentry. See [`Metric`] for more information on how to build and
-//! capture metrics.
+//! Metrics are numerical values that can track anything about your environment over time, from
+//! latency to error rates to user signups.
+//!
+//! Metrics at Sentry come in different flavors, in order to help you track your data in the most
+//! efficient and cost-effective way. The types of metrics we currently support are:
+//!
+//!  - **Counters** track a value that can only be incremented.
+//!  - **Distributions** track a list of values over time in on which you can perform aggregations
+//!    like max, min, avg.
+//!  - **Gauges** track a value that can go up and down.
+//!  - **Sets** track a set of values on which you can perform aggregations such as count_unique.
+//!
+//! For more information on metrics in Sentry, see [our docs].
+//!
+//! # Usage
+//!
+//! To collect a metric, use the [`Metric`] struct to capture all relevant properties of your
+//! metric. Then, use [`send`](Metric::send) to send the metric to Sentry:
+//!
+//! ```
+//! use std::time::Duration;
+//! use sentry::metrics::Metric;
+//!
+//! Metric::count("requests")
+//!     .with_tag("method", "GET")
+//!     .send();
+//!
+//! Metric::timing("request.duration", Duration::from_millis(17))
+//!     .with_tag("status_code", "200")
+//!     // unit is added automatically by timing
+//!     .send();
+//!
+//! Metric::set("site.visitors", "user1")
+//!     .with_unit("user")
+//!     .send();
+//! ```
+//!
+//! # Usage with Cadence
+//!
+//! [`cadence`] is a popular Statsd client for Rust and can be used to send metrics to Sentry. To
+//! use Sentry directly with `cadence`, see the [`sentry-cadence`](crate::cadence) documentation.
+//!
+//! [our docs]: https://develop.sentry.dev/delightful-developer-metrics/
 
 use std::borrow::Cow;
 use std::collections::hash_map::{DefaultHasher, Entry};
@@ -372,7 +412,8 @@ impl AggregatorInner {
 /// # Units
 ///
 /// To make the most out of metrics in Sentry, consider assigning a unit during construction. This
-/// can be achieved using the [`with_unit`](MetricBuilder::with_unit) builder method.
+/// can be achieved using the [`with_unit`](MetricBuilder::with_unit) builder method. See the
+/// documentation for more examples on units.
 ///
 /// ```
 /// use sentry::metrics::{Metric, InformationUnit};
@@ -400,7 +441,7 @@ impl AggregatorInner {
 ///
 /// Metrics can also be sent to a custom client. This is useful if you want to send metrics to a
 /// different Sentry project or with different configuration. To do so, finish building the metric
-/// and then add it to the client:
+/// and then call [`add_metric`](crate::Client::add_metric) to the client:
 ///
 /// ```
 /// use sentry::Hub;
@@ -722,6 +763,7 @@ impl MetricAggregator {
 
         if guard.weight() > MAX_WEIGHT {
             if let Some(ref handle) = self.handle {
+                guard.force_flush = true;
                 handle.thread().unpark();
             }
         }
@@ -883,7 +925,7 @@ mod tests {
     }
 
     #[test]
-    fn test_counter() {
+    fn test_tags() {
         let (time, ts) = current_time();
 
         let envelopes = with_captured_envelopes(|| {
@@ -891,38 +933,10 @@ mod tests {
                 .with_tag("foo", "bar")
                 .with_time(time)
                 .send();
-
-            Metric::incr("my.metric", 2.0)
-                .with_tag("foo", "bar")
-                .with_time(time)
-                .send();
         });
 
         let metrics = get_single_metrics(&envelopes);
-        assert_eq!(metrics, format!("my.metric:3|c|#foo:bar|T{ts}"));
-    }
-
-    #[test]
-    fn test_timing() {
-        let (time, ts) = current_time();
-
-        let envelopes = with_captured_envelopes(|| {
-            Metric::timing("my.metric", Duration::from_millis(200))
-                .with_tag("foo", "bar")
-                .with_time(time)
-                .send();
-
-            Metric::timing("my.metric", Duration::from_millis(100))
-                .with_tag("foo", "bar")
-                .with_time(time)
-                .send();
-        });
-
-        let metrics = get_single_metrics(&envelopes);
-        assert_eq!(
-            metrics,
-            format!("my.metric@second:0.2:0.1|d|#foo:bar|T{ts}")
-        );
+        assert_eq!(metrics, format!("my.metric:1|c|#foo:bar|T{ts}"));
     }
 
     #[test]
@@ -931,14 +945,13 @@ mod tests {
 
         let envelopes = with_captured_envelopes(|| {
             Metric::count("my.metric")
-                .with_tag("foo", "bar")
                 .with_time(time)
                 .with_unit("custom")
                 .send();
         });
 
         let metrics = get_single_metrics(&envelopes);
-        assert_eq!(metrics, format!("my.metric@custom:1|c|#foo:bar|T{ts}"));
+        assert_eq!(metrics, format!("my.metric@custom:1|c|T{ts}"));
     }
 
     #[test]
@@ -966,5 +979,81 @@ mod tests {
             metrics,
             format!("requests:1|c|#foo:bar,environment:production,release:myapp@1.0.0|T{ts}")
         );
+    }
+
+    #[test]
+    fn test_counter() {
+        let (time, ts) = current_time();
+
+        let envelopes = with_captured_envelopes(|| {
+            Metric::count("my.metric").with_time(time).send();
+            Metric::incr("my.metric", 2.0).with_time(time).send();
+        });
+
+        let metrics = get_single_metrics(&envelopes);
+        assert_eq!(metrics, format!("my.metric:3|c|T{ts}"));
+    }
+
+    #[test]
+    fn test_timing() {
+        let (time, ts) = current_time();
+
+        let envelopes = with_captured_envelopes(|| {
+            Metric::timing("my.metric", Duration::from_millis(200))
+                .with_time(time)
+                .send();
+            Metric::timing("my.metric", Duration::from_millis(100))
+                .with_time(time)
+                .send();
+        });
+
+        let metrics = get_single_metrics(&envelopes);
+        assert_eq!(metrics, format!("my.metric@second:0.2:0.1|d|T{ts}"));
+    }
+
+    #[test]
+    fn test_distribution() {
+        let (time, ts) = current_time();
+
+        let envelopes = with_captured_envelopes(|| {
+            Metric::distribution("my.metric", 2.0)
+                .with_time(time)
+                .send();
+            Metric::distribution("my.metric", 1.0)
+                .with_time(time)
+                .send();
+        });
+
+        let metrics = get_single_metrics(&envelopes);
+        assert_eq!(metrics, format!("my.metric:2:1|d|T{ts}"));
+    }
+
+    #[test]
+    fn test_set() {
+        let (time, ts) = current_time();
+
+        let envelopes = with_captured_envelopes(|| {
+            Metric::set("my.metric", "hello").with_time(time).send();
+            // Duplicate that should not be reflected twice
+            Metric::set("my.metric", "hello").with_time(time).send();
+            Metric::set("my.metric", "world").with_time(time).send();
+        });
+
+        let metrics = get_single_metrics(&envelopes);
+        assert_eq!(metrics, format!("my.metric:3410894750:3817476724|s|T{ts}"));
+    }
+
+    #[test]
+    fn test_gauge() {
+        let (time, ts) = current_time();
+
+        let envelopes = with_captured_envelopes(|| {
+            Metric::gauge("my.metric", 2.0).with_time(time).send();
+            Metric::gauge("my.metric", 1.0).with_time(time).send();
+            Metric::gauge("my.metric", 1.5).with_time(time).send();
+        });
+
+        let metrics = get_single_metrics(&envelopes);
+        assert_eq!(metrics, format!("my.metric:1.5:1:2:4.5:3|g|T{ts}"));
     }
 }

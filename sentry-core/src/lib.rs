@@ -137,7 +137,7 @@ pub use crate::scope::{Scope, ScopeGuard};
 pub use crate::transport::{Transport, TransportFactory};
 
 #[cfg(all(feature = "client", feature = "UNSTABLE_cadence"))]
-mod cadence;
+pub mod cadence;
 // client feature
 #[cfg(feature = "client")]
 mod client;
@@ -149,8 +149,6 @@ pub mod metrics;
 mod session;
 #[cfg(all(feature = "client", feature = "UNSTABLE_metrics"))]
 mod units;
-#[cfg(all(feature = "client", feature = "UNSTABLE_cadence"))]
-pub use crate::cadence::SentryMetricSink;
 #[cfg(feature = "client")]
 pub use crate::client::Client;
 
