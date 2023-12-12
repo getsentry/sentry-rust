@@ -375,10 +375,10 @@ impl AggregatorInner {
 /// can be achieved using the [`with_unit`](MetricBuilder::with_unit) builder method.
 ///
 /// ```
-/// use sentry::metrics::{Metric, MetricUnit, InformationUnit};
+/// use sentry::metrics::{Metric, InformationUnit};
 ///
 /// Metric::distribution("request.size", 47.2)
-///     .with_unit(MetricUnit::Information(InformationUnit::Byte))
+///     .with_unit(InformationUnit::Byte)
 ///     .send();
 /// ```
 ///
@@ -506,7 +506,7 @@ impl Metric {
     /// ```
     pub fn timing(name: impl Into<MetricStr>, timing: Duration) -> MetricBuilder {
         Self::build(name, MetricValue::Distribution(timing.as_secs_f64()))
-            .with_unit(MetricUnit::Duration(DurationUnit::Second))
+            .with_unit(DurationUnit::Second)
     }
 
     /// Builds a metric that tracks the [distribution](MetricValue::Distribution) of values.
@@ -570,8 +570,8 @@ impl MetricBuilder {
     /// to indicate a user-defined unit.
     ///
     /// By default, the unit is set to [`MetricUnit::None`].
-    pub fn with_unit(mut self, unit: MetricUnit) -> Self {
-        self.metric.unit = unit;
+    pub fn with_unit(mut self, unit: impl Into<MetricUnit>) -> Self {
+        self.metric.unit = unit.into();
         self
     }
 
@@ -887,19 +887,58 @@ mod tests {
         let (time, ts) = current_time();
 
         let envelopes = with_captured_envelopes(|| {
-            Metric::count("requests")
+            Metric::count("my.metric")
                 .with_tag("foo", "bar")
                 .with_time(time)
                 .send();
 
-            Metric::incr("requests", 2.0)
+            Metric::incr("my.metric", 2.0)
                 .with_tag("foo", "bar")
                 .with_time(time)
                 .send();
         });
 
         let metrics = get_single_metrics(&envelopes);
-        assert_eq!(metrics, format!("requests:3|c|#foo:bar|T{ts}"));
+        assert_eq!(metrics, format!("my.metric:3|c|#foo:bar|T{ts}"));
+    }
+
+    #[test]
+    fn test_timing() {
+        let (time, ts) = current_time();
+
+        let envelopes = with_captured_envelopes(|| {
+            Metric::timing("my.metric", Duration::from_millis(200))
+                .with_tag("foo", "bar")
+                .with_time(time)
+                .send();
+
+            Metric::timing("my.metric", Duration::from_millis(100))
+                .with_tag("foo", "bar")
+                .with_time(time)
+                .send();
+        });
+
+        let metrics = get_single_metrics(&envelopes);
+        assert_eq!(
+            metrics,
+            format!("my.metric@second:0.2:0.1|d|#foo:bar|T{ts}")
+        );
+    }
+
+    #[test]
+    fn test_unit() {
+        let (time, ts) = current_time();
+
+        let envelopes = with_captured_envelopes(|| {
+            Metric::count("my.metric")
+                .with_tag("foo", "bar")
+                .with_time(time)
+                .with_unit("custom")
+                .send();
+        });
+
+        let metrics = get_single_metrics(&envelopes);
+        assert_eq!(metrics, format!("my.metric@custom:1|c|#foo:bar|T{ts}"));
     }
 
     #[test]

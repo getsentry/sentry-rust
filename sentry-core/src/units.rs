@@ -1,5 +1,6 @@
 //! Type definitions for Sentry metrics.
 
+use std::borrow::Cow;
 use std::fmt;
 
 /// The unit of measurement of a metric value.
@@ -9,7 +10,7 @@ use std::fmt;
 /// measurements.
 ///
 /// Units and their precisions are uniquely represented by a string identifier.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Default)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Default)]
 pub enum MetricUnit {
     /// A time duration, defaulting to `"millisecond"`.
     Duration(DurationUnit),
@@ -18,7 +19,7 @@ pub enum MetricUnit {
     /// Fractions such as percentages, defaulting to `"ratio"`.
     Fraction(FractionUnit),
     /// user-defined units without builtin conversion or default.
-    Custom(CustomUnit),
+    Custom(Cow<'static, str>),
     /// Untyped value without a unit (`""`).
     #[default]
     None,
@@ -76,8 +77,44 @@ impl std::str::FromStr for MetricUnit {
             "percent" => Self::Fraction(FractionUnit::Percent),
 
             "" | "none" => Self::None,
-            _ => Self::Custom(CustomUnit::parse(s)?),
+            _ => Self::Custom(s.to_owned().into()),
         })
+    }
+}
+
+impl From<DurationUnit> for MetricUnit {
+    fn from(unit: DurationUnit) -> Self {
+        Self::Duration(unit)
+    }
+}
+
+impl From<InformationUnit> for MetricUnit {
+    fn from(unit: InformationUnit) -> Self {
+        Self::Information(unit)
+    }
+}
+
+impl From<FractionUnit> for MetricUnit {
+    fn from(unit: FractionUnit) -> Self {
+        Self::Fraction(unit)
+    }
+}
+
+impl From<&'static str> for MetricUnit {
+    fn from(unit: &'static str) -> Self {
+        Self::Custom(unit.into())
+    }
+}
+
+impl From<String> for MetricUnit {
+    fn from(unit: String) -> Self {
+        Self::Custom(unit.into())
+    }
+}
+
+impl From<Cow<'static, str>> for MetricUnit {
+    fn from(unit: Cow<'static, str>) -> Self {
+        Self::Custom(unit)
     }
 }
 
@@ -217,77 +254,5 @@ impl fmt::Display for FractionUnit {
             Self::Ratio => f.write_str("ratio"),
             Self::Percent => f.write_str("percent"),
         }
-    }
-}
-
-const CUSTOM_UNIT_MAX_SIZE: usize = 15;
-
-/// Custom user-defined units without builtin conversion.
-#[derive(Clone, Copy, Eq, PartialEq, Hash)]
-pub struct CustomUnit([u8; CUSTOM_UNIT_MAX_SIZE]);
-
-impl CustomUnit {
-    /// Parses a `CustomUnit` from a string.
-    pub fn parse(s: &str) -> Result<Self, ParseMetricUnitError> {
-        if !s.is_ascii() {
-            return Err(ParseMetricUnitError(()));
-        }
-
-        let mut unit = Self([0; CUSTOM_UNIT_MAX_SIZE]);
-        let slice = unit.0.get_mut(..s.len()).ok_or(ParseMetricUnitError(()))?;
-        slice.copy_from_slice(s.as_bytes());
-        unit.0.make_ascii_lowercase();
-        Ok(unit)
-    }
-
-    /// Returns the string representation of this unit.
-    #[inline]
-    pub fn as_str(&self) -> &str {
-        // Safety: The string is already validated to be valid ASCII when
-        // parsing `CustomUnit`.
-        unsafe { std::str::from_utf8_unchecked(&self.0).trim_end_matches('\0') }
-    }
-}
-
-impl fmt::Debug for CustomUnit {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.as_str().fmt(f)
-    }
-}
-
-impl fmt::Display for CustomUnit {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.as_str().fmt(f)
-    }
-}
-
-impl std::str::FromStr for CustomUnit {
-    type Err = ParseMetricUnitError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::parse(s)
-    }
-}
-
-impl std::ops::Deref for CustomUnit {
-    type Target = str;
-
-    fn deref(&self) -> &Self::Target {
-        self.as_str()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_custom_unit_parse() {
-        assert_eq!("foo", CustomUnit::parse("Foo").unwrap().as_str());
-        assert_eq!(
-            "0123456789abcde",
-            CustomUnit::parse("0123456789abcde").unwrap().as_str()
-        );
-        assert!(CustomUnit::parse("this_is_a_unit_that_is_too_long").is_err());
     }
 }
