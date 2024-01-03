@@ -99,16 +99,11 @@ impl Hub {
     /// for more documentation.
     pub fn capture_event(&self, event: Event<'static>) -> Uuid {
         with_client_impl! {{
-            self.inner.with(|stack| {
-                let top = stack.top();
-                if let Some(ref client) = top.client {
-                    let event_id = client.capture_event(event, Some(&top.scope));
-                    *self.last_event_id.write().unwrap() = Some(event_id);
-                    event_id
-                } else {
-                    Default::default()
-                }
-            })
+            let top = self.inner.with(|stack| stack.top().clone());
+            let Some(ref client) = top.client else { return Default::default() };
+            let event_id = client.capture_event(event, Some(&top.scope));
+            *self.last_event_id.write().unwrap() = Some(event_id);
+            event_id
         }}
     }
 
