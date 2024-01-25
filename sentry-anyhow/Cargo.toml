@@ -14,12 +14,12 @@ rust-version = "1.68"
 
 [features]
 default = ["backtrace"]
-backtrace = ["anyhow/backtrace"]
+backtrace = []
 
 [dependencies]
 sentry-backtrace = { version = "0.32.1", path = "../sentry-backtrace" }
 sentry-core = { version = "0.32.1", path = "../sentry-core" }
-anyhow = "1.0.39"
+anyhow = "1.0.77"
 
 [dev-dependencies]
 sentry = { path = "../sentry", default-features = false, features = ["test"] }
