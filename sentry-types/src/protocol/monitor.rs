@@ -153,6 +153,14 @@ pub struct MonitorConfig {
     /// tz database style timezone string
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timezone: Option<String>,
+
+    /// The number of consecutive failed/error check-ins that triggers issue creation.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub failure_issue_threshold: Option<u64>,
+
+    /// The number of consecutive successful check-ins that triggers issue resolution.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub recovery_threshold: Option<u64>,
 }
 
 fn serialize_id<S: Serializer>(uuid: &Uuid, serializer: S) -> Result<S::Ok, S::Error> {
