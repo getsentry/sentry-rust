@@ -703,6 +703,8 @@ mod test {
                 checkin_margin: Some(5),
                 max_runtime: Some(30),
                 timezone: Some("UTC".into()),
+                failure_issue_threshold: None,
+                recovery_threshold: None,
             }),
         };
         let envelope: Envelope = check_in.into();
@@ -711,6 +713,37 @@ mod test {
             r#"{}
 {"type":"check_in","length":259}
 {"check_in_id":"22d00b3fd1b14b5d8d2049d138cd8a9c","monitor_slug":"my-monitor","status":"ok","environment":"production","duration":123.4,"monitor_config":{"schedule":{"type":"crontab","value":"12 0 * * *"},"checkin_margin":5,"max_runtime":30,"timezone":"UTC"}}
+"#
+        )
+    }
+
+    #[test]
+    fn test_monitor_checkin_with_thresholds() {
+        let check_in_id = Uuid::parse_str("22d00b3f-d1b1-4b5d-8d20-49d138cd8a9c").unwrap();
+
+        let check_in = MonitorCheckIn {
+            check_in_id,
+            monitor_slug: "my-monitor".into(),
+            status: MonitorCheckInStatus::Ok,
+            duration: Some(123.4),
+            environment: Some("production".into()),
+            monitor_config: Some(MonitorConfig {
+                schedule: MonitorSchedule::Crontab {
+                    value: "12 0 * * *".into(),
+                },
+                checkin_margin: Some(5),
+                max_runtime: Some(30),
+                timezone: Some("UTC".into()),
+                failure_issue_threshold: Some(4),
+                recovery_threshold: Some(7),
+            }),
+        };
+        let envelope: Envelope = check_in.into();
+        assert_eq!(
+            to_str(envelope),
+            r#"{}
+{"type":"check_in","length":310}
+{"check_in_id":"22d00b3fd1b14b5d8d2049d138cd8a9c","monitor_slug":"my-monitor","status":"ok","environment":"production","duration":123.4,"monitor_config":{"schedule":{"type":"crontab","value":"12 0 * * *"},"checkin_margin":5,"max_runtime":30,"timezone":"UTC","failure_issue_threshold":4,"recovery_threshold":7}}
 "#
         )
     }
