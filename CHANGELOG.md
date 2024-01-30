@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.32.2
+
+### Various fixes & improvements
+
+- feat(crons): Add new fields to `MonitorConfig` type (#638) by @szokeasaurusrex
+- build(deps): bump h2 from 0.3.22 to 0.3.24 (#635) by @dependabot
+- fix(hub): avoid deadlocks when emitting events (#633) by @Tuetuopay
+
 ## 0.32.1
 
 **Features**:
