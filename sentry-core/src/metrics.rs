@@ -79,7 +79,7 @@ pub type SetValue = u32;
 pub type GaugeValue = f64;
 
 /// The value of a [`Metric`], indicating its type.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum MetricValue {
     /// Counts instances of an event.
     ///
@@ -1188,8 +1188,14 @@ mod tests {
 
     #[test]
     fn test_regression_parse_statsd() {
-        let payload = "docker.net.bytes_rcvd:27763.20237096717:27763.20237096717:27763.20237096717:27763.20237096717:1|g|#container_id:97df61f5c55b58ec9c04da3e03edc8a875ec90eb405eb5645ad9a86d0a7cd3ee,container_name:app_sidekiq_1,docker_image:ghcr.io/mastodon/mastodon:nightly.2024-02-02-security,docker_network:app_internal_network,git.commit.sha:1726085db5cd73dd30953da858f9887bcc90b958,git.repository_url:https://github.com/mastodon/mastodon,host:aaaa,image_name:ghcr.io/mastodon/mastodon,image_tag:nightly.2024-02-02-security,runtime:docker,short_image:mastodon,source_type_name:System,environment:production|T1707081890";
+        let payload = "docker.net.bytes_rcvd:27763.20237096717:27763.20237096717:27763.20237096717:27763.20237096717:1|g|#container_id:97df61f5c55b58ec9c04da3e03edc8a875ec90eb405eb5645ad9a86d0a7cd3ee,container_name:app_sidekiq_1";
         let metric = Metric::parse_statsd(payload).unwrap();
         assert_eq!(metric.name, "docker.net.bytes_rcvd");
+        assert_eq!(metric.value, MetricValue::Gauge(27763.20237096717));
+        assert_eq!(
+            metric.tags["container_id"],
+            "97df61f5c55b58ec9c04da3e03edc8a875ec90eb405eb5645ad9a86d0a7cd3ee"
+        );
+        assert_eq!(metric.tags["container_name"], "app_sidekiq_1");
     }
 }
