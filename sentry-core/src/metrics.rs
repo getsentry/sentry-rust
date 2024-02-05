@@ -598,7 +598,12 @@ fn parse_metric_opt(string: &str) -> Option<Metric> {
         MetricType::Counter => MetricValue::Counter(value_str.parse().ok()?),
         MetricType::Distribution => MetricValue::Distribution(value_str.parse().ok()?),
         MetricType::Set => MetricValue::Set(value_str.parse().ok()?),
-        MetricType::Gauge => MetricValue::Gauge(value_str.parse().ok()?),
+        MetricType::Gauge => {
+            // Gauge values are serialized as `last:min:max:sum:count`. We want to be able
+            // to parse those strings back, so we just take the first colon-separated segment.
+            let value_str = value_str.split(':').next().unwrap();
+            MetricValue::Gauge(value_str.parse().ok()?)
+        }
     };
 
     let mut builder = Metric::build(name.to_owned(), value).with_unit(unit);
@@ -1179,5 +1184,12 @@ mod tests {
 
         assert!(metrics.contains(&format!("my.metric:1|c|T{ts}")));
         assert!(metrics.contains(&format!("my.dist:2|d|T{ts}")));
+    }
+
+    #[test]
+    fn test_regression_parse_statsd() {
+        let payload = "docker.net.bytes_rcvd:27763.20237096717:27763.20237096717:27763.20237096717:27763.20237096717:1|g|#container_id:97df61f5c55b58ec9c04da3e03edc8a875ec90eb405eb5645ad9a86d0a7cd3ee,container_name:app_sidekiq_1,docker_image:ghcr.io/mastodon/mastodon:nightly.2024-02-02-security,docker_network:app_internal_network,git.commit.sha:1726085db5cd73dd30953da858f9887bcc90b958,git.repository_url:https://github.com/mastodon/mastodon,host:aaaa,image_name:ghcr.io/mastodon/mastodon,image_tag:nightly.2024-02-02-security,runtime:docker,short_image:mastodon,source_type_name:System,environment:production|T1707081890";
+        let metric = Metric::parse_statsd(payload).unwrap();
+        assert_eq!(metric.name, "docker.net.bytes_rcvd");
     }
 }
