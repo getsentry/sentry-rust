@@ -79,7 +79,7 @@ pub type SetValue = u32;
 pub type GaugeValue = f64;
 
 /// The value of a [`Metric`], indicating its type.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum MetricValue {
     /// Counts instances of an event.
     ///
@@ -598,7 +598,12 @@ fn parse_metric_opt(string: &str) -> Option<Metric> {
         MetricType::Counter => MetricValue::Counter(value_str.parse().ok()?),
         MetricType::Distribution => MetricValue::Distribution(value_str.parse().ok()?),
         MetricType::Set => MetricValue::Set(value_str.parse().ok()?),
-        MetricType::Gauge => MetricValue::Gauge(value_str.parse().ok()?),
+        MetricType::Gauge => {
+            // Gauge values are serialized as `last:min:max:sum:count`. We want to be able
+            // to parse those strings back, so we just take the first colon-separated segment.
+            let value_str = value_str.split(':').next().unwrap();
+            MetricValue::Gauge(value_str.parse().ok()?)
+        }
     };
 
     let mut builder = Metric::build(name.to_owned(), value).with_unit(unit);
@@ -1179,5 +1184,18 @@ mod tests {
 
         assert!(metrics.contains(&format!("my.metric:1|c|T{ts}")));
         assert!(metrics.contains(&format!("my.dist:2|d|T{ts}")));
+    }
+
+    #[test]
+    fn test_regression_parse_statsd() {
+        let payload = "docker.net.bytes_rcvd:27763.20237096717:27763.20237096717:27763.20237096717:27763.20237096717:1|g|#container_id:97df61f5c55b58ec9c04da3e03edc8a875ec90eb405eb5645ad9a86d0a7cd3ee,container_name:app_sidekiq_1";
+        let metric = Metric::parse_statsd(payload).unwrap();
+        assert_eq!(metric.name, "docker.net.bytes_rcvd");
+        assert_eq!(metric.value, MetricValue::Gauge(27763.20237096717));
+        assert_eq!(
+            metric.tags["container_id"],
+            "97df61f5c55b58ec9c04da3e03edc8a875ec90eb405eb5645ad9a86d0a7cd3ee"
+        );
+        assert_eq!(metric.tags["container_name"], "app_sidekiq_1");
     }
 }
