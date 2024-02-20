@@ -1,5 +1,10 @@
+use std::cell::RefCell;
+use std::collections::BTreeMap;
+
+use sentry_core::protocol::Value;
 use sentry_core::{Breadcrumb, TransactionOrSpan};
-use tracing_core::{span, Event, Level, Metadata, Subscriber};
+use tracing_core::field::Visit;
+use tracing_core::{span, Event, Field, Level, Metadata, Subscriber};
 use tracing_subscriber::layer::{Context, Layer};
 use tracing_subscriber::registry::LookupSpan;
 
@@ -213,7 +218,7 @@ where
         // Add the data from the original span to the sentry span.
         // This comes from typically the `fields` in `tracing::instrument`.
         for (key, value) in data {
-            sentry_span.set_data(&key, value);
+            sentry_span.set_data(key, value);
         }
 
         sentry_core::configure_scope(|scope| scope.set_span(Some(sentry_span.clone())));
@@ -274,4 +279,67 @@ where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
     Default::default()
+}
+
+/// Extracts the message and attributes from a span
+fn extract_span_data(attrs: &span::Attributes) -> (Option<String>, BTreeMap<&'static str, Value>) {
+    let mut json_values = VISITOR_BUFFER.with_borrow_mut(|debug_buffer| {
+        let mut visitor = SpanFieldVisitor {
+            debug_buffer,
+            json_values: Default::default(),
+        };
+        attrs.record(&mut visitor);
+        visitor.json_values
+    });
+
+    // Find message of the span, if any
+    let message = json_values.remove("message").and_then(|v| match v {
+        Value::String(s) => Some(s),
+        _ => None,
+    });
+
+    (message, json_values)
+}
+
+thread_local! {
+    static VISITOR_BUFFER: RefCell<String> = const { RefCell::new(String::new()) };
+}
+
+/// Records all span fields into a `BTreeMap`, reusing a mutable `String` as buffer.
+struct SpanFieldVisitor<'s> {
+    debug_buffer: &'s mut String,
+    json_values: BTreeMap<&'static str, Value>,
+}
+
+impl SpanFieldVisitor<'_> {
+    fn record<T: Into<Value>>(&mut self, field: &Field, value: T) {
+        self.json_values.insert(field.name(), value.into());
+    }
+}
+
+impl Visit for SpanFieldVisitor<'_> {
+    fn record_i64(&mut self, field: &Field, value: i64) {
+        self.record(field, value);
+    }
+
+    fn record_u64(&mut self, field: &Field, value: u64) {
+        self.record(field, value);
+    }
+
+    fn record_bool(&mut self, field: &Field, value: bool) {
+        self.record(field, value);
+    }
+
+    fn record_str(&mut self, field: &Field, value: &str) {
+        self.record(field, value);
+    }
+
+    fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
+        use std::fmt::Write;
+        self.debug_buffer.reserve(128);
+        write!(self.debug_buffer, "{value:?}").unwrap();
+        self.json_values
+            .insert(field.name(), self.debug_buffer.as_str().into());
+        self.debug_buffer.clear();
+    }
 }
