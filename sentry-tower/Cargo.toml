@@ -20,7 +20,7 @@ http = ["dep:http", "pin-project", "url"]
 axum-matched-path = ["http", "axum/matched-path"]
 
 [dependencies]
-axum = { version = "0.7", optional = true }
+axum = { version = "0.7", optional = true, default-features = false }
 tower-layer = "0.3"
 tower-service = "0.3"
 http = { version = "1.0.0", optional = true }
