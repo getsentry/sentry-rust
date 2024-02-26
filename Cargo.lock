@@ -39,7 +39,7 @@ dependencies = [
  "encoding_rs",
  "flate2",
  "futures-core",
- "h2 0.3.24",
+ "h2",
  "http 0.2.11",
  "httparse",
  "httpdate",
@@ -555,7 +555,7 @@ dependencies = [
  "futures-util",
  "http 0.2.11",
  "http-body 0.4.5",
- "hyper 0.14.27",
+ "hyper",
  "itoa",
  "matchit",
  "memchr",
@@ -583,8 +583,6 @@ dependencies = [
  "http 1.0.0",
  "http-body 1.0.0",
  "http-body-util",
- "hyper 1.0.1",
- "hyper-util",
  "itoa",
  "matchit",
  "memchr",
@@ -593,11 +591,7 @@ dependencies = [
  "pin-project-lite",
  "rustversion",
  "serde",
- "serde_json",
- "serde_path_to_error",
- "serde_urlencoded",
  "sync_wrapper",
- "tokio",
  "tower",
  "tower-layer",
  "tower-service",
@@ -1560,25 +1554,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "h2"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1d308f63daf4181410c242d34c11f928dcb3aa105852019e043c9d1f4e4368a"
-dependencies = [
- "bytes 1.5.0",
- "fnv",
- "futures-core",
- "futures-sink",
- "futures-util",
- "http 1.0.0",
- "indexmap 2.1.0",
- "slab",
- "tokio",
- "tokio-util",
- "tracing",
-]
-
-[[package]]
 name = "half"
 version = "1.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1764,7 +1739,7 @@ dependencies = [
  "futures-channel",
  "futures-core",
  "futures-util",
- "h2 0.3.24",
+ "h2",
  "http 0.2.11",
  "http-body 0.4.5",
  "httparse",
@@ -1779,25 +1754,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "hyper"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "403f9214f3e703236b221f1a9cd88ec8b4adfa5296de01ab96216361f4692f56"
-dependencies = [
- "bytes 1.5.0",
- "futures-channel",
- "futures-util",
- "h2 0.4.0",
- "http 1.0.0",
- "http-body 1.0.0",
- "httparse",
- "httpdate",
- "itoa",
- "pin-project-lite",
- "tokio",
-]
-
-[[package]]
 name = "hyper-rustls"
 version = "0.24.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1805,7 +1761,7 @@ checksum = "ec3efd23720e2049821a693cbc7e65ea87c72f1c58ff2f9522ff332b1491e590"
 dependencies = [
  "futures-util",
  "http 0.2.11",
- "hyper 0.14.27",
+ "hyper",
  "rustls",
  "tokio",
  "tokio-rustls",
@@ -1817,7 +1773,7 @@ version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbb958482e8c7be4bc3cf272a766a2b0bf1a6755e7a6ae777f017a31d11b13b1"
 dependencies = [
- "hyper 0.14.27",
+ "hyper",
  "pin-project-lite",
  "tokio",
  "tokio-io-timeout",
@@ -1830,30 +1786,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6183ddfa99b85da61a140bea0efc93fdf56ceaa041b37d553518030827f9905"
 dependencies = [
  "bytes 1.5.0",
- "hyper 0.14.27",
+ "hyper",
  "native-tls",
  "tokio",
  "tokio-native-tls",
-]
-
-[[package]]
-name = "hyper-util"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ca339002caeb0d159cc6e023dff48e199f081e42fa039895c7c6f38b37f2e9d"
-dependencies = [
- "bytes 1.5.0",
- "futures-channel",
- "futures-util",
- "http 1.0.0",
- "http-body 1.0.0",
- "hyper 1.0.1",
- "pin-project-lite",
- "socket2 0.5.5",
- "tokio",
- "tower",
- "tower-service",
- "tracing",
 ]
 
 [[package]]
@@ -2690,10 +2626,10 @@ dependencies = [
  "encoding_rs",
  "futures-core",
  "futures-util",
- "h2 0.3.24",
+ "h2",
  "http 0.2.11",
  "http-body 0.4.5",
- "hyper 0.14.27",
+ "hyper",
  "hyper-rustls",
  "hyper-tls",
  "ipnet",
@@ -2939,7 +2875,7 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "sentry"
-version = "0.32.1"
+version = "0.32.2"
 dependencies = [
  "actix-web",
  "anyhow",
@@ -2975,7 +2911,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-actix"
-version = "0.32.1"
+version = "0.32.2"
 dependencies = [
  "actix-web",
  "futures",
@@ -2987,7 +2923,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-anyhow"
-version = "0.32.1"
+version = "0.32.2"
 dependencies = [
  "anyhow",
  "sentry",
@@ -2997,7 +2933,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-backtrace"
-version = "0.32.1"
+version = "0.32.2"
 dependencies = [
  "backtrace",
  "once_cell",
@@ -3007,7 +2943,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-contexts"
-version = "0.32.1"
+version = "0.32.2"
 dependencies = [
  "hostname",
  "libc",
@@ -3020,7 +2956,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-core"
-version = "0.32.1"
+version = "0.32.2"
 dependencies = [
  "anyhow",
  "cadence",
@@ -3041,7 +2977,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-debug-images"
-version = "0.32.1"
+version = "0.32.2"
 dependencies = [
  "findshlibs",
  "once_cell",
@@ -3050,7 +2986,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-log"
-version = "0.32.1"
+version = "0.32.2"
 dependencies = [
  "log",
  "pretty_env_logger",
@@ -3060,7 +2996,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-panic"
-version = "0.32.1"
+version = "0.32.2"
 dependencies = [
  "sentry",
  "sentry-backtrace",
@@ -3069,7 +3005,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-slog"
-version = "0.32.1"
+version = "0.32.2"
 dependencies = [
  "erased-serde",
  "sentry",
@@ -3081,7 +3017,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-tower"
-version = "0.32.1"
+version = "0.32.2"
 dependencies = [
  "anyhow",
  "axum 0.7.1",
@@ -3101,7 +3037,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-tracing"
-version = "0.32.1"
+version = "0.32.2"
 dependencies = [
  "log",
  "sentry",
@@ -3115,7 +3051,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-types"
-version = "0.32.1"
+version = "0.32.2"
 dependencies = [
  "debugid",
  "hex",
@@ -3157,16 +3093,6 @@ checksum = "3d1c7e3eac408d115102c4c24ad393e0821bb3a5df4d506a80f85f7a742a526b"
 dependencies = [
  "itoa",
  "ryu",
- "serde",
-]
-
-[[package]]
-name = "serde_path_to_error"
-version = "0.1.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4beec8bce849d58d06238cb50db2e1c417cfeafa4c63f692b15c82b7c80f8335"
-dependencies = [
- "itoa",
  "serde",
 ]
 
@@ -3710,10 +3636,10 @@ dependencies = [
  "axum 0.6.20",
  "base64 0.21.5",
  "bytes 1.5.0",
- "h2 0.3.24",
+ "h2",
  "http 0.2.11",
  "http-body 0.4.5",
- "hyper 0.14.27",
+ "hyper",
  "hyper-timeout",
  "percent-encoding",
  "pin-project",
