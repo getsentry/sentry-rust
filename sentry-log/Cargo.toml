@@ -10,7 +10,7 @@ description = """
 Sentry integration for log and env_logger crates.
 """
 edition = "2021"
-rust-version = "1.68"
+rust-version = "1.73"
 
 [dependencies]
 sentry-core = { version = "0.32.2", path = "../sentry-core" }

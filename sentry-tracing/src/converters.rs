@@ -4,7 +4,7 @@ use std::error::Error;
 use sentry_core::protocol::{Event, Exception, Mechanism, Thread, Value};
 use sentry_core::{event_from_error, Breadcrumb, Level, TransactionOrSpan};
 use tracing_core::field::{Field, Visit};
-use tracing_core::{span, Subscriber};
+use tracing_core::Subscriber;
 use tracing_subscriber::layer::Context;
 use tracing_subscriber::registry::LookupSpan;
 
@@ -42,7 +42,10 @@ fn extract_event_data(event: &tracing_core::Event) -> (Option<String>, FieldVisi
         // When #[instrument(err)] is used the event does not have a message attached to it.
         // the error message is attached to the field "error".
         .or_else(|| visitor.json_values.remove("error"))
-        .and_then(|v| v.as_str().map(|s| s.to_owned()));
+        .and_then(|v| match v {
+            Value::String(s) => Some(s),
+            _ => None,
+        });
 
     (message, visitor)
 }
@@ -91,22 +94,6 @@ where
     }
 
     (message, visitor)
-}
-
-/// Extracts the message and metadata from a span
-pub(crate) fn extract_span_data(
-    attrs: &span::Attributes,
-) -> (Option<String>, BTreeMap<String, Value>) {
-    let mut data = FieldVisitor::default();
-    attrs.record(&mut data);
-
-    // Find message of the span, if any
-    let message = data
-        .json_values
-        .remove("message")
-        .and_then(|v| v.as_str().map(|s| s.to_owned()));
-
-    (message, data.json_values)
 }
 
 /// Records all fields of [`tracing_core::Event`] for easy access

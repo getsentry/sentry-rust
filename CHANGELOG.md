@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+**Compatiblity**:
+
+- Raised the MSRV to **1.73**.
+
+**Improvements**:
+
+- Slightly improved overhead of the `tracing` layer. ([#642](https://github.com/getsentry/sentry-rust/pull/642))
+
 ## 0.32.2
 
 ### Various fixes & improvements

@@ -10,7 +10,7 @@ description = """
 Core sentry library used for instrumentation and integration development.
 """
 edition = "2021"
-rust-version = "1.68"
+rust-version = "1.73"
 
 [package.metadata.docs.rs]
 all-features = true
@@ -43,7 +43,10 @@ uuid = { version = "1.0.0", features = ["v4", "serde"], optional = true }
 # Because we re-export all the public API in `sentry`, we actually run all the
 # doctests using the `sentry` crate. This also takes care of the doctest
 # limitation documented in https://github.com/rust-lang/rust/issues/45599.
-sentry = { path = "../sentry", default-features = false, features = ["test", "transport"] }
+sentry = { path = "../sentry", default-features = false, features = [
+    "test",
+    "transport",
+] }
 anyhow = "1.0.30"
 criterion = "0.5"
 futures = "0.3.24"
