@@ -10,7 +10,7 @@ description = """
 Sentry integration for anyhow.
 """
 edition = "2021"
-rust-version = "1.68"
+rust-version = "1.73"
 
 [features]
 default = ["backtrace"]

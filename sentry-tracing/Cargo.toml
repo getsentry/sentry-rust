@@ -10,7 +10,7 @@ description = """
 Sentry integration for tracing and tracing-subscriber crates.
 """
 edition = "2021"
-rust-version = "1.68"
+rust-version = "1.73"
 
 [package.metadata.docs.rs]
 all-features = true
@@ -20,9 +20,13 @@ default = []
 backtrace = ["dep:sentry-backtrace"]
 
 [dependencies]
-sentry-core = { version = "0.32.2", path = "../sentry-core", features = ["client"] }
+sentry-core = { version = "0.32.2", path = "../sentry-core", features = [
+    "client",
+] }
 tracing-core = "0.1"
-tracing-subscriber = { version = "0.3.1", default-features = false, features = ["std"] }
+tracing-subscriber = { version = "0.3.1", default-features = false, features = [
+    "std",
+] }
 sentry-backtrace = { version = "0.32.2", path = "../sentry-backtrace", optional = true }
 
 [dev-dependencies]

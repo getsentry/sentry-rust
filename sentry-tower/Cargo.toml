@@ -10,7 +10,7 @@ description = """
 Sentry integration for tower-based crates.
 """
 edition = "2021"
-rust-version = "1.68"
+rust-version = "1.73"
 
 [package.metadata.docs.rs]
 all-features = true
@@ -25,7 +25,9 @@ tower-layer = "0.3"
 tower-service = "0.3"
 http = { version = "1.0.0", optional = true }
 pin-project = { version = "1.0.10", optional = true }
-sentry-core = { version = "0.32.2", path = "../sentry-core", default-features = false, features = ["client"] }
+sentry-core = { version = "0.32.2", path = "../sentry-core", default-features = false, features = [
+    "client",
+] }
 url = { version = "2.2.2", optional = true }
 
 [dev-dependencies]
