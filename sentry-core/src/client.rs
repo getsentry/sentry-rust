@@ -377,7 +377,7 @@ impl Client {
         if rate >= 1.0 {
             true
         } else {
-            random::<f32>() <= rate
+            random::<f32>() < rate
         }
     }
 }
