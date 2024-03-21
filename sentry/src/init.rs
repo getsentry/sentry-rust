@@ -28,14 +28,16 @@ impl ClientInitGuard {
 
 impl Drop for ClientInitGuard {
     fn drop(&mut self) {
-        if self.is_enabled() {
-            sentry_debug!("dropping client guard -> disposing client");
-        } else {
-            sentry_debug!("dropping client guard (no client to dispose)");
+        if Arc::strong_count(&self.0) == 1 {
+            if self.is_enabled() {
+                sentry_debug!("dropping client guard -> disposing client");
+            } else {
+                sentry_debug!("dropping client guard (no client to dispose)");
+            }
+            // end any session that might be open before closing the client
+            crate::end_session();
+            self.0.close(None);
         }
-        // end any session that might be open before closing the client
-        crate::end_session();
-        self.0.close(None);
     }
 }
 
