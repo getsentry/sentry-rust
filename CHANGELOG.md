@@ -10,6 +10,10 @@
 
 - Slightly improved overhead of the `tracing` layer. ([#642](https://github.com/getsentry/sentry-rust/pull/642))
 
+**Updates**:
+
+- Updated `reqwest` to version `0.12`.
+
 ## 0.32.2
 
 ### Various fixes & improvements
