@@ -13,6 +13,7 @@
 **Updates**:
 
 - Updated `reqwest` to version `0.12`.
+- Updated `tonic` to version `0.11`.
 
 ## 0.32.2
 
