@@ -16,7 +16,7 @@ rust-version = "1.73"
 [dependencies]
 sentry-core = { version = "0.32.2", path = "../sentry-core" }
 libc = "0.2.66"
-hostname = "0.3.0"
+hostname = "0.4"
 
 [target."cfg(not(windows))".dependencies]
 uname = "0.1.1"
