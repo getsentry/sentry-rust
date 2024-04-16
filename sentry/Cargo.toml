@@ -50,6 +50,7 @@ ureq = ["dep:ureq", "httpdate"]
 # transport settings
 native-tls = ["dep:native-tls", "reqwest?/default-tls", "ureq?/native-tls"]
 rustls = ["dep:rustls", "reqwest?/rustls-tls", "ureq?/tls", "webpki-roots"]
+embedded-svc-http = ["dep:embedded-svc", "dep:esp-idf-svc"]
 
 [dependencies]
 sentry-core = { version = "0.32.3", path = "../sentry-core", features = [
@@ -82,6 +83,9 @@ rustls = { version = "0.21.2", optional = true, features = [
     "dangerous_configuration",
 ] }
 webpki-roots = { version = "0.25.1", optional = true }
+embedded-svc = { version = "0.27.1", optional = true }
+[target.'cfg(target_os = "espidf")'.dependencies]
+esp-idf-svc = { version = "0.48.1", optional = true }
 
 [dev-dependencies]
 sentry-anyhow = { path = "../sentry-anyhow" }

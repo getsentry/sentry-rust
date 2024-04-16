@@ -18,6 +18,11 @@ mod reqwest;
 #[cfg(feature = "reqwest")]
 pub use self::reqwest::ReqwestHttpTransport;
 
+#[cfg(all(target_os = "espidf", feature = "embedded-svc-http"))]
+mod embedded_svc_http;
+#[cfg(all(target_os = "espidf", feature = "embedded-svc-http"))]
+pub use self::embedded_svc_http::EmbeddedSVCHttpTransport;
+
 #[cfg(feature = "curl")]
 mod curl;
 #[cfg(feature = "curl")]
@@ -38,6 +43,7 @@ type DefaultTransport = ReqwestHttpTransport;
 
 #[cfg(all(
     feature = "curl",
+    not(all(target_os = "espidf", feature = "embedded-svc-http")),
     not(feature = "reqwest"),
     not(feature = "surf"),
     not(feature = "ureq")
@@ -46,6 +52,7 @@ type DefaultTransport = CurlHttpTransport;
 
 #[cfg(all(
     feature = "surf",
+    not(all(target_os = "espidf", feature = "embedded-svc-http")),
     not(feature = "reqwest"),
     not(feature = "curl"),
     not(feature = "ureq")
@@ -54,14 +61,26 @@ type DefaultTransport = SurfHttpTransport;
 
 #[cfg(all(
     feature = "ureq",
+    not(all(target_os = "espidf", feature = "embedded-svc-http")),
     not(feature = "reqwest"),
     not(feature = "curl"),
     not(feature = "surf")
 ))]
 type DefaultTransport = UreqHttpTransport;
 
+#[cfg(all(
+    target_os = "espidf",
+    feature = "embedded-svc-http",
+    not(feature = "reqwest"),
+    not(feature = "curl"),
+    not(feature = "surf"),
+    not(feature = "ureq")
+))]
+type DefaultTransport = EmbeddedSVCHttpTransport;
+
 /// The default http transport.
 #[cfg(any(
+    all(target_os = "espidf", feature = "embedded-svc-http"),
     feature = "reqwest",
     feature = "curl",
     feature = "surf",
@@ -80,6 +99,7 @@ pub struct DefaultTransportFactory;
 impl TransportFactory for DefaultTransportFactory {
     fn create_transport(&self, options: &ClientOptions) -> Arc<dyn Transport> {
         #[cfg(any(
+            all(target_os = "espidf", feature = "embedded-svc-http"),
             feature = "reqwest",
             feature = "curl",
             feature = "surf",
@@ -89,6 +109,7 @@ impl TransportFactory for DefaultTransportFactory {
             Arc::new(HttpTransport::new(options))
         }
         #[cfg(not(any(
+            all(target_os = "espidf", feature = "embedded-svc-http"),
             feature = "reqwest",
             feature = "curl",
             feature = "surf",
