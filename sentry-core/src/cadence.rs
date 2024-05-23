@@ -154,9 +154,10 @@ mod tests {
 
         println!("{metrics}");
 
-        assert!(metrics.contains("sentry.test.count.with.tags:1|c|#foo:bar|T"));
-        assert!(metrics.contains("sentry.test.some.count:11|c|T"));
-        assert!(metrics.contains("sentry.test.some.distr:1:2:3|d|T"));
+        assert!(metrics
+            .contains("sentry.test.count.with.tags@none:1|c|#environment:production,foo:bar|T"));
+        assert!(metrics.contains("sentry.test.some.count@none:11|c|#environment:production|T"));
+        assert!(metrics.contains("sentry.test.some.distr@none:1:2:3|d|#environment:production|T"));
         assert_eq!(items.next(), None);
     }
 }

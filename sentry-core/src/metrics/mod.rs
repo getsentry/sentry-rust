@@ -44,14 +44,19 @@
 //!
 //! [our docs]: https://develop.sentry.dev/delightful-developer-metrics/
 
+mod normalization;
+
 use std::borrow::Cow;
-use std::collections::hash_map::{DefaultHasher, Entry};
+use std::collections::hash_map::Entry;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
-use std::fmt::{self, Write};
+use std::fmt::{self, Display};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use normalization::normalized_name::NormalizedName;
+use normalization::normalized_tags::NormalizedTags;
+use normalization::normalized_unit::NormalizedUnit;
 use sentry_types::protocol::latest::{Envelope, EnvelopeItem};
 
 use crate::client::TransportArc;
@@ -168,15 +173,23 @@ impl MetricValue {
     }
 }
 
+impl Display for MetricValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Counter(v) => write!(f, "{}", v),
+            Self::Distribution(v) => write!(f, "{}", v),
+            Self::Gauge(v) => write!(f, "{}", v),
+            Self::Set(v) => write!(f, "{}", v),
+        }
+    }
+}
+
 /// Hashes the given set value.
 ///
 /// Sets only guarantee 32-bit accuracy, but arbitrary strings are allowed on the protocol. Upon
 /// parsing, they are hashed and only used as hashes subsequently.
 fn hash_set_value(string: &str) -> u32 {
-    use std::hash::Hasher;
-    let mut hasher = DefaultHasher::default();
-    hasher.write(string.as_bytes());
-    hasher.finish() as u32
+    crc32fast::hash(string.as_bytes())
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -510,6 +523,24 @@ impl Metric {
             client.add_metric(self);
         }
     }
+
+    /// Convert the metric into an [`Envelope`] containing a single [`EnvelopeItem::Statsd`].
+    pub fn to_envelope(self) -> Envelope {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        let data = format!(
+            "{}@{}:{}|{}|#{}|T{}",
+            NormalizedName::from(self.name.as_ref()),
+            NormalizedUnit::from(self.unit),
+            self.value,
+            self.value.ty(),
+            NormalizedTags::from(self.tags),
+            timestamp
+        );
+        Envelope::from_item(EnvelopeItem::Statsd(data.into_bytes()))
+    }
 }
 
 /// A builder for metrics.
@@ -547,6 +578,26 @@ impl MetricBuilder {
     /// `release` or the `environment` from the Scope.
     pub fn with_tag(mut self, name: impl Into<MetricStr>, value: impl Into<MetricStr>) -> Self {
         self.metric.tags.insert(name.into(), value.into());
+        self
+    }
+
+    /// Adds multiple tags to the metric.
+    ///
+    /// Tags allow you to add dimensions to metrics. They are key-value pairs that can be filtered
+    /// or grouped by in Sentry.
+    ///
+    /// When sent to Sentry via [`MetricBuilder::send`] or when added to a
+    /// [`Client`](crate::Client), the client may add default tags to the metrics, such as the
+    /// `release` or the `environment` from the Scope.
+    pub fn with_tags<T, K, V>(mut self, tags: T) -> Self
+    where
+        T: IntoIterator<Item = (K, V)>,
+        K: Into<MetricStr>,
+        V: Into<MetricStr>,
+    {
+        tags.into_iter().for_each(|(k, v)| {
+            self.metric.tags.insert(k.into(), v.into());
+        });
         self
     }
 
@@ -723,9 +774,13 @@ fn get_default_tags(options: &ClientOptions) -> TagMap {
     if let Some(ref release) = options.release {
         tags.insert("release".into(), release.clone());
     }
-    if let Some(ref environment) = options.environment {
-        tags.insert("environment".into(), environment.clone());
-    }
+    tags.insert(
+        "environment".into(),
+        options
+            .environment
+            .clone()
+            .unwrap_or(Cow::Borrowed("production")),
+    );
     tags
 }
 
@@ -778,11 +833,8 @@ impl Worker {
 
         for (timestamp, buckets) in buckets {
             for (key, value) in buckets {
-                write!(&mut out, "{}", SafeKey(key.name.as_ref()))?;
-                if key.unit != MetricUnit::None {
-                    write!(&mut out, "@{}", key.unit)?;
-                }
-
+                write!(&mut out, "{}", NormalizedName::from(key.name.as_ref()))?;
+                write!(&mut out, "@{}", NormalizedUnit::from(key.unit))?;
                 match value {
                     BucketValue::Counter(c) => {
                         write!(&mut out, ":{}", c)?;
@@ -807,16 +859,9 @@ impl Worker {
                 }
 
                 write!(&mut out, "|{}", key.ty.as_str())?;
-
-                for (i, (k, v)) in key.tags.iter().chain(&self.default_tags).enumerate() {
-                    match i {
-                        0 => write!(&mut out, "|#")?,
-                        _ => write!(&mut out, ",")?,
-                    }
-
-                    write!(&mut out, "{}:{}", SafeKey(k.as_ref()), SafeVal(v.as_ref()))?;
-                }
-
+                let normalized_tags =
+                    NormalizedTags::from(key.tags).with_default_tags(&self.default_tags);
+                write!(&mut out, "|#{}", normalized_tags)?;
                 writeln!(&mut out, "|T{}", timestamp)?;
             }
         }
@@ -922,51 +967,6 @@ impl Drop for MetricAggregator {
     }
 }
 
-fn safe_fmt<F>(f: &mut fmt::Formatter<'_>, string: &str, mut check: F) -> fmt::Result
-where
-    F: FnMut(char) -> bool,
-{
-    let mut valid = true;
-
-    for c in string.chars() {
-        if check(c) {
-            valid = true;
-            f.write_char(c)?;
-        } else if valid {
-            valid = false;
-            f.write_char('_')?;
-        }
-    }
-
-    Ok(())
-}
-
-// Helper that serializes a string into a safe format for metric names or tag keys.
-struct SafeKey<'s>(&'s str);
-
-impl<'s> fmt::Display for SafeKey<'s> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        safe_fmt(f, self.0, |c| {
-            c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | '.' | '/')
-        })
-    }
-}
-
-// Helper that serializes a string into a safe format for tag values.
-struct SafeVal<'s>(&'s str);
-
-impl<'s> fmt::Display for SafeVal<'s> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        safe_fmt(f, self.0, |c| {
-            c.is_alphanumeric()
-                || matches!(
-                    c,
-                    '_' | ':' | '/' | '@' | '.' | '{' | '}' | '[' | ']' | '$' | '-'
-                )
-        })
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use crate::test::{with_captured_envelopes, with_captured_envelopes_options};
@@ -1007,7 +1007,10 @@ mod tests {
         });
 
         let metrics = get_single_metrics(&envelopes);
-        assert_eq!(metrics, format!("my.metric:1|c|#and:more,foo:bar|T{ts}"));
+        assert_eq!(
+            metrics,
+            format!("my.metric@none:1|c|#and:more,environment:production,foo:bar|T{ts}")
+        );
     }
 
     #[test]
@@ -1022,7 +1025,10 @@ mod tests {
         });
 
         let metrics = get_single_metrics(&envelopes);
-        assert_eq!(metrics, format!("my.metric@custom:1|c|T{ts}"));
+        assert_eq!(
+            metrics,
+            format!("my.metric@custom:1|c|#environment:production|T{ts}")
+        );
     }
 
     #[test]
@@ -1034,7 +1040,10 @@ mod tests {
         });
 
         let metrics = get_single_metrics(&envelopes);
-        assert_eq!(metrics, format!("my_metric:1|c|T{ts}"));
+        assert_eq!(
+            metrics,
+            format!("my___metric@none:1|c|#environment:production|T{ts}")
+        );
     }
 
     #[test]
@@ -1051,20 +1060,8 @@ mod tests {
         let metrics = get_single_metrics(&envelopes);
         assert_eq!(
             metrics,
-            format!("my.metric:1|c|#foo-bar_blub:_$föö{{}}|T{ts}")
+            format!("my.metric@none:1|c|#environment:production,foo-barblub:%$föö{{}}|T{ts}")
         );
-    }
-
-    #[test]
-    fn test_own_namespace() {
-        let (time, ts) = current_time();
-
-        let envelopes = with_captured_envelopes(|| {
-            Metric::count("ns/my.metric").with_time(time).send();
-        });
-
-        let metrics = get_single_metrics(&envelopes);
-        assert_eq!(metrics, format!("ns/my.metric:1|c|T{ts}"));
     }
 
     #[test]
@@ -1073,7 +1070,7 @@ mod tests {
 
         let options = ClientOptions {
             release: Some("myapp@1.0.0".into()),
-            environment: Some("production".into()),
+            environment: Some("development".into()),
             ..Default::default()
         };
 
@@ -1090,7 +1087,7 @@ mod tests {
         let metrics = get_single_metrics(&envelopes);
         assert_eq!(
             metrics,
-            format!("requests:1|c|#foo:bar,environment:production,release:myapp@1.0.0|T{ts}")
+            format!("requests@none:1|c|#environment:development,foo:bar,release:myapp@1.0.0|T{ts}")
         );
     }
 
@@ -1104,7 +1101,10 @@ mod tests {
         });
 
         let metrics = get_single_metrics(&envelopes);
-        assert_eq!(metrics, format!("my.metric:3|c|T{ts}"));
+        assert_eq!(
+            metrics,
+            format!("my.metric@none:3|c|#environment:production|T{ts}")
+        );
     }
 
     #[test]
@@ -1121,7 +1121,10 @@ mod tests {
         });
 
         let metrics = get_single_metrics(&envelopes);
-        assert_eq!(metrics, format!("my.metric@second:0.2:0.1|d|T{ts}"));
+        assert_eq!(
+            metrics,
+            format!("my.metric@second:0.2:0.1|d|#environment:production|T{ts}")
+        );
     }
 
     #[test]
@@ -1138,7 +1141,10 @@ mod tests {
         });
 
         let metrics = get_single_metrics(&envelopes);
-        assert_eq!(metrics, format!("my.metric:2:1|d|T{ts}"));
+        assert_eq!(
+            metrics,
+            format!("my.metric@none:2:1|d|#environment:production|T{ts}")
+        );
     }
 
     #[test]
@@ -1153,7 +1159,10 @@ mod tests {
         });
 
         let metrics = get_single_metrics(&envelopes);
-        assert_eq!(metrics, format!("my.metric:3410894750:3817476724|s|T{ts}"));
+        assert_eq!(
+            metrics,
+            format!("my.metric@none:907060870:980881731|s|#environment:production|T{ts}")
+        );
     }
 
     #[test]
@@ -1167,7 +1176,10 @@ mod tests {
         });
 
         let metrics = get_single_metrics(&envelopes);
-        assert_eq!(metrics, format!("my.metric:1.5:1:2:4.5:3|g|T{ts}"));
+        assert_eq!(
+            metrics,
+            format!("my.metric@none:1.5:1:2:4.5:3|g|#environment:production|T{ts}")
+        );
     }
 
     #[test]
@@ -1182,8 +1194,8 @@ mod tests {
         let metrics = get_single_metrics(&envelopes);
         println!("{metrics}");
 
-        assert!(metrics.contains(&format!("my.metric:1|c|T{ts}")));
-        assert!(metrics.contains(&format!("my.dist:2|d|T{ts}")));
+        assert!(metrics.contains(&format!("my.metric@none:1|c|#environment:production|T{ts}")));
+        assert!(metrics.contains(&format!("my.dist@none:2|d|#environment:production|T{ts}")));
     }
 
     #[test]

@@ -429,6 +429,13 @@ impl Envelope {
         Self::from_bytes_raw(bytes)
     }
 
+    /// Creates a new Envelope containing the provided item.
+    pub fn from_item(item: EnvelopeItem) -> Envelope {
+        let mut envelope = Self::new();
+        envelope.add_item(item);
+        envelope
+    }
+
     fn parse_header(slice: &[u8]) -> Result<(EnvelopeHeader, usize), EnvelopeError> {
         let mut stream = serde_json::Deserializer::from_slice(slice).into_iter();
 
