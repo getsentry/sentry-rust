@@ -526,7 +526,9 @@ impl Metric {
 
     /// Convert the metric into an [`Envelope`] containing a single [`EnvelopeItem::Statsd`].
     pub fn to_envelope(self) -> Envelope {
-        let timestamp = SystemTime::now()
+        let timestamp = self
+            .time
+            .unwrap_or(SystemTime::now())
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
