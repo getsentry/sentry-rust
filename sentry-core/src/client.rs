@@ -207,13 +207,13 @@ impl Client {
         }
 
         if event.release.is_none() {
-            event.release = self.options.release.clone();
+            event.release.clone_from(&self.options.release);
         }
         if event.environment.is_none() {
-            event.environment = self.options.environment.clone();
+            event.environment.clone_from(&self.options.environment);
         }
         if event.server_name.is_none() {
-            event.server_name = self.options.server_name.clone();
+            event.server_name.clone_from(&self.options.server_name);
         }
         if &event.platform == "other" {
             event.platform = "native".into();

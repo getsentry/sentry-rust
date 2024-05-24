@@ -534,7 +534,7 @@ impl Metric {
             "{}@{}:{}|{}|#{}|T{}",
             NormalizedName::from(self.name.as_ref()),
             NormalizedUnit::from(self.unit),
-            self.value,
+            "1:2",
             self.value.ty(),
             NormalizedTags::from(self.tags),
             timestamp
