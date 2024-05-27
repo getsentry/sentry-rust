@@ -535,13 +535,13 @@ impl Metric {
         let data = format!(
             "{}@{}:{}|{}|#{}|T{}",
             NormalizedName::from(self.name.as_ref()),
-            NormalizedUnit::from(self.unit),
+            NormalizedUnit::from(self.unit.to_string().as_ref()),
             self.value,
             self.value.ty(),
-            NormalizedTags::from(self.tags),
+            NormalizedTags::from(&self.tags),
             timestamp
         );
-        Envelope::from_item(EnvelopeItem::Statsd(data.into_bytes()))
+        EnvelopeItem::Statsd(data.into_bytes()).into()
     }
 }
 
@@ -597,9 +597,9 @@ impl MetricBuilder {
         K: Into<MetricStr>,
         V: Into<MetricStr>,
     {
-        tags.into_iter().for_each(|(k, v)| {
+        for (k, v) in tags {
             self.metric.tags.insert(k.into(), v.into());
-        });
+        }
         self
     }
 
@@ -781,6 +781,7 @@ fn get_default_tags(options: &ClientOptions) -> TagMap {
         options
             .environment
             .clone()
+            .filter(|e| !e.is_empty())
             .unwrap_or(Cow::Borrowed("production")),
     );
     tags
@@ -836,7 +837,12 @@ impl Worker {
         for (timestamp, buckets) in buckets {
             for (key, value) in buckets {
                 write!(&mut out, "{}", NormalizedName::from(key.name.as_ref()))?;
-                write!(&mut out, "@{}", NormalizedUnit::from(key.unit))?;
+                match key.unit {
+                    MetricUnit::Custom(u) => {
+                        write!(&mut out, "@{}", NormalizedUnit::from(u.as_ref()))?
+                    }
+                    _ => write!(&mut out, "@{}", key.unit)?,
+                }
                 match value {
                     BucketValue::Counter(c) => {
                         write!(&mut out, ":{}", c)?;
@@ -862,7 +868,7 @@ impl Worker {
 
                 write!(&mut out, "|{}", key.ty.as_str())?;
                 let normalized_tags =
-                    NormalizedTags::from(key.tags).with_default_tags(&self.default_tags);
+                    NormalizedTags::from(&key.tags).with_default_tags(&self.default_tags);
                 write!(&mut out, "|#{}", normalized_tags)?;
                 writeln!(&mut out, "|T{}", timestamp)?;
             }
@@ -1090,6 +1096,59 @@ mod tests {
         assert_eq!(
             metrics,
             format!("requests@none:1|c|#environment:development,foo:bar,release:myapp@1.0.0|T{ts}")
+        );
+    }
+
+    #[test]
+    fn test_empty_default_tags() {
+        let (time, ts) = current_time();
+        let options = ClientOptions {
+            release: Some("".into()),
+            environment: Some("".into()),
+            ..Default::default()
+        };
+
+        let envelopes = with_captured_envelopes_options(
+            || {
+                Metric::count("requests")
+                    .with_tag("foo", "bar")
+                    .with_time(time)
+                    .send();
+            },
+            options,
+        );
+
+        let metrics = get_single_metrics(&envelopes);
+        assert_eq!(
+            metrics,
+            format!("requests@none:1|c|#environment:production,foo:bar|T{ts}")
+        );
+    }
+
+    #[test]
+    fn test_override_default_tags() {
+        let (time, ts) = current_time();
+        let options = ClientOptions {
+            release: Some("default_release".into()),
+            environment: Some("default_env".into()),
+            ..Default::default()
+        };
+
+        let envelopes = with_captured_envelopes_options(
+            || {
+                Metric::count("requests")
+                    .with_tag("environment", "custom_env")
+                    .with_tag("release", "custom_release")
+                    .with_time(time)
+                    .send();
+            },
+            options,
+        );
+
+        let metrics = get_single_metrics(&envelopes);
+        assert_eq!(
+            metrics,
+            format!("requests@none:1|c|#environment:custom_env,release:custom_release|T{ts}")
         );
     }
 

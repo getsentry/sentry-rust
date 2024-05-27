@@ -429,13 +429,6 @@ impl Envelope {
         Self::from_bytes_raw(bytes)
     }
 
-    /// Creates a new Envelope containing the provided item.
-    pub fn from_item(item: EnvelopeItem) -> Envelope {
-        let mut envelope = Self::new();
-        envelope.add_item(item);
-        envelope
-    }
-
     fn parse_header(slice: &[u8]) -> Result<(EnvelopeHeader, usize), EnvelopeError> {
         let mut stream = serde_json::Deserializer::from_slice(slice).into_iter();
 
@@ -540,26 +533,13 @@ impl Envelope {
     }
 }
 
-impl From<Event<'static>> for Envelope {
-    fn from(event: Event<'static>) -> Self {
+impl<T> From<T> for Envelope
+where
+    T: Into<EnvelopeItem>,
+{
+    fn from(item: T) -> Self {
         let mut envelope = Self::default();
-        envelope.add_item(event);
-        envelope
-    }
-}
-
-impl From<Transaction<'static>> for Envelope {
-    fn from(transaction: Transaction<'static>) -> Self {
-        let mut envelope = Self::default();
-        envelope.add_item(transaction);
-        envelope
-    }
-}
-
-impl From<MonitorCheckIn> for Envelope {
-    fn from(check_in: MonitorCheckIn) -> Self {
-        let mut envelope = Self::default();
-        envelope.add_item(check_in);
+        envelope.add_item(item.into());
         envelope
     }
 }
