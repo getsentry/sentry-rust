@@ -533,26 +533,13 @@ impl Envelope {
     }
 }
 
-impl From<Event<'static>> for Envelope {
-    fn from(event: Event<'static>) -> Self {
+impl<T> From<T> for Envelope
+where
+    T: Into<EnvelopeItem>,
+{
+    fn from(item: T) -> Self {
         let mut envelope = Self::default();
-        envelope.add_item(event);
-        envelope
-    }
-}
-
-impl From<Transaction<'static>> for Envelope {
-    fn from(transaction: Transaction<'static>) -> Self {
-        let mut envelope = Self::default();
-        envelope.add_item(transaction);
-        envelope
-    }
-}
-
-impl From<MonitorCheckIn> for Envelope {
-    fn from(check_in: MonitorCheckIn) -> Self {
-        let mut envelope = Self::default();
-        envelope.add_item(check_in);
+        envelope.add_item(item.into());
         envelope
     }
 }

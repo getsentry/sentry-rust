@@ -120,6 +120,12 @@ impl From<Cow<'static, str>> for MetricUnit {
     }
 }
 
+impl From<Option<String>> for MetricUnit {
+    fn from(unit: Option<String>) -> Self {
+        unit.map_or_else(|| Self::None, |u| Self::Custom(u.into()))
+    }
+}
+
 /// Time duration units used in [`MetricUnit::Duration`].
 ///
 /// Defaults to `millisecond`.

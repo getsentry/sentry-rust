@@ -279,10 +279,12 @@ where
     }
 
     if let Some(exception) = exceptions.last_mut() {
-        exception
-            .mechanism
-            .get_or_insert_with(Mechanism::default)
-            .ty = "tracing".to_owned();
+        "tracing".clone_into(
+            &mut exception
+                .mechanism
+                .get_or_insert_with(Mechanism::default)
+                .ty,
+        );
     }
 
     Event {

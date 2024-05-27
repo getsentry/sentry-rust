@@ -552,8 +552,8 @@ impl Transaction {
 
                     Hub::current().with_current_scope(|scope| scope.apply_to_transaction(&mut transaction));
                     let opts = client.options();
-                    transaction.release = opts.release.clone();
-                    transaction.environment = opts.environment.clone();
+                    transaction.release.clone_from(&opts.release);
+                    transaction.environment.clone_from(&opts.environment);
                     transaction.sdk = Some(std::borrow::Cow::Owned(client.sdk_info.clone()));
 
                     drop(inner);
