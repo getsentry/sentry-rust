@@ -54,9 +54,6 @@ use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use normalization::normalized_name::NormalizedName;
-use normalization::normalized_tags::NormalizedTags;
-use normalization::normalized_unit::NormalizedUnit;
 use sentry_types::protocol::latest::{Envelope, EnvelopeItem};
 
 use crate::client::TransportArc;
@@ -534,11 +531,11 @@ impl Metric {
             .as_secs();
         let data = format!(
             "{}@{}:{}|{}|#{}|T{}",
-            NormalizedName::from(self.name.as_ref()),
-            NormalizedUnit::from(self.unit.to_string().as_ref()),
+            normalization::normalize_name(self.name.as_ref()),
+            normalization::normalize_unit(self.unit.to_string().as_ref()),
             self.value,
             self.value.ty(),
-            NormalizedTags::from(&self.tags),
+            normalization::normalize_tags(&self.tags),
             timestamp
         );
         EnvelopeItem::Statsd(data.into_bytes()).into()
@@ -836,10 +833,14 @@ impl Worker {
 
         for (timestamp, buckets) in buckets {
             for (key, value) in buckets {
-                write!(&mut out, "{}", NormalizedName::from(key.name.as_ref()))?;
+                write!(
+                    &mut out,
+                    "{}",
+                    normalization::normalize_name(key.name.as_ref())
+                )?;
                 match key.unit {
                     MetricUnit::Custom(u) => {
-                        write!(&mut out, "@{}", NormalizedUnit::from(u.as_ref()))?
+                        write!(&mut out, "@{}", normalization::normalize_unit(u.as_ref()))?
                     }
                     _ => write!(&mut out, "@{}", key.unit)?,
                 }
@@ -868,7 +869,7 @@ impl Worker {
 
                 write!(&mut out, "|{}", key.ty.as_str())?;
                 let normalized_tags =
-                    NormalizedTags::from(&key.tags).with_default_tags(&self.default_tags);
+                    normalization::normalize_tags(&key.tags).with_default_tags(&self.default_tags);
                 write!(&mut out, "|#{}", normalized_tags)?;
                 writeln!(&mut out, "|T{}", timestamp)?;
             }

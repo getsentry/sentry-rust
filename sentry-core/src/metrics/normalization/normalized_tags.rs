@@ -4,25 +4,23 @@ use std::{borrow::Cow, collections::HashMap, sync::OnceLock};
 
 use crate::metrics::TagMap;
 
-pub struct NormalizedTags<'a> {
-    tags: HashMap<Cow<'a, str>, String>,
+pub fn normalize_tags(tags: &TagMap) -> NormalizedTags {
+    NormalizedTags {
+        tags: tags
+            .iter()
+            .map(|(k, v)| {
+                (
+                    NormalizedTags::normalize_key(super::truncate(k, 32)),
+                    NormalizedTags::normalize_value(super::truncate(v, 200)),
+                )
+            })
+            .filter(|(k, v)| !k.is_empty() && !v.is_empty())
+            .collect(),
+    }
 }
 
-impl<'a> From<&'a TagMap> for NormalizedTags<'a> {
-    fn from(tags: &'a TagMap) -> Self {
-        Self {
-            tags: tags
-                .iter()
-                .map(|(k, v)| {
-                    (
-                        Self::normalize_key(super::truncate(k, 32)),
-                        Self::normalize_value(super::truncate(v, 200)),
-                    )
-                })
-                .filter(|(k, v)| !k.is_empty() && !v.is_empty())
-                .collect(),
-        }
-    }
+pub struct NormalizedTags<'a> {
+    tags: HashMap<Cow<'a, str>, String>,
 }
 
 impl<'a> NormalizedTags<'a> {
@@ -76,7 +74,6 @@ impl std::fmt::Display for NormalizedTags<'_> {
 
 #[cfg(test)]
 mod test {
-    use super::NormalizedTags;
     use super::TagMap;
 
     #[test]
@@ -95,7 +92,7 @@ mod test {
         );
         let expected = "aa:a\\na,bb:b\\rb,cc:c\\tc,dd:d\\\\d,ee:e\\u{7c}e,ff:f\\u{2c}f";
 
-        let actual = NormalizedTags::from(&tags).to_string();
+        let actual = super::normalize_tags(&tags).to_string();
 
         assert_eq!(expected, actual);
     }
@@ -109,7 +106,7 @@ mod test {
         );
         let expected = "";
 
-        let actual = NormalizedTags::from(&tags).to_string();
+        let actual = super::normalize_tags(&tags).to_string();
 
         assert_eq!(expected, actual);
     }
@@ -119,7 +116,7 @@ mod test {
         let tags = TagMap::from([("aA1_-./+ö{ 😀".into(), "aA1_-./+ö{ 😀".into())]);
         let expected = "aA1_-./:aA1_-./+ö{ 😀";
 
-        let actual = NormalizedTags::from(&tags).to_string();
+        let actual = super::normalize_tags(&tags).to_string();
 
         assert_eq!(expected, actual);
     }
@@ -132,7 +129,7 @@ mod test {
         ]);
         let expected = "environment:production,release:default_release";
 
-        let actual = NormalizedTags::from(&TagMap::new())
+        let actual = super::normalize_tags(&TagMap::new())
             .with_default_tags(&default_tags)
             .to_string();
 
@@ -147,7 +144,7 @@ mod test {
         ]);
         let expected = "environment:custom_env,release:custom_release";
 
-        let actual = NormalizedTags::from(&TagMap::from([
+        let actual = super::normalize_tags(&TagMap::from([
             ("release".into(), "custom_release".into()),
             ("environment".into(), "custom_env".into()),
         ]))
@@ -167,7 +164,7 @@ mod test {
             + ":"
             + "v".repeat(200).as_str();
 
-        let actual = NormalizedTags::from(&TagMap::from([(
+        let actual = super::normalize_tags(&TagMap::from([(
             "k".repeat(35).into(),
             "v".repeat(210).into(),
         )]))
