@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.33.0
+
+### Various fixes & improvements
+
+- ref(metrics): Add normalization and update set metrics hashing (#658) by @elramen
+- feat: add embedded-svc based http transport (#654) by @madmo
+
 ## 0.32.3
 
 **Compatiblity**:
