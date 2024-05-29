@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Features**:
+
+- Renamed the `UNSTABLE_metrics` and `UNSTABLE_cadence` feature flags to `metrics` and `metrics-cadence1` respectively.
+
 ## 0.33.0
 
 ### Various fixes & improvements

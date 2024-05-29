@@ -6,7 +6,7 @@
 //!
 //! # Usage
 //!
-//! To use the `cadence` integration, enable the `UNSTABLE_cadence` feature in your `Cargo.toml`.
+//! To use the `cadence` integration, enable the `metrics-cadence1` feature in your `Cargo.toml`.
 //! Then, create a [`SentryMetricSink`] and pass it to your `cadence` client:
 //!
 //! ```

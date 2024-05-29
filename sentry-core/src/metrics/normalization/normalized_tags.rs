@@ -1,6 +1,8 @@
-use itertools::Itertools;
 use regex::Regex;
-use std::{borrow::Cow, collections::HashMap, sync::OnceLock};
+use std::borrow::Cow;
+use std::collections::BTreeMap;
+use std::fmt::Write;
+use std::sync::OnceLock;
 
 use crate::metrics::TagMap;
 
@@ -20,7 +22,7 @@ pub fn normalize_tags(tags: &TagMap) -> NormalizedTags {
 }
 
 pub struct NormalizedTags<'a> {
-    tags: HashMap<Cow<'a, str>, String>,
+    tags: BTreeMap<Cow<'a, str>, String>,
 }
 
 impl<'a> NormalizedTags<'a> {
@@ -62,13 +64,13 @@ impl<'a> NormalizedTags<'a> {
 
 impl std::fmt::Display for NormalizedTags<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let res = self
-            .tags
-            .iter()
-            .map(|(k, v)| format!("{}:{}", k, v))
-            .sorted()
-            .join(",");
-        write!(f, "{res}")
+        for (i, (k, v)) in self.tags.iter().enumerate() {
+            if i > 0 {
+                f.write_char(',')?;
+            }
+            write!(f, "{k}:{v}")?;
+        }
+        Ok(())
     }
 }
 

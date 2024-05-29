@@ -1,15 +1,16 @@
 use std::sync::Arc;
 use std::time::Duration;
-#[cfg(feature = "rustls")]
-use std::time::SystemTime;
 
 #[cfg(feature = "native-tls")]
 use native_tls::TlsConnector;
 #[cfg(feature = "rustls")]
-use rustls::{
-    client::{ServerCertVerified, ServerCertVerifier},
-    Certificate, ClientConfig, Error, OwnedTrustAnchor, RootCertStore, ServerName,
-};
+use rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier};
+#[cfg(feature = "rustls")]
+use rustls::crypto::{verify_tls12_signature, verify_tls13_signature};
+#[cfg(feature = "rustls")]
+use rustls::pki_types::{CertificateDer, ServerName, TrustAnchor, UnixTime};
+#[cfg(feature = "rustls")]
+use rustls::{ClientConfig, DigitallySignedStruct, RootCertStore};
 use ureq::{Agent, AgentBuilder, Proxy};
 #[cfg(feature = "rustls")]
 use webpki_roots::TLS_SERVER_ROOTS;
@@ -57,32 +58,63 @@ impl UreqHttpTransport {
             if options.accept_invalid_certs {
                 #[cfg(feature = "rustls")]
                 {
+                    #[derive(Debug)]
                     struct NoVerifier;
 
                     impl ServerCertVerifier for NoVerifier {
                         fn verify_server_cert(
                             &self,
-                            _end_entity: &Certificate,
-                            _intermediates: &[Certificate],
-                            _server_name: &ServerName,
-                            _scts: &mut dyn Iterator<Item = &[u8]>,
-                            _ocsp_response: &[u8],
-                            _now: SystemTime,
-                        ) -> Result<ServerCertVerified, Error> {
+                            _end_entity: &CertificateDer<'_>,
+                            _intermediates: &[CertificateDer<'_>],
+                            _server_name: &ServerName<'_>,
+                            _ocsp: &[u8],
+                            _now: UnixTime,
+                        ) -> Result<ServerCertVerified, rustls::Error> {
                             Ok(ServerCertVerified::assertion())
+                        }
+
+                        fn verify_tls12_signature(
+                            &self,
+                            message: &[u8],
+                            cert: &CertificateDer<'_>,
+                            dss: &DigitallySignedStruct,
+                        ) -> Result<HandshakeSignatureValid, rustls::Error>
+                        {
+                            verify_tls12_signature(
+                                message,
+                                cert,
+                                dss,
+                                &rustls::crypto::ring::default_provider()
+                                    .signature_verification_algorithms,
+                            )
+                        }
+
+                        fn verify_tls13_signature(
+                            &self,
+                            message: &[u8],
+                            cert: &CertificateDer<'_>,
+                            dss: &DigitallySignedStruct,
+                        ) -> Result<HandshakeSignatureValid, rustls::Error>
+                        {
+                            verify_tls13_signature(
+                                message,
+                                cert,
+                                dss,
+                                &rustls::crypto::ring::default_provider()
+                                    .signature_verification_algorithms,
+                            )
+                        }
+
+                        fn supported_verify_schemes(&self) -> Vec<rustls::SignatureScheme> {
+                            rustls::crypto::ring::default_provider()
+                                .signature_verification_algorithms
+                                .supported_schemes()
                         }
                     }
 
                     let mut root_store = RootCertStore::empty();
-                    root_store.add_trust_anchors(TLS_SERVER_ROOTS.iter().map(|ta| {
-                        OwnedTrustAnchor::from_subject_spki_name_constraints(
-                            ta.subject,
-                            ta.spki,
-                            ta.name_constraints,
-                        )
-                    }));
+                    root_store.extend(TLS_SERVER_ROOTS.iter().map(TrustAnchor::to_owned));
                     let mut config = ClientConfig::builder()
-                        .with_safe_defaults()
                         .with_root_certificates(root_store)
                         .with_no_client_auth();
                     config
