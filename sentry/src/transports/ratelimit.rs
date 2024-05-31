@@ -115,7 +115,7 @@ impl RateLimiter {
                 }
                 EnvelopeItem::Transaction(_) => RateLimitingCategory::Transaction,
                 EnvelopeItem::Attachment(_) => RateLimitingCategory::Attachment,
-                #[cfg(feature = "UNSTABLE_metrics")]
+                #[cfg(feature = "metrics")]
                 EnvelopeItem::Statsd(_) => RateLimitingCategory::Statsd,
                 _ => RateLimitingCategory::Any,
             })

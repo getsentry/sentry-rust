@@ -19,7 +19,7 @@ all-features = true
 [features]
 default = ["protocol"]
 protocol = []
-UNSTABLE_metrics = []
+metrics = []
 
 [dependencies]
 debugid = { version = "0.8.0", features = ["serde"] }
@@ -33,4 +33,4 @@ url = { version = "2.1.1", features = ["serde"] }
 uuid = { version = "1.0.0", features = ["serde"] }
 
 [dev-dependencies]
-rstest = "0.18.2"
+rstest = "0.19.0"
