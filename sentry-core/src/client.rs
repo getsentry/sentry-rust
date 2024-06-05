@@ -172,7 +172,8 @@ impl Client {
         integration.as_ref().as_any().downcast_ref()
     }
 
-    fn prepare_event(
+    /// Prepares an event for transmission to sentry.
+    pub fn prepare_event(
         &self,
         mut event: Event<'static>,
         scope: Option<&Scope>,
