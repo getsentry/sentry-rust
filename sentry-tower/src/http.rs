@@ -142,6 +142,7 @@ where
             headers: request
                 .headers()
                 .into_iter()
+                .filter(|(_, value)| !value.is_sensitive())
                 .map(|(header, value)| {
                     (
                         header.to_string(),
