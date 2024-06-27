@@ -355,6 +355,7 @@ fn sentry_request_from_http(request: &ServiceRequest, with_pii: bool) -> Request
         headers: request
             .headers()
             .iter()
+            .filter(|(_, v)| !v.is_sensitive())
             .map(|(k, v)| (k.to_string(), v.to_str().unwrap_or_default().to_string()))
             .collect(),
         ..Default::default()
