@@ -42,7 +42,7 @@
 //! [`cadence`] is a popular Statsd client for Rust and can be used to send metrics to Sentry. To
 //! use Sentry directly with `cadence`, see the [`sentry-cadence`](crate::cadence) documentation.
 //!
-//! [our docs]: https://develop.sentry.dev/delightful-developer-metrics/
+//! [our docs]: https://develop.sentry.dev/services/metrics/
 
 mod normalization;
 
