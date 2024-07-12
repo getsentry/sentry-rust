@@ -84,7 +84,7 @@ impl TransactionContext {
     /// can be used for distributed tracing.
     #[must_use = "this must be used with `start_transaction`"]
     pub fn new(name: &str, op: &str) -> Self {
-        Self::continue_from_headers(name, op, vec![])
+        Self::continue_from_headers(name, op, std::iter::empty())
     }
 
     /// Creates a new Transaction Context based on the distributed tracing `headers`.
@@ -200,7 +200,8 @@ impl TransactionContext {
     ///
     /// If the context did not have this key present, None is returned.
     ///
-    /// If the context did have this key present, the value is updated, and the old value is returned.
+    /// If the context did have this key present, the value is updated, and the old value is
+    /// returned.
     pub fn custom_insert(
         &mut self,
         key: String,
@@ -298,6 +299,14 @@ impl TransactionOrSpan {
         match self {
             TransactionOrSpan::Transaction(transaction) => transaction.iter_headers(),
             TransactionOrSpan::Span(span) => span.iter_headers(),
+        }
+    }
+
+    /// Get the sampling decision for this Transaction/Span.
+    pub fn is_sampled(&self) -> bool {
+        match self {
+            TransactionOrSpan::Transaction(transaction) => transaction.is_sampled(),
+            TransactionOrSpan::Span(span) => span.is_sampled(),
         }
     }
 
@@ -483,7 +492,8 @@ impl Transaction {
         }
     }
 
-    /// Returns an iterating accessor to the transaction's [`extra` field](protocol::Transaction::extra).
+    /// Returns an iterating accessor to the transaction's
+    /// [`extra` field](protocol::Transaction::extra).
     ///
     /// # Concurrency
     /// In order to obtain any kind of reference to the `extra` field,
@@ -534,6 +544,11 @@ impl Transaction {
         TraceHeadersIter {
             sentry_trace: Some(trace.to_string()),
         }
+    }
+
+    /// Get the sampling decision for this Transaction.
+    pub fn is_sampled(&self) -> bool {
+        self.inner.lock().unwrap().sampled
     }
 
     /// Finishes the Transaction.
@@ -706,6 +721,11 @@ impl Span {
         TraceHeadersIter {
             sentry_trace: Some(trace.to_string()),
         }
+    }
+
+    /// Get the sampling decision for this Span.
+    pub fn is_sampled(&self) -> bool {
+        self.sampled
     }
 
     /// Finishes the Span.
