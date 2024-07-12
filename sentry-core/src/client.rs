@@ -2,8 +2,7 @@ use std::any::TypeId;
 use std::borrow::Cow;
 use std::fmt;
 use std::panic::RefUnwindSafe;
-use std::sync::Arc;
-use std::sync::RwLock;
+use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
 use rand::random;
@@ -377,6 +376,8 @@ impl Client {
     pub fn sample_should_send(&self, rate: f32) -> bool {
         if rate >= 1.0 {
             true
+        } else if rate <= 0.0 {
+            false
         } else {
             random::<f32>() < rate
         }
