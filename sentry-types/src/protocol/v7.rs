@@ -18,8 +18,9 @@ use std::time::SystemTime;
 use self::debugid::{CodeId, DebugId};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
-use url::Url;
-use uuid::Uuid;
+
+pub use url::Url;
+pub use uuid::Uuid;
 
 use crate::utils::{ts_rfc3339_opt, ts_seconds_float};
 
