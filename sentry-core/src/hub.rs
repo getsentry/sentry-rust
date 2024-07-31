@@ -8,7 +8,7 @@ use crate::protocol::{Event, Level, SessionStatus};
 use crate::types::Uuid;
 use crate::{Integration, IntoBreadcrumbs, Scope, ScopeGuard};
 
-/// The central object that can manages scopes and clients.
+/// The central object that can manage scopes and clients.
 ///
 /// This can be used to capture events and manage the scope.  This object is [`Send`] and
 /// [`Sync`] so it can be used from multiple threads if needed.
@@ -16,10 +16,10 @@ use crate::{Integration, IntoBreadcrumbs, Scope, ScopeGuard};
 /// Each thread has its own thread-local ( see [`Hub::current`]) hub, which is
 /// automatically derived from the main hub ([`Hub::main`]).
 ///
-/// In most situations developers do not need to interface with the hub directly.  Instead
-/// toplevel convenience functions are expose that will automatically dispatch
-/// to the thread-local ([`Hub::current`]) hub.  In some situations this might not be
-/// possible in which case it might become necessary to manually work with the
+/// In most situations, developers do not need to interface with the hub directly.  Instead
+/// toplevel convenience functions are exposed that will automatically dispatch
+/// to the thread-local ([`Hub::current`]) hub.  In some situations, this might not be
+/// possible, in which case it might become necessary to manually work with the
 /// hub.  See the main [`crate`] docs for some common use-cases and pitfalls
 /// related to parallel, concurrent or async code.
 ///
