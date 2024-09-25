@@ -69,12 +69,15 @@ pub struct TransactionContext {
     op: String,
     trace_id: protocol::TraceId,
     parent_span_id: Option<protocol::SpanId>,
+    span_id: protocol::SpanId,
     sampled: Option<bool>,
     custom: Option<CustomTransactionContext>,
 }
 
 impl TransactionContext {
-    /// Creates a new Transaction Context with the given `name` and `op`.
+    /// Creates a new Transaction Context with the given `name` and `op`. A random
+    /// `trace_id` is assigned. Use [`TransactionContext::new_with_trace_id`] to
+    /// specify a custom trace ID.
     ///
     /// See <https://docs.sentry.io/platforms/native/enriching-events/transaction-name/>
     /// for an explanation of a Transaction's `name`, and
@@ -85,13 +88,33 @@ impl TransactionContext {
     /// can be used for distributed tracing.
     #[must_use = "this must be used with `start_transaction`"]
     pub fn new(name: &str, op: &str) -> Self {
-        Self::continue_from_headers(name, op, std::iter::empty())
+        Self::new_with_trace_id(name, op, protocol::TraceId::default())
+    }
+
+    /// Creates a new Transaction Context with the given `name`, `op`, and `trace_id`.
+    ///
+    /// See <https://docs.sentry.io/platforms/native/enriching-events/transaction-name/>
+    /// for an explanation of a Transaction's `name`, and
+    /// <https://develop.sentry.dev/sdk/performance/span-operations/> for conventions
+    /// around an `operation`'s value.
+    #[must_use = "this must be used with `start_transaction`"]
+    pub fn new_with_trace_id(name: &str, op: &str, trace_id: protocol::TraceId) -> Self {
+        Self {
+            name: name.into(),
+            op: op.into(),
+            trace_id,
+            parent_span_id: None,
+            span_id: Default::default(),
+            sampled: None,
+            custom: None,
+        }
     }
 
     /// Creates a new Transaction Context based on the distributed tracing `headers`.
     ///
-    /// The `headers` in particular need to include the `sentry-trace` header,
-    /// which is used to associate the transaction with a distributed trace.
+    /// The `headers` in particular need to include either the `sentry-trace` or W3C
+    /// `traceparent` header, which is used to associate the transaction with a distributed
+    /// trace. If both are present, `sentry-trace` takes precedence.
     #[must_use = "this must be used with `start_transaction`"]
     pub fn continue_from_headers<'a, I: IntoIterator<Item = (&'a str, &'a str)>>(
         name: &str,
@@ -102,6 +125,11 @@ impl TransactionContext {
         for (k, v) in headers.into_iter() {
             if k.eq_ignore_ascii_case("sentry-trace") {
                 trace = parse_sentry_trace(v);
+                break;
+            }
+
+            if k.eq_ignore_ascii_case("traceparent") {
+                trace = parse_w3c_traceparent(v);
             }
         }
 
@@ -115,6 +143,7 @@ impl TransactionContext {
             op: op.into(),
             trace_id,
             parent_span_id,
+            span_id: Default::default(),
             sampled,
             custom: None,
         }
@@ -152,6 +181,7 @@ impl TransactionContext {
             op: op.into(),
             trace_id,
             parent_span_id: Some(parent_span_id),
+            span_id: protocol::SpanId::default(),
             sampled,
             custom: None,
         }
@@ -183,6 +213,11 @@ impl TransactionContext {
     /// Get the Trace ID of this Transaction.
     pub fn trace_id(&self) -> protocol::TraceId {
         self.trace_id
+    }
+
+    /// Get the Span ID of this Transaction.
+    pub fn span_id(&self) -> protocol::SpanId {
+        self.span_id
     }
 
     /// Get the custom context of this Transaction.
@@ -219,6 +254,80 @@ impl TransactionContext {
         let existing_value = custom.insert(key, value);
         std::mem::swap(&mut self.custom, &mut Some(custom));
         existing_value
+    }
+
+    /// Creates a transaction context builder initialized with the given `name` and `op`.
+    ///
+    /// See <https://docs.sentry.io/platforms/native/enriching-events/transaction-name/>
+    /// for an explanation of a Transaction's `name`, and
+    /// <https://develop.sentry.dev/sdk/performance/span-operations/> for conventions
+    /// around an `operation`'s value.
+    #[must_use]
+    pub fn builder(name: &str, op: &str) -> TransactionContextBuilder {
+        TransactionContextBuilder {
+            ctx: TransactionContext::new(name, op),
+        }
+    }
+}
+
+/// A transaction context builder created by [`TransactionContext::builder`].
+pub struct TransactionContextBuilder {
+    ctx: TransactionContext,
+}
+
+impl TransactionContextBuilder {
+    /// Defines the name of the transaction.
+    #[must_use]
+    pub fn with_name(mut self, name: String) -> Self {
+        self.ctx.name = name;
+        self
+    }
+
+    /// Defines the operation of the transaction.
+    #[must_use]
+    pub fn with_op(mut self, op: String) -> Self {
+        self.ctx.op = op;
+        self
+    }
+
+    /// Defines the trace ID.
+    #[must_use]
+    pub fn with_trace_id(mut self, trace_id: protocol::TraceId) -> Self {
+        self.ctx.trace_id = trace_id;
+        self
+    }
+
+    /// Defines a parent span ID for the created transaction.
+    #[must_use]
+    pub fn with_parent_span_id(mut self, parent_span_id: Option<protocol::SpanId>) -> Self {
+        self.ctx.parent_span_id = parent_span_id;
+        self
+    }
+
+    /// Defines the span ID to be used when creating the transaction.
+    #[must_use]
+    pub fn with_span_id(mut self, span_id: protocol::SpanId) -> Self {
+        self.ctx.span_id = span_id;
+        self
+    }
+
+    /// Defines whether the transaction will be sampled.
+    #[must_use]
+    pub fn with_sampled(mut self, sampled: Option<bool>) -> Self {
+        self.ctx.sampled = sampled;
+        self
+    }
+
+    /// Adds a custom key and value to the transaction context.
+    #[must_use]
+    pub fn with_custom(mut self, key: String, value: serde_json::Value) -> Self {
+        self.ctx.custom_insert(key, value);
+        self
+    }
+
+    /// Finishes building a transaction.
+    pub fn finish(self) -> TransactionContext {
+        self.ctx
     }
 }
 
@@ -467,6 +576,7 @@ impl Transaction {
         let context = protocol::TraceContext {
             trace_id: ctx.trace_id,
             parent_span_id: ctx.parent_span_id,
+            span_id: ctx.span_id,
             op: Some(ctx.op),
             ..Default::default()
         };
@@ -858,6 +968,23 @@ fn parse_sentry_trace(header: &str) -> Option<SentryTrace> {
     Some(SentryTrace(trace_id, parent_span_id, parent_sampled))
 }
 
+/// Parses a W3C traceparent header.
+/// Reference: <https://w3c.github.io/trace-context/#traceparent-header-field-values>
+fn parse_w3c_traceparent(header: &str) -> Option<SentryTrace> {
+    let header = header.trim();
+    let mut parts = header.splitn(4, '-');
+
+    let _version = parts.next()?;
+    let trace_id = parts.next()?.parse().ok()?;
+    let parent_span_id = parts.next()?.parse().ok()?;
+    let parent_sampled = parts
+        .next()
+        .and_then(|sampled| u8::from_str_radix(sampled, 16).ok())
+        .map(|flag| flag & 1 != 0);
+
+    Some(SentryTrace(trace_id, parent_span_id, parent_sampled))
+}
+
 impl std::fmt::Display for SentryTrace {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}-{}", self.0, self.1)?;
@@ -888,6 +1015,26 @@ mod tests {
         let trace = SentryTrace(Default::default(), Default::default(), None);
         let parsed = parse_sentry_trace(&trace.to_string());
         assert_eq!(parsed, Some(trace));
+    }
+
+    #[test]
+    fn parses_traceparent() {
+        let trace_id = protocol::TraceId::from_str("4bf92f3577b34da6a3ce929d0e0e4736").unwrap();
+        let parent_trace_id = protocol::SpanId::from_str("00f067aa0ba902b7").unwrap();
+
+        let trace =
+            parse_w3c_traceparent("00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01");
+        assert_eq!(
+            trace,
+            Some(SentryTrace(trace_id, parent_trace_id, Some(true)))
+        );
+
+        let trace =
+            parse_w3c_traceparent("00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-00");
+        assert_eq!(
+            trace,
+            Some(SentryTrace(trace_id, parent_trace_id, Some(false)))
+        );
     }
 
     #[test]
