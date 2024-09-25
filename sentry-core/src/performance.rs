@@ -717,6 +717,12 @@ impl Span {
         transaction.context.clone()
     }
 
+    /// Get the current span ID.
+    pub fn get_span_id(&self) -> protocol::SpanId {
+        let span = self.span.lock().unwrap();
+        span.span_id
+    }
+
     /// Get the status of the Span.
     pub fn get_status(&self) -> Option<protocol::SpanStatus> {
         let span = self.span.lock().unwrap();
