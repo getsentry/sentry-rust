@@ -570,6 +570,7 @@ impl Transaction {
                     transaction.release.clone_from(&opts.release);
                     transaction.environment.clone_from(&opts.environment);
                     transaction.sdk = Some(std::borrow::Cow::Owned(client.sdk_info.clone()));
+                    transaction.server_name.clone_from(&opts.server_name);
 
                     drop(inner);
 

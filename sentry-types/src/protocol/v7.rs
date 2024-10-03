@@ -1989,6 +1989,9 @@ pub struct Transaction<'a> {
     /// Optionally HTTP request data to be sent along.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub request: Option<Request>,
+    /// Optionally the server (or device) name of this event.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub server_name: Option<Cow<'a, str>>,
 }
 
 impl<'a> Default for Transaction<'a> {
@@ -2008,6 +2011,7 @@ impl<'a> Default for Transaction<'a> {
             spans: Default::default(),
             contexts: Default::default(),
             request: Default::default(),
+            server_name: Default::default(),
         }
     }
 }
@@ -2035,6 +2039,7 @@ impl<'a> Transaction<'a> {
             spans: self.spans,
             contexts: self.contexts,
             request: self.request,
+            server_name: self.server_name.map(|x| Cow::Owned(x.into_owned())),
         }
     }
 
