@@ -101,3 +101,6 @@ tokio = { version = "1.0", features = ["macros"] }
 tower = { version = "0.4", features = ["util"] }
 tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["fmt", "tracing-log"] }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(doc_cfg)'] }
