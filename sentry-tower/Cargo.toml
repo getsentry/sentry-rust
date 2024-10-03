@@ -36,5 +36,5 @@ prost = "0.12.3"
 sentry = { path = "../sentry", default-features = false, features = ["test"] }
 sentry-anyhow = { path = "../sentry-anyhow" }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
-tonic = { version = "0.11", features = ["transport"] }
+tonic = { version = "0.12", features = ["transport"] }
 tower = { version = "0.4", features = ["util", "timeout"] }
