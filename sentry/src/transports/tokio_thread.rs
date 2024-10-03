@@ -96,7 +96,7 @@ impl TransportThread {
     pub fn flush(&self, timeout: Duration) -> bool {
         let (sender, receiver) = sync_channel(1);
         let _ = self.sender.send(Task::Flush(sender));
-        receiver.recv_timeout(timeout).is_err()
+        receiver.recv_timeout(timeout).is_ok()
     }
 }
 
