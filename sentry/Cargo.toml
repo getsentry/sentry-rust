@@ -55,7 +55,7 @@ embedded-svc-http = ["dep:embedded-svc", "dep:esp-idf-svc"]
 
 [dependencies]
 sentry-core = { version = "0.34.0", path = "../sentry-core", features = [
-  "client",
+    "client",
 ] }
 sentry-anyhow = { version = "0.34.0", path = "../sentry-anyhow", optional = true }
 sentry-backtrace = { version = "0.34.0", path = "../sentry-backtrace", optional = true }
@@ -68,8 +68,8 @@ sentry-tower = { version = "0.34.0", path = "../sentry-tower", optional = true }
 sentry-tracing = { version = "0.34.0", path = "../sentry-tracing", optional = true }
 log = { version = "0.4.8", optional = true, features = ["std"] }
 reqwest = { version = "0.12", optional = true, features = [
-  "blocking",
-  "json",
+    "blocking",
+    "json",
 ], default-features = false }
 curl = { version = "0.4.25", optional = true }
 httpdate = { version = "1.0.0", optional = true }
@@ -104,4 +104,3 @@ tracing-subscriber = { version = "0.3", features = ["fmt", "tracing-log"] }
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(doc_cfg)'] }
-
