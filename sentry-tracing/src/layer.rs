@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 
@@ -9,6 +10,7 @@ use tracing_subscriber::layer::{Context, Layer};
 use tracing_subscriber::registry::LookupSpan;
 
 use crate::converters::*;
+use crate::TAGS_PREFIX;
 
 /// The action that Sentry should perform for a [`Metadata`]
 #[derive(Debug, Clone, Copy)]
@@ -142,6 +144,53 @@ where
     }
 }
 
+#[inline(always)]
+fn record_fields<'a, K: AsRef<str> + Into<Cow<'a, str>>>(
+    span: &TransactionOrSpan,
+    data: BTreeMap<K, Value>,
+) {
+    match span {
+        TransactionOrSpan::Span(span) => {
+            let mut span = span.data();
+            for (key, value) in data {
+                if let Some(stripped_key) = key.as_ref().strip_prefix(TAGS_PREFIX) {
+                    match value {
+                        Value::Bool(value) => {
+                            span.set_tag(stripped_key.to_owned(), value.to_string())
+                        }
+                        Value::Number(value) => {
+                            span.set_tag(stripped_key.to_owned(), value.to_string())
+                        }
+                        Value::String(value) => span.set_tag(stripped_key.to_owned(), value),
+                        _ => span.set_data(key.into().into_owned(), value),
+                    }
+                } else {
+                    span.set_data(key.into().into_owned(), value);
+                }
+            }
+        }
+        TransactionOrSpan::Transaction(transaction) => {
+            let mut transaction = transaction.data();
+            for (key, value) in data {
+                if let Some(stripped_key) = key.as_ref().strip_prefix(TAGS_PREFIX) {
+                    match value {
+                        Value::Bool(value) => {
+                            transaction.set_tag(stripped_key.into(), value.to_string())
+                        }
+                        Value::Number(value) => {
+                            transaction.set_tag(stripped_key.into(), value.to_string())
+                        }
+                        Value::String(value) => transaction.set_tag(stripped_key.into(), value),
+                        _ => transaction.set_data(key.into(), value),
+                    }
+                } else {
+                    transaction.set_data(key.into(), value);
+                }
+            }
+        }
+    }
+}
+
 /// Data that is attached to the tracing Spans `extensions`, in order to
 /// `finish` the corresponding sentry span `on_close`, and re-set its parent as
 /// the *current* span.
@@ -217,9 +266,7 @@ where
         };
         // Add the data from the original span to the sentry span.
         // This comes from typically the `fields` in `tracing::instrument`.
-        for (key, value) in data {
-            sentry_span.set_data(key, value);
-        }
+        record_fields(&sentry_span, data);
 
         sentry_core::configure_scope(|scope| scope.set_span(Some(sentry_span.clone())));
 
@@ -267,9 +314,7 @@ where
         let mut data = FieldVisitor::default();
         values.record(&mut data);
 
-        for (key, value) in data.json_values {
-            span.set_data(&key, value);
-        }
+        record_fields(span, data.json_values);
     }
 }
 
