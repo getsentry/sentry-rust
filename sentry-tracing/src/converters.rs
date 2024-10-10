@@ -9,6 +9,7 @@ use tracing_subscriber::layer::Context;
 use tracing_subscriber::registry::LookupSpan;
 
 use super::layer::SentrySpanData;
+use crate::TAGS_PREFIX;
 
 /// Converts a [`tracing_core::Level`] to a Sentry [`Level`]
 fn convert_tracing_level(level: &tracing_core::Level) -> Level {
@@ -156,7 +157,7 @@ fn tags_from_event(fields: &mut BTreeMap<String, Value>) -> BTreeMap<String, Str
     let mut tags = BTreeMap::new();
 
     fields.retain(|key, value| {
-        let Some(key) = key.strip_prefix("tags.") else {
+        let Some(key) = key.strip_prefix(TAGS_PREFIX) else {
             return true;
         };
         let string = match value {
