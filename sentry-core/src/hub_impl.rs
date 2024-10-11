@@ -162,7 +162,7 @@ impl Hub {
     /// will return the provided hub.
     ///
     /// Once the function is finished executing, including after it
-    /// paniced, the original hub is re-installed if one was present.
+    /// panicked, the original hub is re-installed if one was present.
     pub fn run<F: FnOnce() -> R, R>(hub: Arc<Hub>, f: F) -> R {
         let _guard = SwitchGuard::new(hub);
         f()

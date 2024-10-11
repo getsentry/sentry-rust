@@ -7,7 +7,7 @@
 # Sentry Rust SDK: sentry-types
 
 This crate provides common types for working with the Sentry protocol or the
-Sentry server.  It's used by the Sentry Relay infrastructure as well as the
+Sentry server. It's used by the Sentry Relay infrastructure as well as the
 rust Sentry client.
 
 Most of the types in this crate are serializable in one form or another.
@@ -26,7 +26,7 @@ so later versions might be added later.
 ### API Concepts
 
 Most types are directly serializable or deserializable and try to implement
-the `Default` type.  This means that objects can be created conviently
+the `Default` type. This means that objects can be created conviently
 and missing attributes can be filled in:
 
 ```rust

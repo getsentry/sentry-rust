@@ -367,7 +367,7 @@ pub(crate) struct TransactionInner {
 
 type TransactionArc = Arc<Mutex<TransactionInner>>;
 
-/// Functional implementation of how a new transation's sample rate is chosen.
+/// Functional implementation of how a new transaction's sample rate is chosen.
 ///
 /// Split out from `Client.is_transaction_sampled` for testing.
 #[cfg(feature = "client")]
