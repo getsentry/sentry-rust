@@ -782,7 +782,7 @@ impl Default for Breadcrumb {
 /// An IP address, either IPv4, IPv6 or Auto.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash, Default)]
 pub enum IpAddress {
-    /// The IP address needs to be infered from the user's context.
+    /// The IP address needs to be inferred from the user's context.
     #[default]
     Auto,
     /// The exact given IP address (v4 or v6).
@@ -1595,7 +1595,7 @@ pub struct Event<'a> {
     /// A release identifier.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub release: Option<Cow<'a, str>>,
-    /// An optional distribution identifer.
+    /// An optional distribution identifier.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dist: Option<Cow<'a, str>>,
     /// An optional environment identifier.

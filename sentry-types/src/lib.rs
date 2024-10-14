@@ -18,7 +18,7 @@
 //! ## API Concepts
 //!
 //! Most types are directly serializable or deserializable and try to implement
-//! the `Default` type.  This means that objects can be created conviently
+//! the `Default` type.  This means that objects can be created conveniently
 //! and missing attributes can be filled in:
 //!
 //! ```rust

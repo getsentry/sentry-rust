@@ -134,7 +134,7 @@ impl Drop for ScopeGuard {
                 stack.pop();
                 popped_depth
             };
-            // NOTE: We need to drop the `stack` lock before panicing, as the
+            // NOTE: We need to drop the `stack` lock before panicking, as the
             // `PanicIntegration` will want to lock the `stack` itself
             // (through `capture_event` -> `HubImpl::with`), and would thus
             // result in a deadlock.

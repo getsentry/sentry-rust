@@ -127,7 +127,7 @@ pub struct SessionUpdate<'a> {
     #[serde(default)]
     pub status: SessionStatus,
 
-    /// The number of errors that ocurred.
+    /// The number of errors that occurred.
     #[serde(default)]
     pub errors: u64,
 
@@ -150,16 +150,16 @@ pub struct SessionAggregateItem {
     /// The distinct identifier.
     #[serde(rename = "did", default, skip_serializing_if = "Option::is_none")]
     pub distinct_id: Option<String>,
-    /// The number of exited sessions that ocurred.
+    /// The number of exited sessions that occurred.
     #[serde(default, skip_serializing_if = "is_zero")]
     pub exited: u32,
-    /// The number of errored sessions that ocurred, not including the abnormal and crashed ones.
+    /// The number of errored sessions that occurred, not including the abnormal and crashed ones.
     #[serde(default, skip_serializing_if = "is_zero")]
     pub errored: u32,
-    /// The number of abnormal sessions that ocurred.
+    /// The number of abnormal sessions that occurred.
     #[serde(default, skip_serializing_if = "is_zero")]
     pub abnormal: u32,
-    /// The number of crashed sessions that ocurred.
+    /// The number of crashed sessions that occurred.
     #[serde(default, skip_serializing_if = "is_zero")]
     pub crashed: u32,
 }
