@@ -260,6 +260,14 @@ impl TransactionOrSpan {
         }
     }
 
+    /// Sets a tag to a specific value.
+    pub fn set_tag<V: ToString>(&self, key: &str, value: V) {
+        match self {
+            TransactionOrSpan::Transaction(transaction) => transaction.set_tag(key, value),
+            TransactionOrSpan::Span(span) => span.set_tag(key, value),
+        }
+    }
+
     /// Get the TransactionContext of the Transaction/Span.
     ///
     /// Note that this clones the underlying value.
@@ -492,6 +500,14 @@ impl Transaction {
         }
     }
 
+    /// Sets a tag to a specific value.
+    pub fn set_tag<V: ToString>(&self, key: &str, value: V) {
+        let mut inner = self.inner.lock().unwrap();
+        if let Some(transaction) = inner.transaction.as_mut() {
+            transaction.tags.insert(key.into(), value.to_string());
+        }
+    }
+
     /// Returns an iterating accessor to the transaction's
     /// [`extra` field](protocol::Transaction::extra).
     ///
@@ -643,6 +659,12 @@ impl Span {
     pub fn set_data(&self, key: &str, value: protocol::Value) {
         let mut span = self.span.lock().unwrap();
         span.data.insert(key.into(), value);
+    }
+
+    /// Sets a tag to a specific value.
+    pub fn set_tag<V: ToString>(&self, key: &str, value: V) {
+        let mut span = self.span.lock().unwrap();
+        span.tags.insert(key.into(), value.to_string());
     }
 
     /// Returns a smart pointer to the span's [`data` field](protocol::Span::data).
