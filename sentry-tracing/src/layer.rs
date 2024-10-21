@@ -268,8 +268,6 @@ where
         // This comes from typically the `fields` in `tracing::instrument`.
         record_fields(&sentry_span, data);
 
-        sentry_core::configure_scope(|scope| scope.set_span(Some(sentry_span.clone())));
-
         let mut extensions = span.extensions_mut();
         extensions.insert(SentrySpanData {
             sentry_span,
@@ -277,7 +275,43 @@ where
         });
     }
 
-    /// When a span gets closed, finish the underlying sentry span, and set back
+    ///Called when span is entered
+    ///
+    ///When tracing Span is entered, it becomes ongoing, therefore we shall update current scope with it
+    fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
+        let span = match ctx.span(&id) {
+            Some(span) => span,
+            None => return,
+        };
+
+        let extensions = span.extensions();
+        let span = match extensions.get::<SentrySpanData>() {
+            Some(data) => &data.sentry_span,
+            _ => return,
+        };
+
+        sentry_core::configure_scope(|scope| scope.set_span(Some(span.clone())));
+    }
+
+    ///Called when span is exited
+    ///
+    ///When tracing Span exits, it awaits, therefore we shall set parent span as ongoing, if any
+    fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
+        let span = match ctx.span(&id) {
+            Some(span) => span,
+            None => return,
+        };
+
+        let extensions = span.extensions();
+        let span = match extensions.get::<SentrySpanData>() {
+            Some(data) => &data.parent_sentry_span,
+            _ => return,
+        };
+
+        sentry_core::configure_scope(|scope| scope.set_span(span.clone()));
+    }
+
+    /// When a span gets dropped/closed, finish the underlying sentry span, and set back
     /// its parent as the *current* sentry span.
     fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
         let span = match ctx.span(&id) {
@@ -286,16 +320,12 @@ where
         };
 
         let mut extensions = span.extensions_mut();
-        let SentrySpanData {
-            sentry_span,
-            parent_sentry_span,
-        } = match extensions.remove::<SentrySpanData>() {
+        let SentrySpanData { sentry_span, .. } = match extensions.remove::<SentrySpanData>() {
             Some(data) => data,
             None => return,
         };
 
         sentry_span.finish();
-        sentry_core::configure_scope(|scope| scope.set_span(parent_sentry_span));
     }
 
     /// Implement the writing of extra data to span
