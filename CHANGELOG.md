@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**:
+
+- Envelopes will be discarded rather than blocking if the transport channel fills up (previously fixed in async-capable transports, now applied to the curl/ureq transports). ([#701](https://github.com/getsentry/sentry-rust/pull/701))
+
 ## 0.34.0
 
 **Features**:
