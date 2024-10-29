@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -433,6 +434,20 @@ impl<'a> TransactionData<'a> {
             Box::new(std::iter::empty())
         }
     }
+
+    /// Set some extra information to be sent with this Transaction.
+    pub fn set_data(&mut self, key: Cow<'a, str>, value: protocol::Value) {
+        if let Some(transaction) = self.0.transaction.as_mut() {
+            transaction.extra.insert(key.into(), value);
+        }
+    }
+
+    /// Set some extra information to be sent with this Transaction.
+    pub fn set_tag(&mut self, key: Cow<'_, str>, value: String) {
+        if let Some(transaction) = self.0.transaction.as_mut() {
+            transaction.tags.insert(key.into(), value);
+        }
+    }
 }
 
 impl Transaction {
@@ -626,6 +641,18 @@ impl Transaction {
 
 /// A smart pointer to a span's [`data` field](protocol::Span::data).
 pub struct Data<'a>(MutexGuard<'a, protocol::Span>);
+
+impl<'a> Data<'a> {
+    /// Set some extra information to be sent with this Span.
+    pub fn set_data(&mut self, key: String, value: protocol::Value) {
+        self.0.data.insert(key, value);
+    }
+
+    /// Set some tag to be sent with this Span.
+    pub fn set_tag(&mut self, key: String, value: String) {
+        self.0.tags.insert(key, value);
+    }
+}
 
 impl<'a> Deref for Data<'a> {
     type Target = BTreeMap<String, protocol::Value>;
