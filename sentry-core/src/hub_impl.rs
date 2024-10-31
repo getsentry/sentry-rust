@@ -21,7 +21,10 @@ thread_local! {
     );
 }
 
-pub(crate) struct SwitchGuard {
+///Hub switch guard
+///
+///Used to temporarily swap active hub in thread local storage.
+pub struct SwitchGuard {
     inner: Option<(Arc<Hub>, bool)>,
 }
 

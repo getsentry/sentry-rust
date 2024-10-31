@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 use sentry_core::protocol::Value;
 use sentry_core::{Breadcrumb, TransactionOrSpan};
@@ -197,6 +198,8 @@ fn record_fields<'a, K: AsRef<str> + Into<Cow<'a, str>>>(
 pub(super) struct SentrySpanData {
     pub(super) sentry_span: TransactionOrSpan,
     parent_sentry_span: Option<TransactionOrSpan>,
+    hub: Arc<sentry_core::Hub>,
+    hub_switch_guard: Option<sentry_core::HubSwitchGuard>,
 }
 
 impl<S> Layer<S> for SentryLayer<S>
@@ -256,7 +259,9 @@ where
             }
         });
 
-        let parent_sentry_span = sentry_core::configure_scope(|s| s.get_span());
+        let hub = sentry_core::Hub::current();
+        let parent_sentry_span = hub.configure_scope(|scope| scope.get_span());
+
         let sentry_span: sentry_core::TransactionOrSpan = match &parent_sentry_span {
             Some(parent) => parent.start_child(op, &description).into(),
             None => {
@@ -272,42 +277,42 @@ where
         extensions.insert(SentrySpanData {
             sentry_span,
             parent_sentry_span,
+            hub,
+            hub_switch_guard: None,
         });
     }
 
     /// Sets entered span as *current* sentry span. A tracing span can be
     /// entered and existed multiple times, for example, when using a `tracing::Instrumented` future.
     fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
-        let span = match ctx.span(&id) {
+        let span = match ctx.span(id) {
             Some(span) => span,
             None => return,
         };
 
-        let extensions = span.extensions();
-        let SentrySpanData { sentry_span, .. } = match extensions.get::<SentrySpanData>() {
-            Some(data) => data,
-            None => return,
-        };
-
-        sentry_core::configure_scope(|scope| scope.set_span(Some(sentry_span.clone())));
+        let mut extensions = span.extensions_mut();
+        if let Some(data) = extensions.get_mut::<SentrySpanData>() {
+            data.hub_switch_guard = Some(data.hub.clone().into_switch_guard());
+            data.hub.configure_scope(|scope| {
+                scope.set_span(Some(data.sentry_span.clone()));
+            })
+        }
     }
 
     /// Set exited span's parent as *current* sentry span.
     fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
-        let span = match ctx.span(&id) {
+        let span = match ctx.span(id) {
             Some(span) => span,
             None => return,
         };
 
-        let extensions = span.extensions();
-        let SentrySpanData {
-            parent_sentry_span, ..
-        } = match extensions.get::<SentrySpanData>() {
-            Some(data) => data,
-            None => return,
-        };
-
-        sentry_core::configure_scope(|scope| scope.set_span(parent_sentry_span.clone()));
+        let mut extensions = span.extensions_mut();
+        if let Some(data) = extensions.get_mut::<SentrySpanData>() {
+            data.hub.configure_scope(|scope| {
+                scope.set_span(data.parent_sentry_span.clone());
+            });
+            data.hub_switch_guard = None;
+        }
     }
 
     /// When a span gets closed, finish the underlying sentry span, and set back
