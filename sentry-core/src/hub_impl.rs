@@ -21,15 +21,17 @@ thread_local! {
     );
 }
 
-///Hub switch guard
-///
-///Used to temporarily swap active hub in thread local storage.
+/// A Hub switch guard used to temporarily swap
+/// active hub in thread local storage.
 pub struct SwitchGuard {
     inner: Option<(Arc<Hub>, bool)>,
 }
 
 impl SwitchGuard {
-    pub(crate) fn new(mut hub: Arc<Hub>) -> Self {
+    /// Swaps the current thread's Hub by the one provided
+    /// and returns a guard that, when dropped, replaces it
+    /// to the previous one.
+    pub fn new(mut hub: Arc<Hub>) -> Self {
         let inner = THREAD_HUB.with(|(thread_hub, is_process_hub)| {
             // SAFETY: `thread_hub` will always be a valid thread local hub,
             // by definition not shared between threads.

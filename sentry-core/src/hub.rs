@@ -4,7 +4,6 @@
 
 use std::sync::{Arc, RwLock};
 
-use crate::hub_impl::SwitchGuard;
 use crate::protocol::{Event, Level, SessionStatus};
 use crate::types::Uuid;
 use crate::{Integration, IntoBreadcrumbs, Scope, ScopeGuard};
@@ -242,11 +241,5 @@ impl Hub {
                 }
             })
         }}
-    }
-
-    #[inline(always)]
-    /// Consumes self to create switch guard, that can be used to modify current hub in thread local storage
-    pub fn into_switch_guard(self: Arc<Hub>) -> SwitchGuard {
-        crate::hub_impl::SwitchGuard::new(self)
     }
 }

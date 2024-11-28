@@ -292,7 +292,7 @@ where
 
         let mut extensions = span.extensions_mut();
         if let Some(data) = extensions.get_mut::<SentrySpanData>() {
-            data.hub_switch_guard = Some(data.hub.clone().into_switch_guard());
+            data.hub_switch_guard = Some(sentry_core::HubSwitchGuard::new(data.hub.clone()));
             data.hub.configure_scope(|scope| {
                 scope.set_span(Some(data.sentry_span.clone()));
             })
@@ -311,7 +311,7 @@ where
             data.hub.configure_scope(|scope| {
                 scope.set_span(data.parent_sentry_span.clone());
             });
-            data.hub_switch_guard = None;
+            data.hub_switch_guard.take();
         }
     }
 
