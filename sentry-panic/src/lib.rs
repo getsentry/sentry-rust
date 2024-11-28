@@ -19,6 +19,7 @@
 #![warn(missing_docs)]
 #![deny(unsafe_code)]
 
+#[allow(deprecated)] // `PanicHookInfo` is only available in Rust 1.81+.
 use std::panic::{self, PanicInfo};
 use std::sync::Once;
 
@@ -31,6 +32,7 @@ use sentry_core::{ClientOptions, Integration};
 /// This panic handler reports panics to Sentry. It also attempts to prevent
 /// double faults in some cases where it's known to be unsafe to invoke the
 /// Sentry panic handler.
+#[allow(deprecated)] // `PanicHookInfo` is only available in Rust 1.81+.
 pub fn panic_handler(info: &PanicInfo<'_>) {
     sentry_core::with_integration(|integration: &PanicIntegration, hub| {
         hub.capture_event(integration.event_from_panic_info(info));
@@ -40,6 +42,7 @@ pub fn panic_handler(info: &PanicInfo<'_>) {
     });
 }
 
+#[allow(deprecated)] // `PanicHookInfo` is only available in Rust 1.81+.
 type PanicExtractor = dyn Fn(&PanicInfo<'_>) -> Option<Event<'static>> + Send + Sync;
 
 /// The Sentry Panic handler Integration.
@@ -75,6 +78,7 @@ impl Integration for PanicIntegration {
 }
 
 /// Extract the message of a panic.
+#[allow(deprecated)] // `PanicHookInfo` is only available in Rust 1.81+.
 pub fn message_from_panic_info<'a>(info: &'a PanicInfo<'_>) -> &'a str {
     match info.payload().downcast_ref::<&'static str>() {
         Some(s) => s,
@@ -93,6 +97,7 @@ impl PanicIntegration {
 
     /// Registers a new extractor.
     #[must_use]
+    #[allow(deprecated)] // `PanicHookInfo` is only available in Rust 1.81+.
     pub fn add_extractor<F>(mut self, f: F) -> Self
     where
         F: Fn(&PanicInfo<'_>) -> Option<Event<'static>> + Send + Sync + 'static,
@@ -104,6 +109,7 @@ impl PanicIntegration {
     /// Creates an event from the given panic info.
     ///
     /// The stacktrace is calculated from the current frame.
+    #[allow(deprecated)] // `PanicHookInfo` is only available in Rust 1.81+.
     pub fn event_from_panic_info(&self, info: &PanicInfo<'_>) -> Event<'static> {
         for extractor in &self.extractors {
             if let Some(event) = extractor(info) {
