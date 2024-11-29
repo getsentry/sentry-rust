@@ -3849,6 +3849,7 @@ dependencies = [
  "sentry",
  "sentry-backtrace",
  "sentry-core",
+ "serde_json",
  "tokio",
  "tracing",
  "tracing-core",

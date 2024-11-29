@@ -141,8 +141,14 @@ impl Visit for FieldVisitor {
 }
 
 /// Creates a [`Breadcrumb`] from a given [`tracing_core::Event`]
-pub fn breadcrumb_from_event(event: &tracing_core::Event) -> Breadcrumb {
-    let (message, visitor) = extract_event_data(event);
+pub fn breadcrumb_from_event<'context, S>(
+    event: &tracing_core::Event,
+    ctx: impl Into<Option<Context<'context, S>>>,
+) -> Breadcrumb
+where
+    S: Subscriber + for<'a> LookupSpan<'a>,
+{
+    let (message, visitor) = extract_event_data_with_context(event, ctx.into());
     Breadcrumb {
         category: Some(event.metadata().target().to_owned()),
         ty: "log".into(),
