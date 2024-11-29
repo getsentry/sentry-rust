@@ -149,8 +149,9 @@ pub mod metrics;
 mod session;
 #[cfg(all(feature = "client", feature = "metrics"))]
 mod units;
+
 #[cfg(feature = "client")]
-pub use crate::client::Client;
+pub use crate::{client::Client, hub_impl::SwitchGuard as HubSwitchGuard};
 
 // test utilities
 #[cfg(feature = "test")]
