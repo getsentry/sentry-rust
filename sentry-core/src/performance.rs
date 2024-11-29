@@ -561,8 +561,8 @@ impl<'a> TransactionData<'a> {
 
 impl Transaction {
     #[cfg(feature = "client")]
-    fn new(mut client: Option<Arc<Client>>, ctx: TransactionContext) -> Self {
-        let (sampled, mut transaction) = match client.as_ref() {
+    fn new(client: Option<Arc<Client>>, ctx: TransactionContext) -> Self {
+        let (sampled, transaction) = match client.as_ref() {
             Some(client) => (
                 client.is_transaction_sampled(&ctx),
                 Some(protocol::Transaction {
@@ -580,13 +580,6 @@ impl Transaction {
             op: Some(ctx.op),
             ..Default::default()
         };
-
-        // throw away the transaction here, which means there is nothing to send
-        // on `finish`.
-        if !sampled {
-            transaction = None;
-            client = None;
-        }
 
         Self {
             inner: Arc::new(Mutex::new(TransactionInner {
@@ -699,6 +692,12 @@ impl Transaction {
     pub fn finish(self) {
         with_client_impl! {{
             let mut inner = self.inner.lock().unwrap();
+
+            // Discard `Transaction` unless sampled.
+            if !inner.sampled {
+                return;
+            }
+
             if let Some(mut transaction) = inner.transaction.take() {
                 if let Some(client) = inner.client.take() {
                     transaction.finish();
