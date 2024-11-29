@@ -7,7 +7,7 @@ fn function_with_tags(value: i32) {
 
 #[test]
 fn should_instrument_function_with_event() {
-    let transport = shared::init_sentry();
+    let transport = shared::init_sentry(1.0); // Sample all spans.
 
     function_with_tags(1);
 

@@ -2,12 +2,12 @@ mod shared;
 
 #[test]
 fn breadcrumbs_should_capture_span_fields() {
-    let transport = shared::init_sentry();
+    let transport = shared::init_sentry(0.0); // This test should work even if we are not sampling transactions.
 
     foo();
 
     let data = transport.fetch_and_clear_envelopes();
-    assert_eq!(data.len(), 2);
+    assert_eq!(data.len(), 1);
 
     let event = data.first().expect("should have 1 event");
     let event = match event.items().next().unwrap() {
