@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.35.0
 
 **Fixes**:
 
