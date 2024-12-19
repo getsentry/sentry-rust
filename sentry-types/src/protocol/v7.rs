@@ -1643,7 +1643,7 @@ pub struct Event<'a> {
     pub sdk: Option<Cow<'a, ClientSdkInfo>>,
 }
 
-impl<'a> Default for Event<'a> {
+impl Default for Event<'_> {
     fn default() -> Self {
         Event {
             event_id: event::default_id(),
@@ -1722,7 +1722,7 @@ impl<'a> Event<'a> {
     }
 }
 
-impl<'a> fmt::Display for Event<'a> {
+impl fmt::Display for Event<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -1994,7 +1994,7 @@ pub struct Transaction<'a> {
     pub server_name: Option<Cow<'a, str>>,
 }
 
-impl<'a> Default for Transaction<'a> {
+impl Default for Transaction<'_> {
     fn default() -> Self {
         Transaction {
             event_id: event::default_id(),
@@ -2049,7 +2049,7 @@ impl<'a> Transaction<'a> {
     }
 }
 
-impl<'a> fmt::Display for Transaction<'a> {
+impl fmt::Display for Transaction<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
