@@ -197,6 +197,11 @@ impl Scope {
         self.user = user.map(Arc::new);
     }
 
+    /// Retrieves the user of the current scope.
+    pub fn user(&self) -> Option<&User> {
+        self.user.as_deref()
+    }
+
     /// Sets a tag to a specific value.
     pub fn set_tag<V: ToString>(&mut self, key: &str, value: V) {
         Arc::make_mut(&mut self.tags).insert(key.to_string(), value.to_string());
