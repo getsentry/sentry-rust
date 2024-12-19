@@ -751,7 +751,7 @@ impl Transaction {
 /// A smart pointer to a span's [`data` field](protocol::Span::data).
 pub struct Data<'a>(MutexGuard<'a, protocol::Span>);
 
-impl<'a> Data<'a> {
+impl Data<'_> {
     /// Set some extra information to be sent with this Span.
     pub fn set_data(&mut self, key: String, value: protocol::Value) {
         self.0.data.insert(key, value);
@@ -763,7 +763,7 @@ impl<'a> Data<'a> {
     }
 }
 
-impl<'a> Deref for Data<'a> {
+impl Deref for Data<'_> {
     type Target = BTreeMap<String, protocol::Value>;
 
     fn deref(&self) -> &Self::Target {
@@ -771,7 +771,7 @@ impl<'a> Deref for Data<'a> {
     }
 }
 
-impl<'a> DerefMut for Data<'a> {
+impl DerefMut for Data<'_> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0.data
     }

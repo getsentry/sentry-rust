@@ -60,7 +60,7 @@ pub mod ts_seconds_float {
 
     struct SecondsTimestampVisitor;
 
-    impl<'de> de::Visitor<'de> for SecondsTimestampVisitor {
+    impl de::Visitor<'_> for SecondsTimestampVisitor {
         type Value = SystemTime;
 
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -144,7 +144,7 @@ pub mod ts_rfc3339 {
 
     pub(super) struct Rfc3339Deserializer;
 
-    impl<'de> de::Visitor<'de> for Rfc3339Deserializer {
+    impl de::Visitor<'_> for Rfc3339Deserializer {
         type Value = SystemTime;
 
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {

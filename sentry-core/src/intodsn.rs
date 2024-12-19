@@ -27,7 +27,7 @@ impl IntoDsn for () {
     }
 }
 
-impl<'a> IntoDsn for &'a str {
+impl IntoDsn for &'_ str {
     fn into_dsn(self) -> Result<Option<Dsn>, ParseDsnError> {
         if self.is_empty() {
             Ok(None)
@@ -37,14 +37,14 @@ impl<'a> IntoDsn for &'a str {
     }
 }
 
-impl<'a> IntoDsn for Cow<'a, str> {
+impl IntoDsn for Cow<'_, str> {
     fn into_dsn(self) -> Result<Option<Dsn>, ParseDsnError> {
         let x: &str = &self;
         x.into_dsn()
     }
 }
 
-impl<'a> IntoDsn for &'a OsStr {
+impl IntoDsn for &'_ OsStr {
     fn into_dsn(self) -> Result<Option<Dsn>, ParseDsnError> {
         self.to_string_lossy().into_dsn()
     }
@@ -62,7 +62,7 @@ impl IntoDsn for String {
     }
 }
 
-impl<'a> IntoDsn for &'a Dsn {
+impl IntoDsn for &'_ Dsn {
     fn into_dsn(self) -> Result<Option<Dsn>, ParseDsnError> {
         Ok(Some(self.clone()))
     }
