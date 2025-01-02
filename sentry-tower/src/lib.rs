@@ -196,7 +196,9 @@ where
     H: Into<Arc<Hub>>,
 {
     provider: P,
-    _hub: PhantomData<(H, Request)>,
+    // `fn` is used to assert that SentryLayer will be Send+Sync
+    // (https://doc.rust-lang.org/nomicon/phantom-data.html#table-of-phantomdata-patterns)
+    _hub: PhantomData<fn(H, Request)>,
 }
 
 impl<S, P, H, Request> Layer<S> for SentryLayer<P, H, Request>
@@ -250,7 +252,9 @@ where
 {
     service: S,
     provider: P,
-    _hub: PhantomData<(H, Request)>,
+    // `fn` is used to assert that SentryService will be Send+Sync
+    // (https://doc.rust-lang.org/nomicon/phantom-data.html#table-of-phantomdata-patterns)
+    _hub: PhantomData<fn(H, Request)>,
 }
 
 impl<S, Request, P, H> Service<Request> for SentryService<S, P, H, Request>
