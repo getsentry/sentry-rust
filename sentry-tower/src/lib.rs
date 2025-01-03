@@ -196,7 +196,7 @@ where
     H: Into<Arc<Hub>>,
 {
     provider: P,
-    _hub: PhantomData<(H, Request)>,
+    _hub: PhantomData<(H, fn() -> Request)>,
 }
 
 impl<S, P, H, Request> Layer<S> for SentryLayer<P, H, Request>
@@ -250,7 +250,7 @@ where
 {
     service: S,
     provider: P,
-    _hub: PhantomData<(H, Request)>,
+    _hub: PhantomData<(H, fn() -> Request)>,
 }
 
 impl<S, Request, P, H> Service<Request> for SentryService<S, P, H, Request>
@@ -324,5 +324,23 @@ impl<S, Request> NewSentryService<S, Request> {
             service,
             _hub: PhantomData,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::rc::Rc;
+
+    fn assert_sync<T: Sync>() {}
+
+    #[test]
+    fn test_layer_is_sync_when_request_isnt() {
+        assert_sync::<NewSentryLayer<Rc<()>>>(); // Rc<()> is not Sync
+    }
+
+    #[test]
+    fn test_service_is_sync_when_request_isnt() {
+        assert_sync::<NewSentryService<(), Rc<()>>>(); // Rc<()> is not Sync
     }
 }
