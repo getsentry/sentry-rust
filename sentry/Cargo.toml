@@ -1,6 +1,6 @@
 [package]
 name = "sentry"
-version = "0.35.0"
+version = "0.36.0"
 authors = ["Sentry <hello@sentry.io>"]
 license = "Apache-2.0"
 readme = "README.md"
@@ -54,18 +54,18 @@ rustls = ["dep:rustls", "reqwest?/rustls-tls", "ureq?/tls", "webpki-roots"]
 embedded-svc-http = ["dep:embedded-svc", "dep:esp-idf-svc"]
 
 [dependencies]
-sentry-core = { version = "0.35.0", path = "../sentry-core", features = [
+sentry-core = { version = "0.36.0", path = "../sentry-core", features = [
     "client",
 ] }
-sentry-anyhow = { version = "0.35.0", path = "../sentry-anyhow", optional = true }
-sentry-backtrace = { version = "0.35.0", path = "../sentry-backtrace", optional = true }
-sentry-contexts = { version = "0.35.0", path = "../sentry-contexts", optional = true }
-sentry-debug-images = { version = "0.35.0", path = "../sentry-debug-images", optional = true }
-sentry-log = { version = "0.35.0", path = "../sentry-log", optional = true }
-sentry-panic = { version = "0.35.0", path = "../sentry-panic", optional = true }
-sentry-slog = { version = "0.35.0", path = "../sentry-slog", optional = true }
-sentry-tower = { version = "0.35.0", path = "../sentry-tower", optional = true }
-sentry-tracing = { version = "0.35.0", path = "../sentry-tracing", optional = true }
+sentry-anyhow = { version = "0.36.0", path = "../sentry-anyhow", optional = true }
+sentry-backtrace = { version = "0.36.0", path = "../sentry-backtrace", optional = true }
+sentry-contexts = { version = "0.36.0", path = "../sentry-contexts", optional = true }
+sentry-debug-images = { version = "0.36.0", path = "../sentry-debug-images", optional = true }
+sentry-log = { version = "0.36.0", path = "../sentry-log", optional = true }
+sentry-panic = { version = "0.36.0", path = "../sentry-panic", optional = true }
+sentry-slog = { version = "0.36.0", path = "../sentry-slog", optional = true }
+sentry-tower = { version = "0.36.0", path = "../sentry-tower", optional = true }
+sentry-tracing = { version = "0.36.0", path = "../sentry-tracing", optional = true }
 log = { version = "0.4.8", optional = true, features = ["std"] }
 reqwest = { version = "0.12", optional = true, features = [
     "blocking",
