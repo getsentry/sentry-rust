@@ -583,14 +583,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a6c9af12842a67734c9a2e355436e5d03b22383ed60cf13cd0c18fbfe3dcbcf"
 dependencies = [
  "async-trait",
- "axum-core",
+ "axum-core 0.4.3",
  "bytes 1.6.0",
  "futures-util",
  "http 1.1.0",
  "http-body",
  "http-body-util",
  "itoa",
- "matchit",
+ "matchit 0.7.3",
  "memchr",
  "mime",
  "percent-encoding",
@@ -598,7 +598,33 @@ dependencies = [
  "rustversion",
  "serde",
  "sync_wrapper 1.0.1",
- "tower",
+ "tower 0.4.13",
+ "tower-layer",
+ "tower-service",
+]
+
+[[package]]
+name = "axum"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6d6fd624c75e18b3b4c6b9caf42b1afe24437daaee904069137d8bab077be8b8"
+dependencies = [
+ "axum-core 0.5.0",
+ "bytes 1.6.0",
+ "futures-util",
+ "http 1.1.0",
+ "http-body",
+ "http-body-util",
+ "itoa",
+ "matchit 0.8.4",
+ "memchr",
+ "mime",
+ "percent-encoding",
+ "pin-project-lite",
+ "rustversion",
+ "serde",
+ "sync_wrapper 1.0.1",
+ "tower 0.5.2",
  "tower-layer",
  "tower-service",
 ]
@@ -619,6 +645,25 @@ dependencies = [
  "pin-project-lite",
  "rustversion",
  "sync_wrapper 0.1.2",
+ "tower-layer",
+ "tower-service",
+]
+
+[[package]]
+name = "axum-core"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df1362f362fd16024ae199c1970ce98f9661bf5ef94b9808fee734bc3698b733"
+dependencies = [
+ "bytes 1.6.0",
+ "futures-util",
+ "http 1.1.0",
+ "http-body",
+ "http-body-util",
+ "mime",
+ "pin-project-lite",
+ "rustversion",
+ "sync_wrapper 1.0.1",
  "tower-layer",
  "tower-service",
 ]
@@ -2350,7 +2395,7 @@ dependencies = [
  "pin-project-lite",
  "socket2 0.5.7",
  "tokio",
- "tower",
+ "tower 0.4.13",
  "tower-service",
  "tracing",
 ]
@@ -2671,6 +2716,12 @@ name = "matchit"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0e7465ac9959cc2b1404e8e2367b43684a6d13790fe23056cc8c6c5a6b7bcb94"
+
+[[package]]
+name = "matchit"
+version = "0.8.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "47e1ffaa40ddd1f3ed91f717a33c8c0ee23fff369e3aa8772b9605cc1d22f4c3"
 
 [[package]]
 name = "memchr"
@@ -3677,7 +3728,7 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "sentry"
-version = "0.34.0"
+version = "0.35.0"
 dependencies = [
  "actix-web",
  "anyhow",
@@ -3706,7 +3757,7 @@ dependencies = [
  "slog",
  "surf",
  "tokio",
- "tower",
+ "tower 0.4.13",
  "tracing",
  "tracing-subscriber",
  "ureq",
@@ -3715,7 +3766,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-actix"
-version = "0.34.0"
+version = "0.35.0"
 dependencies = [
  "actix-web",
  "futures",
@@ -3727,7 +3778,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-anyhow"
-version = "0.34.0"
+version = "0.35.0"
 dependencies = [
  "anyhow",
  "sentry",
@@ -3737,7 +3788,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-backtrace"
-version = "0.34.0"
+version = "0.35.0"
 dependencies = [
  "backtrace",
  "once_cell",
@@ -3747,7 +3798,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-contexts"
-version = "0.34.0"
+version = "0.35.0"
 dependencies = [
  "hostname",
  "libc",
@@ -3760,7 +3811,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-core"
-version = "0.34.0"
+version = "0.35.0"
 dependencies = [
  "anyhow",
  "cadence",
@@ -3783,7 +3834,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-debug-images"
-version = "0.34.0"
+version = "0.35.0"
 dependencies = [
  "findshlibs",
  "once_cell",
@@ -3792,7 +3843,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-log"
-version = "0.34.0"
+version = "0.35.0"
 dependencies = [
  "log",
  "pretty_env_logger",
@@ -3802,7 +3853,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-panic"
-version = "0.34.0"
+version = "0.35.0"
 dependencies = [
  "sentry",
  "sentry-backtrace",
@@ -3811,7 +3862,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-slog"
-version = "0.34.0"
+version = "0.35.0"
 dependencies = [
  "erased-serde",
  "sentry",
@@ -3823,10 +3874,10 @@ dependencies = [
 
 [[package]]
 name = "sentry-tower"
-version = "0.34.0"
+version = "0.35.0"
 dependencies = [
  "anyhow",
- "axum",
+ "axum 0.8.1",
  "http 1.1.0",
  "pin-project",
  "prost 0.12.6",
@@ -3835,7 +3886,7 @@ dependencies = [
  "sentry-core",
  "tokio",
  "tonic",
- "tower",
+ "tower 0.4.13",
  "tower-layer",
  "tower-service",
  "url",
@@ -3843,7 +3894,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-tracing"
-version = "0.34.0"
+version = "0.35.0"
 dependencies = [
  "log",
  "sentry",
@@ -3858,7 +3909,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-types"
-version = "0.34.0"
+version = "0.35.0"
 dependencies = [
  "debugid",
  "hex",
@@ -4480,7 +4531,7 @@ checksum = "877c5b330756d856ffcc4553ab34a5684481ade925ecc54bcd1bf02b1d0d4d52"
 dependencies = [
  "async-stream",
  "async-trait",
- "axum",
+ "axum 0.7.5",
  "base64 0.22.1",
  "bytes 1.6.0",
  "h2 0.4.6",
@@ -4496,7 +4547,7 @@ dependencies = [
  "socket2 0.5.7",
  "tokio",
  "tokio-stream",
- "tower",
+ "tower 0.4.13",
  "tower-layer",
  "tower-service",
  "tracing",
@@ -4523,16 +4574,30 @@ dependencies = [
 ]
 
 [[package]]
-name = "tower-layer"
-version = "0.3.2"
+name = "tower"
+version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c20c8dbed6283a09604c3e69b4b7eeb54e298b8a600d4d5ecb5ad39de609f1d0"
+checksum = "d039ad9159c98b70ecfd540b2573b97f7f52c3e8d9f8ad57a24b916a536975f9"
+dependencies = [
+ "futures-core",
+ "futures-util",
+ "pin-project-lite",
+ "sync_wrapper 1.0.1",
+ "tower-layer",
+ "tower-service",
+]
+
+[[package]]
+name = "tower-layer"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "121c2a6cda46980bb0fcd1647ffaf6cd3fc79a013de288782836f6df9c48780e"
 
 [[package]]
 name = "tower-service"
-version = "0.3.2"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b6bc1c9ce2b5135ac7f93c72918fc37feb872bdc6a5533a8b85eb4b86bfdae52"
+checksum = "8df9b6e13f2d32c91b9bd719c00d1958837bc7dec474d94952798cc8e69eeec3"
 
 [[package]]
 name = "tracing"
