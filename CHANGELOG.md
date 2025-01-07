@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.36.0
+
+### Various fixes & improvements
+
+- feat(sentry-tower) Make SentryLayer and SentryService `Sync` if request isn't (#721) by @syphar
+- sentry-tower: Update `axum` dependency to v0.8 (#718) by @Turbo87
+- Allow retrieving user of scope (#715) by @thomaseizinger
+- Elide lifetimes where possible (#716) by @thomaseizinger
+- Replace release bot with GH app (#714) by @Jeffreyhung
+- Delay sampling of span to `finish` (#712) by @thomaseizinger
+
 ## 0.35.0
 
 **Fixes**:
