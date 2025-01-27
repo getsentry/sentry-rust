@@ -2,7 +2,7 @@
 name = "sentry"
 version = "0.36.0"
 authors = ["Sentry <hello@sentry.io>"]
-license = "Apache-2.0"
+license = "MIT"
 readme = "README.md"
 repository = "https://github.com/getsentry/sentry-rust"
 homepage = "https://sentry.io/welcome/"
