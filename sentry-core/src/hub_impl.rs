@@ -90,11 +90,7 @@ impl HubImpl {
             Ok(guard) => guard,
         };
 
-        guard
-            .top()
-            .client
-            .as_ref()
-            .is_some_and(|c| c.is_enabled())
+        guard.top().client.as_ref().is_some_and(|c| c.is_enabled())
     }
 }
 
