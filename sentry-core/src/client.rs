@@ -189,10 +189,7 @@ impl Client {
         }
 
         if let Some(scope) = scope {
-            event = match scope.apply_to_event(event) {
-                Some(event) => event,
-                None => return None,
-            };
+            event = scope.apply_to_event(event)?;
         }
 
         for (_, integration) in self.integrations.iter() {
