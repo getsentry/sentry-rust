@@ -24,7 +24,7 @@ let integration = sentry_panic::PanicIntegration::default().add_extractor(|info|
 
 ## Resources
 
-License: Apache-2.0
+License: MIT
 
 - [Discord](https://discord.gg/ez5KZN7) server for project discussions.
 - Follow [@getsentry](https://twitter.com/getsentry) on Twitter for updates
