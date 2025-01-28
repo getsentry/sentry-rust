@@ -94,7 +94,7 @@ impl HubImpl {
             .top()
             .client
             .as_ref()
-            .map_or(false, |c| c.is_enabled())
+            .is_some_and(|c| c.is_enabled())
     }
 }
 

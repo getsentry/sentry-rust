@@ -225,7 +225,7 @@ where
             inner.hub.clone().unwrap_or_else(Hub::main),
         ));
         let client = hub.client();
-        let track_sessions = client.as_ref().map_or(false, |client| {
+        let track_sessions = client.as_ref().is_some_and(|client| {
             let options = client.options();
             options.auto_session_tracking
                 && options.session_mode == sentry_core::SessionMode::Request
@@ -235,7 +235,7 @@ where
         }
         let with_pii = client
             .as_ref()
-            .map_or(false, |client| client.options().send_default_pii);
+            .is_some_and(|client| client.options().send_default_pii);
 
         let sentry_req = sentry_request_from_http(&req, with_pii);
         let name = transaction_name_from_http(&req);
