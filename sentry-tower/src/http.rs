@@ -4,6 +4,7 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 
 use http::{header, uri, Request, Response, StatusCode};
+use pin_project::pinned_drop;
 use sentry_core::protocol;
 use tower_layer::Layer;
 use tower_service::Service;
@@ -62,7 +63,7 @@ impl<S> Layer<S> for SentryHttpLayer {
 }
 
 /// The Future returned from [`SentryHttpService`].
-#[pin_project::pin_project]
+#[pin_project::pin_project(PinnedDrop)]
 pub struct SentryHttpFuture<F> {
     on_first_poll: Option<(
         sentry_core::protocol::Request,
@@ -119,6 +120,23 @@ where
                 Poll::Ready(res)
             }
             Poll::Pending => Poll::Pending,
+        }
+    }
+}
+
+#[pinned_drop]
+impl<F> PinnedDrop for SentryHttpFuture<F> {
+    fn drop(self: Pin<&mut Self>) {
+        let slf = self.project();
+
+        // If the future gets dropped without being polled to completion,
+        // still finish the transaction to make sure this is not lost.
+        if let Some((transaction, parent_span)) = slf.transaction.take() {
+            if transaction.get_status().is_none() {
+                transaction.set_status(protocol::SpanStatus::Aborted);
+            }
+            transaction.finish();
+            sentry_core::configure_scope(|scope| scope.set_span(parent_span));
         }
     }
 }
