@@ -20,7 +20,6 @@ sentry-core = { version = "0.36.0", path = "../sentry-core", default-features = 
 ] }
 serde_json = "1.0.133"
 actix-http = "3.9.0"
-futures = "0.3"
 
 [dev-dependencies]
 actix-web = { version = "4" }
