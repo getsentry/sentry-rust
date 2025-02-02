@@ -73,16 +73,22 @@
 
 use std::borrow::Cow;
 use std::pin::Pin;
+use std::rc::Rc;
 use std::sync::Arc;
 
+use actix_http::header::HeaderMap;
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
+use actix_web::error::PayloadError;
 use actix_web::http::StatusCode;
-use actix_web::Error;
+use actix_web::web::BytesMut;
+use actix_web::{Error, HttpMessage};
 use futures_util::future::{ok, Future, Ready};
 use futures_util::FutureExt;
 
 use sentry_core::protocol::{self, ClientSdkPackage, Event, Request};
+use sentry_core::MaxRequestBodySize;
 use sentry_core::{Hub, SentryFutureExt};
+use serde_json::json;
 
 /// A helper construct that can be used to reconfigure and build the middleware.
 pub struct SentryBuilder {
@@ -180,7 +186,7 @@ impl Default for Sentry {
 
 impl<S, B> Transform<S, ServiceRequest> for Sentry
 where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + 'static,
     S::Future: 'static,
 {
     type Response = ServiceResponse<B>;
@@ -191,7 +197,7 @@ where
 
     fn new_transform(&self, service: S) -> Self::Future {
         ok(SentryMiddleware {
-            service,
+            service: Rc::new(service),
             inner: self.clone(),
         })
     }
@@ -199,13 +205,55 @@ where
 
 /// The middleware for individual services.
 pub struct SentryMiddleware<S> {
-    service: S,
+    service: Rc<S>,
     inner: Sentry,
+}
+
+async fn should_capture_request_body(headers: &HeaderMap) -> bool {
+    headers
+        .get("content-type")
+        .and_then(|h| h.to_str().ok())
+        .map(|s| s.to_lowercase())
+        .map_or(false, |ct| {
+            ct.contains("application/json") || ct.contains("application/x-www-form-urlencoded")
+        })
+}
+
+/// Extract a body from the HTTP request
+async fn body_from_http(req: &mut ServiceRequest) -> Result<BytesMut, PayloadError> {
+    let mut stream = req.take_payload();
+
+    let mut body = BytesMut::new();
+    while let Some(chunk) = futures_util::StreamExt::next(&mut stream).await {
+        let chunk = chunk?;
+        body.extend_from_slice(&chunk);
+    }
+    let (_, mut orig_payload) = actix_http::h1::Payload::create(true);
+    orig_payload.unread_data(body.clone().freeze());
+    req.set_payload(actix_web::dev::Payload::from(orig_payload));
+
+    Ok::<_, PayloadError>(body)
+}
+
+async fn capture_request_body(
+    req: &mut ServiceRequest,
+    max_size: MaxRequestBodySize,
+) -> Option<String> {
+    let request_body = body_from_http(req).await.unwrap();
+    let request_body_str = String::from_utf8_lossy(&request_body).into_owned();
+
+    match max_size {
+        MaxRequestBodySize::Small if request_body_str.len() < 1_000 => Some(request_body_str),
+        MaxRequestBodySize::Medium if request_body_str.len() < 10_000 => Some(request_body_str),
+        MaxRequestBodySize::Always => Some(request_body_str),
+        MaxRequestBodySize::None => unreachable!(),
+        _ => Some(String::new()),
+    }
 }
 
 impl<S, B> Service<ServiceRequest> for SentryMiddleware<S>
 where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + 'static,
     S::Future: 'static,
 {
     type Response = ServiceResponse<B>;
@@ -230,6 +278,10 @@ where
             options.auto_session_tracking
                 && options.session_mode == sentry_core::SessionMode::Request
         });
+        let max_request_body_size = client
+            .as_ref()
+            .map(|client| client.options().max_request_body_size.clone())
+            .unwrap_or(MaxRequestBodySize::None);
         if track_sessions {
             hub.start_session();
         }
@@ -237,7 +289,7 @@ where
             .as_ref()
             .is_some_and(|client| client.options().send_default_pii);
 
-        let sentry_req = sentry_request_from_http(&req, with_pii);
+        let mut sentry_req = sentry_request_from_http(&req, with_pii);
         let name = transaction_name_from_http(&req);
 
         let transaction = if inner.start_transaction {
@@ -255,21 +307,34 @@ where
             None
         };
 
-        let parent_span = hub.configure_scope(|scope| {
-            let parent_span = scope.get_span();
-            if let Some(transaction) = transaction.as_ref() {
-                scope.set_span(Some(transaction.clone().into()));
-            } else {
-                scope.set_transaction((!inner.start_transaction).then_some(&name));
-            }
-            scope.add_event_processor(move |event| Some(process_event(event, &sentry_req)));
-            parent_span
-        });
-
-        let fut = self.service.call(req).bind_hub(hub.clone());
-
+        let svc = self.service.clone();
         async move {
-            // Service errors
+            let mut req = req;
+
+            if max_request_body_size != MaxRequestBodySize::None {
+                if should_capture_request_body(req.headers()).await {
+                    sentry_req.data = capture_request_body(&mut req, max_request_body_size).await;
+                }
+            }
+
+            let mut parent_span = hub.configure_scope(|scope| {
+                let parent_span = scope.get_span();
+                if let Some(transaction) = transaction.as_ref() {
+                    scope.set_span(Some(transaction.clone().into()));
+                } else {
+                    scope.set_transaction((!inner.start_transaction).then_some(&name));
+                }
+                scope.add_event_processor(move |event| Some(process_event(event, &sentry_req)));
+                parent_span
+            });
+            parent_span = parent_span.map(|span| {
+                span.set_data(
+                    "other_span_data",
+                    json!({"other_span_data": "This is another data"}).into(),
+                );
+                span
+            });
+            let fut = svc.call(req).bind_hub(hub.clone());
             let mut res: Self::Response = match fut.await {
                 Ok(res) => res,
                 Err(e) => {

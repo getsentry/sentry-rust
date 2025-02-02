@@ -40,7 +40,7 @@ pub enum SessionMode {
     Request,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum MaxRequestBodySize {
     /// Don't capture request body
     None,
