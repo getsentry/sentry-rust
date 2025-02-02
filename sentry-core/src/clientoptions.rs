@@ -40,6 +40,18 @@ pub enum SessionMode {
     Request,
 }
 
+#[derive(Clone)]
+pub enum MaxRequestBodySize {
+    /// Don't capture request body
+    None,
+    /// Capture up to 1000 bytes
+    Small,
+    /// Capture up to 10000 bytes
+    Medium,
+    /// Capture entire body
+    Always,
+}
+
 /// Configuration settings for the client.
 ///
 /// These options are explained in more detail in the general
@@ -148,6 +160,8 @@ pub struct ClientOptions {
     pub trim_backtraces: bool,
     /// The user agent that should be reported.
     pub user_agent: Cow<'static, str>,
+    /// Controls how much of request bodies are captured
+    pub max_request_body_size: MaxRequestBodySize,
 }
 
 impl ClientOptions {
@@ -256,6 +270,7 @@ impl Default for ClientOptions {
             extra_border_frames: vec![],
             trim_backtraces: true,
             user_agent: Cow::Borrowed(USER_AGENT),
+            max_request_body_size: MaxRequestBodySize::None,
         }
     }
 }
