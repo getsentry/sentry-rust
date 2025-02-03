@@ -40,6 +40,12 @@ pub enum SessionMode {
     Request,
 }
 
+/// The maximum size of an HTTP request body that the SDK captures.
+///
+/// Only request bodies that parse as JSON or form data are currently captured.
+/// See the [Documentation on attaching request body](https://develop.sentry.dev/sdk/expected-features/#attaching-request-body-in-server-sdks)
+/// and the [Documentation on handling sensitive data](https://develop.sentry.dev/sdk/expected-features/data-handling/#sensitive-data)
+/// for more information.
 #[derive(Clone, PartialEq)]
 pub enum MaxRequestBodySize {
     /// Don't capture request body

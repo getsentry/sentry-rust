@@ -88,7 +88,6 @@ use futures_util::FutureExt;
 use sentry_core::protocol::{self, ClientSdkPackage, Event, Request};
 use sentry_core::MaxRequestBodySize;
 use sentry_core::{Hub, SentryFutureExt};
-use serde_json::json;
 
 /// A helper construct that can be used to reconfigure and build the middleware.
 pub struct SentryBuilder {
@@ -214,7 +213,7 @@ async fn should_capture_request_body(headers: &HeaderMap) -> bool {
         .get("content-type")
         .and_then(|h| h.to_str().ok())
         .map(|s| s.to_lowercase())
-        .map_or(false, |ct| {
+        .is_some_and(|ct| {
             ct.contains("application/json") || ct.contains("application/x-www-form-urlencoded")
         })
 }
@@ -311,13 +310,13 @@ where
         async move {
             let mut req = req;
 
-            if max_request_body_size != MaxRequestBodySize::None {
-                if should_capture_request_body(req.headers()).await {
-                    sentry_req.data = capture_request_body(&mut req, max_request_body_size).await;
-                }
+            if max_request_body_size != MaxRequestBodySize::None
+                && should_capture_request_body(req.headers()).await
+            {
+                sentry_req.data = capture_request_body(&mut req, max_request_body_size).await;
             }
 
-            let mut parent_span = hub.configure_scope(|scope| {
+            let parent_span = hub.configure_scope(|scope| {
                 let parent_span = scope.get_span();
                 if let Some(transaction) = transaction.as_ref() {
                     scope.set_span(Some(transaction.clone().into()));
@@ -326,13 +325,6 @@ where
                 }
                 scope.add_event_processor(move |event| Some(process_event(event, &sentry_req)));
                 parent_span
-            });
-            parent_span = parent_span.map(|span| {
-                span.set_data(
-                    "other_span_data",
-                    json!({"other_span_data": "This is another data"}).into(),
-                );
-                span
             });
             let fut = svc.call(req).bind_hub(hub.clone());
             let mut res: Self::Response = match fut.await {
