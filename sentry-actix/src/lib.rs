@@ -250,7 +250,10 @@ where
                 "http.server",
                 headers,
             );
-            Some(hub.start_transaction(ctx))
+
+            let transaction = hub.start_transaction(ctx);
+            transaction.set_request(sentry_req.clone());
+            Some(transaction)
         } else {
             None
         };
