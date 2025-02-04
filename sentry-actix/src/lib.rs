@@ -208,7 +208,7 @@ pub struct SentryMiddleware<S> {
     inner: Sentry,
 }
 
-async fn should_capture_request_body(headers: &HeaderMap) -> bool {
+fn should_capture_request_body(headers: &HeaderMap) -> bool {
     headers
         .get("content-type")
         .and_then(|h| h.to_str().ok())
@@ -314,7 +314,7 @@ where
             let mut req = req;
 
             if max_request_body_size != MaxRequestBodySize::None
-                && should_capture_request_body(req.headers()).await
+                && should_capture_request_body(req.headers())
             {
                 sentry_req.data = capture_request_body(&mut req, max_request_body_size).await;
             }
