@@ -56,6 +56,8 @@ pub enum MaxRequestBodySize {
     Medium,
     /// Capture entire body
     Always,
+    /// Capture up to a specific size
+    Explicit(usize),
 }
 
 impl MaxRequestBodySize {
@@ -66,6 +68,7 @@ impl MaxRequestBodySize {
             MaxRequestBodySize::Small => content_length <= 1_000,
             MaxRequestBodySize::Medium => content_length <= 10_000,
             MaxRequestBodySize::Always => true,
+            MaxRequestBodySize::Explicit(size) => content_length <= *size,
         }
     }
 }
