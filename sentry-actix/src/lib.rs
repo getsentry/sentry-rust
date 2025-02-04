@@ -76,7 +76,7 @@ use std::pin::Pin;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use actix_http::header::HeaderMap;
+use actix_http::header::{self, HeaderMap};
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
 use actix_web::error::PayloadError;
 use actix_web::http::StatusCode;
@@ -208,14 +208,34 @@ pub struct SentryMiddleware<S> {
     inner: Sentry,
 }
 
-fn should_capture_request_body(headers: &HeaderMap) -> bool {
-    headers
-        .get("content-type")
+async fn should_capture_request_body(
+    headers: &HeaderMap,
+    max_request_body_size: MaxRequestBodySize,
+) -> bool {
+    let is_chunked = headers
+        .get(header::TRANSFER_ENCODING)
         .and_then(|h| h.to_str().ok())
-        .map(|s| s.to_lowercase())
-        .is_some_and(|ct| {
-            ct.contains("application/json") || ct.contains("application/x-www-form-urlencoded")
-        })
+        .map(|transfer_encoding| transfer_encoding.contains("chunked"))
+        .unwrap_or(false);
+
+    let is_valid_content_type = headers
+        .get(header::CONTENT_TYPE)
+        .and_then(|h| h.to_str().ok())
+        .is_some_and(|content_type| {
+            matches!(
+                content_type,
+                "application/json" | "application/x-www-form-urlencoded"
+            )
+        });
+
+    let is_within_size_limit = headers
+        .get(header::CONTENT_LENGTH)
+        .and_then(|h| h.to_str().ok())
+        .and_then(|content_length| content_length.parse::<usize>().ok())
+        .map(|content_length| max_request_body_size.is_within_size_limit(content_length))
+        .unwrap_or(false);
+
+    !is_chunked && is_valid_content_type && is_within_size_limit
 }
 
 /// Extract a body from the HTTP request
@@ -234,20 +254,9 @@ async fn body_from_http(req: &mut ServiceRequest) -> Result<BytesMut, PayloadErr
     Ok::<_, PayloadError>(body)
 }
 
-async fn capture_request_body(
-    req: &mut ServiceRequest,
-    max_size: MaxRequestBodySize,
-) -> Option<String> {
+async fn capture_request_body(req: &mut ServiceRequest) -> String {
     let request_body = body_from_http(req).await.unwrap();
-    let request_body_str = String::from_utf8_lossy(&request_body).into_owned();
-
-    match max_size {
-        MaxRequestBodySize::Small if request_body_str.len() < 1_000 => Some(request_body_str),
-        MaxRequestBodySize::Medium if request_body_str.len() < 10_000 => Some(request_body_str),
-        MaxRequestBodySize::Always => Some(request_body_str),
-        MaxRequestBodySize::None => unreachable!(),
-        _ => Some(String::new()),
-    }
+    String::from_utf8_lossy(&request_body).into_owned()
 }
 
 impl<S, B> Service<ServiceRequest> for SentryMiddleware<S>
@@ -314,9 +323,9 @@ where
             let mut req = req;
 
             if max_request_body_size != MaxRequestBodySize::None
-                && should_capture_request_body(req.headers())
+                && should_capture_request_body(&req.headers(), max_request_body_size).await
             {
-                sentry_req.data = capture_request_body(&mut req, max_request_body_size).await;
+                sentry_req.data = Some(capture_request_body(&mut req).await);
             }
 
             let parent_span = hub.configure_scope(|scope| {
