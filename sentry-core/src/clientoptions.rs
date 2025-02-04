@@ -58,6 +58,18 @@ pub enum MaxRequestBodySize {
     Always,
 }
 
+impl MaxRequestBodySize {
+    /// Check if the content length is within the size limit.
+    pub fn is_within_size_limit(&self, content_length: usize) -> bool {
+        match self {
+            MaxRequestBodySize::None => false,
+            MaxRequestBodySize::Small => content_length <= 1_000,
+            MaxRequestBodySize::Medium => content_length <= 10_000,
+            MaxRequestBodySize::Always => true,
+        }
+    }
+}
+
 /// Configuration settings for the client.
 ///
 /// These options are explained in more detail in the general
