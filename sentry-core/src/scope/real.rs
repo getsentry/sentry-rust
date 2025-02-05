@@ -3,7 +3,6 @@ use std::collections::{HashMap, VecDeque};
 use std::fmt;
 use std::sync::{Arc, Mutex, PoisonError, RwLock};
 
-use crate::performance;
 use crate::performance::TransactionOrSpan;
 use crate::protocol::{Attachment, Breadcrumb, Context, Event, Level, Transaction, User, Value};
 use crate::session::Session;

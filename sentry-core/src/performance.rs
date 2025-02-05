@@ -722,8 +722,6 @@ impl Transaction {
 
                     drop(inner);
 
-                    dbg!(transaction.clone());
-
                     let mut envelope = protocol::Envelope::new();
                     envelope.add_item(transaction);
 
