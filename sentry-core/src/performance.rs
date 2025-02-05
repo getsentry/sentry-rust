@@ -355,6 +355,14 @@ impl From<Transaction> for TransactionOrSpan {
     }
 }
 
+impl From<TransactionArc> for TransactionOrSpan {
+    fn from(transaction_arc: TransactionArc) -> Self {
+        Self::Transaction(Transaction {
+            inner: transaction_arc,
+        })
+    }
+}
+
 impl From<Span> for TransactionOrSpan {
     fn from(span: Span) -> Self {
         Self::Span(span)
@@ -714,8 +722,11 @@ impl Transaction {
 
                     drop(inner);
 
+                    dbg!(transaction.clone());
+
                     let mut envelope = protocol::Envelope::new();
                     envelope.add_item(transaction);
+
 
                     client.send_envelope(envelope)
                 }

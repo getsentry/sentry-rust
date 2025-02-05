@@ -3,6 +3,7 @@ use std::collections::{HashMap, VecDeque};
 use std::fmt;
 use std::sync::{Arc, Mutex, PoisonError, RwLock};
 
+use crate::performance;
 use crate::performance::TransactionOrSpan;
 use crate::protocol::{Attachment, Breadcrumb, Context, Event, Level, Transaction, User, Value};
 use crate::session::Session;
@@ -339,6 +340,14 @@ impl Scope {
     /// Returns the currently active span.
     pub fn get_span(&self) -> Option<TransactionOrSpan> {
         self.span.as_ref().clone()
+    }
+
+    /// Returns the currently active transaction.
+    pub fn get_transaction(&self) -> Option<TransactionOrSpan> {
+        self.get_span().map(|trx| match trx {
+            TransactionOrSpan::Span(span) => span.transaction.into(),
+            TransactionOrSpan::Transaction(_) => trx,
+        })
     }
 
     pub(crate) fn update_session_from_event(&self, event: &Event<'static>) {
