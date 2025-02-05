@@ -725,7 +725,6 @@ impl Transaction {
                     let mut envelope = protocol::Envelope::new();
                     envelope.add_item(transaction);
 
-
                     client.send_envelope(envelope)
                 }
             }
