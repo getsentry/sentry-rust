@@ -3,6 +3,7 @@ use std::collections::{HashMap, VecDeque};
 use std::fmt;
 use std::sync::{Arc, Mutex, PoisonError, RwLock};
 
+use crate::performance;
 use crate::performance::TransactionOrSpan;
 use crate::protocol::{Attachment, Breadcrumb, Context, Event, Level, Transaction, User, Value};
 use crate::session::Session;
@@ -342,10 +343,10 @@ impl Scope {
     }
 
     /// Returns the currently active transaction.
-    pub fn get_transaction(&self) -> Option<TransactionOrSpan> {
+    pub fn get_transaction(&self) -> Option<performance::Transaction> {
         self.get_span().map(|trx| match trx {
             TransactionOrSpan::Span(span) => span.transaction.into(),
-            TransactionOrSpan::Transaction(_) => trx,
+            TransactionOrSpan::Transaction(transaction) => transaction,
         })
     }
 

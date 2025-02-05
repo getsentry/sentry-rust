@@ -355,11 +355,11 @@ impl From<Transaction> for TransactionOrSpan {
     }
 }
 
-impl From<TransactionArc> for TransactionOrSpan {
+impl From<TransactionArc> for Transaction {
     fn from(transaction_arc: TransactionArc) -> Self {
-        Self::Transaction(Transaction {
+        Self {
             inner: transaction_arc,
-        })
+        }
     }
 }
 
