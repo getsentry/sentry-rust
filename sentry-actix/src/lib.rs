@@ -322,9 +322,7 @@ where
         async move {
             let mut req = req;
 
-            if max_request_body_size != MaxRequestBodySize::None
-                && should_capture_request_body(req.headers(), max_request_body_size)
-            {
+            if should_capture_request_body(req.headers(), max_request_body_size) {
                 sentry_req.data = Some(capture_request_body(&mut req).await);
             }
 
