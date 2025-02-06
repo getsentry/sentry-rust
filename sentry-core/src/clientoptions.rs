@@ -46,7 +46,7 @@ pub enum SessionMode {
 /// See the [Documentation on attaching request body](https://develop.sentry.dev/sdk/expected-features/#attaching-request-body-in-server-sdks)
 /// and the [Documentation on handling sensitive data](https://develop.sentry.dev/sdk/expected-features/data-handling/#sensitive-data)
 /// for more information.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum MaxRequestBodySize {
     /// Don't capture request body
     None,
