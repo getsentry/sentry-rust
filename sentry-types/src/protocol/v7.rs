@@ -1435,6 +1435,9 @@ pub struct TraceContext {
     /// Describes the status of the span (e.g. `ok`, `cancelled`, etc.)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status: Option<SpanStatus>,
+    /// Optional data attributes to be associated with the transaction.
+    #[serde(default, skip_serializing_if = "Map::is_empty")]
+    pub data: Map<String, Value>,
 }
 
 macro_rules! into_context {

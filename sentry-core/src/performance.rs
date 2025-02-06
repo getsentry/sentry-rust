@@ -526,32 +526,32 @@ pub struct Transaction {
     pub(crate) inner: TransactionArc,
 }
 
-/// Iterable for a transaction's [`extra` field](protocol::Transaction::extra).
+/// Iterable for a transaction's [data attributes](protocol::TraceContext::data).
 pub struct TransactionData<'a>(MutexGuard<'a, TransactionInner>);
 
 impl<'a> TransactionData<'a> {
-    /// Iterate over the `extra` map
-    /// of the [transaction][protocol::Transaction].
+    /// Iterate over the [data attributes](protocol::TraceContext::data)
+    /// associated with this [transaction][protocol::Transaction].
     ///
-    /// If the transaction not sampled for sending,
-    /// the metadata will not be populated at all
+    /// If the transaction is not sampled for sending,
+    /// the metadata will not be populated at all,
     /// so the produced iterator is empty.
     pub fn iter(&self) -> Box<dyn Iterator<Item = (&String, &protocol::Value)> + '_> {
-        if let Some(ref rx) = self.0.transaction {
-            Box::new(rx.extra.iter())
+        if self.0.transaction.is_some() {
+            Box::new(self.0.context.data.iter())
         } else {
             Box::new(std::iter::empty())
         }
     }
 
-    /// Set some extra information to be sent with this Transaction.
+    /// Set a data attribute to be sent with this Transaction.
     pub fn set_data(&mut self, key: Cow<'a, str>, value: protocol::Value) {
-        if let Some(transaction) = self.0.transaction.as_mut() {
-            transaction.extra.insert(key.into(), value);
+        if self.0.transaction.is_some() {
+            self.0.context.data.insert(key.into(), value);
         }
     }
 
-    /// Set some extra information to be sent with this Transaction.
+    /// Set a tag to be sent with this Transaction.
     pub fn set_tag(&mut self, key: Cow<'_, str>, value: String) {
         if let Some(transaction) = self.0.transaction.as_mut() {
             transaction.tags.insert(key.into(), value);
@@ -610,8 +610,16 @@ impl Transaction {
         }
     }
 
-    /// Set some extra information to be sent with this Transaction.
+    /// Set a data attribute to be sent with this Transaction.
     pub fn set_data(&self, key: &str, value: protocol::Value) {
+        let mut inner = self.inner.lock().unwrap();
+        if inner.transaction.is_some() {
+            inner.context.data.insert(key.into(), value);
+        }
+    }
+
+    /// Set some extra information to be sent with this Transaction.
+    pub fn set_extra(&self, key: &str, value: protocol::Value) {
         let mut inner = self.inner.lock().unwrap();
         if let Some(transaction) = inner.transaction.as_mut() {
             transaction.extra.insert(key.into(), value);
@@ -627,10 +635,10 @@ impl Transaction {
     }
 
     /// Returns an iterating accessor to the transaction's
-    /// [`extra` field](protocol::Transaction::extra).
+    /// [data attributes](protocol::TraceContext::data).
     ///
     /// # Concurrency
-    /// In order to obtain any kind of reference to the `extra` field,
+    /// In order to obtain any kind of reference to the `TraceContext::data` field,
     /// a `Mutex` needs to be locked. The returned `TransactionData` holds on to this lock
     /// for as long as it lives. Therefore you must take care not to keep the returned
     /// `TransactionData` around too long or it will never relinquish the lock and you may run into
