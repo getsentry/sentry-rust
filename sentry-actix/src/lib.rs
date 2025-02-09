@@ -255,8 +255,11 @@ async fn body_from_http(req: &mut ServiceRequest) -> Result<BytesMut, PayloadErr
 }
 
 async fn capture_request_body(req: &mut ServiceRequest) -> String {
-    let request_body = body_from_http(req).await.unwrap();
-    String::from_utf8_lossy(&request_body).into_owned()
+    if let Ok(request_body) = body_from_http(req).await {
+        String::from_utf8_lossy(&request_body).into_owned()
+    } else {
+        String::new()
+    }
 }
 
 impl<S, B> Service<ServiceRequest> for SentryMiddleware<S>
