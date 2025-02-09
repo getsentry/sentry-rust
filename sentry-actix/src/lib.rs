@@ -291,7 +291,7 @@ where
         });
         let max_request_body_size = client
             .as_ref()
-            .map(|client| client.options().max_request_body_size.clone())
+            .map(|client| client.options().max_request_body_size)
             .unwrap_or(MaxRequestBodySize::None);
         if track_sessions {
             hub.start_session();
