@@ -33,21 +33,21 @@ fn should_instrument_function_with_event() {
         unexpected => panic!("Expected transaction, but got {:#?}", unexpected),
     };
     assert_eq!(transaction.tags.len(), 1);
-    assert_eq!(transaction.extra.len(), 2);
+    assert_eq!(trace.data.len(), 2);
 
     let tag = transaction
         .tags
         .get("tag")
         .expect("to have tag with name 'tag'");
     assert_eq!(tag, "key");
-    let not_tag = transaction
-        .extra
+    let not_tag = trace
+        .data
         .get("not_tag")
-        .expect("to have extra with name 'not_tag'");
+        .expect("to have data attribute with name 'not_tag'");
     assert_eq!(not_tag, "value");
-    let value = transaction
-        .extra
+    let value = trace
+        .data
         .get("value")
-        .expect("to have extra with name 'value'");
+        .expect("to have data attribute with name 'value'");
     assert_eq!(value, 1);
 }
