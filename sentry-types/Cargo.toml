@@ -19,7 +19,6 @@ all-features = true
 [features]
 default = ["protocol"]
 protocol = []
-metrics = []
 
 [dependencies]
 debugid = { version = "0.8.0", features = ["serde"] }
