@@ -26,8 +26,6 @@ client = ["rand"]
 # and macros actually expand features (and extern crate) where they are used!
 debug-logs = ["dep:log"]
 test = ["client"]
-metrics = ["sentry-types/metrics", "regex", "crc32fast"]
-metrics-cadence1 = ["dep:cadence", "metrics"]
 
 [dependencies]
 cadence = { version = "1.4.0", optional = true }
