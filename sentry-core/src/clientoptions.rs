@@ -40,6 +40,39 @@ pub enum SessionMode {
     Request,
 }
 
+/// The maximum size of an HTTP request body that the SDK captures.
+///
+/// Only request bodies that parse as JSON or form data are currently captured.
+/// See the [Documentation on attaching request body](https://develop.sentry.dev/sdk/expected-features/#attaching-request-body-in-server-sdks)
+/// and the [Documentation on handling sensitive data](https://develop.sentry.dev/sdk/expected-features/data-handling/#sensitive-data)
+/// for more information.
+#[derive(Clone, Copy, PartialEq)]
+pub enum MaxRequestBodySize {
+    /// Don't capture request body
+    None,
+    /// Capture up to 1000 bytes
+    Small,
+    /// Capture up to 10000 bytes
+    Medium,
+    /// Capture entire body
+    Always,
+    /// Capture up to a specific size
+    Explicit(usize),
+}
+
+impl MaxRequestBodySize {
+    /// Check if the content length is within the size limit.
+    pub fn is_within_size_limit(&self, content_length: usize) -> bool {
+        match self {
+            MaxRequestBodySize::None => false,
+            MaxRequestBodySize::Small => content_length <= 1_000,
+            MaxRequestBodySize::Medium => content_length <= 10_000,
+            MaxRequestBodySize::Always => true,
+            MaxRequestBodySize::Explicit(size) => content_length <= *size,
+        }
+    }
+}
+
 /// Configuration settings for the client.
 ///
 /// These options are explained in more detail in the general
@@ -148,6 +181,8 @@ pub struct ClientOptions {
     pub trim_backtraces: bool,
     /// The user agent that should be reported.
     pub user_agent: Cow<'static, str>,
+    /// Controls how much of request bodies are captured
+    pub max_request_body_size: MaxRequestBodySize,
 }
 
 impl ClientOptions {
@@ -256,6 +291,7 @@ impl Default for ClientOptions {
             extra_border_frames: vec![],
             trim_backtraces: true,
             user_agent: Cow::Borrowed(USER_AGENT),
+            max_request_body_size: MaxRequestBodySize::Medium,
         }
     }
 }
