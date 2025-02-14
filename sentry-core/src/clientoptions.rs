@@ -291,7 +291,7 @@ impl Default for ClientOptions {
             extra_border_frames: vec![],
             trim_backtraces: true,
             user_agent: Cow::Borrowed(USER_AGENT),
-            max_request_body_size: MaxRequestBodySize::None,
+            max_request_body_size: MaxRequestBodySize::Medium,
         }
     }
 }
