@@ -4,10 +4,9 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
 
+use super::{feedback::Feedback, v7 as protocol};
 use crate::utils::ts_rfc3339_opt;
 use crate::Dsn;
-
-use super::v7 as protocol;
 
 use protocol::{
     Attachment, AttachmentType, ClientSdkInfo, DynamicSamplingContext, Event, Log, MonitorCheckIn,
@@ -127,6 +126,9 @@ enum EnvelopeItemType {
     /// A container of Log items.
     #[serde(rename = "log")]
     LogsContainer,
+    /// A User Feedback Item type.
+    #[serde(rename = "feedback")]
+    Feedback,
 }
 
 /// An Envelope Item Header.
@@ -178,6 +180,8 @@ pub enum EnvelopeItem {
     MonitorCheckIn(MonitorCheckIn),
     /// A container for a list of multiple items.
     ItemContainer(ItemContainer),
+    /// A User Feedback item.
+    Feedback(Event<'static>),
     /// This is a sentinel item used to `filter` raw envelopes.
     Raw,
     // TODO:
@@ -280,6 +284,12 @@ impl From<ItemContainer> for EnvelopeItem {
 impl From<Vec<Log>> for EnvelopeItem {
     fn from(logs: Vec<Log>) -> Self {
         EnvelopeItem::ItemContainer(logs.into())
+    }
+}
+
+impl From<Feedback> for EnvelopeItem {
+    fn from(feedback: Feedback) -> Self {
+        EnvelopeItem::Feedback(feedback.to_new_event())
     }
 }
 
@@ -507,6 +517,7 @@ impl Envelope {
                         serde_json::to_writer(&mut item_buf, &wrapper)?
                     }
                 },
+                EnvelopeItem::Feedback(feedback) => serde_json::to_writer(&mut item_buf, feedback)?,
                 EnvelopeItem::Raw => {
                     continue;
                 }
@@ -518,6 +529,7 @@ impl Envelope {
                 EnvelopeItem::Transaction(_) => "transaction",
                 EnvelopeItem::MonitorCheckIn(_) => "check_in",
                 EnvelopeItem::ItemContainer(container) => container.ty(),
+                EnvelopeItem::Feedback(_) => "feedback",
                 EnvelopeItem::Attachment(_) | EnvelopeItem::Raw => unreachable!(),
             };
 
@@ -676,6 +688,9 @@ impl Envelope {
             EnvelopeItemType::LogsContainer => {
                 serde_json::from_slice::<ItemsSerdeWrapper<_>>(payload)
                     .map(|x| EnvelopeItem::ItemContainer(ItemContainer::Logs(x.items.into())))
+            }
+            EnvelopeItemType::Feedback => {
+                serde_json::from_slice(payload).map(EnvelopeItem::Feedback)
             }
         }
         .map_err(EnvelopeError::InvalidItemPayload)?;
