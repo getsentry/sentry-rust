@@ -147,3 +147,32 @@ pub use converters::*;
 pub use layer::*;
 
 const TAGS_PREFIX: &str = "tags.";
+
+#[derive(Debug, Clone, Copy)]
+/// Controls propagation of span data when creating event
+///
+/// Note that the root span is considered a [transaction][sentry_core::protocol::Transaction]
+/// so its context will only be grabbed only if you set the transaction to be sampled.
+/// The most straightforward way to do this is to set
+/// the [traces_sample_rate][sentry_core::ClientOptions::traces_sample_rate] to `1.0`
+/// while configuring your sentry client.
+pub enum SpanPropagation {
+    /// Collects all attributes prefixed with span name
+    Attributes,
+    /// Accumulates tags from within attributes as event tags, without overriding existing tags
+    Tags,
+    /// Collects both tags and attributes
+    All,
+}
+
+impl SpanPropagation {
+    #[inline(always)]
+    pub(crate) const fn is_tags_enabled(&self) -> bool {
+        matches!(self, Self::Tags | Self::All)
+    }
+
+    #[inline(always)]
+    pub(crate) const fn is_attrs_enabled(&self) -> bool {
+        matches!(self, Self::Attributes | Self::All)
+    }
+}

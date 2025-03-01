@@ -1,5 +1,6 @@
 use sentry::{ClientOptions, Hub};
 use sentry_core::test::TestTransport;
+use sentry_tracing::SpanPropagation;
 
 use std::sync::Arc;
 
@@ -17,7 +18,7 @@ pub fn init_sentry(traces_sample_rate: f32) -> Arc<TestTransport> {
     Hub::current().bind_client(Some(Arc::new(options.into())));
 
     let _ = tracing_subscriber::registry()
-        .with(sentry_tracing::layer().enable_span_attributes())
+        .with(sentry_tracing::layer().enable_span_propagation(SpanPropagation::All))
         .try_init();
 
     transport

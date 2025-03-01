@@ -19,6 +19,13 @@ fn should_instrument_function_with_event() {
         unexpected => panic!("Expected event, but got {:#?}", unexpected),
     };
 
+    //Event must be get tag attached
+    let event_tag = event
+        .tags
+        .get("tag")
+        .expect("event should be associated with span's tag");
+    assert_eq!(event_tag, "key");
+
     //Validate transaction is created
     let trace = match event.contexts.get("trace").expect("to get 'trace' context") {
         sentry::protocol::Context::Trace(trace) => trace,

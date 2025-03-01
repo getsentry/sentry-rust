@@ -625,6 +625,22 @@ pub struct Transaction {
     pub(crate) inner: TransactionArc,
 }
 
+/// Iterable for a transaction's [tags attributes](protocol::Transaction::tags).
+pub struct TransactionTags<'a>(MutexGuard<'a, TransactionInner>);
+impl<'a> TransactionTags<'a> {
+    #[inline]
+    /// Returns iterator over available tags, if transaction is sampled
+    pub fn iter(&'a self) -> Option<impl Iterator<Item = (&'a String, &'a String)> + 'a> {
+        self.0.transaction.as_ref().map(|tx| tx.tags.iter())
+    }
+
+    #[inline]
+    /// Converts self into data pointer
+    pub fn into_data(self) -> TransactionData<'a> {
+        TransactionData(self.0)
+    }
+}
+
 /// Iterable for a transaction's [data attributes](protocol::TraceContext::data).
 pub struct TransactionData<'a>(MutexGuard<'a, TransactionInner>);
 
@@ -744,6 +760,12 @@ impl Transaction {
     /// a deadlock.
     pub fn data(&self) -> TransactionData {
         TransactionData(self.inner.lock().unwrap())
+    }
+
+    /// Returns an iterating accessor to the transaction's
+    /// [tags attributes](protocol::Transaction::tags).
+    pub fn tags(&self) -> TransactionTags {
+        TransactionTags(self.inner.lock().unwrap())
     }
 
     /// Get the TransactionContext of the Transaction.
@@ -895,6 +917,38 @@ impl Transaction {
     }
 }
 
+/// A smart pointer to a span's [`tags` field](protocol::Span::tags).
+pub struct Tags<'a>(MutexGuard<'a, protocol::Span>);
+
+impl<'a> Tags<'a> {
+    /// Set some tag to be sent with this Span.
+    pub fn set_tag(&mut self, key: String, value: String) {
+        self.0.tags.insert(key, value);
+    }
+
+    #[inline]
+    /// Moves pointer to [`data` field](protocol::Span::data)
+    pub fn into_data(self) -> Data<'a> {
+        Data(self.0)
+    }
+}
+
+impl Deref for Tags<'_> {
+    type Target = BTreeMap<String, String>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.0.tags
+    }
+}
+
+impl DerefMut for Tags<'_> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0.tags
+    }
+}
+
 /// A smart pointer to a span's [`data` field](protocol::Span::data).
 pub struct Data<'a>(MutexGuard<'a, protocol::Span>);
 
@@ -963,6 +1017,11 @@ impl Span {
     /// a deadlock.
     pub fn data(&self) -> Data {
         Data(self.span.lock().unwrap())
+    }
+
+    /// Returns a smart pointer to the span's [`tags` field](protocol::Span::tags).
+    pub fn tags(&self) -> Tags {
+        Tags(self.span.lock().unwrap())
     }
 
     /// Get the TransactionContext of the Span.

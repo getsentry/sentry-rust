@@ -9,7 +9,7 @@ use tracing_subscriber::layer::Context;
 use tracing_subscriber::registry::LookupSpan;
 
 use super::layer::SentrySpanData;
-use crate::TAGS_PREFIX;
+use crate::{SpanPropagation, TAGS_PREFIX};
 
 /// Converts a [`tracing_core::Level`] to a Sentry [`Level`]
 fn convert_tracing_level(level: &tracing_core::Level) -> Level {
@@ -54,39 +54,55 @@ fn extract_event_data(event: &tracing_core::Event) -> (Option<String>, FieldVisi
 
 fn extract_event_data_with_context<S>(
     event: &tracing_core::Event,
-    ctx: Option<Context<S>>,
+    ctx: Context<S>,
+    propagation: Option<SpanPropagation>,
 ) -> (Option<String>, FieldVisitor)
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
     let (message, mut visitor) = extract_event_data(event);
 
-    // Add the context fields of every parent span.
-    let current_span = ctx.as_ref().and_then(|ctx| {
+    // Add the context fields of every parent span, if propagation is enabled
+    let propagation_span = propagation.and_then(|propagation| {
         event
             .parent()
-            .and_then(|id| ctx.span(id))
-            .or_else(|| ctx.lookup_current())
+            .and_then(|id| ctx.span(id).map(|span| (propagation, span)))
+            .or_else(|| ctx.lookup_current().map(|span| (propagation, span)))
     });
-    if let Some(span) = current_span {
+    if let Some((propagation, span)) = propagation_span {
         for span in span.scope() {
             let name = span.name();
             let ext = span.extensions();
             if let Some(span_data) = ext.get::<SentrySpanData>() {
                 match &span_data.sentry_span {
                     TransactionOrSpan::Span(span) => {
-                        for (key, value) in span.data().iter() {
-                            if key != "message" {
-                                let key = format!("{}:{}", name, key);
-                                visitor.json_values.insert(key, value.clone());
+                        let tags = span.tags();
+
+                        if propagation.is_tags_enabled() {
+                            for (key, value) in tags.iter() {
+                                visitor.propagate_span_tag(key, value);
+                            }
+                        }
+
+                        if propagation.is_attrs_enabled() {
+                            for (key, value) in tags.into_data().iter() {
+                                visitor.propagate_span_attr(key, value, name);
                             }
                         }
                     }
                     TransactionOrSpan::Transaction(transaction) => {
-                        for (key, value) in transaction.data().iter() {
-                            if key != "message" {
-                                let key = format!("{}:{}", name, key);
-                                visitor.json_values.insert(key, value.clone());
+                        let tags = transaction.tags();
+                        if propagation.is_tags_enabled() {
+                            if let Some(tags) = tags.iter() {
+                                for (key, value) in tags {
+                                    visitor.propagate_span_tag(key, value);
+                                }
+                            }
+                        }
+
+                        if propagation.is_attrs_enabled() {
+                            for (key, value) in tags.into_data().iter() {
+                                visitor.propagate_span_attr(key, value, name);
                             }
                         }
                     }
@@ -106,6 +122,19 @@ pub(crate) struct FieldVisitor {
 }
 
 impl FieldVisitor {
+    fn propagate_span_tag(&mut self, key: &str, value: &str) {
+        //Propagate tags as it is, it will be extracted later on
+        let tag = format!("{TAGS_PREFIX}{key}");
+        self.json_values.entry(tag).or_insert_with(|| value.into());
+    }
+
+    fn propagate_span_attr(&mut self, key: &str, value: &Value, span_name: &str) {
+        if key != "message" {
+            let key = format!("{}:{}", span_name, key);
+            self.json_values.insert(key, value.clone());
+        }
+    }
+
     fn record<T: Into<Value>>(&mut self, field: &Field, value: T) {
         self.json_values
             .insert(field.name().to_owned(), value.into());
@@ -144,12 +173,19 @@ impl Visit for FieldVisitor {
 /// Creates a [`Breadcrumb`] from a given [`tracing_core::Event`]
 pub fn breadcrumb_from_event<'context, S>(
     event: &tracing_core::Event,
-    ctx: impl Into<Option<Context<'context, S>>>,
+    ctx: Context<'context, S>,
+    mut propagation: Option<SpanPropagation>,
 ) -> Breadcrumb
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
-    let (message, visitor) = extract_event_data_with_context(event, ctx.into());
+    if let Some(propagation) = propagation.as_mut() {
+        if propagation.is_attrs_enabled() {
+            //Breadcrumb has no tags, so propagate only attributes
+            *propagation = SpanPropagation::Attributes;
+        }
+    }
+    let (message, visitor) = extract_event_data_with_context(event, ctx, propagation);
 
     let FieldVisitor {
         exceptions,
@@ -232,10 +268,11 @@ fn contexts_from_event(
     context
 }
 
-/// Creates an [`Event`] (possibly carrying an exception) from a given [`tracing_core::Event`]
+/// Creates an [`Event`] from a given [`tracing_core::Event`]
 pub fn event_from_event<'context, S>(
     event: &tracing_core::Event,
-    ctx: impl Into<Option<Context<'context, S>>>,
+    ctx: Context<'context, S>,
+    propagation: Option<SpanPropagation>,
 ) -> Event<'static>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
@@ -245,7 +282,7 @@ where
     // information for this. However, it may contain a serialized error which we can parse to emit
     // an exception record.
     #[allow(unused_mut)]
-    let (mut message, visitor) = extract_event_data_with_context(event, ctx.into());
+    let (mut message, visitor) = extract_event_data_with_context(event, ctx, propagation);
     let FieldVisitor {
         mut exceptions,
         mut json_values,
