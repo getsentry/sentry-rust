@@ -9,7 +9,7 @@ use tracing_subscriber::layer::Context;
 use tracing_subscriber::registry::LookupSpan;
 
 use super::layer::SentrySpanData;
-use crate::TAGS_PREFIX;
+use crate::{SpanPropagation, TAGS_PREFIX};
 
 /// Converts a [`tracing_core::Level`] to a Sentry [`Level`]
 fn convert_tracing_level(level: &tracing_core::Level) -> Level {
@@ -53,7 +53,7 @@ fn extract_event_data(event: &tracing_core::Event) -> (Option<String>, FieldVisi
 
 fn extract_event_data_with_context<S>(
     event: &tracing_core::Event,
-    ctx: Option<Context<S>>,
+    ctx: Option<(SpanPropagation, Context<S>)>,
 ) -> (Option<String>, FieldVisitor)
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
@@ -61,13 +61,13 @@ where
     let (message, mut visitor) = extract_event_data(event);
 
     // Add the context fields of every parent span.
-    let current_span = ctx.as_ref().and_then(|ctx| {
+    let current_span = ctx.as_ref().and_then(|(propagation, ctx)| {
         event
             .parent()
-            .and_then(|id| ctx.span(id))
-            .or_else(|| ctx.lookup_current())
+            .and_then(|id| ctx.span(id).map(|span| (*propagation, span)))
+            .or_else(|| ctx.lookup_current().map(|span| (*propagation, span)))
     });
-    if let Some(span) = current_span {
+    if let Some((propagation, span)) = current_span {
         for span in span.scope() {
             let name = span.name();
             let ext = span.extensions();
@@ -75,18 +75,12 @@ where
                 match &span_data.sentry_span {
                     TransactionOrSpan::Span(span) => {
                         for (key, value) in span.data().iter() {
-                            if key != "message" {
-                                let key = format!("{}:{}", name, key);
-                                visitor.json_values.insert(key, value.clone());
-                            }
+                            visitor.propagate_span_attr(key, value, propagation, name);
                         }
                     }
                     TransactionOrSpan::Transaction(transaction) => {
                         for (key, value) in transaction.data().iter() {
-                            if key != "message" {
-                                let key = format!("{}:{}", name, key);
-                                visitor.json_values.insert(key, value.clone());
-                            }
+                            visitor.propagate_span_attr(key, value, propagation, name);
                         }
                     }
                 }
@@ -105,6 +99,26 @@ pub(crate) struct FieldVisitor {
 }
 
 impl FieldVisitor {
+    fn propagate_span_attr(
+        &mut self,
+        key: &str,
+        value: &Value,
+        span_propagation: SpanPropagation,
+        span_name: &str,
+    ) {
+        if key != "message" {
+            if span_propagation.is_tags_enabled() && key.starts_with(TAGS_PREFIX) {
+                //Propagate tags as it is, it will be extracted later on
+                if !self.json_values.contains_key(key) {
+                    self.json_values.insert(key.to_owned(), value.clone());
+                }
+            } else if span_propagation.is_attrs_enabled() {
+                let key = format!("{}:{}", span_name, key);
+                self.json_values.insert(key, value.clone());
+            }
+        }
+    }
+
     fn record<T: Into<Value>>(&mut self, field: &Field, value: T) {
         self.json_values
             .insert(field.name().to_owned(), value.into());
@@ -143,12 +157,19 @@ impl Visit for FieldVisitor {
 /// Creates a [`Breadcrumb`] from a given [`tracing_core::Event`]
 pub fn breadcrumb_from_event<'context, S>(
     event: &tracing_core::Event,
-    ctx: impl Into<Option<Context<'context, S>>>,
+    ctx: impl Into<Option<(SpanPropagation, Context<'context, S>)>>,
 ) -> Breadcrumb
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
-    let (message, visitor) = extract_event_data_with_context(event, ctx.into());
+    let ctx = match ctx.into() {
+        Some((propagation, ctx)) if propagation.is_attrs_enabled() => {
+            Some((SpanPropagation::Attributes, ctx))
+        }
+        //Breadcrumb has no tags, so propagate only attributes
+        _ => None,
+    };
+    let (message, visitor) = extract_event_data_with_context(event, ctx);
     Breadcrumb {
         category: Some(event.metadata().target().to_owned()),
         ty: "log".into(),
@@ -219,7 +240,7 @@ fn contexts_from_event(
 /// Creates an [`Event`] from a given [`tracing_core::Event`]
 pub fn event_from_event<'context, S>(
     event: &tracing_core::Event,
-    ctx: impl Into<Option<Context<'context, S>>>,
+    ctx: impl Into<Option<(SpanPropagation, Context<'context, S>)>>,
 ) -> Event<'static>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
@@ -239,7 +260,7 @@ where
 /// Creates an exception [`Event`] from a given [`tracing_core::Event`]
 pub fn exception_from_event<'context, S>(
     event: &tracing_core::Event,
-    ctx: impl Into<Option<Context<'context, S>>>,
+    ctx: impl Into<Option<(SpanPropagation, Context<'context, S>)>>,
 ) -> Event<'static>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
