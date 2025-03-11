@@ -10,7 +10,7 @@ description = """
 Sentry integration for capturing panics.
 """
 edition = "2021"
-rust-version = "1.73"
+rust-version = "1.75"
 
 [dependencies]
 sentry-core = { version = "0.36.0", path = "../sentry-core" }
