@@ -21,7 +21,14 @@ all-features = true
 rustdoc-args = ["--cfg", "doc_cfg"]
 
 [features]
-default = ["backtrace", "contexts", "debug-images", "panic", "transport"]
+default = [
+    "backtrace",
+    "contexts",
+    "debug-images",
+    "panic",
+    "transport",
+    "release-health",
+]
 
 # default integrations
 backtrace = ["sentry-backtrace", "sentry-tracing?/backtrace"]
@@ -39,6 +46,7 @@ tracing = ["sentry-tracing"]
 # other features
 test = ["sentry-core/test"]
 debug-logs = ["dep:log", "sentry-core/debug-logs"]
+release-health = ["sentry-core/release-health"]
 # transports
 transport = ["reqwest", "native-tls"]
 reqwest = ["dep:reqwest", "httpdate", "tokio"]
