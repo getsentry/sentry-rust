@@ -135,10 +135,14 @@ impl Client {
             sdk_info.integrations.push(integration.name().to_string());
         }
 
-        let session_flusher = RwLock::new(Some(SessionFlusher::new(
-            transport.clone(),
-            options.session_mode,
-        )));
+        let session_flusher = if cfg!(feature = "release-health") {
+            RwLock::new(Some(SessionFlusher::new(
+                transport.clone(),
+                options.session_mode,
+            )))
+        } else {
+            RwLock::new(None)
+        };
 
         Client {
             options,
