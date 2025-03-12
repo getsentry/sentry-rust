@@ -274,6 +274,7 @@ impl Client {
                 let mut envelope: Envelope = event.into();
                 // For request-mode sessions, we aggregate them all instead of
                 // flushing them out early.
+                #[cfg(feature = "release-health")]
                 if self.options.session_mode == SessionMode::Application {
                     let session_item = scope.and_then(|scope| {
                         scope

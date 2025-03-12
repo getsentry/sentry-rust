@@ -447,6 +447,7 @@ mod tests {
             },
             crate::ClientOptions {
                 release: Some("some-release".into()),
+                #[cfg(feature = "release-health")]
                 session_mode: SessionMode::Request,
                 ..Default::default()
             },
