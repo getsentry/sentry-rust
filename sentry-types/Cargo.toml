@@ -11,7 +11,7 @@ Common reusable types for implementing the sentry.io protocol.
 """
 keywords = ["sentry", "protocol"]
 edition = "2021"
-rust-version = "1.73"
+rust-version = "1.75"
 
 [package.metadata.docs.rs]
 all-features = true
