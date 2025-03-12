@@ -60,14 +60,15 @@ impl fmt::Debug for Client {
 impl Clone for Client {
     fn clone(&self) -> Client {
         let transport = Arc::new(RwLock::new(self.transport.read().unwrap().clone()));
-        let session_flusher = if cfg!(feature = "release-health") {
-            RwLock::new(Some(SessionFlusher::new(
-                transport.clone(),
-                self.options.session_mode,
-            )))
-        } else {
-            RwLock::new(None)
-        };
+
+        #[cfg(feature = "release-health")]
+        let session_flusher = RwLock::new(Some(SessionFlusher::new(
+            transport.clone(),
+            self.options.session_mode,
+        )));
+        #[cfg(not(feature = "release-health"))]
+        let session_flusher = RwLock::new(None);
+
         Client {
             options: self.options.clone(),
             transport,
@@ -135,14 +136,13 @@ impl Client {
             sdk_info.integrations.push(integration.name().to_string());
         }
 
-        let session_flusher = if cfg!(feature = "release-health") {
-            RwLock::new(Some(SessionFlusher::new(
-                transport.clone(),
-                options.session_mode,
-            )))
-        } else {
-            RwLock::new(None)
-        };
+        #[cfg(feature = "release-health")]
+        let session_flusher = RwLock::new(Some(SessionFlusher::new(
+            transport.clone(),
+            options.session_mode,
+        )));
+        #[cfg(not(feature = "release-health"))]
+        let session_flusher = RwLock::new(None);
 
         Client {
             options,
