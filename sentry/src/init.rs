@@ -34,6 +34,7 @@ impl Drop for ClientInitGuard {
             sentry_debug!("dropping client guard (no client to dispose)");
         }
         // end any session that might be open before closing the client
+        #[cfg(feature = "release-health")]
         crate::end_session();
         self.0.close(None);
     }
@@ -93,8 +94,12 @@ where
     C: Into<ClientOptions>,
 {
     let opts = apply_defaults(opts.into());
+
+    #[cfg(feature = "release-health")]
     let auto_session_tracking = opts.auto_session_tracking;
+    #[cfg(feature = "release-health")]
     let session_mode = opts.session_mode;
+
     let client = Arc::new(Client::from(opts));
 
     Hub::with(|hub| hub.bind_client(Some(client.clone())));
@@ -103,6 +108,7 @@ where
     } else {
         sentry_debug!("initialized disabled sentry client due to disabled or invalid DSN");
     }
+    #[cfg(feature = "release-health")]
     if auto_session_tracking && session_mode == SessionMode::Application {
         crate::start_session()
     }

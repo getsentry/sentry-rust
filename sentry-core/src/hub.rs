@@ -126,6 +126,7 @@ impl Hub {
     ///
     /// See the global [`start_session`](fn.start_session.html)
     /// for more documentation.
+    #[cfg(feature = "release-health")]
     pub fn start_session(&self) {
         with_client_impl! {{
             self.inner.with_mut(|stack| {
@@ -143,6 +144,7 @@ impl Hub {
     /// End the current Release Health Session.
     ///
     /// See the global [`sentry::end_session`](crate::end_session) for more documentation.
+    #[cfg(feature = "release-health")]
     pub fn end_session(&self) {
         self.end_session_with_status(SessionStatus::Exited)
     }
@@ -151,6 +153,7 @@ impl Hub {
     ///
     /// See the global [`end_session_with_status`](crate::end_session_with_status)
     /// for more documentation.
+    #[cfg(feature = "release-health")]
     pub fn end_session_with_status(&self, status: SessionStatus) {
         with_client_impl! {{
             self.inner.with_mut(|stack| {
