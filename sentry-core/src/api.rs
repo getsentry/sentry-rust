@@ -1,3 +1,4 @@
+#[cfg(feature = "release-health")]
 use sentry_types::protocol::v7::SessionStatus;
 
 use crate::protocol::{Event, Level};

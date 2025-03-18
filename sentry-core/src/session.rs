@@ -13,7 +13,11 @@ use crate::protocol::{
     EnvelopeItem, Event, Level, SessionAggregateItem, SessionAggregates, SessionAttributes,
     SessionStatus, SessionUpdate,
 };
+
+#[cfg(feature = "release-health")]
 use crate::scope::StackLayer;
+
+#[cfg(feature = "release-health")]
 use crate::types::random_uuid;
 use crate::{Client, Envelope};
 
@@ -35,6 +39,7 @@ impl Drop for Session {
 }
 
 impl Session {
+    #[cfg(feature = "release-health")]
     pub fn from_stack(stack: &StackLayer) -> Option<Self> {
         let client = stack.client.as_ref()?;
         let options = client.options();
@@ -110,6 +115,7 @@ impl Session {
         }
     }
 
+    #[cfg(feature = "release-health")]
     pub(crate) fn create_envelope_item(&mut self) -> Option<EnvelopeItem> {
         if self.dirty {
             let item = self.session_update.clone().into();
@@ -123,6 +129,7 @@ impl Session {
 
 // as defined here: https://develop.sentry.dev/sdk/envelopes/#size-limits
 const MAX_SESSION_ITEMS: usize = 100;
+#[cfg(feature = "release-health")]
 const FLUSH_INTERVAL: Duration = Duration::from_secs(60);
 
 #[derive(Debug, Default)]
@@ -189,6 +196,7 @@ pub(crate) struct SessionFlusher {
 
 impl SessionFlusher {
     /// Creates a new Flusher that will submit envelopes to the given `transport`.
+    #[cfg(feature = "release-health")]
     pub fn new(transport: TransportArc, mode: SessionMode) -> Self {
         let queue = Arc::new(Mutex::new(Default::default()));
         #[allow(clippy::mutex_atomic)]
