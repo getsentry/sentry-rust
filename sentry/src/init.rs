@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
-use sentry_core::{sentry_debug, SessionMode};
+use sentry_core::sentry_debug;
+#[cfg(feature = "release-health")]
+use sentry_core::SessionMode;
 
 use crate::defaults::apply_defaults;
 use crate::{Client, ClientOptions, Hub};
