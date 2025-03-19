@@ -10,7 +10,7 @@ description = """
 Sentry (getsentry.com) client for rust ;)
 """
 edition = "2021"
-rust-version = "1.75"
+rust-version = "1.81"
 autoexamples = true
 
 # To build locally:
