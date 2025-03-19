@@ -10,7 +10,7 @@ description = """
 Sentry integration that adds the list of loaded libraries to events.
 """
 edition = "2021"
-rust-version = "1.75"
+rust-version = "1.81"
 
 [dependencies]
 findshlibs = "=0.10.2"
