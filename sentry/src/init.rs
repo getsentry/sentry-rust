@@ -97,9 +97,7 @@ where
 {
     let opts = apply_defaults(opts.into());
 
-    #[cfg(feature = "release-health")]
     let auto_session_tracking = opts.auto_session_tracking;
-    #[cfg(feature = "release-health")]
     let session_mode = opts.session_mode;
 
     let client = Arc::new(Client::from(opts));

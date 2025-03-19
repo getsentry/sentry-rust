@@ -171,10 +171,8 @@ pub struct ClientOptions {
     /// When automatic session tracking is enabled, a new "user-mode" session
     /// is started at the time of `sentry::init`, and will persist for the
     /// application lifetime.
-    #[cfg(feature = "release-health")]
     pub auto_session_tracking: bool,
     /// Determine how Sessions are being tracked.
-    #[cfg(feature = "release-health")]
     pub session_mode: SessionMode,
     /// Border frames which indicate a border from a backtrace to
     /// useless internals. Some are automatically included.
@@ -225,8 +223,7 @@ impl fmt::Debug for ClientOptions {
 
         let integrations: Vec<_> = self.integrations.iter().map(|i| i.name()).collect();
 
-        let mut debug_struct = f.debug_struct("ClientOptions");
-        debug_struct
+        f.debug_struct("ClientOptions")
             .field("dsn", &self.dsn)
             .field("debug", &self.debug)
             .field("release", &self.release)
@@ -254,14 +251,9 @@ impl fmt::Debug for ClientOptions {
             .field("http_proxy", &self.http_proxy)
             .field("https_proxy", &self.https_proxy)
             .field("shutdown_timeout", &self.shutdown_timeout)
-            .field("accept_invalid_certs", &self.accept_invalid_certs);
-
-        #[cfg(feature = "release-health")]
-        debug_struct
+            .field("accept_invalid_certs", &self.accept_invalid_certs)
             .field("auto_session_tracking", &self.auto_session_tracking)
-            .field("session_mode", &self.session_mode);
-
-        debug_struct
+            .field("session_mode", &self.session_mode)
             .field("extra_border_frames", &self.extra_border_frames)
             .field("trim_backtraces", &self.trim_backtraces)
             .field("user_agent", &self.user_agent)
