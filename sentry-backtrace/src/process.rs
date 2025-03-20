@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use backtrace::Backtrace;
 use sentry_core::ClientOptions;
 
-use crate::trim::{is_sys_function, trim_stacktrace};
+use crate::trim::{is_well_known_not_in_app, trim_stacktrace};
 use crate::utils::{
     demangle_symbol, filename, function_starts_with, parse_crate_name, strip_symbol,
 };
@@ -72,7 +72,7 @@ pub fn process_event_stacktrace(stacktrace: &mut Stacktrace, options: &ClientOpt
             continue;
         }
 
-        if is_sys_function(func_name) {
+        if is_well_known_not_in_app(func_name) {
             frame.in_app = Some(false);
         }
     }

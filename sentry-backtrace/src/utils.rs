@@ -95,14 +95,16 @@ pub fn demangle_symbol(s: &str) -> String {
 
 /// Checks whether the function name starts with the given pattern.
 ///
-/// In trait implementations, the original type name is wrapped in "_< ... >" and colons are
-/// replaced with dots. This function accounts for differences while checking.
+/// In trait implementations, the original type name is wrapped in "_< ... >" or "<F as ...>"
+/// and colons are replaced with dots. This function accounts for differences while checking.
 pub fn function_starts_with(mut func_name: &str, mut pattern: &str) -> bool {
     if pattern.starts_with('<') {
         while pattern.starts_with('<') {
             pattern = &pattern[1..];
 
-            if func_name.starts_with('<') {
+            if func_name.starts_with("<F as ") {
+                func_name = &func_name[6..];
+            } else if func_name.starts_with('<') {
                 func_name = &func_name[1..];
             } else if func_name.starts_with("_<") {
                 func_name = &func_name[2..];
@@ -111,7 +113,10 @@ pub fn function_starts_with(mut func_name: &str, mut pattern: &str) -> bool {
             }
         }
     } else {
-        func_name = func_name.trim_start_matches('<').trim_start_matches("_<");
+        func_name = func_name
+            .trim_start_matches("<F as ")
+            .trim_start_matches('<')
+            .trim_start_matches("_<");
     }
 
     if !func_name.is_char_boundary(pattern.len()) {
