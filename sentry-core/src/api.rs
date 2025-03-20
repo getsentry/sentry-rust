@@ -1,3 +1,4 @@
+#[cfg(feature = "release-health")]
 use sentry_types::protocol::v7::SessionStatus;
 
 use crate::protocol::{Event, Level};
@@ -279,11 +280,13 @@ pub fn last_event_id() -> Option<Uuid> {
 ///
 /// sentry::end_session();
 /// ```
+#[cfg(feature = "release-health")]
 pub fn start_session() {
     Hub::with_active(|hub| hub.start_session())
 }
 
 /// End the current Release Health Session.
+#[cfg(feature = "release-health")]
 pub fn end_session() {
     end_session_with_status(SessionStatus::Exited)
 }
@@ -295,6 +298,7 @@ pub fn end_session() {
 ///
 /// When an `Abnormal` session should be captured, it has to be done explicitly
 /// using this function.
+#[cfg(feature = "release-health")]
 pub fn end_session_with_status(status: SessionStatus) {
     Hub::with_active(|hub| hub.end_session_with_status(status))
 }

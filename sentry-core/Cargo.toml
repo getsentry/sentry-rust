@@ -25,7 +25,8 @@ client = ["rand"]
 # I would love to just have a `log` feature, but this is used inside a macro,
 # and macros actually expand features (and extern crate) where they are used!
 debug-logs = ["dep:log"]
-test = ["client"]
+test = ["client", "release-health"]
+release-health = []
 
 [dependencies]
 cadence = { version = "1.4.0", optional = true }

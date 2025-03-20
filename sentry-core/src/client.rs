@@ -13,7 +13,9 @@ use crate::constants::SDK_INFO;
 use crate::protocol::{ClientSdkInfo, Event};
 use crate::session::SessionFlusher;
 use crate::types::{Dsn, Uuid};
-use crate::{ClientOptions, Envelope, Hub, Integration, Scope, SessionMode, Transport};
+#[cfg(feature = "release-health")]
+use crate::SessionMode;
+use crate::{ClientOptions, Envelope, Hub, Integration, Scope, Transport};
 
 impl<T: Into<ClientOptions>> From<T> for Client {
     fn from(o: T) -> Client {
@@ -60,10 +62,15 @@ impl fmt::Debug for Client {
 impl Clone for Client {
     fn clone(&self) -> Client {
         let transport = Arc::new(RwLock::new(self.transport.read().unwrap().clone()));
+
+        #[cfg(feature = "release-health")]
         let session_flusher = RwLock::new(Some(SessionFlusher::new(
             transport.clone(),
             self.options.session_mode,
         )));
+        #[cfg(not(feature = "release-health"))]
+        let session_flusher = RwLock::new(None);
+
         Client {
             options: self.options.clone(),
             transport,
@@ -131,10 +138,13 @@ impl Client {
             sdk_info.integrations.push(integration.name().to_string());
         }
 
+        #[cfg(feature = "release-health")]
         let session_flusher = RwLock::new(Some(SessionFlusher::new(
             transport.clone(),
             options.session_mode,
         )));
+        #[cfg(not(feature = "release-health"))]
+        let session_flusher = RwLock::new(None);
 
         Client {
             options,
@@ -266,6 +276,7 @@ impl Client {
                 let mut envelope: Envelope = event.into();
                 // For request-mode sessions, we aggregate them all instead of
                 // flushing them out early.
+                #[cfg(feature = "release-health")]
                 if self.options.session_mode == SessionMode::Application {
                     let session_item = scope.and_then(|scope| {
                         scope
