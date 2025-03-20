@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::error::Error;
 
-use sentry_core::protocol::{Event, Exception, Mechanism, Thread, Value};
+use sentry_core::protocol::{Event, Exception, Mechanism, Value};
 use sentry_core::{event_from_error, Breadcrumb, Level, TransactionOrSpan};
 use tracing_core::field::{Field, Visit};
 use tracing_core::Subscriber;
@@ -21,6 +21,7 @@ fn convert_tracing_level(level: &tracing_core::Level) -> Level {
     }
 }
 
+#[allow(unused)]
 fn level_to_exception_type(level: &tracing_core::Level) -> &'static str {
     match *level {
         tracing_core::Level::TRACE => "tracing::trace!",
@@ -248,41 +249,38 @@ where
     // proper grouping and issue metadata generation. tracing_core::Record does not contain sufficient
     // information for this. However, it may contain a serialized error which we can parse to emit
     // an exception record.
+    #[allow(unused_mut)]
     let (mut message, visitor) = extract_event_data_with_context(event, ctx.into());
     let FieldVisitor {
         mut exceptions,
         mut json_values,
     } = visitor;
 
-    // If there are both a message and an exception, then add the message as synthetic wrapper
-    // around the exception to support proper grouping. If configured, also add the current stack
-    // trace to this exception directly, since it points to the place where the exception is
-    // captured.
+    // If there are a message, an exception, and we are capturing stack traces, then add the message
+    // as synthetic wrapper around the exception to support proper grouping. The stack trace to
+    // attach is the current one, since it points to the place where the exception is captured.
+    // We should only do this if we're capturing stack traces, otherwise the issue title will be `<unknown>`
+    // as Sentry will attempt to use missing stack trace to determine the title.
+    #[cfg(feature = "backtrace")]
     if !exceptions.is_empty() && message.is_some() {
-        #[allow(unused_mut)]
-        let mut thread = Thread::default();
-
-        #[cfg(feature = "backtrace")]
         if let Some(client) = sentry_core::Hub::current().client() {
             if client.options().attach_stacktrace {
-                thread = sentry_backtrace::current_thread(true);
+                let thread = sentry_backtrace::current_thread(true);
+                let exception = Exception {
+                    ty: level_to_exception_type(event.metadata().level()).to_owned(),
+                    value: message.take(),
+                    module: event.metadata().module_path().map(str::to_owned),
+                    stacktrace: thread.stacktrace,
+                    raw_stacktrace: thread.raw_stacktrace,
+                    thread_id: thread.id,
+                    mechanism: Some(Mechanism {
+                        synthetic: Some(true),
+                        ..Mechanism::default()
+                    }),
+                };
+                exceptions.push(exception)
             }
         }
-
-        let exception = Exception {
-            ty: level_to_exception_type(event.metadata().level()).to_owned(),
-            value: message.take(),
-            module: event.metadata().module_path().map(str::to_owned),
-            stacktrace: thread.stacktrace,
-            raw_stacktrace: thread.raw_stacktrace,
-            thread_id: thread.id,
-            mechanism: Some(Mechanism {
-                synthetic: Some(true),
-                ..Mechanism::default()
-            }),
-        };
-
-        exceptions.push(exception);
     }
 
     if let Some(exception) = exceptions.last_mut() {
