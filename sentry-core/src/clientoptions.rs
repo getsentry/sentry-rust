@@ -32,6 +32,8 @@ pub type BeforeCallback<T> = Arc<dyn Fn(T) -> Option<T> + Send + Sync>;
 ///
 /// See the [Documentation on Session Modes](https://develop.sentry.dev/sdk/sessions/#sdk-considerations)
 /// for more information.
+///
+/// The `release-health` feature needs to be enabled for this option to have any effect.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum SessionMode {
     /// Long running application session.
