@@ -97,7 +97,9 @@ where
 {
     let opts = apply_defaults(opts.into());
 
+    #[allow(unused)]
     let auto_session_tracking = opts.auto_session_tracking;
+    #[allow(unused)]
     let session_mode = opts.session_mode;
 
     let client = Arc::new(Client::from(opts));

@@ -286,9 +286,7 @@ impl Default for ClientOptions {
             https_proxy: None,
             shutdown_timeout: Duration::from_secs(2),
             accept_invalid_certs: false,
-            #[cfg(feature = "release-health")]
             auto_session_tracking: false,
-            #[cfg(feature = "release-health")]
             session_mode: SessionMode::Application,
             extra_border_frames: vec![],
             trim_backtraces: true,
