@@ -14,7 +14,7 @@ const WELL_KNOWN_NOT_IN_APP: &[&str] = &[
     // these are not modules but things like __rust_maybe_catch_panic
     "__rust_",
     "___rust_",
-    "_rust_begin_unwind",
+    "rust_begin_unwind",
     // these are well-known library frames
     "anyhow::",
     "log::",
