@@ -4029,6 +4029,7 @@ version = "0.36.0"
 dependencies = [
  "actix-http",
  "actix-web",
+ "bytes 1.10.1",
  "futures",
  "futures-util",
  "sentry",
