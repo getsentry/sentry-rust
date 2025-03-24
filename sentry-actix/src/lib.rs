@@ -78,12 +78,11 @@ use std::sync::Arc;
 
 use actix_http::header::{self, HeaderMap};
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
-use actix_web::error::PayloadError;
 use actix_web::http::StatusCode;
-use actix_web::web::BytesMut;
-use actix_web::{Error, HttpMessage};
+use actix_web::Error;
+use bytes::{Bytes, BytesMut};
 use futures_util::future::{ok, Future, Ready};
-use futures_util::FutureExt;
+use futures_util::{FutureExt as _, TryStreamExt as _};
 
 use sentry_core::protocol::{self, ClientSdkPackage, Event, Request};
 use sentry_core::MaxRequestBodySize;
@@ -239,26 +238,20 @@ fn should_capture_request_body(
 }
 
 /// Extract a body from the HTTP request
-async fn body_from_http(req: &mut ServiceRequest) -> Result<BytesMut, PayloadError> {
-    let mut stream = req.take_payload();
+async fn body_from_http(req: &mut ServiceRequest) -> actix_web::Result<Bytes> {
+    let stream = req.extract::<actix_web::web::Payload>().await?;
+    let body = stream.try_collect::<BytesMut>().await?.freeze();
 
-    let mut body = BytesMut::new();
-    while let Some(chunk) = futures_util::StreamExt::next(&mut stream).await {
-        let chunk = chunk?;
-        body.extend_from_slice(&chunk);
-    }
-    let (_, mut orig_payload) = actix_http::h1::Payload::create(true);
-    orig_payload.unread_data(body.clone().freeze());
-    req.set_payload(actix_web::dev::Payload::from(orig_payload));
+    // put copy of payload back into request for downstream to read
+    req.set_payload(actix_web::dev::Payload::from(body.clone()));
 
-    Ok::<_, PayloadError>(body)
+    Ok(body)
 }
 
 async fn capture_request_body(req: &mut ServiceRequest) -> String {
-    if let Ok(request_body) = body_from_http(req).await {
-        String::from_utf8_lossy(&request_body).into_owned()
-    } else {
-        String::new()
+    match body_from_http(req).await {
+        Ok(request_body) => String::from_utf8_lossy(&request_body).into_owned(),
+        Err(_) => String::new(),
     }
 }
 
