@@ -3,8 +3,7 @@
 //!
 //! To use this middleware just configure Sentry and then add it to your actix web app as a
 //! middleware.  Because actix is generally working with non sendable objects and highly concurrent
-//! this middleware creates a new hub per request.  As a result many of the sentry integrations
-//! such as breadcrumbs do not work unless you bind the actix hub.
+//! this middleware creates a new Hub per request.
 //!
 //! # Example
 //!
@@ -56,13 +55,83 @@
 //! });
 //! ```
 //!
-//! # Reusing the Hub
+//! # Reusing the Hub in the request handler
 //!
 //! This integration will automatically create a new per-request Hub from the main Hub, and update the
 //! current Hub instance. For example, the following will capture a message in the current request's Hub:
 //!
 //! ```
 //! sentry::capture_message("Something is not well", sentry::Level::Warning);
+//! ```
+//!
+//! # Reusing the Hub in other middleware
+//!
+//! This integration stores the per-request Hub in the request extensions. Therefore, if you want
+//! to capture events within the context of the correct Hub, make sure you are retrieving it from
+//! the extensions and using it.
+//! You also need to make sure that the Sentry middleware is the last to be applied to your
+//! application, i.e. the first to be executed when processing a request.
+//! Example:
+//!
+//! ```no_run
+//! use std::sync::Arc;
+//!
+//! use actix_web::{dev::Service as _, web, App, HttpMessage, HttpResponse, HttpServer, Responder};
+//! use futures_util::future::FutureExt;
+//! use sentry::{Breadcrumb, Hub, Level, SentryFutureExt};
+//!
+//! async fn index() -> impl Responder {
+//!     sentry::capture_message("error in handler", Level::Error);
+//!     HttpResponse::Ok().body("Hello, World!")
+//! }
+//!
+//! fn main() -> std::io::Result<()> {
+//!     let _guard = sentry::init(sentry::ClientOptions {
+//!         release: sentry::release_name!(),
+//!         ..Default::default()
+//!     });
+//!
+//!     tokio::runtime::Builder::new_multi_thread()
+//!         .enable_all()
+//!         .build()
+//!         .unwrap()
+//!         .block_on(async {
+//!             HttpServer::new(|| {
+//!                 App::new()
+//!                     .wrap_fn(|req, srv| {
+//!                         let hub = req
+//!                             .extensions()
+//!                             .get::<Arc<Hub>>()
+//!                             .unwrap_or(&Hub::current()) // should never happen
+//!                             .clone();
+//!
+//!                         hub.add_breadcrumb(Breadcrumb {
+//!                             message: Some(format!("breadcrumb in middleware - before handler")),
+//!                             level: Level::Info,
+//!                             ..Default::default()
+//!                         });
+//!
+//!                         srv.call(req).bind_hub(hub).map(|res| {
+//!                             sentry::add_breadcrumb(Breadcrumb {
+//!                                 message: Some(format!("breadcrumb in middleware - after handler")),
+//!                                 level: Level::Info,
+//!                                 ..Default::default()
+//!                             });
+//!                             sentry::capture_message(
+//!                                 "error after handler",
+//!                                 Level::Error,
+//!                             );
+//!                             res
+//!                         })
+//!                     })
+//!                     .wrap(sentry_actix::Sentry::new())
+//!                     .route("/", web::get().to(index))
+//!             })
+//!             .bind("0.0.0.0:3000")?
+//!             .run()
+//!             .await
+//!         })
+//! }
 //! ```
 
 #![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
@@ -77,6 +146,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use actix_http::header::{self, HeaderMap};
+use actix_http::HttpMessage;
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
 use actix_web::http::StatusCode;
 use actix_web::Error;
@@ -276,6 +346,8 @@ where
         let hub = Arc::new(Hub::new_from_top(
             inner.hub.clone().unwrap_or_else(Hub::main),
         ));
+        req.extensions_mut().insert(hub.clone());
+
         let client = hub.client();
         let track_sessions = client.as_ref().is_some_and(|client| {
             let options = client.options();
@@ -461,6 +533,7 @@ mod tests {
     use actix_web::{get, web, App, HttpRequest, HttpResponse};
     use futures::executor::block_on;
 
+    use futures::future::join_all;
     use sentry::Level;
 
     use super::*;
@@ -702,5 +775,53 @@ mod tests {
             panic!("expected session");
         }
         assert_eq!(items.next(), None);
+    }
+
+    /// Tests that the Hub passed in the request extensions is the Actix per-request Hub
+    #[actix_web::test]
+    async fn test_correct_hub_in_request_extensions() {
+        sentry::test::with_captured_events(|| {
+            block_on(async {
+                sentry::capture_message("message outside", Level::Error);
+
+                let service = || {
+                    // the handler is using the same per-request Hub that we used in the middleware
+                    assert!(Hub::current().last_event_id().is_some());
+                    sentry::capture_message("second message", Level::Error);
+                    HttpResponse::Ok()
+                };
+
+                let app = init_service(
+                    App::new()
+                        .wrap_fn(|req, srv| {
+                            // the Actix middleware creates a new Hub per request and passes it in the request extensions
+                            let hub = req.extensions().get::<Arc<Hub>>().unwrap().clone();
+                            assert!(hub.last_event_id().is_none());
+
+                            let event_id = hub.capture_message("first message", Level::Error);
+
+                            srv.call(req).map(move |res| {
+                                // this is executed within a future bound to the same Hub
+                                // so, the last event will be the one captured in the handler
+                                assert!(Hub::current().last_event_id().is_some());
+                                assert_ne!(Some(event_id), Hub::current().last_event_id());
+                                res
+                            })
+                        })
+                        .wrap(Sentry::builder().with_hub(Hub::current()).finish())
+                        .service(web::resource("/test").to(service)),
+                )
+                .await;
+
+                // test with multiple requests in parallel
+                let mut futures = Vec::new();
+                for _ in 0..16 {
+                    let req = TestRequest::get().uri("/test").to_request();
+                    futures.push(call_service(&app, req));
+                }
+
+                join_all(futures).await;
+            })
+        });
     }
 }
