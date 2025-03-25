@@ -66,11 +66,11 @@
 //!
 //! # Reusing the Hub in other middleware
 //!
-//! This integration stores the per-request Hub in the request extensions. Therefore, if you want
-//! to capture events within the context of the correct Hub, make sure you are retrieving it from
-//! the extensions and using it.
-//! You also need to make sure that the Sentry middleware is the last to be applied to your
-//! application, i.e. the first to be executed when processing a request.
+//! This integration stores the per-request Hub in the request extensions. If you want to capture
+//! events when processing a request, retrieve the Hub from the request extensions.
+//! When processing a response, the per-request Hub will already be set as the current.
+//! You also need to make sure that the Sentry middleware is the last to be registered, i.e. the
+//! first to be executed when processing a request.
 //! Example:
 //!
 //! ```no_run
@@ -107,7 +107,7 @@
 //!                             ..Default::default()
 //!                         });
 //!
-//!                         srv.call(req).bind_hub(hub).map(|res| {
+//!                         srv.call(req).map(|res| {
 //!                             sentry::add_breadcrumb(Breadcrumb {
 //!                                 message: Some(format!("breadcrumb in middleware - after handler")),
 //!                                 level: Level::Info,
