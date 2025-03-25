@@ -99,11 +99,7 @@
 //!             HttpServer::new(|| {
 //!                 App::new()
 //!                     .wrap_fn(|req, srv| {
-//!                         let hub = req
-//!                             .extensions()
-//!                             .get::<Arc<Hub>>()
-//!                             .unwrap_or(&Hub::current()) // should never happen
-//!                             .clone();
+//!                         let hub = req.extensions().get::<Arc<Hub>>().cloned().unwrap();
 //!
 //!                         hub.add_breadcrumb(Breadcrumb {
 //!                             message: Some(format!("breadcrumb in middleware - before handler")),
