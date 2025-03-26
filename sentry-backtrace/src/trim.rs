@@ -11,10 +11,12 @@ const WELL_KNOWN_NOT_IN_APP: &[&str] = &[
     "sentry::",
     "sentry_core::",
     "sentry_types::",
+    "sentry_backtrace::",
     // these are not modules but things like __rust_maybe_catch_panic
     "__rust_",
     "___rust_",
     "rust_begin_unwind",
+    "_start",
     // these are well-known library frames
     "anyhow::",
     "log::",
