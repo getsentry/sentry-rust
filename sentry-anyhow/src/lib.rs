@@ -72,7 +72,12 @@ pub fn event_from_error(err: &anyhow::Error) -> Event<'static> {
         // exception records are sorted in reverse
         if let Some(exc) = event.exception.iter_mut().last() {
             let backtrace = err.backtrace();
-            exc.stacktrace = sentry_backtrace::parse_stacktrace(&format!("{backtrace:#}"));
+            if matches!(
+                backtrace.status(),
+                std::backtrace::BacktraceStatus::Captured
+            ) {
+                exc.stacktrace = sentry_backtrace::parse_stacktrace(&format!("{backtrace:#}"));
+            }
         }
     }
 
