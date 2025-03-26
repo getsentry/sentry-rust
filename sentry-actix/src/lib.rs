@@ -781,7 +781,7 @@ mod tests {
                 sentry::capture_message("message outside", Level::Error);
 
                 let service = || {
-                    // the handler is using the same per-request Hub that we used in the middleware
+                    // execution of the handler is bound to the per-request Hub
                     assert!(Hub::current().last_event_id().is_some());
                     sentry::capture_message("second message", Level::Error);
                     HttpResponse::Ok()
@@ -790,15 +790,14 @@ mod tests {
                 let app = init_service(
                     App::new()
                         .wrap_fn(|req, srv| {
-                            // the Actix middleware creates a new Hub per request and passes it in the request extensions
+                            // the per-request Hub can be retrieved via the extensions
                             let hub = req.extensions().get::<Arc<Hub>>().unwrap().clone();
                             assert!(hub.last_event_id().is_none());
 
                             let event_id = hub.capture_message("first message", Level::Error);
 
                             srv.call(req).map(move |res| {
-                                // this is executed within a future bound to the same Hub
-                                // so, the last event will be the one captured in the handler
+                                // execution of this is bound to the per-request Hub
                                 assert!(Hub::current().last_event_id().is_some());
                                 assert_ne!(Some(event_id), Hub::current().last_event_id());
                                 res
