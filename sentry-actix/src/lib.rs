@@ -3,8 +3,7 @@
 //!
 //! To use this middleware just configure Sentry and then add it to your actix web app as a
 //! middleware.  Because actix is generally working with non sendable objects and highly concurrent
-//! this middleware creates a new hub per request.  As a result many of the sentry integrations
-//! such as breadcrumbs do not work unless you bind the actix hub.
+//! this middleware creates a new Hub per request.
 //!
 //! # Example
 //!
@@ -59,11 +58,15 @@
 //! # Reusing the Hub
 //!
 //! This integration will automatically create a new per-request Hub from the main Hub, and update the
-//! current Hub instance. For example, the following will capture a message in the current request's Hub:
+//! current Hub instance. For example, the following in the handler or in any of the subsequent
+//! middleware will capture a message in the current request's Hub:
 //!
 //! ```
 //! sentry::capture_message("Something is not well", sentry::Level::Warning);
 //! ```
+//!
+//! It is recommended to register the Sentry middleware as the last, i.e. the first to be executed
+//! when processing a request, so that the rest of the processing will run with the correct Hub.
 
 #![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
 #![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
@@ -276,6 +279,7 @@ where
         let hub = Arc::new(Hub::new_from_top(
             inner.hub.clone().unwrap_or_else(Hub::main),
         ));
+
         let client = hub.client();
         let track_sessions = client.as_ref().is_some_and(|client| {
             let options = client.options();
@@ -332,7 +336,8 @@ where
                 scope.add_event_processor(move |event| Some(process_event(event, &sentry_req)));
                 parent_span
             });
-            let fut = svc.call(req).bind_hub(hub.clone());
+
+            let fut = Hub::run(hub.clone(), || svc.call(req)).bind_hub(hub.clone());
             let mut res: Self::Response = match fut.await {
                 Ok(res) => res,
                 Err(e) => {
@@ -461,6 +466,7 @@ mod tests {
     use actix_web::{get, web, App, HttpRequest, HttpResponse};
     use futures::executor::block_on;
 
+    use futures::future::join_all;
     use sentry::Level;
 
     use super::*;
@@ -702,5 +708,52 @@ mod tests {
             panic!("expected session");
         }
         assert_eq!(items.next(), None);
+    }
+
+    /// Tests that the per-request Hub is used in the handler and both sides of the roundtrip
+    /// through middleware
+    #[actix_web::test]
+    async fn test_middleware_and_handler_use_correct_hub() {
+        sentry::test::with_captured_events(|| {
+            block_on(async {
+                sentry::capture_message("message outside", Level::Error);
+
+                let handler = || {
+                    // an event was captured in the middleware
+                    assert!(Hub::current().last_event_id().is_some());
+                    sentry::capture_message("second message", Level::Error);
+                    HttpResponse::Ok()
+                };
+
+                let app = init_service(
+                    App::new()
+                        .wrap_fn(|req, srv| {
+                            // the event captured outside the per-request Hub is not there
+                            assert!(Hub::current().last_event_id().is_none());
+
+                            let event_id = sentry::capture_message("first message", Level::Error);
+
+                            srv.call(req).map(move |res| {
+                                // a different event was captured in the handler
+                                assert!(Hub::current().last_event_id().is_some());
+                                assert_ne!(Some(event_id), Hub::current().last_event_id());
+                                res
+                            })
+                        })
+                        .wrap(Sentry::builder().with_hub(Hub::current()).finish())
+                        .service(web::resource("/test").to(handler)),
+                )
+                .await;
+
+                // test with multiple requests in parallel
+                let mut futures = Vec::new();
+                for _ in 0..16 {
+                    let req = TestRequest::get().uri("/test").to_request();
+                    futures.push(call_service(&app, req));
+                }
+
+                join_all(futures).await;
+            })
+        });
     }
 }
