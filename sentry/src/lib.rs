@@ -226,3 +226,4 @@ pub mod integrations {
 
 #[doc(inline)]
 pub use sentry_core::types::protocol::latest as protocol;
+pub use sentry_core::ScopeUpdate;
