@@ -16,8 +16,9 @@ rust-version = "1.75"
 all-features = true
 
 [features]
-default = []
+default = ["release-health"]
 backtrace = ["dep:sentry-backtrace"]
+release-health = ["sentry-core/release-health"]
 
 [dependencies]
 sentry-core = { version = "0.36.0", path = "../sentry-core", features = [

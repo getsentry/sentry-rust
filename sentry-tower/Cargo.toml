@@ -16,8 +16,10 @@ rust-version = "1.75"
 all-features = true
 
 [features]
+default = ["release-health"]
 http = ["dep:http", "pin-project", "url"]
 axum-matched-path = ["http", "axum/matched-path"]
+release-health = ["sentry-core/release-health"]
 
 [dependencies]
 axum = { version = "0.8", optional = true, default-features = false }
