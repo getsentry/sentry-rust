@@ -1,10 +1,13 @@
 use std::borrow::Cow;
 use std::collections::{HashMap, VecDeque};
 use std::fmt;
-use std::sync::{Arc, Mutex, PoisonError, RwLock};
+#[cfg(feature = "release-health")]
+use std::sync::Mutex;
+use std::sync::{Arc, PoisonError, RwLock};
 
 use crate::performance::TransactionOrSpan;
 use crate::protocol::{Attachment, Breadcrumb, Context, Event, Level, Transaction, User, Value};
+#[cfg(feature = "release-health")]
 use crate::session::Session;
 use crate::Client;
 
@@ -45,6 +48,7 @@ pub struct Scope {
     pub(crate) tags: Arc<HashMap<String, String>>,
     pub(crate) contexts: Arc<HashMap<String, Context>>,
     pub(crate) event_processors: Arc<Vec<EventProcessor>>,
+    #[cfg(feature = "release-health")]
     pub(crate) session: Arc<Mutex<Option<Session>>>,
     pub(crate) span: Arc<Option<TransactionOrSpan>>,
     pub(crate) attachments: Arc<Vec<Attachment>>,
@@ -52,7 +56,8 @@ pub struct Scope {
 
 impl fmt::Debug for Scope {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Scope")
+        let mut debug_struct = f.debug_struct("Scope");
+        debug_struct
             .field("level", &self.level)
             .field("fingerprint", &self.fingerprint)
             .field("transaction", &self.transaction)
@@ -61,8 +66,12 @@ impl fmt::Debug for Scope {
             .field("extra", &self.extra)
             .field("tags", &self.tags)
             .field("contexts", &self.contexts)
-            .field("event_processors", &self.event_processors.len())
-            .field("session", &self.session)
+            .field("event_processors", &self.event_processors.len());
+
+        #[cfg(feature = "release-health")]
+        debug_struct.field("session", &self.session);
+
+        debug_struct
             .field("span", &self.span)
             .field("attachments", &self.attachments.len())
             .finish()
@@ -341,7 +350,9 @@ impl Scope {
         self.span.as_ref().clone()
     }
 
+    #[allow(unused_variables)]
     pub(crate) fn update_session_from_event(&self, event: &Event<'static>) {
+        #[cfg(feature = "release-health")]
         if let Some(session) = self.session.lock().unwrap().as_mut() {
             session.update_from_event(event);
         }

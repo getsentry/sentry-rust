@@ -6,11 +6,13 @@ use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
 use rand::random;
+#[cfg(feature = "release-health")]
 use sentry_types::protocol::v7::SessionUpdate;
 use sentry_types::random_uuid;
 
 use crate::constants::SDK_INFO;
 use crate::protocol::{ClientSdkInfo, Event};
+#[cfg(feature = "release-health")]
 use crate::session::SessionFlusher;
 use crate::types::{Dsn, Uuid};
 #[cfg(feature = "release-health")]
@@ -45,6 +47,7 @@ pub(crate) type TransportArc = Arc<RwLock<Option<Arc<dyn Transport>>>>;
 pub struct Client {
     options: ClientOptions,
     transport: TransportArc,
+    #[cfg(feature = "release-health")]
     session_flusher: RwLock<Option<SessionFlusher>>,
     integrations: Vec<(TypeId, Arc<dyn Integration>)>,
     pub(crate) sdk_info: ClientSdkInfo,
@@ -68,12 +71,11 @@ impl Clone for Client {
             transport.clone(),
             self.options.session_mode,
         )));
-        #[cfg(not(feature = "release-health"))]
-        let session_flusher = RwLock::new(None);
 
         Client {
             options: self.options.clone(),
             transport,
+            #[cfg(feature = "release-health")]
             session_flusher,
             integrations: self.integrations.clone(),
             sdk_info: self.sdk_info.clone(),
@@ -143,12 +145,11 @@ impl Client {
             transport.clone(),
             options.session_mode,
         )));
-        #[cfg(not(feature = "release-health"))]
-        let session_flusher = RwLock::new(None);
 
         Client {
             options,
             transport,
+            #[cfg(feature = "release-health")]
             session_flusher,
             integrations,
             sdk_info,
@@ -311,6 +312,7 @@ impl Client {
         }
     }
 
+    #[cfg(feature = "release-health")]
     pub(crate) fn enqueue_session(&self, session_update: SessionUpdate<'static>) {
         if let Some(ref flusher) = *self.session_flusher.read().unwrap() {
             flusher.enqueue(session_update);
@@ -319,6 +321,7 @@ impl Client {
 
     /// Drains all pending events without shutting down.
     pub fn flush(&self, timeout: Option<Duration>) -> bool {
+        #[cfg(feature = "release-health")]
         if let Some(ref flusher) = *self.session_flusher.read().unwrap() {
             flusher.flush();
         }
@@ -337,6 +340,7 @@ impl Client {
     /// If no timeout is provided the client will wait for as long a
     /// `shutdown_timeout` in the client options.
     pub fn close(&self, timeout: Option<Duration>) -> bool {
+        #[cfg(feature = "release-health")]
         drop(self.session_flusher.write().unwrap().take());
         let transport_opt = self.transport.write().unwrap().take();
         if let Some(transport) = transport_opt {
