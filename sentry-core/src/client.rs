@@ -6,14 +6,18 @@ use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
 use rand::random;
+#[cfg(feature = "release-health")]
 use sentry_types::protocol::v7::SessionUpdate;
 use sentry_types::random_uuid;
 
 use crate::constants::SDK_INFO;
 use crate::protocol::{ClientSdkInfo, Event};
+#[cfg(feature = "release-health")]
 use crate::session::SessionFlusher;
 use crate::types::{Dsn, Uuid};
-use crate::{ClientOptions, Envelope, Hub, Integration, Scope, SessionMode, Transport};
+#[cfg(feature = "release-health")]
+use crate::SessionMode;
+use crate::{ClientOptions, Envelope, Hub, Integration, Scope, Transport};
 
 impl<T: Into<ClientOptions>> From<T> for Client {
     fn from(o: T) -> Client {
@@ -43,6 +47,7 @@ pub(crate) type TransportArc = Arc<RwLock<Option<Arc<dyn Transport>>>>;
 pub struct Client {
     options: ClientOptions,
     transport: TransportArc,
+    #[cfg(feature = "release-health")]
     session_flusher: RwLock<Option<SessionFlusher>>,
     integrations: Vec<(TypeId, Arc<dyn Integration>)>,
     pub(crate) sdk_info: ClientSdkInfo,
@@ -60,13 +65,17 @@ impl fmt::Debug for Client {
 impl Clone for Client {
     fn clone(&self) -> Client {
         let transport = Arc::new(RwLock::new(self.transport.read().unwrap().clone()));
+
+        #[cfg(feature = "release-health")]
         let session_flusher = RwLock::new(Some(SessionFlusher::new(
             transport.clone(),
             self.options.session_mode,
         )));
+
         Client {
             options: self.options.clone(),
             transport,
+            #[cfg(feature = "release-health")]
             session_flusher,
             integrations: self.integrations.clone(),
             sdk_info: self.sdk_info.clone(),
@@ -131,6 +140,7 @@ impl Client {
             sdk_info.integrations.push(integration.name().to_string());
         }
 
+        #[cfg(feature = "release-health")]
         let session_flusher = RwLock::new(Some(SessionFlusher::new(
             transport.clone(),
             options.session_mode,
@@ -139,6 +149,7 @@ impl Client {
         Client {
             options,
             transport,
+            #[cfg(feature = "release-health")]
             session_flusher,
             integrations,
             sdk_info,
@@ -266,6 +277,7 @@ impl Client {
                 let mut envelope: Envelope = event.into();
                 // For request-mode sessions, we aggregate them all instead of
                 // flushing them out early.
+                #[cfg(feature = "release-health")]
                 if self.options.session_mode == SessionMode::Application {
                     let session_item = scope.and_then(|scope| {
                         scope
@@ -300,6 +312,7 @@ impl Client {
         }
     }
 
+    #[cfg(feature = "release-health")]
     pub(crate) fn enqueue_session(&self, session_update: SessionUpdate<'static>) {
         if let Some(ref flusher) = *self.session_flusher.read().unwrap() {
             flusher.enqueue(session_update);
@@ -308,6 +321,7 @@ impl Client {
 
     /// Drains all pending events without shutting down.
     pub fn flush(&self, timeout: Option<Duration>) -> bool {
+        #[cfg(feature = "release-health")]
         if let Some(ref flusher) = *self.session_flusher.read().unwrap() {
             flusher.flush();
         }
@@ -326,6 +340,7 @@ impl Client {
     /// If no timeout is provided the client will wait for as long a
     /// `shutdown_timeout` in the client options.
     pub fn close(&self, timeout: Option<Duration>) -> bool {
+        #[cfg(feature = "release-health")]
         drop(self.session_flusher.write().unwrap().take());
         let transport_opt = self.transport.write().unwrap().take();
         if let Some(transport) = transport_opt {

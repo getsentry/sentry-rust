@@ -12,6 +12,10 @@ Sentry client extension for actix-web 3.
 edition = "2021"
 rust-version = "1.81"
 
+[features]
+default = ["release-health"]
+release-health = ["sentry-core/release-health"]
+
 [dependencies]
 actix-web = { version = "4", default-features = false }
 bytes = "1.2"
