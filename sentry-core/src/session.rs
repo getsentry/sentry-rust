@@ -3,10 +3,10 @@
 //! <https://develop.sentry.dev/sdk/sessions/>
 
 #[cfg(feature = "release-health")]
-pub use session::*;
+pub use session_impl::*;
 
 #[cfg(feature = "release-health")]
-mod session {
+mod session_impl {
 
     use std::collections::HashMap;
     use std::sync::{Arc, Condvar, Mutex, MutexGuard};
