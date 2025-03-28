@@ -2,7 +2,8 @@ use sentry_core::protocol::{Frame, Stacktrace};
 
 use crate::utils::function_starts_with;
 
-const WELL_KNOWN_SYS_MODULES: &[&str] = &[
+const WELL_KNOWN_NOT_IN_APP: &[&str] = &[
+    // standard library and sentry crates
     "std::",
     "core::",
     "alloc::",
@@ -10,14 +11,19 @@ const WELL_KNOWN_SYS_MODULES: &[&str] = &[
     "sentry::",
     "sentry_core::",
     "sentry_types::",
+    "sentry_backtrace::",
     // these are not modules but things like __rust_maybe_catch_panic
     "__rust_",
     "___rust_",
+    "rust_begin_unwind",
+    "_start",
     // these are well-known library frames
     "anyhow::",
     "log::",
     "tokio::",
     "tracing_core::",
+    "futures_core::",
+    "futures_util::",
 ];
 
 const WELL_KNOWN_BORDER_FRAMES: &[&str] = &[
@@ -39,7 +45,7 @@ where
         .iter()
         .rev()
         .position(|frame| match frame.function {
-            Some(ref func) => is_well_known(func) || f(frame, stacktrace),
+            Some(ref func) => is_well_known_border_frame(func) || f(frame, stacktrace),
             None => false,
         });
 
@@ -49,15 +55,15 @@ where
     }
 }
 
-/// Checks if a function is considered to be not in-app
-pub fn is_sys_function(func: &str) -> bool {
-    WELL_KNOWN_SYS_MODULES
+/// Checks if a function is from a module that shall be considered not in-app by default
+pub fn is_well_known_not_in_app(func: &str) -> bool {
+    WELL_KNOWN_NOT_IN_APP
         .iter()
         .any(|m| function_starts_with(func, m))
 }
 
-/// Checks if a function is a well-known system function
-fn is_well_known(func: &str) -> bool {
+/// Checks if a function is a well-known border frame
+fn is_well_known_border_frame(func: &str) -> bool {
     WELL_KNOWN_BORDER_FRAMES
         .iter()
         .any(|m| function_starts_with(func, m))
