@@ -1,5 +1,61 @@
 # Changelog
 
+## Unreleased
+
+### Breaking changes
+
+- chore(msrv): `cargo update` and bump MSRV to 1.81 (#754) by @lcian
+  - The minimum supported Rust version has been raised to 1.81.
+- feat(core): introduce `release-health` feature (#749) by @pepperoni505
+  - A new `release-health` feature flag was introduced that gates the [Release Health](https://docs.sentry.io/product/releases/health/) features of Sentry.
+  - This allows for compilation of the SDK on certain WASM targets.
+  - Release Health features were already present and enabled with no feature flag in previous versions.
+  - The new feature flag will be enabled by default when using `sentry`, `sentry-actix`, `sentry-tower` or `sentry-tracing` with the default features.
+  - If you're fine-tuning your feature flags, make sure to enable `release-health` to get back the previous behavior.
+- ref(metrics): remove features and code related to the old metrics beta (#740) by @lcian
+  - The metrics feature and the code related to it has been removed from the crate, as the Sentry backend stopped ingesting metrics a while ago.
+- Switch to MIT license (#724) by @cleptric
+  - The license for the crates has been changed to MIT.
+ 
+### Features
+
+- feat(actix): capture HTTP request body (#731) by @pacifistes
+  - The middleware for `actix-web` now supports capturing and attaching the request body to HTTP request transactions.
+  - You need to enable `send_default_pii` in your client options for this to be enabled, and you can fine-tune the behavior using the new option `max_request_body_size`.
+- feat(core): `transaction.set_data` sets data on `TraceContext` (#739) by @lcian
+  - `transaction.set_data` now sets data on `TraceContext`, as the SDK should not use the `extra` field.
+- ref(backtrace): add entries and extra logic for in-app detection (#756) by @lcian
+- feat(core): add more frames to be considered not in_app (#760) by @lcian
+  - The logic used by the SDK to detect `in-app` stack frames has been improved. Now the SDK will mark more frames as not `in-app`.
+  - A similar improvement has been added to the Sentry [backend](https://github.com/getsentry/sentry/commit/cef4d53e05093d6e9c81c1c49585af86cc135f8b) so that old versions of the SDK can benefit from improved `in-app` reporting.
+
+### Fixes
+
+- fix(http): Finish transaction on drop (#727) by @Dav1dde
+  - Fixed a bug where the current transaction was not finished (hence not sent to Sentry) when its corresponding future was dropped, e.g. due to a panic.
+- follow https://github.com/getsentry/sentry-rust/pull/439 for actix-web. fix https://github.com/getsentry/sentry-rust/issues/680 (#737) by @pavel-rosputko
+  - The HTTP request metadata is now being correctly attached to transactions when using `sentry-actix`.
+- fix(tracing): wrap error with synthetic mechanism only if attaching stacktrace (#755) by @lcian
+  - Fixed a bug that should result in improved grouping and issue titles for events reported by `sentry-tracing` when not capturing stack traces.
+- fix(actix): process request in other middleware using correct Hub (#758) by @lcian
+  - The subsequent middleware in the chain when processing a request now execute within the correct Hub.
+- fix(anyhow): attach stacktrace only if error provides backtrace (#759) by @lcian
+  - Fixed a bug where the SDK was providing incorrect stack traces when capturing an `anyhow` when the `backtrace` feature is enabled but `RUST_BACKTRACE` is not set.
+  - This should result in correct grouping of the affected issues.
+
+### Various fixes & improvements
+
+- Fix CS (#726) by @cleptric
+- fix(doctests): update prost (#750) by @lcian
+- chore(msrv): bump MSRV to 1.75 (#751) by @lcian
+- refactor(actix): simplify body_from_http (#757) by @robjtede
+
+### Dependencies
+
+- build(deps): bump openssl from 0.10.66 to 0.10.70 (#732) by @dependabot
+- build(deps): bump ring from 0.17.8 to 0.17.13 (#747) by @dependabot
+
+
 ## 0.36.0
 
 ### Various fixes & improvements
