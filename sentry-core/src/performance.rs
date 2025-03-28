@@ -664,7 +664,7 @@ impl Transaction {
     }
 
     /// Returns an iterating accessor to the transaction's
-    /// [tags attributes](protocol::TraceContext::tags).
+    /// [tags attributes](protocol::Transaction::tags).
     pub fn tags(&self) -> TransactionTags {
         TransactionTags(self.inner.lock().unwrap())
     }
