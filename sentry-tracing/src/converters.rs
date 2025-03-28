@@ -75,13 +75,34 @@ where
             if let Some(span_data) = ext.get::<SentrySpanData>() {
                 match &span_data.sentry_span {
                     TransactionOrSpan::Span(span) => {
-                        for (key, value) in span.data().iter() {
-                            visitor.propagate_span_attr(key, value, propagation, name);
+                        let tags = span.tags();
+
+                        if propagation.is_tags_enabled() {
+                            for (key, value) in tags.iter() {
+                                visitor.propagate_span_tag(key, value);
+                            }
+                        }
+
+                        if propagation.is_attrs_enabled() {
+                            for (key, value) in tags.into_data().iter() {
+                                visitor.propagate_span_attr(key, value, name);
+                            }
                         }
                     }
                     TransactionOrSpan::Transaction(transaction) => {
-                        for (key, value) in transaction.data().iter() {
-                            visitor.propagate_span_attr(key, value, propagation, name);
+                        let tags = transaction.tags();
+                        if propagation.is_tags_enabled() {
+                            if let Some(tags) = tags.iter() {
+                                for (key, value) in tags {
+                                    visitor.propagate_span_tag(key, value);
+                                }
+                            }
+                        }
+
+                        if propagation.is_attrs_enabled() {
+                            for (key, value) in tags.into_data().iter() {
+                                visitor.propagate_span_attr(key, value, name);
+                            }
                         }
                     }
                 }
@@ -100,23 +121,16 @@ pub(crate) struct FieldVisitor {
 }
 
 impl FieldVisitor {
-    fn propagate_span_attr(
-        &mut self,
-        key: &str,
-        value: &Value,
-        span_propagation: SpanPropagation,
-        span_name: &str,
-    ) {
+    fn propagate_span_tag(&mut self, key: &str, value: &str) {
+        //Propagate tags as it is, it will be extracted later on
+        let tag = format!("{TAGS_PREFIX}{key}");
+        self.json_values.entry(tag).or_insert_with(|| value.into());
+    }
+
+    fn propagate_span_attr(&mut self, key: &str, value: &Value, span_name: &str) {
         if key != "message" {
-            if span_propagation.is_tags_enabled() && key.starts_with(TAGS_PREFIX) {
-                //Propagate tags as it is, it will be extracted later on
-                if !self.json_values.contains_key(key) {
-                    self.json_values.insert(key.to_owned(), value.clone());
-                }
-            } else if span_propagation.is_attrs_enabled() {
-                let key = format!("{}:{}", span_name, key);
-                self.json_values.insert(key, value.clone());
-            }
+            let key = format!("{}:{}", span_name, key);
+            self.json_values.insert(key, value.clone());
         }
     }
 
