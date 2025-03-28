@@ -54,21 +54,22 @@ fn extract_event_data(event: &tracing_core::Event) -> (Option<String>, FieldVisi
 
 fn extract_event_data_with_context<S>(
     event: &tracing_core::Event,
-    ctx: Option<(SpanPropagation, Context<S>)>,
+    ctx: Context<S>,
+    propagation: Option<SpanPropagation>,
 ) -> (Option<String>, FieldVisitor)
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
     let (message, mut visitor) = extract_event_data(event);
 
-    // Add the context fields of every parent span.
-    let current_span = ctx.as_ref().and_then(|(propagation, ctx)| {
+    // Add the context fields of every parent span, if propagation is enabled
+    let propagation_span = propagation.and_then(|propagation| {
         event
             .parent()
-            .and_then(|id| ctx.span(id).map(|span| (*propagation, span)))
-            .or_else(|| ctx.lookup_current().map(|span| (*propagation, span)))
+            .and_then(|id| ctx.span(id).map(|span| (propagation, span)))
+            .or_else(|| ctx.lookup_current().map(|span| (propagation, span)))
     });
-    if let Some((propagation, span)) = current_span {
+    if let Some((propagation, span)) = propagation_span {
         for span in span.scope() {
             let name = span.name();
             let ext = span.extensions();
@@ -172,19 +173,19 @@ impl Visit for FieldVisitor {
 /// Creates a [`Breadcrumb`] from a given [`tracing_core::Event`]
 pub fn breadcrumb_from_event<'context, S>(
     event: &tracing_core::Event,
-    ctx: impl Into<Option<(SpanPropagation, Context<'context, S>)>>,
+    ctx: Context<'context, S>,
+    mut propagation: Option<SpanPropagation>,
 ) -> Breadcrumb
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
-    let ctx = match ctx.into() {
-        Some((propagation, ctx)) if propagation.is_attrs_enabled() => {
-            Some((SpanPropagation::Attributes, ctx))
+    if let Some(propagation) = propagation.as_mut() {
+        if propagation.is_attrs_enabled() {
+            //Breadcrumb has no tags, so propagate only attributes
+            *propagation = SpanPropagation::Attributes;
         }
-        //Breadcrumb has no tags, so propagate only attributes
-        _ => None,
-    };
-    let (message, visitor) = extract_event_data_with_context(event, ctx);
+    }
+    let (message, visitor) = extract_event_data_with_context(event, ctx, propagation);
     Breadcrumb {
         category: Some(event.metadata().target().to_owned()),
         ty: "log".into(),
@@ -255,12 +256,13 @@ fn contexts_from_event(
 /// Creates an [`Event`] from a given [`tracing_core::Event`]
 pub fn event_from_event<'context, S>(
     event: &tracing_core::Event,
-    ctx: impl Into<Option<(SpanPropagation, Context<'context, S>)>>,
+    ctx: Context<'context, S>,
+    propagation: Option<SpanPropagation>,
 ) -> Event<'static>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
-    let (message, mut visitor) = extract_event_data_with_context(event, ctx.into());
+    let (message, mut visitor) = extract_event_data_with_context(event, ctx, propagation);
 
     Event {
         logger: Some(event.metadata().target().to_owned()),
@@ -275,7 +277,8 @@ where
 /// Creates an exception [`Event`] from a given [`tracing_core::Event`]
 pub fn exception_from_event<'context, S>(
     event: &tracing_core::Event,
-    ctx: impl Into<Option<(SpanPropagation, Context<'context, S>)>>,
+    ctx: Context<'context, S>,
+    propagation: Option<SpanPropagation>,
 ) -> Event<'static>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
@@ -285,7 +288,7 @@ where
     // information for this. However, it may contain a serialized error which we can parse to emit
     // an exception record.
     #[allow(unused_mut)]
-    let (mut message, visitor) = extract_event_data_with_context(event, ctx.into());
+    let (mut message, visitor) = extract_event_data_with_context(event, ctx, propagation);
     let FieldVisitor {
         mut exceptions,
         mut json_values,

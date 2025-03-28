@@ -215,19 +215,20 @@ where
     fn on_event(&self, event: &Event, ctx: Context<'_, S>) {
         let item = match &self.event_mapper {
             Some(mapper) => mapper(event, ctx),
-            None => {
-                let span_ctx = self.span_propagation.map(|propagation| (propagation, ctx));
-                match (self.event_filter)(event.metadata()) {
-                    EventFilter::Ignore => EventMapping::Ignore,
-                    EventFilter::Breadcrumb => {
-                        EventMapping::Breadcrumb(breadcrumb_from_event(event, span_ctx))
-                    }
-                    EventFilter::Event => EventMapping::Event(event_from_event(event, span_ctx)),
-                    EventFilter::Exception => {
-                        EventMapping::Event(exception_from_event(event, span_ctx))
-                    }
+            None => match (self.event_filter)(event.metadata()) {
+                EventFilter::Ignore => EventMapping::Ignore,
+                EventFilter::Breadcrumb => EventMapping::Breadcrumb(breadcrumb_from_event(
+                    event,
+                    ctx,
+                    self.span_propagation,
+                )),
+                EventFilter::Event => {
+                    EventMapping::Event(event_from_event(event, ctx, self.span_propagation))
                 }
-            }
+                EventFilter::Exception => {
+                    EventMapping::Event(exception_from_event(event, ctx, self.span_propagation))
+                }
+            },
         };
 
         match item {
