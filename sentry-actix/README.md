@@ -11,8 +11,7 @@ report them to `Sentry`.
 
 To use this middleware just configure Sentry and then add it to your actix web app as a
 middleware.  Because actix is generally working with non sendable objects and highly concurrent
-this middleware creates a new hub per request.  As a result many of the sentry integrations
-such as breadcrumbs do not work unless you bind the actix hub.
+this middleware creates a new Hub per request.
 
 ## Example
 
@@ -67,11 +66,15 @@ let _sentry = sentry::init(sentry::ClientOptions {
 ## Reusing the Hub
 
 This integration will automatically create a new per-request Hub from the main Hub, and update the
-current Hub instance. For example, the following will capture a message in the current request's Hub:
+current Hub instance. For example, the following in the handler or in any of the subsequent
+middleware will capture a message in the current request's Hub:
 
 ```rust
 sentry::capture_message("Something is not well", sentry::Level::Warning);
 ```
+
+It is recommended to register the Sentry middleware as the last, i.e. the first to be executed
+when processing a request, so that the rest of the processing will run with the correct Hub.
 
 ## Resources
 
