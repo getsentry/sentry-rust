@@ -49,6 +49,7 @@
 - fix(doctests): update prost (#750) by @lcian
 - chore(msrv): bump MSRV to 1.75 (#751) by @lcian
 - refactor(actix): simplify body_from_http (#757) by @robjtede
+- chore: prepare changelog for release (#761) by @lcian
 
 ### Dependencies
 
