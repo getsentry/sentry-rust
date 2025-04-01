@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.37.0
 
 ### Breaking changes
 
@@ -55,7 +55,6 @@
 
 - build(deps): bump openssl from 0.10.66 to 0.10.70 (#732) by @dependabot
 - build(deps): bump ring from 0.17.8 to 0.17.13 (#747) by @dependabot
-
 
 ## 0.36.0
 
