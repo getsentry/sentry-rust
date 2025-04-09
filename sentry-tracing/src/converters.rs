@@ -150,12 +150,27 @@ where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
     let (message, visitor) = extract_event_data_with_context(event, ctx.into());
+
+    let FieldVisitor {
+        exceptions,
+        mut json_values,
+    } = visitor;
+
+    let errors = exceptions
+        .iter()
+        .rev()
+        .filter_map(|x| x.value.as_ref().map(|v| format!("{}: {}", x.ty, *v)))
+        .collect::<Vec<String>>();
+    if !errors.is_empty() {
+        json_values.insert("errors".to_owned(), errors.into());
+    }
+
     Breadcrumb {
         category: Some(event.metadata().target().to_owned()),
         ty: "log".into(),
         level: convert_tracing_level(event.metadata().level()),
         message,
-        data: visitor.json_values,
+        data: json_values,
         ..Default::default()
     }
 }
@@ -217,28 +232,8 @@ fn contexts_from_event(
     context
 }
 
-/// Creates an [`Event`] from a given [`tracing_core::Event`]
+/// Creates an [`Event`] (possibly carrying an exception) from a given [`tracing_core::Event`]
 pub fn event_from_event<'context, S>(
-    event: &tracing_core::Event,
-    ctx: impl Into<Option<Context<'context, S>>>,
-) -> Event<'static>
-where
-    S: Subscriber + for<'a> LookupSpan<'a>,
-{
-    let (message, mut visitor) = extract_event_data_with_context(event, ctx.into());
-
-    Event {
-        logger: Some(event.metadata().target().to_owned()),
-        level: convert_tracing_level(event.metadata().level()),
-        message,
-        tags: tags_from_event(&mut visitor.json_values),
-        contexts: contexts_from_event(event, visitor.json_values),
-        ..Default::default()
-    }
-}
-
-/// Creates an exception [`Event`] from a given [`tracing_core::Event`]
-pub fn exception_from_event<'context, S>(
     event: &tracing_core::Event,
     ctx: impl Into<Option<Context<'context, S>>>,
 ) -> Event<'static>

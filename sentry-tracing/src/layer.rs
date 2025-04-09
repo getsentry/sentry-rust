@@ -216,9 +216,8 @@ where
                     EventFilter::Breadcrumb => {
                         EventMapping::Breadcrumb(breadcrumb_from_event(event, span_ctx))
                     }
-                    EventFilter::Event => EventMapping::Event(event_from_event(event, span_ctx)),
-                    EventFilter::Exception => {
-                        EventMapping::Event(exception_from_event(event, span_ctx))
+                    EventFilter::Event | EventFilter::Exception => {
+                        EventMapping::Event(event_from_event(event, span_ctx))
                     }
                 }
             }
