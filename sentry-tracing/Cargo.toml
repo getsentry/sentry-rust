@@ -36,4 +36,4 @@ sentry = { path = "../sentry", default-features = false, features = ["test"] }
 serde_json = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3.1", features = ["fmt", "registry"] }
-tokio = { version = "1.8", features = ["rt-multi-thread", "macros", "time"] }
+tokio = { version = "1.44", features = ["rt-multi-thread", "macros", "time"] }
