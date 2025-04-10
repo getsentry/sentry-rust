@@ -81,7 +81,6 @@ extra setup to function properly.
 | `native-tls`      | ✅      |                |            | `reqwest` must be enabled.                                                               |
 | `rustls`          |         |                |            | `reqwest` must be enabled. `native-tls` must be disabled via `default-features = false`. |
 | `curl`            |         |                |            |                                                                                          |
-| `surf`            |         |                |            |                                                                                          |
 | `tower`           |         | 🔌             |            | Requires extra setup; See [`sentry-tower`]'s documentation.                              |
 | `ureq`            |         |                |            | `ureq` transport support using `rustls` by default                                       |
 | `ureq-native-tls` |         |                |            |                                                                                          |
@@ -113,7 +112,6 @@ extra setup to function properly.
   feature, and `default-features = false` must be set to completely disable building `native-tls`
   dependencies.
 - `curl`: Enables the `curl` transport.
-- `surf`: Enables the `surf` transport.
 - `ureq`: Enables the `ureq` transport using `rustls`.
 - `ureq-native-tls`: Enables the `ureq` transport using `native-tls`.
 

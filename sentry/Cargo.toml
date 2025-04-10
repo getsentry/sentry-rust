@@ -51,9 +51,7 @@ release-health = ["sentry-core/release-health"]
 transport = ["reqwest", "native-tls"]
 reqwest = ["dep:reqwest", "httpdate", "tokio"]
 curl = ["dep:curl", "httpdate"]
-surf-h1 = ["surf/h1-client", "httpdate"]
-surf = ["surf/curl-client", "http-client", "httpdate", "isahc", "tokio"]
-ureq = ["dep:ureq", "httpdate"]
+ureq = ["dep:ureq", "httpdate"] 
 # transport settings
 native-tls = ["dep:native-tls", "reqwest?/default-tls", "ureq?/native-tls"]
 rustls = ["dep:rustls", "reqwest?/rustls-tls", "ureq?/tls", "webpki-roots"]
@@ -79,7 +77,6 @@ reqwest = { version = "0.12", optional = true, features = [
 ], default-features = false }
 curl = { version = "0.4.25", optional = true }
 httpdate = { version = "1.0.0", optional = true }
-surf = { version = "2.0.0", optional = true, default-features = false }
 http-client = { version = "6.5.3", optional = true }
 isahc = { version = "0.9.14", optional = true }
 serde_json = { version = "1.0.48", optional = true }
