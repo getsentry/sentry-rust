@@ -20,10 +20,8 @@ pub enum EventFilter {
     Ignore,
     /// Create a [`Breadcrumb`] from this [`Event`]
     Breadcrumb,
-    /// Create a message [`sentry_core::protocol::Event`] from this [`Event`]
+    /// Create a [`sentry_core::protocol::Event`] from this [`Event`]
     Event,
-    /// Create an exception [`sentry_core::protocol::Event`] from this [`Event`]
-    Exception,
 }
 
 /// The type of data Sentry should ingest for a [`Event`]
@@ -44,7 +42,7 @@ pub enum EventMapping {
 /// `warning` and `info`, and `debug` and `trace` logs are ignored.
 pub fn default_event_filter(metadata: &Metadata) -> EventFilter {
     match metadata.level() {
-        &Level::ERROR => EventFilter::Exception,
+        &Level::ERROR => EventFilter::Event,
         &Level::WARN | &Level::INFO => EventFilter::Breadcrumb,
         &Level::DEBUG | &Level::TRACE => EventFilter::Ignore,
     }
@@ -217,9 +215,6 @@ where
                         EventMapping::Breadcrumb(breadcrumb_from_event(event, span_ctx))
                     }
                     EventFilter::Event => EventMapping::Event(event_from_event(event, span_ctx)),
-                    EventFilter::Exception => {
-                        EventMapping::Event(exception_from_event(event, span_ctx))
-                    }
                 }
             }
         };
