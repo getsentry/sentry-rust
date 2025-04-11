@@ -11,7 +11,7 @@ use tracing_subscriber::layer::{Context, Layer};
 use tracing_subscriber::registry::LookupSpan;
 
 use crate::converters::*;
-use crate::TAGS_PREFIX;
+use crate::{SpanPropagation, TAGS_PREFIX};
 
 /// The action that Sentry should perform for a [`Metadata`]
 #[derive(Debug, Clone, Copy)]
@@ -68,7 +68,7 @@ pub struct SentryLayer<S> {
 
     span_filter: Box<dyn Fn(&Metadata) -> bool + Send + Sync>,
 
-    with_span_attributes: bool,
+    span_propagation: Option<SpanPropagation>,
 }
 
 impl<S> SentryLayer<S> {
@@ -121,8 +121,14 @@ impl<S> SentryLayer<S> {
     /// the [traces_sample_rate][sentry_core::ClientOptions::traces_sample_rate] to `1.0`
     /// while configuring your sentry client.
     #[must_use]
-    pub fn enable_span_attributes(mut self) -> Self {
-        self.with_span_attributes = true;
+    pub fn enable_span_attributes(self) -> Self {
+        self.enable_span_propagation(SpanPropagation::Attributes)
+    }
+
+    #[must_use]
+    /// Configures span propagation for events' creation
+    pub fn enable_span_propagation(mut self, propagation: SpanPropagation) -> Self {
+        self.span_propagation = Some(propagation);
         self
     }
 }
@@ -138,7 +144,7 @@ where
 
             span_filter: Box::new(default_span_filter),
 
-            with_span_attributes: false,
+            span_propagation: None,
         }
     }
 }
@@ -207,16 +213,17 @@ where
     fn on_event(&self, event: &Event, ctx: Context<'_, S>) {
         let item = match &self.event_mapper {
             Some(mapper) => mapper(event, ctx),
-            None => {
-                let span_ctx = self.with_span_attributes.then_some(ctx);
-                match (self.event_filter)(event.metadata()) {
-                    EventFilter::Ignore => EventMapping::Ignore,
-                    EventFilter::Breadcrumb => {
-                        EventMapping::Breadcrumb(breadcrumb_from_event(event, span_ctx))
-                    }
-                    EventFilter::Event => EventMapping::Event(event_from_event(event, span_ctx)),
+            None => match (self.event_filter)(event.metadata()) {
+                EventFilter::Ignore => EventMapping::Ignore,
+                EventFilter::Breadcrumb => EventMapping::Breadcrumb(breadcrumb_from_event(
+                    event,
+                    ctx,
+                    self.span_propagation,
+                )),
+                EventFilter::Event => {
+                    EventMapping::Event(event_from_event(event, ctx, self.span_propagation))
                 }
-            }
+            },
         };
 
         match item {
