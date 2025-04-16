@@ -159,3 +159,6 @@ pub mod test;
 pub use sentry_types as types;
 pub use sentry_types::protocol::v7 as protocol;
 pub use sentry_types::protocol::v7::{Breadcrumb, Envelope, Level, User};
+
+// utilities reused across integrations
+pub mod utils;
