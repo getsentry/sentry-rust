@@ -10,7 +10,7 @@ use sentry_core::{protocol, Hub};
 use tower_layer::Layer;
 use tower_service::Service;
 
-/// Tower Layer that logs Http Request information.
+/// Tower Layer that captures Http Request information.
 ///
 /// The Service created by this Layer can optionally start a new
 /// performance monitoring transaction for each incoming request,
