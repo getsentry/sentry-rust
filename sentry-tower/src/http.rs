@@ -42,6 +42,15 @@ impl SentryHttpLayer {
         slf
     }
 
+    /// Creates a new Layer which starts a new performance monitoring transaction
+    /// for each incoming request.
+    #[deprecated(since = "0.38.0", note = "please use `enable_transaction` instead")]
+    pub fn with_transaction() -> Self {
+        Self {
+            start_transaction: true,
+        }
+    }
+
     /// Enable starting a new performance monitoring transaction for each incoming request.
     #[must_use]
     pub fn enable_transaction(mut self) -> Self {
