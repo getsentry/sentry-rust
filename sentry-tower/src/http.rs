@@ -37,8 +37,7 @@ impl SentryHttpLayer {
         let mut slf = Self::default();
         Hub::main()
             .client()
-            .map(|client| client.options().send_default_pii)
-            .inspect(|send_default_pii| slf.with_pii = *send_default_pii);
+            .inspect(|client| slf.with_pii = client.options().send_default_pii);
         slf
     }
 
@@ -48,6 +47,7 @@ impl SentryHttpLayer {
     pub fn with_transaction() -> Self {
         Self {
             start_transaction: true,
+            with_pii: false,
         }
     }
 
