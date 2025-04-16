@@ -222,16 +222,16 @@ fn should_capture_request_body(
         .map(|transfer_encoding| transfer_encoding.contains("chunked"))
         .unwrap_or(false);
 
-    let is_valid_content_type = headers
-        .get(header::CONTENT_TYPE)
-        .and_then(|h| h.to_str().ok())
-        .is_some_and(|content_type| {
-            with_pii
-                || matches!(
+    let is_valid_content_type = with_pii
+        || headers
+            .get(header::CONTENT_TYPE)
+            .and_then(|h| h.to_str().ok())
+            .is_some_and(|content_type| {
+                matches!(
                     content_type,
                     "application/json" | "application/x-www-form-urlencoded"
                 )
-        });
+            });
 
     let is_within_size_limit = headers
         .get(header::CONTENT_LENGTH)
