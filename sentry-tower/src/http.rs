@@ -5,13 +5,14 @@ use std::task::{Context, Poll};
 
 use http::{header, uri, Request, Response, StatusCode};
 use pin_project::pinned_drop;
-use sentry_core::protocol;
+use sentry_core::utils::is_sensitive_header;
+use sentry_core::{protocol, Hub};
 use tower_layer::Layer;
 use tower_service::Service;
 
-/// Tower Layer that logs Http Request Headers.
+/// Tower Layer that captures Http Request information.
 ///
-/// The Service created by this Layer can also optionally start a new
+/// The Service created by this Layer can optionally start a new
 /// performance monitoring transaction for each incoming request,
 /// continuing the trace based on incoming distributed tracing headers.
 ///
@@ -20,35 +21,63 @@ use tower_service::Service;
 /// or similar. In this case, users should manually override the transaction name
 /// in the request handler using the [`Scope::set_transaction`](sentry_core::Scope::set_transaction)
 /// method.
+///
+/// By default, the service will filter out potentially sensitive headers from the captured
+/// requests. By enabling `with_pii`, you can opt in to capturing all headers instead.
 #[derive(Clone, Default)]
 pub struct SentryHttpLayer {
     start_transaction: bool,
+    with_pii: bool,
 }
 
 impl SentryHttpLayer {
-    /// Creates a new Layer that only logs Request Headers.
+    /// Creates a new Layer that only captures request information.
+    /// If a client is bound to the main Hub (i.e. the SDK has already been initialized), set `with_pii` based on the `send_default_pii` client option.
     pub fn new() -> Self {
-        Self::default()
+        let mut slf = Self::default();
+        Hub::main()
+            .client()
+            .inspect(|client| slf.with_pii = client.options().send_default_pii);
+        slf
     }
 
     /// Creates a new Layer which starts a new performance monitoring transaction
     /// for each incoming request.
+    #[deprecated(since = "0.38.0", note = "please use `enable_transaction` instead")]
     pub fn with_transaction() -> Self {
         Self {
             start_transaction: true,
+            with_pii: false,
         }
+    }
+
+    /// Enable starting a new performance monitoring transaction for each incoming request.
+    #[must_use]
+    pub fn enable_transaction(mut self) -> Self {
+        self.start_transaction = true;
+        self
+    }
+
+    /// Include PII in captured requests. Potentially sensitive headers are not filtered out.
+    #[must_use]
+    pub fn enable_pii(mut self) -> Self {
+        self.with_pii = true;
+        self
     }
 }
 
-/// Tower Service that logs Http Request Headers.
+/// Tower Service that captures Http Request information.
 ///
-/// The Service can also optionally start a new performance monitoring transaction
+/// The Service can optionally start a new performance monitoring transaction
 /// for each incoming request, continuing the trace based on incoming
 /// distributed tracing headers.
+///
+/// If `with_pii` is disabled, sensitive headers will be filtered out.
 #[derive(Clone)]
 pub struct SentryHttpService<S> {
     service: S,
     start_transaction: bool,
+    with_pii: bool,
 }
 
 impl<S> Layer<S> for SentryHttpLayer {
@@ -58,6 +87,7 @@ impl<S> Layer<S> for SentryHttpLayer {
         Self::Service {
             service,
             start_transaction: self.start_transaction,
+            with_pii: self.with_pii,
         }
     }
 }
@@ -161,6 +191,7 @@ where
                 .headers()
                 .into_iter()
                 .filter(|(_, value)| !value.is_sensitive())
+                .filter(|(header, _)| self.with_pii || !is_sensitive_header(header.as_str()))
                 .map(|(header, value)| {
                     (
                         header.to_string(),
