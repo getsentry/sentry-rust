@@ -3230,7 +3230,6 @@ name = "sentry-debug-images"
 version = "0.37.0"
 dependencies = [
  "findshlibs",
- "once_cell",
  "sentry-core",
 ]
 
