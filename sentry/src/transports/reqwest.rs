@@ -53,7 +53,9 @@ impl ReqwestHttpTransport {
                     }
                 }
             };
-            builder.build().unwrap()
+            builder
+                .build()
+                .expect("Failed to build `reqwest` client as a TLS backend is not available. Enable either the `native-tls` or the `rustls` feature of the `sentry` crate.")
         });
         let dsn = options.dsn.as_ref().unwrap();
         let user_agent = options.user_agent.clone();
