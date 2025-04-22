@@ -31,6 +31,7 @@ impl TransportThread {
         let shutdown_worker = shutdown.clone();
         let handle = thread::Builder::new()
             .name("sentry-transport".into())
+            .stack_size(500 * 1024)
             .spawn(move || {
                 // create a runtime on the transport thread
                 let rt = tokio::runtime::Builder::new_current_thread()

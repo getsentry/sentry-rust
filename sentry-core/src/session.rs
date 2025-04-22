@@ -213,6 +213,7 @@ mod session_impl {
             let worker_shutdown = shutdown.clone();
             let worker = std::thread::Builder::new()
                 .name("sentry-session-flusher".into())
+                .stack_size(100 * 1024)
                 .spawn(move || {
                     let (lock, cvar) = worker_shutdown.as_ref();
                     let mut shutdown = lock.lock().unwrap();
