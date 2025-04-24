@@ -19,15 +19,14 @@
 //! assert_eq!(events[0].message.as_ref().unwrap(), "Hello World!");
 //! ```
 
-use std::sync::{Arc, Mutex};
-
-use once_cell::sync::Lazy;
+use std::sync::{Arc, LazyLock, Mutex};
 
 use crate::protocol::Event;
 use crate::types::Dsn;
 use crate::{ClientOptions, Envelope, Hub, Transport};
 
-static TEST_DSN: Lazy<Dsn> = Lazy::new(|| "https://public@sentry.invalid/1".parse().unwrap());
+static TEST_DSN: LazyLock<Dsn> =
+    LazyLock::new(|| "https://public@sentry.invalid/1".parse().unwrap());
 
 /// Collects events instead of sending them.
 ///

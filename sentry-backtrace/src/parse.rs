@@ -1,10 +1,11 @@
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
+
 use regex::Regex;
 
 use crate::utils::{demangle_symbol, filename, strip_symbol};
 use crate::{Frame, Stacktrace};
 
-static FRAME_RE: Lazy<Regex> = Lazy::new(|| {
+static FRAME_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
         r#"(?xm)
         ^
