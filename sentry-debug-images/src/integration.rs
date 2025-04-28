@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::sync::LazyLock;
 
 use sentry_core::protocol::{DebugMeta, Event};
 use sentry_core::{ClientOptions, Integration};

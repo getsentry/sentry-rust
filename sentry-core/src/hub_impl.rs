@@ -1,13 +1,11 @@
 use std::cell::{Cell, UnsafeCell};
-use std::sync::{Arc, PoisonError, RwLock};
+use std::sync::{Arc, LazyLock, PoisonError, RwLock};
 use std::thread;
 
 use crate::Scope;
 use crate::{scope::Stack, Client, Hub};
 
-use once_cell::sync::Lazy;
-
-static PROCESS_HUB: Lazy<(Arc<Hub>, thread::ThreadId)> = Lazy::new(|| {
+static PROCESS_HUB: LazyLock<(Arc<Hub>, thread::ThreadId)> = LazyLock::new(|| {
     (
         Arc::new(Hub::new(None, Arc::new(Default::default()))),
         thread::current().id(),

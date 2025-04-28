@@ -3184,7 +3184,6 @@ name = "sentry-backtrace"
 version = "0.37.0"
 dependencies = [
  "backtrace",
- "once_cell",
  "regex",
  "sentry-core",
 ]
@@ -3212,7 +3211,6 @@ dependencies = [
  "criterion",
  "futures",
  "log",
- "once_cell",
  "rand 0.9.0",
  "rayon",
  "regex",
