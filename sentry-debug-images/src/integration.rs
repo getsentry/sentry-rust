@@ -4,6 +4,11 @@ use std::sync::LazyLock;
 use sentry_core::protocol::{DebugMeta, Event};
 use sentry_core::{ClientOptions, Integration};
 
+static DEBUG_META: LazyLock<DebugMeta> = LazyLock::new(|| DebugMeta {
+    images: crate::debug_images(),
+    ..Default::default()
+});
+
 /// The Sentry Debug Images Integration.
 pub struct DebugImagesIntegration {
     filter: Box<dyn Fn(&Event<'_>) -> bool + Send + Sync>,
@@ -30,6 +35,7 @@ impl DebugImagesIntegration {
 
 impl Default for DebugImagesIntegration {
     fn default() -> Self {
+        LazyLock::force(&DEBUG_META);
         Self {
             filter: Box::new(|_| true),
         }
@@ -56,11 +62,6 @@ impl Integration for DebugImagesIntegration {
         mut event: Event<'static>,
         _opts: &ClientOptions,
     ) -> Option<Event<'static>> {
-        static DEBUG_META: LazyLock<DebugMeta> = LazyLock::new(|| DebugMeta {
-            images: crate::debug_images(),
-            ..Default::default()
-        });
-
         if event.debug_meta.is_empty() && (self.filter)(&event) {
             event.debug_meta = Cow::Borrowed(&DEBUG_META);
         }
