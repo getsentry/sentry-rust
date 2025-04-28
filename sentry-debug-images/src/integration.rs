@@ -3,7 +3,6 @@ use std::sync::LazyLock;
 
 use sentry_core::protocol::{DebugMeta, Event};
 use sentry_core::{ClientOptions, Integration};
-use std::sync::LazyLock;
 
 static DEBUG_META: LazyLock<DebugMeta> = LazyLock::new(|| DebugMeta {
     images: crate::debug_images(),
