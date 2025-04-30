@@ -9,9 +9,11 @@ use opentelemetry::{
 use opentelemetry_sdk::trace::SdkTracerProvider;
 use sentry_core::protocol::Transaction;
 use sentry_opentelemetry::{SentryPropagator, SentrySpanProcessor};
+use serial_test::serial;
 use std::collections::HashMap;
 
 #[test]
+#[serial]
 fn test_captures_transaction() {
     // Initialize Sentry
     let transport = shared::init_sentry(1.0); // Sample all spans
@@ -48,6 +50,7 @@ fn test_captures_transaction() {
 }
 
 #[test]
+#[serial]
 fn test_captures_transaction_with_nested_spans() {
     // Initialize Sentry
     let transport = shared::init_sentry(1.0); // Sample all spans
@@ -122,6 +125,7 @@ fn test_captures_transaction_with_nested_spans() {
 }
 
 #[test]
+#[serial]
 fn test_creates_distributed_trace() {
     let transport = shared::init_sentry(1.0); // Sample all spans
 
@@ -223,6 +227,7 @@ impl opentelemetry::propagation::Extractor for TestExtractor<'_> {
 }
 
 #[test]
+#[serial]
 fn test_associates_event_with_span() {
     let transport = shared::init_sentry(1.0); // Sample all spans
 
