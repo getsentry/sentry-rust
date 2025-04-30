@@ -187,6 +187,7 @@ impl SpanProcessor for SentrySpanProcessor {
 
         match sentry_span {
             TransactionOrSpan::Transaction(transaction) => {
+                transaction.set_data("otel.kind", convert_span_kind(data.span_kind));
                 transaction.set_status(convert_span_status(&data.status));
                 transaction.finish_with_timestamp(data.end_time);
             }
