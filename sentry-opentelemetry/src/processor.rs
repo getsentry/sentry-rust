@@ -102,11 +102,11 @@ impl SpanProcessor for SentrySpanProcessor {
         let trace_id = span.span_context().trace_id();
         let span_data = span.exported_data();
         // TODO: infer these from OTEL span attributes
-        let span_op = "<unknown>";
+        let span_op = "";
         let span_description = span_data
             .as_ref()
             .map(|data| data.name.as_ref())
-            .unwrap_or("<unknown>");
+            .unwrap_or("");
         let span_start_timestamp = span_data
             .as_ref()
             .map(|data| data.start_time)
