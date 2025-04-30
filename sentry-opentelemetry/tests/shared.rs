@@ -1,9 +1,13 @@
 use sentry::{ClientOptions, Hub};
 use sentry_core::test::TestTransport;
 
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 pub fn init_sentry(traces_sample_rate: f32) -> Arc<TestTransport> {
+    if let Some(client) = Hub::current().client() {
+        client.close(Some(Duration::ZERO));
+    }
+
     let transport = TestTransport::new();
     let options = ClientOptions {
         dsn: Some(
