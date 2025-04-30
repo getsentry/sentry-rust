@@ -88,6 +88,7 @@ use futures_util::future::{ok, Future, Ready};
 use futures_util::{FutureExt as _, TryStreamExt as _};
 
 use sentry_core::protocol::{self, ClientSdkPackage, Event, Request};
+use sentry_core::utils::is_sensitive_header;
 use sentry_core::MaxRequestBodySize;
 use sentry_core::{Hub, SentryFutureExt};
 
@@ -212,6 +213,7 @@ pub struct SentryMiddleware<S> {
 
 fn should_capture_request_body(
     headers: &HeaderMap,
+    with_pii: bool,
     max_request_body_size: MaxRequestBodySize,
 ) -> bool {
     let is_chunked = headers
@@ -220,15 +222,16 @@ fn should_capture_request_body(
         .map(|transfer_encoding| transfer_encoding.contains("chunked"))
         .unwrap_or(false);
 
-    let is_valid_content_type = headers
-        .get(header::CONTENT_TYPE)
-        .and_then(|h| h.to_str().ok())
-        .is_some_and(|content_type| {
-            matches!(
-                content_type,
-                "application/json" | "application/x-www-form-urlencoded"
-            )
-        });
+    let is_valid_content_type = with_pii
+        || headers
+            .get(header::CONTENT_TYPE)
+            .and_then(|h| h.to_str().ok())
+            .is_some_and(|content_type| {
+                matches!(
+                    content_type,
+                    "application/json" | "application/x-www-form-urlencoded"
+                )
+            });
 
     let is_within_size_limit = headers
         .get(header::CONTENT_LENGTH)
@@ -322,7 +325,7 @@ where
         async move {
             let mut req = req;
 
-            if should_capture_request_body(req.headers(), max_request_body_size) {
+            if should_capture_request_body(req.headers(), with_pii, max_request_body_size) {
                 sentry_req.data = Some(capture_request_body(&mut req).await);
             }
 
@@ -424,6 +427,7 @@ fn sentry_request_from_http(request: &ServiceRequest, with_pii: bool) -> Request
             .headers()
             .iter()
             .filter(|(_, v)| !v.is_sensitive())
+            .filter(|(k, _)| with_pii || !is_sensitive_header(k.as_str()))
             .map(|(k, v)| (k.to_string(), v.to_str().unwrap_or_default().to_string()))
             .collect(),
         ..Default::default()

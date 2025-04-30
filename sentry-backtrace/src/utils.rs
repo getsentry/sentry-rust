@@ -1,9 +1,8 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, sync::LazyLock};
 
-use once_cell::sync::Lazy;
 use regex::{Captures, Regex};
 
-static HASH_FUNC_RE: Lazy<Regex> = Lazy::new(|| {
+static HASH_FUNC_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
         r#"(?x)
         ^(.*)::h[a-f0-9]{16}$
@@ -12,7 +11,7 @@ static HASH_FUNC_RE: Lazy<Regex> = Lazy::new(|| {
     .unwrap()
 });
 
-static CRATE_HASH_RE: Lazy<Regex> = Lazy::new(|| {
+static CRATE_HASH_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
         r"(?x)
         \b(\[[a-f0-9]{16}\])
@@ -21,7 +20,7 @@ static CRATE_HASH_RE: Lazy<Regex> = Lazy::new(|| {
     .unwrap()
 });
 
-static CRATE_RE: Lazy<Regex> = Lazy::new(|| {
+static CRATE_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
         r"(?x)
         ^
@@ -34,7 +33,7 @@ static CRATE_RE: Lazy<Regex> = Lazy::new(|| {
     .unwrap()
 });
 
-static COMMON_RUST_SYMBOL_ESCAPES_RE: Lazy<Regex> = Lazy::new(|| {
+static COMMON_RUST_SYMBOL_ESCAPES_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
         r"(?x)
         \$

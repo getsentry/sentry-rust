@@ -120,7 +120,7 @@ pub struct ClientOptions {
     pub max_breadcrumbs: usize,
     /// Attaches stacktraces to messages.
     pub attach_stacktrace: bool,
-    /// If turned on some default PII informat is attached.
+    /// If turned on, some information that can be considered PII is captured, such as potentially sensitive HTTP headers and user IP address in HTTP server integrations.
     pub send_default_pii: bool,
     /// The server name to be reported.
     pub server_name: Option<Cow<'static, str>>,
