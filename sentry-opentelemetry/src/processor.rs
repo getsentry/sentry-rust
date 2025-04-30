@@ -193,7 +193,6 @@ impl SpanProcessor for SentrySpanProcessor {
             }
             TransactionOrSpan::Span(span) => {
                 span.set_data("otel.kind", convert_span_kind(data.span_kind));
-                span.get_trace_context();
                 span.set_status(convert_span_status(&data.status));
                 span.finish_with_timestamp(data.end_time);
             }
