@@ -43,6 +43,7 @@ tower = ["sentry-tower"]
 tower-http = ["tower", "sentry-tower/http"]
 tower-axum-matched-path = ["tower-http", "sentry-tower/axum-matched-path"]
 tracing = ["sentry-tracing"]
+opentelemetry = ["sentry-opentelemetry"]
 # other features
 test = ["sentry-core/test"]
 debug-logs = ["dep:log", "sentry-core/debug-logs"]
@@ -70,6 +71,7 @@ sentry-panic = { version = "0.37.0", path = "../sentry-panic", optional = true }
 sentry-slog = { version = "0.37.0", path = "../sentry-slog", optional = true }
 sentry-tower = { version = "0.37.0", path = "../sentry-tower", optional = true }
 sentry-tracing = { version = "0.37.0", path = "../sentry-tracing", optional = true }
+sentry-opentelemetry = { version = "0.37.0", path = "../sentry-opentelemetry", optional = true }
 log = { version = "0.4.8", optional = true, features = ["std"] }
 reqwest = { version = "0.12", optional = true, features = [
     "blocking",

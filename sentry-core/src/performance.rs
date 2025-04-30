@@ -2,6 +2,9 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, Mutex, MutexGuard};
+use std::time::SystemTime;
+
+use sentry_types::protocol::v7::SpanId;
 
 use crate::{protocol, Hub};
 
@@ -31,6 +34,35 @@ pub fn start_transaction(ctx: TransactionContext) -> Transaction {
     }
 }
 
+/// Start a new Performance Monitoring Transaction with the provided start timestamp.
+///
+/// The transaction needs to be explicitly finished via [`Transaction::finish`],
+/// otherwise it will be discarded.
+/// The transaction itself also represents the root span in the span hierarchy.
+/// Child spans can be started with the [`Transaction::start_child`] method.
+pub fn start_transaction_with_timestamp(
+    ctx: TransactionContext,
+    timestamp: SystemTime,
+) -> Transaction {
+    #[cfg(feature = "client")]
+    {
+        let client = Hub::with_active(|hub| hub.client());
+        let transaction = Transaction::new(client, ctx);
+        if let Some(tx) = transaction.inner.lock().unwrap().transaction.as_mut() {
+            tx.start_timestamp = timestamp;
+        }
+        transaction
+    }
+    #[cfg(not(feature = "client"))]
+    {
+        let transaction = Transaction::new_noop(ctx);
+        if let Some(tx) = transaction.inner.lock().unwrap().transaction.as_mut() {
+            tx.start_timestamp = timestamp;
+        }
+        transaction
+    }
+}
+
 // Hub API:
 
 impl Hub {
@@ -45,6 +77,32 @@ impl Hub {
         #[cfg(not(feature = "client"))]
         {
             Transaction::new_noop(ctx)
+        }
+    }
+
+    /// Start a new Performance Monitoring Transaction with the provided start timestamp.
+    ///
+    /// See the global [`start_transaction_with_timestamp`] for more documentation.
+    pub fn start_transaction_with_timestamp(
+        &self,
+        ctx: TransactionContext,
+        timestamp: SystemTime,
+    ) -> Transaction {
+        #[cfg(feature = "client")]
+        {
+            let transaction = Transaction::new(self.client(), ctx);
+            if let Some(tx) = transaction.inner.lock().unwrap().transaction.as_mut() {
+                tx.start_timestamp = timestamp;
+            }
+            transaction
+        }
+        #[cfg(not(feature = "client"))]
+        {
+            let transaction = Transaction::new_noop(ctx);
+            if let Some(tx) = transaction.inner.lock().unwrap().transaction.as_mut() {
+                tx.start_timestamp = timestamp;
+            }
+            transaction
         }
     }
 }
@@ -108,6 +166,29 @@ impl TransactionContext {
             sampled: None,
             custom: None,
         }
+    }
+
+    /// Creates a new Transaction Context with the given `name`, `op`, `trace_id`, and
+    /// possibly the given `span_id` and `parent_span_id`.
+    ///
+    /// See <https://docs.sentry.io/platforms/native/enriching-events/transaction-name/>
+    /// for an explanation of a Transaction's `name`, and
+    /// <https://develop.sentry.dev/sdk/performance/span-operations/> for conventions
+    /// around an `operation`'s value.
+    #[must_use = "this must be used with `start_transaction`"]
+    pub fn new_with_details(
+        name: &str,
+        op: &str,
+        trace_id: protocol::TraceId,
+        span_id: Option<protocol::SpanId>,
+        parent_span_id: Option<protocol::SpanId>,
+    ) -> Self {
+        let mut slf = Self::new_with_trace_id(name, op, trace_id);
+        if let Some(span_id) = span_id {
+            slf.span_id = span_id;
+        }
+        slf.parent_span_id = parent_span_id;
+        slf
     }
 
     /// Creates a new Transaction Context based on the distributed tracing `headers`.
@@ -440,6 +521,28 @@ impl TransactionOrSpan {
         }
     }
 
+    /// Starts a new child Span with the given `op`, `description` and `id`.
+    ///
+    /// The span must be explicitly finished via [`Span::finish`], as it will
+    /// otherwise not be sent to Sentry.
+    #[must_use = "a span must be explicitly closed via `finish()`"]
+    pub fn start_child_with_details(
+        &self,
+        op: &str,
+        description: &str,
+        id: SpanId,
+        timestamp: SystemTime,
+    ) -> Span {
+        match self {
+            TransactionOrSpan::Transaction(transaction) => {
+                transaction.start_child_with_details(op, description, id, timestamp)
+            }
+            TransactionOrSpan::Span(span) => {
+                span.start_child_with_details(op, description, id, timestamp)
+            }
+        }
+    }
+
     #[cfg(feature = "client")]
     pub(crate) fn apply_to_event(&self, event: &mut protocol::Event<'_>) {
         if event.contexts.contains_key("trace") {
@@ -462,9 +565,22 @@ impl TransactionOrSpan {
         event.contexts.insert("trace".into(), context.into());
     }
 
-    /// Finishes the Transaction/Span.
+    /// Finishes the Transaction/Span with the provided end timestamp.
     ///
     /// This records the end timestamp and either sends the inner [`Transaction`]
+    /// directly to Sentry, or adds the [`Span`] to its transaction.
+    pub fn finish_with_timestamp(self, timestamp: SystemTime) {
+        match self {
+            TransactionOrSpan::Transaction(transaction) => {
+                transaction.finish_with_timestamp(timestamp)
+            }
+            TransactionOrSpan::Span(span) => span.finish_with_timestamp(timestamp),
+        }
+    }
+
+    /// Finishes the Transaction/Span.
+    ///
+    /// This records the current timestamp as the end timestamp and either sends the inner [`Transaction`]
     /// directly to Sentry, or adds the [`Span`] to its transaction.
     pub fn finish(self) {
         match self {
@@ -693,11 +809,11 @@ impl Transaction {
         self.inner.lock().unwrap().sampled
     }
 
-    /// Finishes the Transaction.
+    /// Finishes the Transaction with the provided end timestamp.
     ///
     /// This records the end timestamp and sends the transaction together with
     /// all finished child spans to Sentry.
-    pub fn finish(self) {
+    pub fn finish_with_timestamp(self, _timestamp: SystemTime) {
         with_client_impl! {{
             let mut inner = self.inner.lock().unwrap();
 
@@ -708,7 +824,7 @@ impl Transaction {
 
             if let Some(mut transaction) = inner.transaction.take() {
                 if let Some(client) = inner.client.take() {
-                    transaction.finish();
+                    transaction.finish_with_timestamp(_timestamp);
                     transaction
                         .contexts
                         .insert("trace".into(), inner.context.clone().into());
@@ -731,6 +847,14 @@ impl Transaction {
         }}
     }
 
+    /// Finishes the Transaction.
+    ///
+    /// This records the current timestamp as the end timestamp and sends the transaction together with
+    /// all finished child spans to Sentry.
+    pub fn finish(self) {
+        self.finish_with_timestamp(SystemTime::now());
+    }
+
     /// Starts a new child Span with the given `op` and `description`.
     ///
     /// The span must be explicitly finished via [`Span::finish`].
@@ -746,6 +870,38 @@ impl Transaction {
             } else {
                 Some(description.into())
             },
+            ..Default::default()
+        };
+        Span {
+            transaction: Arc::clone(&self.inner),
+            sampled: inner.sampled,
+            span: Arc::new(Mutex::new(span)),
+        }
+    }
+
+    /// Starts a new child Span with the given `op` and `description`.
+    ///
+    /// The span must be explicitly finished via [`Span::finish`].
+    #[must_use = "a span must be explicitly closed via `finish()`"]
+    pub fn start_child_with_details(
+        &self,
+        op: &str,
+        description: &str,
+        id: SpanId,
+        timestamp: SystemTime,
+    ) -> Span {
+        let inner = self.inner.lock().unwrap();
+        let span = protocol::Span {
+            trace_id: inner.context.trace_id,
+            parent_span_id: Some(inner.context.span_id),
+            op: Some(op.into()),
+            description: if description.is_empty() {
+                None
+            } else {
+                Some(description.into())
+            },
+            span_id: id,
+            start_timestamp: timestamp,
             ..Default::default()
         };
         Span {
@@ -901,18 +1057,18 @@ impl Span {
         self.sampled
     }
 
-    /// Finishes the Span.
+    /// Finishes the Span with the provided end timestamp.
     ///
     /// This will record the end timestamp and add the span to the transaction
     /// in which it was started.
-    pub fn finish(self) {
+    pub fn finish_with_timestamp(self, _timestamp: SystemTime) {
         with_client_impl! {{
             let mut span = self.span.lock().unwrap();
             if span.timestamp.is_some() {
                 // the span was already finished
                 return;
             }
-            span.finish();
+            span.finish_with_timestamp(_timestamp);
             let mut inner = self.transaction.lock().unwrap();
             if let Some(transaction) = inner.transaction.as_mut() {
                 if transaction.spans.len() <= MAX_SPANS {
@@ -920,6 +1076,14 @@ impl Span {
                 }
             }
         }}
+    }
+
+    /// Finishes the Span.
+    ///
+    /// This will record the current timestamp as the end timestamp and add the span to the
+    /// transaction in which it was started.
+    pub fn finish(self) {
+        self.finish_with_timestamp(SystemTime::now());
     }
 
     /// Starts a new child Span with the given `op` and `description`.
@@ -937,6 +1101,38 @@ impl Span {
             } else {
                 Some(description.into())
             },
+            ..Default::default()
+        };
+        Span {
+            transaction: self.transaction.clone(),
+            sampled: self.sampled,
+            span: Arc::new(Mutex::new(span)),
+        }
+    }
+
+    /// Starts a new child Span with the given `op` and `description`.
+    ///
+    /// The span must be explicitly finished via [`Span::finish`].
+    #[must_use = "a span must be explicitly closed via `finish()`"]
+    fn start_child_with_details(
+        &self,
+        op: &str,
+        description: &str,
+        id: SpanId,
+        timestamp: SystemTime,
+    ) -> Span {
+        let span = self.span.lock().unwrap();
+        let span = protocol::Span {
+            trace_id: span.trace_id,
+            parent_span_id: Some(span.span_id),
+            op: Some(op.into()),
+            description: if description.is_empty() {
+                None
+            } else {
+                Some(description.into())
+            },
+            span_id: id,
+            start_timestamp: timestamp,
             ..Default::default()
         };
         Span {

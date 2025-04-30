@@ -1096,8 +1096,10 @@ pub enum Context {
     Browser(Box<BrowserContext>),
     /// Tracing data.
     Trace(Box<TraceContext>),
-    /// GPU data
+    /// GPU data.
     Gpu(Box<GpuContext>),
+    /// OpenTelemetry data.
+    Otel(Box<OtelContext>),
     /// Generic other context data.
     #[serde(rename = "unknown")]
     Other(Map<String, Value>),
@@ -1114,6 +1116,7 @@ impl Context {
             Context::Browser(..) => "browser",
             Context::Trace(..) => "trace",
             Context::Gpu(..) => "gpu",
+            Context::Otel(..) => "otel",
             Context::Other(..) => "unknown",
         }
     }
@@ -1332,6 +1335,22 @@ pub struct GpuContext {
     pub other: Map<String, Value>,
 }
 
+/// OpenTelemetry context
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
+pub struct OtelContext {
+    /// OpenTelemetry [general
+    /// attributes](https://opentelemetry.io/docs/specs/semconv/general/attributes/).
+    #[serde(default, skip_serializing_if = "Map::is_empty")]
+    pub attributes: Map<String, Value>,
+    /// OpenTelemetry [resource attributes](https://opentelemetry.io/docs/specs/semconv/resource/),
+    /// describing the entity producing telemetry.
+    #[serde(default, skip_serializing_if = "Map::is_empty")]
+    pub resource: Map<String, Value>,
+    /// Additional arbitrary fields for forwards compatibility.
+    #[serde(flatten)]
+    pub other: Map<String, Value>,
+}
+
 /// Holds the identifier for a Span
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, Eq, PartialEq, Hash)]
 #[serde(try_from = "String", into = "String")]
@@ -1373,6 +1392,12 @@ impl TryFrom<String> for SpanId {
     }
 }
 
+impl From<[u8; 8]> for SpanId {
+    fn from(value: [u8; 8]) -> Self {
+        Self(value)
+    }
+}
+
 /// Holds the identifier for a Trace
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, Eq, PartialEq, Hash)]
 #[serde(try_from = "String", into = "String")]
@@ -1411,6 +1436,12 @@ impl TryFrom<String> for TraceId {
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         value.parse()
+    }
+}
+
+impl From<[u8; 16]> for TraceId {
+    fn from(value: [u8; 16]) -> Self {
+        Self(value)
     }
 }
 
@@ -1457,8 +1488,11 @@ into_context!(Runtime, RuntimeContext);
 into_context!(Browser, BrowserContext);
 into_context!(Trace, TraceContext);
 into_context!(Gpu, GpuContext);
+into_context!(Otel, OtelContext);
 
-const INFERABLE_CONTEXTS: &[&str] = &["device", "os", "runtime", "app", "browser", "trace", "gpu"];
+const INFERABLE_CONTEXTS: &[&str] = &[
+    "device", "os", "runtime", "app", "browser", "trace", "gpu", "otel",
+];
 
 struct ContextsVisitor;
 
@@ -1803,6 +1837,11 @@ impl Span {
         Default::default()
     }
 
+    /// Finalizes the span with the provided timestamp.
+    pub fn finish_with_timestamp(&mut self, timestamp: SystemTime) {
+        self.timestamp = Some(timestamp);
+    }
+
     /// Finalizes the span.
     pub fn finish(&mut self) {
         self.timestamp = Some(SystemTime::now());
@@ -2049,6 +2088,11 @@ impl<'a> Transaction<'a> {
     /// Finalizes the transaction to be dispatched.
     pub fn finish(&mut self) {
         self.timestamp = Some(SystemTime::now());
+    }
+
+    /// Finalizes the transaction to be dispatched with the given end timestamp.
+    pub fn finish_with_timestamp(&mut self, timestamp: SystemTime) {
+        self.timestamp = Some(timestamp);
     }
 }
 
