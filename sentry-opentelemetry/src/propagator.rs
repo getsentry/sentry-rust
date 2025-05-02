@@ -15,47 +15,17 @@
 use std::sync::LazyLock;
 
 use opentelemetry::{
-    baggage::{Baggage, BaggageExt},
     propagation::{text_map_propagator::FieldIter, Extractor, Injector, TextMapPropagator},
     trace::TraceContextExt,
     Context, SpanId, TraceId,
 };
 
-const SENTRY_TRACE_HEADER: &str = "sentry-trace";
-const SENTRY_TRACE_ID_KEY: &str = "sentry-trace-id";
-const SENTRY_SPAN_ID_KEY: &str = "sentry-span-id";
-const SENTRY_SAMPLED_KEY: &str = "sentry-sampled";
+use crate::context::SentrySpanContext;
 
-pub(crate) fn extract_trace_data(
-    cx: &Context,
-) -> Option<(
-    sentry_core::protocol::TraceId,
-    sentry_core::protocol::SpanId,
-    Option<bool>,
-)> {
-    Some((
-        cx.baggage()
-            .get(SENTRY_TRACE_ID_KEY)?
-            .to_string()
-            .parse()
-            .ok()?,
-        cx.baggage()
-            .get(SENTRY_SPAN_ID_KEY)?
-            .to_string()
-            .parse()
-            .ok()?,
-        cx.baggage()
-            .get(SENTRY_SAMPLED_KEY)
-            .and_then(|sampled| match sampled.as_str() {
-                "0" => Some(false),
-                "1" => Some(true),
-                _ => None,
-            }),
-    ))
-}
+const SENTRY_TRACE_KEY: &str = "sentry-trace";
 
 static SENTRY_PROPAGATOR_FIELDS: LazyLock<[String; 1]> =
-    LazyLock::new(|| [SENTRY_TRACE_HEADER.to_owned()]);
+    LazyLock::new(|| [SENTRY_TRACE_KEY.to_owned()]);
 
 /// An OpenTelemetry Propagator that injects and extracts Sentry's tracing headers to achieve
 /// distributed tracing.
@@ -78,14 +48,14 @@ impl Default for SentryPropagator {
 
 impl TextMapPropagator for SentryPropagator {
     fn inject_context(&self, ctx: &Context, injector: &mut dyn Injector) {
-        let span_id = ctx.span().span_context().span_id();
         let trace_id = ctx.span().span_context().trace_id();
+        let span_id = ctx.span().span_context().span_id();
         let sampled = ctx.span().span_context().is_sampled();
-        if span_id == SpanId::INVALID || trace_id == TraceId::INVALID {
+        if trace_id == TraceId::INVALID || span_id == SpanId::INVALID {
             return;
         }
         injector.set(
-            SENTRY_TRACE_HEADER,
+            SENTRY_TRACE_KEY,
             format!(
                 "{}-{}-{}",
                 trace_id,
@@ -95,22 +65,14 @@ impl TextMapPropagator for SentryPropagator {
         );
     }
 
-    fn extract_with_context(&self, cx: &Context, extractor: &dyn Extractor) -> Context {
-        if let Some(sentry_trace) = extractor.get(SENTRY_TRACE_HEADER) {
-            let sentry_trace: Vec<&str> = sentry_trace.split("-").collect();
-            // at least trace ID and span ID need to be present
-            if sentry_trace.len() < 2 {
-                return cx.clone();
+    fn extract_with_context(&self, ctx: &Context, extractor: &dyn Extractor) -> Context {
+        if let Some(sentry_trace) = extractor.get(SENTRY_TRACE_KEY) {
+            let sentry_ctx: Result<SentrySpanContext, _> = sentry_trace.parse();
+            if let Ok(value) = sentry_ctx {
+                return ctx.with_value(value);
             }
-            let mut baggage = Baggage::new();
-            baggage.insert(SENTRY_TRACE_ID_KEY, sentry_trace[0].to_owned());
-            baggage.insert(SENTRY_SPAN_ID_KEY, sentry_trace[1].to_owned());
-            sentry_trace.get(2).inspect(|sampled| {
-                baggage.insert(SENTRY_SAMPLED_KEY, sampled.to_string());
-            });
-            return cx.with_baggage(baggage);
         }
-        cx.clone()
+        ctx.clone()
     }
 
     fn fields(&self) -> FieldIter<'_> {

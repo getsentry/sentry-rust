@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, LazyLock, Mutex};
 use std::time::SystemTime;
 
-use crate::propagator::extract_trace_data;
+use crate::context::SentrySpanContext;
 
 use opentelemetry::global::ObjectSafeSpan;
 use opentelemetry::trace::{get_active_span, SpanId};
@@ -124,6 +124,7 @@ impl SpanProcessor for SentrySpanProcessor {
 
         let sentry_span = {
             if let Some(parent_sentry_span) = parent_sentry_span {
+                // continue local trace
                 TransactionOrSpan::Span(parent_sentry_span.start_child_with_details(
                     span_op,
                     span_description,
@@ -131,17 +132,22 @@ impl SpanProcessor for SentrySpanProcessor {
                     span_start_timestamp,
                 ))
             } else {
-                let trace_data = extract_trace_data(ctx);
-                if let Some((trace_id, parent_span_id, sampled)) = trace_data {
+                let distributed_trace_data = ctx.get::<SentrySpanContext>();
+                if let Some(SentrySpanContext {
+                    trace_id,
+                    span_id: parent_span_id,
+                    sampled,
+                }) = distributed_trace_data
+                {
                     // continue remote trace
                     let mut sentry_ctx = TransactionContext::new_with_details(
                         span_description,
                         span_op,
-                        trace_id,
+                        *trace_id,
                         Some(convert_span_id(&span_id)),
-                        Some(parent_span_id),
+                        Some(*parent_span_id),
                     );
-                    sentry_ctx.set_sampled(sampled);
+                    sentry_ctx.set_sampled(*sampled);
                     let tx = sentry_core::start_transaction_with_timestamp(
                         sentry_ctx,
                         span_start_timestamp,
