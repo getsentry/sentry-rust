@@ -2,14 +2,11 @@ mod shared;
 
 use opentelemetry::{
     global,
-    propagation::TextMapPropagator,
     trace::{Status, TraceContextExt, Tracer, TracerProvider},
     Context, KeyValue,
 };
 use opentelemetry_sdk::trace::SdkTracerProvider;
-use sentry_core::protocol::Transaction;
 use sentry_opentelemetry::{SentryPropagator, SentrySpanProcessor};
-use std::collections::HashMap;
 
 #[test]
 fn test_captures_transaction_with_nested_spans() {

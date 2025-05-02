@@ -2,14 +2,12 @@ mod shared;
 
 use opentelemetry::{
     global,
-    propagation::TextMapPropagator,
-    trace::{Status, TraceContextExt, Tracer, TracerProvider},
-    Context, KeyValue,
+    trace::{TraceContextExt, Tracer, TracerProvider},
+    Context,
 };
 use opentelemetry_sdk::trace::SdkTracerProvider;
 use sentry_core::protocol::Transaction;
 use sentry_opentelemetry::{SentryPropagator, SentrySpanProcessor};
-use std::collections::HashMap;
 
 #[test]
 fn test_associates_event_with_span() {
