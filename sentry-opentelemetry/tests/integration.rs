@@ -9,11 +9,9 @@ use opentelemetry::{
 use opentelemetry_sdk::trace::SdkTracerProvider;
 use sentry_core::protocol::Transaction;
 use sentry_opentelemetry::{SentryPropagator, SentrySpanProcessor};
-use serial_test::serial;
 use std::collections::HashMap;
 
 #[test]
-#[serial]
 fn test_captures_transaction() {
     // Initialize Sentry
     let transport = shared::init_sentry(1.0); // Sample all spans
@@ -50,7 +48,6 @@ fn test_captures_transaction() {
 }
 
 #[test]
-#[serial]
 fn test_captures_transaction_with_nested_spans() {
     // Initialize Sentry
     let transport = shared::init_sentry(1.0); // Sample all spans
@@ -125,7 +122,6 @@ fn test_captures_transaction_with_nested_spans() {
 }
 
 #[test]
-#[serial]
 fn test_creates_distributed_trace() {
     let transport = shared::init_sentry(1.0); // Sample all spans
 
@@ -149,21 +145,6 @@ fn test_creates_distributed_trace() {
     // End the first service span
     first_service_ctx.span().end();
 
-    // Check that the first service sent data to Sentry
-    let first_envelopes = transport.fetch_and_clear_envelopes();
-    assert_eq!(first_envelopes.len(), 1);
-
-    let first_tx = match first_envelopes[0].items().next().unwrap() {
-        sentry::protocol::EnvelopeItem::Transaction(tx) => tx.clone(),
-        _ => panic!("Expected transaction"),
-    };
-
-    // Get first service trace ID and span ID
-    let (first_trace_id, first_span_id) = match &first_tx.contexts.get("trace") {
-        Some(sentry::protocol::Context::Trace(trace)) => (trace.trace_id, trace.span_id),
-        _ => panic!("Missing trace context in first transaction"),
-    };
-
     // Now simulate the second service receiving the headers and continuing the trace
     let second_service_ctx =
         propagator.extract_with_context(&Context::current(), &TestExtractor(&headers));
@@ -175,13 +156,39 @@ fn test_creates_distributed_trace() {
     // End the second service span
     second_service_ctx.span().end();
 
-    // Check that the second service sent data to Sentry
-    let second_envelopes = transport.fetch_and_clear_envelopes();
-    assert_eq!(second_envelopes.len(), 1);
+    // Get both transactions at once
+    let envelopes = transport.fetch_and_clear_envelopes();
+    assert_eq!(
+        envelopes.len(),
+        2,
+        "Expected two transactions to be sent to Sentry"
+    );
 
-    let second_tx = match second_envelopes[0].items().next().unwrap() {
-        sentry::protocol::EnvelopeItem::Transaction(tx) => tx.clone(),
-        _ => panic!("Expected transaction"),
+    // Find transactions for first and second services
+    let mut first_tx = None;
+    let mut second_tx = None;
+
+    for envelope in &envelopes {
+        let tx = match envelope.items().next().unwrap() {
+            sentry::protocol::EnvelopeItem::Transaction(tx) => tx.clone(),
+            unexpected => panic!("Expected transaction, but got {:#?}", unexpected),
+        };
+
+        // Determine which service this transaction belongs to based on name
+        match tx.name.as_deref() {
+            Some("first_service") => first_tx = Some(tx),
+            Some("second_service") => second_tx = Some(tx),
+            name => panic!("Unexpected transaction name: {:?}", name),
+        }
+    }
+
+    let first_tx = first_tx.expect("Missing first service transaction");
+    let second_tx = second_tx.expect("Missing second service transaction");
+
+    // Get first service trace ID and span ID
+    let (first_trace_id, first_span_id) = match &first_tx.contexts.get("trace") {
+        Some(sentry::protocol::Context::Trace(trace)) => (trace.trace_id, trace.span_id),
+        _ => panic!("Missing trace context in first transaction"),
     };
 
     // Get second service trace ID and span ID
@@ -227,7 +234,6 @@ impl opentelemetry::propagation::Extractor for TestExtractor<'_> {
 }
 
 #[test]
-#[serial]
 fn test_associates_event_with_span() {
     let transport = shared::init_sentry(1.0); // Sample all spans
 
