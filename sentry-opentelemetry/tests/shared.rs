@@ -17,6 +17,5 @@ pub fn init_sentry(traces_sample_rate: f32) -> Arc<TestTransport> {
         ..ClientOptions::default()
     };
     Hub::current().bind_client(Some(Arc::new(options.into())));
-
     transport
 }
