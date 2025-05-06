@@ -24,8 +24,9 @@ use sentry_core::SentryTrace;
 
 use crate::converters::{convert_span_id, convert_trace_id};
 
-// list of headers used in the inject operation
 const SENTRY_TRACE_KEY: &str = "sentry-trace";
+
+// list of headers used in the inject operation
 static SENTRY_PROPAGATOR_FIELDS: LazyLock<[String; 1]> =
     LazyLock::new(|| [SENTRY_TRACE_KEY.to_owned()]);
 
