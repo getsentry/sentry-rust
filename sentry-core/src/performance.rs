@@ -44,23 +44,11 @@ pub fn start_transaction_with_timestamp(
     ctx: TransactionContext,
     timestamp: SystemTime,
 ) -> Transaction {
-    #[cfg(feature = "client")]
-    {
-        let client = Hub::with_active(|hub| hub.client());
-        let transaction = Transaction::new(client, ctx);
-        if let Some(tx) = transaction.inner.lock().unwrap().transaction.as_mut() {
-            tx.start_timestamp = timestamp;
-        }
-        transaction
+    let transaction = start_transaction(ctx);
+    if let Some(tx) = transaction.inner.lock().unwrap().transaction.as_mut() {
+        tx.start_timestamp = timestamp;
     }
-    #[cfg(not(feature = "client"))]
-    {
-        let transaction = Transaction::new_noop(ctx);
-        if let Some(tx) = transaction.inner.lock().unwrap().transaction.as_mut() {
-            tx.start_timestamp = timestamp;
-        }
-        transaction
-    }
+    transaction
 }
 
 // Hub API:
@@ -88,22 +76,11 @@ impl Hub {
         ctx: TransactionContext,
         timestamp: SystemTime,
     ) -> Transaction {
-        #[cfg(feature = "client")]
-        {
-            let transaction = Transaction::new(self.client(), ctx);
-            if let Some(tx) = transaction.inner.lock().unwrap().transaction.as_mut() {
-                tx.start_timestamp = timestamp;
-            }
-            transaction
+        let transaction = start_transaction(ctx);
+        if let Some(tx) = transaction.inner.lock().unwrap().transaction.as_mut() {
+            tx.start_timestamp = timestamp;
         }
-        #[cfg(not(feature = "client"))]
-        {
-            let transaction = Transaction::new_noop(ctx);
-            if let Some(tx) = transaction.inner.lock().unwrap().transaction.as_mut() {
-                tx.start_timestamp = timestamp;
-            }
-            transaction
-        }
+        transaction
     }
 }
 
@@ -202,23 +179,23 @@ impl TransactionContext {
         op: &str,
         headers: I,
     ) -> Self {
-        let mut trace = None;
-        for (k, v) in headers.into_iter() {
-            if k.eq_ignore_ascii_case("sentry-trace") {
-                trace = parse_sentry_trace(v);
-                break;
-            }
+        parse_headers(headers)
+            .map(|sentry_trace| Self::continue_from_sentry_trace(name, op, &sentry_trace))
+            .unwrap_or_else(|| Self {
+                name: name.into(),
+                op: op.into(),
+                trace_id: Default::default(),
+                parent_span_id: None,
+                span_id: Default::default(),
+                sampled: None,
+                custom: None,
+            })
+    }
 
-            if k.eq_ignore_ascii_case("traceparent") {
-                trace = parse_w3c_traceparent(v);
-            }
-        }
-
-        let (trace_id, parent_span_id, sampled) = match trace {
-            Some(trace) => (trace.0, Some(trace.1), trace.2),
-            None => (protocol::TraceId::default(), None, None),
-        };
-
+    /// Creates a new Transaction Context based on the provided distributed tracing data.
+    pub fn continue_from_sentry_trace(name: &str, op: &str, sentry_trace: &SentryTrace) -> Self {
+        let (trace_id, parent_span_id, sampled) =
+            (sentry_trace.0, Some(sentry_trace.1), sentry_trace.2);
         Self {
             name: name.into(),
             op: op.into(),
@@ -1159,8 +1136,21 @@ impl Iterator for TraceHeadersIter {
     }
 }
 
+/// A container for distributed tracing metadata that can be extracted from e.g. HTTP headers such as
+/// `sentry-trace` and `traceparent`.
 #[derive(Debug, PartialEq)]
-struct SentryTrace(protocol::TraceId, protocol::SpanId, Option<bool>);
+pub struct SentryTrace(protocol::TraceId, protocol::SpanId, Option<bool>);
+
+impl SentryTrace {
+    /// Creates a new [`SentryTrace`] from the provided parameters
+    pub fn new(
+        trace_id: protocol::TraceId,
+        span_id: protocol::SpanId,
+        sampled: Option<bool>,
+    ) -> Self {
+        SentryTrace(trace_id, span_id, sampled)
+    }
+}
 
 fn parse_sentry_trace(header: &str) -> Option<SentryTrace> {
     let header = header.trim();
@@ -1192,6 +1182,25 @@ fn parse_w3c_traceparent(header: &str) -> Option<SentryTrace> {
         .map(|flag| flag & 1 != 0);
 
     Some(SentryTrace(trace_id, parent_span_id, parent_sampled))
+}
+
+/// Extracts distributed tracing metadata from headers (or, generally, key-value pairs),
+/// considering the values for both `sentry-trace` (prioritized) and `traceparent`.
+pub fn parse_headers<'a, I: IntoIterator<Item = (&'a str, &'a str)>>(
+    headers: I,
+) -> Option<SentryTrace> {
+    let mut trace = None;
+    for (k, v) in headers.into_iter() {
+        if k.eq_ignore_ascii_case("sentry-trace") {
+            trace = parse_sentry_trace(v);
+            break;
+        }
+
+        if k.eq_ignore_ascii_case("traceparent") {
+            trace = parse_w3c_traceparent(v);
+        }
+    }
+    trace
 }
 
 impl std::fmt::Display for SentryTrace {

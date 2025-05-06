@@ -15,13 +15,10 @@ rust-version = "1.81"
 [package.metadata.docs.rs]
 all-features = true
 
-[features]
-default = ["release-health"]
-release-health = ["sentry-core/release-health"]
-
 [dependencies]
 sentry-core = { version = "0.37.0", path = "../sentry-core", features = [
     "client",
+    "release-health"
 ] }
 opentelemetry = { version = "0.29.0", default-features = false }
 opentelemetry_sdk = { version = "0.29.0", default-features = false, features = [

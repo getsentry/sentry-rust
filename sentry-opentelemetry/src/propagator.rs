@@ -19,11 +19,13 @@ use opentelemetry::{
     trace::TraceContextExt,
     Context, SpanId, TraceId,
 };
+use sentry_core::parse_headers;
+use sentry_core::SentryTrace;
 
-use crate::context::SentrySpanContext;
+use crate::converters::{convert_span_id, convert_trace_id};
 
+// list of headers used in the inject operation
 const SENTRY_TRACE_KEY: &str = "sentry-trace";
-
 static SENTRY_PROPAGATOR_FIELDS: LazyLock<[String; 1]> =
     LazyLock::new(|| [SENTRY_TRACE_KEY.to_owned()]);
 
@@ -54,23 +56,21 @@ impl TextMapPropagator for SentryPropagator {
         if trace_id == TraceId::INVALID || span_id == SpanId::INVALID {
             return;
         }
-        injector.set(
-            SENTRY_TRACE_KEY,
-            format!(
-                "{}-{}-{}",
-                trace_id,
-                span_id,
-                if sampled { "1" } else { "0" }
-            ),
+        let sentry_trace = SentryTrace::new(
+            convert_trace_id(&trace_id),
+            convert_span_id(&span_id),
+            Some(sampled),
         );
+        injector.set(SENTRY_TRACE_KEY, sentry_trace.to_string());
     }
 
     fn extract_with_context(&self, ctx: &Context, extractor: &dyn Extractor) -> Context {
-        if let Some(sentry_trace) = extractor.get(SENTRY_TRACE_KEY) {
-            let sentry_ctx: Result<SentrySpanContext, _> = sentry_trace.parse();
-            if let Ok(value) = sentry_ctx {
-                return ctx.with_value(value);
-            }
+        let keys = extractor.keys();
+        let pairs = keys
+            .iter()
+            .filter_map(|&key| extractor.get(key).map(|value| (key, value)));
+        if let Some(sentry_trace) = parse_headers(pairs) {
+            return ctx.with_value(sentry_trace);
         }
         ctx.clone()
     }

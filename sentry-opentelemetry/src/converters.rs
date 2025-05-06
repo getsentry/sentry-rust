@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use sentry_core::protocol::{value::Number, SpanId, SpanStatus, TraceId, Value};
 
 pub(crate) fn convert_span_id(span_id: &opentelemetry::SpanId) -> SpanId {
@@ -55,17 +53,4 @@ pub(crate) fn convert_value(value: opentelemetry::Value) -> Value {
         },
         _ => Value::Null, // non-exhaustive
     }
-}
-
-pub(crate) fn convert_attributes(
-    attributes: Vec<opentelemetry::KeyValue>,
-) -> BTreeMap<String, Value> {
-    let mut res: BTreeMap<String, Value> = BTreeMap::new();
-    attributes.iter().for_each(|key_val| {
-        res.insert(
-            key_val.key.as_str().into(),
-            convert_value(key_val.value.clone()),
-        );
-    });
-    res
 }

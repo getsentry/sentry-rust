@@ -2,8 +2,7 @@ mod shared;
 
 use opentelemetry::{
     global,
-    trace::{TraceContextExt, Tracer, TracerProvider},
-    Context,
+    trace::{Tracer, TracerProvider},
 };
 use opentelemetry_sdk::trace::SdkTracerProvider;
 use sentry_opentelemetry::{SentryPropagator, SentrySpanProcessor};
@@ -20,12 +19,10 @@ fn test_captures_transaction() {
         .build();
     let tracer = tracer_provider.tracer("test".to_string());
 
-    // Create root span
-    let root_span = tracer.start("root_span");
-    let cx = Context::current_with_span(root_span);
-
-    // End the span
-    cx.span().end();
+    // Create and end a root span
+    tracer.in_span("root_span", |_| {
+        // Span body is empty, just creating the span
+    });
 
     // Check that data was sent to Sentry
     let envelopes = transport.fetch_and_clear_envelopes();

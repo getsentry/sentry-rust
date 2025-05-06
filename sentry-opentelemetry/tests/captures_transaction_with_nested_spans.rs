@@ -3,7 +3,7 @@ mod shared;
 use opentelemetry::{
     global,
     trace::{Status, TraceContextExt, Tracer, TracerProvider},
-    Context, KeyValue,
+    KeyValue,
 };
 use opentelemetry_sdk::trace::SdkTracerProvider;
 use sentry_opentelemetry::{SentryPropagator, SentrySpanProcessor};
@@ -20,28 +20,17 @@ fn test_captures_transaction_with_nested_spans() {
         .build();
     let tracer = tracer_provider.tracer("test".to_string());
 
-    // Create root span
-    let root_span = tracer.start("root_span");
-    let cx = Context::current_with_span(root_span);
-
-    // Create child span
-    let child_span = tracer.start_with_context("child_span", &cx);
-    let child_cx = cx.with_span(child_span);
-
-    // Create another child span
-    let grandchild_span = tracer.start_with_context("grandchild_span", &child_cx);
-    let grandchild_cx = child_cx.with_span(grandchild_span);
-
-    // Add some attributes to the grandchild
-    grandchild_cx
-        .span()
-        .set_attribute(KeyValue::new("test.key", "test.value"));
-    grandchild_cx.span().set_status(Status::Ok);
-
-    // End spans in reverse order
-    grandchild_cx.span().end();
-    child_cx.span().end();
-    cx.span().end();
+    // Create nested spans using in_span
+    tracer.in_span("root_span", |_| {
+        tracer.in_span("child_span", |_| {
+            tracer.in_span("grandchild_span", |cx| {
+                // Add some attributes to the grandchild
+                cx.span()
+                    .set_attribute(KeyValue::new("test.key", "test.value"));
+                cx.span().set_status(Status::Ok);
+            });
+        });
+    });
 
     // Check that data was sent to Sentry
     let envelopes = transport.fetch_and_clear_envelopes();

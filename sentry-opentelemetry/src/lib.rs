@@ -43,7 +43,6 @@
 //! global::set_tracer_provider(_tracer_provider);
 //! ```
 
-mod context;
 mod converters;
 mod processor;
 mod propagator;

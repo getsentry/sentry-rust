@@ -2,8 +2,7 @@ mod shared;
 
 use opentelemetry::{
     global,
-    trace::{TraceContextExt, Tracer, TracerProvider},
-    Context,
+    trace::{Tracer, TracerProvider},
 };
 use opentelemetry_sdk::trace::SdkTracerProvider;
 use sentry_core::protocol::Transaction;
@@ -20,23 +19,14 @@ fn test_associates_event_with_span() {
         .build();
     let tracer = tracer_provider.tracer("test".to_string());
 
-    // Create root span
-    let root_span = tracer.start("root_span");
-    let cx = Context::current_with_span(root_span);
-
-    // Create child span
-    let child_span = tracer.start_with_context("child_span", &cx);
-    let child_cx = cx.with_span(child_span);
-
-    // Set child span as active on current thread
-    let child_cx_guard = child_cx.attach();
-
-    // Capture an event while the child span is active
-    sentry::capture_message("Test message", sentry::Level::Error);
-
-    // End the spans
-    drop(child_cx_guard);
-    cx.span().end();
+    // Create root span and execute test within it
+    tracer.in_span("root_span", |cx| {
+        // Create child span and execute within it
+        tracer.in_span("child_span", |_| {
+            // Capture an event while the child span is active
+            sentry::capture_message("Test message", sentry::Level::Error);
+        });
+    });
 
     // Capture the event and spans
     let envelopes = transport.fetch_and_clear_envelopes();

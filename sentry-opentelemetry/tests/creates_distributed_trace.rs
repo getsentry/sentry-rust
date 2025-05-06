@@ -21,24 +21,22 @@ fn test_creates_distributed_trace() {
         .build();
     let tracer = tracer_provider.tracer("test".to_string());
 
-    // Create a "first service" span
-    let first_service_span = tracer.start("first_service");
-    let first_service_ctx = Context::current_with_span(first_service_span);
-
-    // Simulate passing the context to another service by extracting and injecting e.g. HTTP
-    // headers
-    let propagator = SentryPropagator::new();
+    // We need to store the context to pass between services, so we'll use a mutable variable
     let mut headers = HashMap::new();
-    propagator.inject_context(&first_service_ctx, &mut TestInjector(&mut headers));
+    let propagator = SentryPropagator::new();
 
-    // End the first service span
-    first_service_ctx.span().end();
+    // Create a "first service" span and store context in headers
+    tracer.in_span("first_service", |first_service_ctx| {
+        // Simulate passing the context to another service by extracting and injecting e.g. HTTP headers
+        propagator.inject_context(&first_service_ctx, &mut TestInjector(&mut headers));
+    });
 
     // Now simulate the second service receiving the headers and continuing the trace
     let second_service_ctx =
         propagator.extract_with_context(&Context::current(), &TestExtractor(&headers));
 
     // Create a second service span that continues the trace
+    // We need to use start_with_context here to connect with the previous context
     let second_service_span = tracer.start_with_context("second_service", &second_service_ctx);
     let second_service_ctx = second_service_ctx.with_span(second_service_span);
 
