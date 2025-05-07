@@ -1,7 +1,7 @@
 use sentry::{ClientOptions, Hub};
 use sentry_core::test::TestTransport;
 
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
 pub fn init_sentry(traces_sample_rate: f32) -> Arc<TestTransport> {
     let transport = TestTransport::new();

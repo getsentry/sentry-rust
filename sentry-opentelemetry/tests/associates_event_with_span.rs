@@ -20,7 +20,7 @@ fn test_associates_event_with_span() {
     let tracer = tracer_provider.tracer("test".to_string());
 
     // Create root span and execute test within it
-    tracer.in_span("root_span", |cx| {
+    tracer.in_span("root_span", |_| {
         // Create child span and execute within it
         tracer.in_span("child_span", |_| {
             // Capture an event while the child span is active
