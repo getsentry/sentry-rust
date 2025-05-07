@@ -92,19 +92,17 @@ impl SpanProcessor for SentrySpanProcessor {
         let mut span_map = self.span_map.lock().unwrap();
 
         let mut span_description = String::new();
-        let mut span_op = String::new();
         let mut span_start_timestamp = SystemTime::now();
         let mut parent_sentry_span = None;
         if let Some(data) = span.exported_data() {
             span_description = data.name.to_string();
-            span_op = span_description.clone(); // TODO: infer this from OTEL span attributes
             span_start_timestamp = data.start_time;
             if data.parent_span_id != SpanId::INVALID {
                 parent_sentry_span = span_map.get(&convert_span_id(&data.parent_span_id));
             };
         }
         let span_description = span_description.as_str();
-        let span_op = span_op.as_str();
+        let span_op = "default"; // TODO: infer this from OTEL span attributes
 
         let sentry_span = {
             if let Some(parent_sentry_span) = parent_sentry_span {
