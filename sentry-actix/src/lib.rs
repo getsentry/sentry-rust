@@ -54,7 +54,6 @@
 //!     session_mode: sentry::SessionMode::Request,
 //!     auto_session_tracking: true,
 //!     ..Default::default()
-
 //! });
 //! ```
 //!
