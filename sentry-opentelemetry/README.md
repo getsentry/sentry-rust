@@ -11,7 +11,7 @@ Support for capturing Sentry spans from OpenTelemetry spans.
 Sentry spans are automatically captured from OpenTelemetry spans via `SentrySpanProcessor`.
 Distributed tracing is supported via `SentryPropagator`.
 Note that it's assumed that only the OTEL API is used to create and manage spans.
-Mixing the OTEL and Sentry tracing API will not work, and result in separate traces being captured.
+Mixing the OTEL and Sentry tracing API will not work, and will result in separate traces being captured.
 Using the Sentry API for other purposes is supported.
 For example, capturing an error inside a span will correctly send it to Sentry with the span association.
 
