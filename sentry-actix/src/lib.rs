@@ -294,6 +294,7 @@ where
             .map(|client| client.options().max_request_body_size)
             .unwrap_or(MaxRequestBodySize::None);
         if track_sessions {
+            #[cfg(feature = "release-health")]
             hub.start_session();
         }
         let with_pii = client
