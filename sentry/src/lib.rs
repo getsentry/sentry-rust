@@ -184,6 +184,10 @@ pub use crate::init::{init, ClientInitGuard};
 /// [`ClientOptions::default_integrations`]: crate::ClientOptions::default_integrations
 /// [`apply_defaults()`]: ../fn.apply_defaults.html
 pub mod integrations {
+    #[cfg(feature = "actix")]
+    #[cfg_attr(doc_cfg, doc(cfg(feature = "actix")))]
+    #[doc(inline)]
+    pub use sentry_actix as actix;
     #[cfg(feature = "anyhow")]
     #[cfg_attr(doc_cfg, doc(cfg(feature = "anyhow")))]
     #[doc(inline)]

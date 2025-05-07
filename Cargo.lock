@@ -3174,6 +3174,7 @@ dependencies = [
  "pretty_env_logger",
  "reqwest",
  "rustls",
+ "sentry-actix",
  "sentry-anyhow",
  "sentry-backtrace",
  "sentry-contexts",
