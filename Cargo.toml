@@ -9,6 +9,7 @@ members = [
     "sentry-core",
     "sentry-debug-images",
     "sentry-log",
+    "sentry-opentelemetry",
     "sentry-panic",
     "sentry-slog",
     "sentry-tower",
