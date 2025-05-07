@@ -35,12 +35,12 @@
 //! // Register the Sentry propagator to enable distributed tracing
 //! global::set_text_map_propagator(sentry_opentelemetry::SentryPropagator::new());
 //!
-//! let _tracer_provider = SdkTracerProvider::builder()
+//! let tracer_provider = SdkTracerProvider::builder()
 //!     // Register the Sentry span processor to send OpenTelemetry spans to Sentry
 //!     .with_span_processor(sentry_opentelemetry::SentrySpanProcessor::new())
 //!     .build();
 //!
-//! global::set_tracer_provider(_tracer_provider);
+//! global::set_tracer_provider(tracer_provider);
 //! ```
 
 mod converters;
