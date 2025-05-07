@@ -53,7 +53,7 @@
 //! [`sentry-core`]: https://crates.io/crates/sentry-core
 //!
 //!
-//! ## Features
+//! # Features
 //!
 //! Additional functionality and integrations are enabled via feature flags. Some features require
 //! extra setup to function properly.
@@ -88,23 +88,23 @@
 //! [`sentry-tracing`]: https://crates.io/crates/sentry-tracing
 //! [`sentry-opentelemetry`]: https://crates.io/crates/sentry-opentelemetry
 //!
-//! ### Default features
+//! ## Default features
 //! - `backtrace`: Enables backtrace support.
 //! - `contexts`: Enables capturing device, OS, and Rust contexts.
 //! - `panic`: Enables support for capturing panics.
 //! - `transport`: Enables the default transport, which is currently `reqwest` with `native-tls`.
 //! - `debug-images`: Enables capturing metadata about the loaded shared libraries.
 //!
-//! ### Debugging/Testing
+//! ## Debugging/Testing
 //! - `anyhow`: Enables support for the `anyhow` crate.
 //! - `test`: Enables testing support.
 //!
-//! ### Logging
+//! ## Logging
 //! - `log`: Enables support for the `log` crate.
 //! - `slog`: Enables support for the `slog` crate.
 //! - `debug-logs`: **Deprecated**. Uses the `log` crate for internal logging.
 //!
-//! ### Transports
+//! ## Transports
 //! - `reqwest`: **Default**. Enables the `reqwest` transport.
 //! - `native-tls`: **Default**. Uses the `native-tls` crate. This only affects the `reqwest` transport.
 //! - `rustls`: Enables `rustls` support for `reqwest`. Please note that `native-tls` is a default
@@ -114,7 +114,7 @@
 //! - `ureq`: Enables the `ureq` transport using `rustls`.
 //! - `ureq-native-tls`: Enables the `ureq` transport using `native-tls`.
 //!
-//! ### Integrations
+//! ## Integrations
 //! - `actix`: Enables support for the `actix-web` crate.
 //! - `tower`: Enables support for the `tower` crate and those using it.
 //! - `tracing`: Enables support for the `tracing` crate and those using it.
