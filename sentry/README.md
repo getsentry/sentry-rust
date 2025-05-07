@@ -80,14 +80,20 @@ extra setup to function properly.
 | `reqwest`         | ✅      |                |            |                                                                                          |
 | `native-tls`      | ✅      |                |            | `reqwest` must be enabled.                                                               |
 | `rustls`          |         |                |            | `reqwest` must be enabled. `native-tls` must be disabled via `default-features = false`. |
-| `curl`            |         |                |            |                                                                                          |
-| `tower`           |         | 🔌             |            | Requires extra setup; See [`sentry-tower`]'s documentation.                              |
 | `ureq`            |         |                |            | `ureq` transport support using `rustls` by default                                       |
 | `ureq-native-tls` |         |                |            |                                                                                          |
+| `curl`            |         |                |            |                                                                                          |
+| `actix`           |         | 🔌             |            | Requires extra setup; See [`sentry-actix`]'s documentation.                              |
+| `tower`           |         | 🔌             |            | Requires extra setup; See [`sentry-tower`]'s documentation.                              |
+| `tracing`         |         | 🔌             |            | Requires extra setup; See [`sentry-tracing`]'s documentation.                            |
+| `opentelemetry`   |         | 🔌             |            | Requires extra setup; See [`sentry-opentelemetry`]'s documentation.                      |
 
 [`sentry-log`]: https://crates.io/crates/sentry-log
 [`sentry-slog`]: https://crates.io/crates/sentry-slog
+[`sentry-actix`]: https://crates.io/crates/sentry-actix
 [`sentry-tower`]: https://crates.io/crates/sentry-tower
+[`sentry-tracing`]: https://crates.io/crates/sentry-tracing
+[`sentry-opentelemetry`]: https://crates.io/crates/sentry-opentelemetry
 
 ### Default features
 - `backtrace`: Enables backtrace support.
@@ -116,7 +122,10 @@ extra setup to function properly.
 - `ureq-native-tls`: Enables the `ureq` transport using `native-tls`.
 
 ### Integrations
+- `actix`: Enables support for the `actix-web` crate.
 - `tower`: Enables support for the `tower` crate and those using it.
+- `tracing`: Enables support for the `tracing` crate and those using it.
+- `opentelemetry`: Enables support for the `opentelemetry` and `opentelemetry-sdk` crates. 
 
 ## Resources
 

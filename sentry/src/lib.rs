@@ -52,7 +52,8 @@
 //! [`Transport`]: trait.Transport.html
 //! [`sentry-core`]: https://crates.io/crates/sentry-core
 //!
-//! # Features
+//!
+//! ## Features
 //!
 //! Additional functionality and integrations are enabled via feature flags. Some features require
 //! extra setup to function properly.
@@ -72,32 +73,38 @@
 //! | `reqwest`         | ✅      |                |            |                                                                                          |
 //! | `native-tls`      | ✅      |                |            | `reqwest` must be enabled.                                                               |
 //! | `rustls`          |         |                |            | `reqwest` must be enabled. `native-tls` must be disabled via `default-features = false`. |
-//! | `curl`            |         |                |            |                                                                                          |
-//! | `tower`           |         | 🔌             |            | Requires extra setup; See [`sentry-tower`]'s documentation.                              |
 //! | `ureq`            |         |                |            | `ureq` transport support using `rustls` by default                                       |
 //! | `ureq-native-tls` |         |                |            |                                                                                          |
+//! | `curl`            |         |                |            |                                                                                          |
+//! | `actix`           |         | 🔌             |            | Requires extra setup; See [`sentry-actix`]'s documentation.                              |
+//! | `tower`           |         | 🔌             |            | Requires extra setup; See [`sentry-tower`]'s documentation.                              |
+//! | `tracing`         |         | 🔌             |            | Requires extra setup; See [`sentry-tracing`]'s documentation.                            |
+//! | `opentelemetry`   |         | 🔌             |            | Requires extra setup; See [`sentry-opentelemetry`]'s documentation.                      |
 //!
 //! [`sentry-log`]: https://crates.io/crates/sentry-log
 //! [`sentry-slog`]: https://crates.io/crates/sentry-slog
+//! [`sentry-actix`]: https://crates.io/crates/sentry-actix
 //! [`sentry-tower`]: https://crates.io/crates/sentry-tower
+//! [`sentry-tracing`]: https://crates.io/crates/sentry-tracing
+//! [`sentry-opentelemetry`]: https://crates.io/crates/sentry-opentelemetry
 //!
-//! ## Default features
+//! ### Default features
 //! - `backtrace`: Enables backtrace support.
 //! - `contexts`: Enables capturing device, OS, and Rust contexts.
 //! - `panic`: Enables support for capturing panics.
 //! - `transport`: Enables the default transport, which is currently `reqwest` with `native-tls`.
 //! - `debug-images`: Enables capturing metadata about the loaded shared libraries.
 //!
-//! ## Debugging/Testing
+//! ### Debugging/Testing
 //! - `anyhow`: Enables support for the `anyhow` crate.
 //! - `test`: Enables testing support.
 //!
-//! ## Logging
+//! ### Logging
 //! - `log`: Enables support for the `log` crate.
 //! - `slog`: Enables support for the `slog` crate.
 //! - `debug-logs`: **Deprecated**. Uses the `log` crate for internal logging.
 //!
-//! ## Transports
+//! ### Transports
 //! - `reqwest`: **Default**. Enables the `reqwest` transport.
 //! - `native-tls`: **Default**. Uses the `native-tls` crate. This only affects the `reqwest` transport.
 //! - `rustls`: Enables `rustls` support for `reqwest`. Please note that `native-tls` is a default
@@ -107,8 +114,11 @@
 //! - `ureq`: Enables the `ureq` transport using `rustls`.
 //! - `ureq-native-tls`: Enables the `ureq` transport using `native-tls`.
 //!
-//! ## Integrations
+//! ### Integrations
+//! - `actix`: Enables support for the `actix-web` crate.
 //! - `tower`: Enables support for the `tower` crate and those using it.
+//! - `tracing`: Enables support for the `tracing` crate and those using it.
+//! - `opentelemetry`: Enables support for the `opentelemetry` and `opentelemetry-sdk` crates.
 
 #![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
 #![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]

@@ -60,6 +60,12 @@ This workspace contains various crates that provide support for logging events a
 
   An integration for the `log` and `env_logger` crate.
 
+- [sentry-tracing](./sentry-tracing)
+  [![crates.io](https://img.shields.io/crates/v/sentry-opentelemetry.svg)](https://crates.io/crates/sentry-opentelemetry)
+  [![docs.rs](https://docs.rs/sentry-telemetry/badge.svg)](https://docs.rs/sentry-telemetry)
+
+  An integration for the `opentelemetry` crate.
+
 - [sentry-panic](./sentry-panic)
   [![crates.io](https://img.shields.io/crates/v/sentry-panic.svg)](https://crates.io/crates/sentry-panic)
   [![docs.rs](https://docs.rs/sentry-panic/badge.svg)](https://docs.rs/sentry-panic)
