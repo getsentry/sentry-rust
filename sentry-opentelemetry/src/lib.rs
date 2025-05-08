@@ -65,7 +65,13 @@
 //!
 //! Use the OpenTelemetry API to create spans. They will be captured by Sentry:
 //!
-//! ```no_run
+//! ```
+//! # use opentelemetry::{
+//! #     global,
+//! #     trace::{TraceContextExt, Tracer},
+//! #     KeyValue,
+//! # };
+//!
 //! let tracer = global::tracer("tracer");
 //! // Creates a Sentry span (transaction) with the name set to "example"
 //! tracer.in_span("example", |_| {
