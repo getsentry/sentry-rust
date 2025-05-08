@@ -23,7 +23,8 @@ use sentry_core::SentryTrace;
 use sentry_core::{TransactionContext, TransactionOrSpan};
 
 use crate::converters::{
-    convert_span_id, convert_span_kind, convert_span_status, convert_trace_id, convert_value,
+    convert_event, convert_span_id, convert_span_kind, convert_span_status, convert_trace_id,
+    convert_value,
 };
 
 /// A mapping from Sentry span IDs to Sentry spans/transactions.
@@ -152,14 +153,17 @@ impl SpanProcessor for SentrySpanProcessor {
             return;
         };
 
-        // TODO: read OTEL span events and convert them to Sentry breadcrumbs/events
-
         sentry_span.set_data("otel.kind", convert_span_kind(data.span_kind));
         for attribute in data.attributes {
             sentry_span.set_data(attribute.key.as_str(), convert_value(attribute.value));
         }
         // TODO: read OTEL semantic convention span attributes and map them to the appropriate
         // Sentry span attributes/context values
+
+        for event in data.events {
+            sentry_core::capture_event(convert_event(&event));
+        }
+
         sentry_span.set_status(convert_span_status(&data.status));
         sentry_span.finish_with_timestamp(data.end_time);
     }

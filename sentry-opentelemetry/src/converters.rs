@@ -1,4 +1,7 @@
+use std::collections::BTreeMap;
+
 use sentry_core::protocol::{value::Number, SpanId, SpanStatus, TraceId, Value};
+use sentry_core::protocol::{Context, Event};
 
 pub(crate) fn convert_span_id(span_id: &opentelemetry::SpanId) -> SpanId {
     span_id.to_bytes().into()
@@ -52,5 +55,29 @@ pub(crate) fn convert_value(value: opentelemetry::Value) -> Value {
             _ => Value::Null, // non-exhaustive
         },
         _ => Value::Null, // non-exhaustive
+    }
+}
+
+pub(crate) fn convert_event(event: &opentelemetry::trace::Event) -> Event<'static> {
+    let otel_context = sentry_core::protocol::OtelContext {
+        attributes: event
+            .attributes
+            .iter()
+            .map(|key_value| {
+                (
+                    key_value.key.as_str().into(),
+                    convert_value(key_value.value.clone()),
+                )
+            })
+            .collect(),
+        ..Default::default()
+    };
+    let mut contexts = BTreeMap::<String, Context>::new();
+    contexts.insert("otel".to_owned(), otel_context.into());
+    Event {
+        level: sentry_core::Level::Error,
+        message: Some(event.name.to_string()),
+        contexts,
+        ..Default::default()
     }
 }
