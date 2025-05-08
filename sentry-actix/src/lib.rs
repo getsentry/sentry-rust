@@ -45,8 +45,6 @@
 //! The actix middleware will automatically start a new session for each request
 //! when `auto_session_tracking` is enabled and the client is configured to
 //! use `SessionMode::Request`.
-//! The `release-health` feature flag also needs to be enabled on either
-//! `sentry` or `sentry-actix` for this to work.
 //!
 //! ```
 //! let _sentry = sentry::init(sentry::ClientOptions {
