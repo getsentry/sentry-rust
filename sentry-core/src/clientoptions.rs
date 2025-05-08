@@ -174,14 +174,10 @@ pub struct ClientOptions {
     /// When automatic session tracking is enabled, a new "user-mode" session
     /// is started at the time of `sentry::init`, and will persist for the
     /// application lifetime.
-    ///
-    /// **NOTE**: The `release-health` feature (enabled by default) needs to be enabled for this option to have
-    /// any effect.
+    #[cfg(feature = "release-health")]
     pub auto_session_tracking: bool,
     /// Determine how Sessions are being tracked.
-    ///
-    /// **NOTE**: The `release-health` feature (enabled by default) needs to be enabled for this option to have
-    /// any effect.
+    #[cfg(feature = "release-health")]
     pub session_mode: SessionMode,
     /// Border frames which indicate a border from a backtrace to
     /// useless internals. Some are automatically included.
@@ -232,7 +228,8 @@ impl fmt::Debug for ClientOptions {
 
         let integrations: Vec<_> = self.integrations.iter().map(|i| i.name()).collect();
 
-        f.debug_struct("ClientOptions")
+        let mut debug_struct = f.debug_struct("ClientOptions");
+        debug_struct
             .field("dsn", &self.dsn)
             .field("debug", &self.debug)
             .field("release", &self.release)
@@ -260,9 +257,14 @@ impl fmt::Debug for ClientOptions {
             .field("http_proxy", &self.http_proxy)
             .field("https_proxy", &self.https_proxy)
             .field("shutdown_timeout", &self.shutdown_timeout)
-            .field("accept_invalid_certs", &self.accept_invalid_certs)
+            .field("accept_invalid_certs", &self.accept_invalid_certs);
+
+        #[cfg(feature = "release-health")]
+        debug_struct
             .field("auto_session_tracking", &self.auto_session_tracking)
-            .field("session_mode", &self.session_mode)
+            .field("session_mode", &self.session_mode);
+
+        debug_struct
             .field("extra_border_frames", &self.extra_border_frames)
             .field("trim_backtraces", &self.trim_backtraces)
             .field("user_agent", &self.user_agent)
@@ -295,7 +297,9 @@ impl Default for ClientOptions {
             https_proxy: None,
             shutdown_timeout: Duration::from_secs(2),
             accept_invalid_certs: false,
+            #[cfg(feature = "release-health")]
             auto_session_tracking: false,
+            #[cfg(feature = "release-health")]
             session_mode: SessionMode::Application,
             extra_border_frames: vec![],
             trim_backtraces: true,

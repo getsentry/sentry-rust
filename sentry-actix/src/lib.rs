@@ -284,18 +284,24 @@ where
         ));
 
         let client = hub.client();
-        let track_sessions = client.as_ref().is_some_and(|client| {
-            let options = client.options();
-            options.auto_session_tracking
-                && options.session_mode == sentry_core::SessionMode::Request
-        });
+
         let max_request_body_size = client
             .as_ref()
             .map(|client| client.options().max_request_body_size)
             .unwrap_or(MaxRequestBodySize::None);
-        if track_sessions {
-            hub.start_session();
+
+        #[cfg(feature = "release-health")]
+        {
+            let track_sessions = client.as_ref().is_some_and(|client| {
+                let options = client.options();
+                options.auto_session_tracking
+                    && options.session_mode == sentry_core::SessionMode::Request
+            });
+            if track_sessions {
+                hub.start_session();
+            }
         }
+
         let with_pii = client
             .as_ref()
             .is_some_and(|client| client.options().send_default_pii);
@@ -673,6 +679,7 @@ mod tests {
         assert_eq!(request.method, Some("GET".into()));
     }
 
+    #[cfg(feature = "release-health")]
     #[actix_web::test]
     async fn test_track_session() {
         let envelopes = sentry::test::with_captured_envelopes_options(
