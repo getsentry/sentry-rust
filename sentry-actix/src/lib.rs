@@ -286,19 +286,24 @@ where
         ));
 
         let client = hub.client();
-        let track_sessions = client.as_ref().is_some_and(|client| {
-            let options = client.options();
-            options.auto_session_tracking
-                && options.session_mode == sentry_core::SessionMode::Request
-        });
+
         let max_request_body_size = client
             .as_ref()
             .map(|client| client.options().max_request_body_size)
             .unwrap_or(MaxRequestBodySize::None);
-        if track_sessions {
-            #[cfg(feature = "release-health")]
-            hub.start_session();
+
+        #[cfg(feature = "release-health")]
+        {
+            let track_sessions = client.as_ref().is_some_and(|client| {
+                let options = client.options();
+                options.auto_session_tracking
+                    && options.session_mode == sentry_core::SessionMode::Request
+            });
+            if track_sessions {
+                hub.start_session();
+            }
         }
+
         let with_pii = client
             .as_ref()
             .is_some_and(|client| client.options().send_default_pii);
@@ -698,7 +703,9 @@ mod tests {
             },
             sentry::ClientOptions {
                 release: Some("some-release".into()),
+                #[cfg(feature = "release-health")]
                 session_mode: sentry::SessionMode::Request,
+                #[cfg(feature = "release-health")]
                 auto_session_tracking: true,
                 ..Default::default()
             },

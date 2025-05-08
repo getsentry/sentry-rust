@@ -432,6 +432,7 @@ mod session_impl {
         }
 
         #[test]
+        #[cfg(feature = "release-health")]
         fn test_session_aggregation() {
             let envelopes = crate::test::with_captured_envelopes_options(
                 || {
@@ -464,7 +465,6 @@ mod session_impl {
                 },
                 crate::ClientOptions {
                     release: Some("some-release".into()),
-                    #[cfg(feature = "release-health")]
                     session_mode: SessionMode::Request,
                     ..Default::default()
                 },
