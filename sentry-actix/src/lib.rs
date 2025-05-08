@@ -681,6 +681,7 @@ mod tests {
         assert_eq!(request.method, Some("GET".into()));
     }
 
+    #[cfg(feature = "release-health")]
     #[actix_web::test]
     async fn test_track_session() {
         let envelopes = sentry::test::with_captured_envelopes_options(
@@ -703,9 +704,7 @@ mod tests {
             },
             sentry::ClientOptions {
                 release: Some("some-release".into()),
-                #[cfg(feature = "release-health")]
                 session_mode: sentry::SessionMode::Request,
-                #[cfg(feature = "release-health")]
                 auto_session_tracking: true,
                 ..Default::default()
             },
