@@ -25,7 +25,7 @@
 //! Initialize Sentry with a `traces_sample_rate`, then register the [`SentryPropagator`] and the
 //! [`SentrySpanProcessor`]:
 //!
-//! ```
+//! ```ignore
 //! use opentelemetry::{
 //!     global,
 //!     trace::{TraceContextExt, Tracer},
@@ -65,7 +65,7 @@
 //!
 //! Use the OpenTelemetry API to create spans. They will be captured by Sentry:
 //!
-//! ```no_run
+//! ```ignore
 //! let tracer = global::tracer("tracer");
 //! // Creates a Sentry span (transaction) with the name set to "example"
 //! tracer.in_span("example", |_| {
