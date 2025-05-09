@@ -60,6 +60,7 @@ An OpenTelemetry integration has been released. Please refer to the changelog en
 - docs: update docs including OTEL and other integrations (#790) by @lcian
 - fix(otel): fix doctests (#794) by @lcian
 - fix(otel): fix span and trace ids for distributed tracing (#801) by @lcian
+- build(otel): exclude version from circular dev-dependencies (#802) by @lcian
 
 ## 0.37.0
 
