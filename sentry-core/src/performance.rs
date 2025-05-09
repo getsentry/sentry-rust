@@ -193,7 +193,7 @@ impl TransactionContext {
     }
 
     /// Creates a new Transaction Context based on the provided distributed tracing data,
-    /// optionally creating the `TransactionContext` with the provided `span_id`
+    /// optionally creating the `TransactionContext` with the provided `span_id`.
     pub fn continue_from_sentry_trace(
         name: &str,
         op: &str,
