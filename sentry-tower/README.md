@@ -103,7 +103,7 @@ feature of the `sentry` crate instead of the `tower` feature.
 The created transaction will automatically use the request URI as its name.
 This is sometimes not desirable in case the request URI contains unique IDs
 or similar. In this case, users should manually override the transaction name
-in the request handler using the [`Scope::set_transaction`](https://docs.rs/sentry-tower/0.37.0/sentry_tower/sentry_core::Scope::set_transaction)
+in the request handler using the [`Scope::set_transaction`](https://docs.rs/sentry-tower/0.38.0/sentry_tower/sentry_core::Scope::set_transaction)
 method.
 
 When combining both layers, take care of the ordering of both. For example
@@ -113,7 +113,7 @@ one, like so:
 ```rust
 let layer = tower::ServiceBuilder::new()
     .layer(sentry_tower::NewSentryLayer::<Request>::new_from_top())
-    .layer(sentry_tower::SentryHttpLayer::with_transaction());
+    .layer(sentry_tower::SentryHttpLayer::new().enable_transaction());
 ```
 
 [`tower::ServiceBuilder`]: https://docs.rs/tower/latest/tower/struct.ServiceBuilder.html
