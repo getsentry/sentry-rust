@@ -48,13 +48,15 @@ impl SentrySpanProcessor {
                 get_active_span(|otel_span| {
                     let span_map = SPAN_MAP.lock().unwrap();
 
-                    let Some(sentry_span) = span_map.get(&convert_span_id(&otel_span.span_context().span_id())) else {
+                    let Some(sentry_span) =
+                        span_map.get(&convert_span_id(&otel_span.span_context().span_id()))
+                    else {
                         return;
                     };
 
                     let (span_id, trace_id) = match sentry_span {
                         TransactionOrSpan::Transaction(transaction) => (
-                            transaction.get_trace_context().span_id, 
+                            transaction.get_trace_context().span_id,
                             transaction.get_trace_context().trace_id,
                         ),
                         TransactionOrSpan::Span(span) => {
