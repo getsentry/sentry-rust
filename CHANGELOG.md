@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### OpenTelemetry integration
+
+An OpenTelemetry integration has been released. Please refer to the changelog entry below for the details.
+
 ### Breaking changes
 
 - fix: use `release-health` flag in `sentry-actix` and remove it from subcrates where unneeded (#787) by @lcian
@@ -10,8 +14,8 @@
   - The `release-health` feature flag is used correctly in `sentry-actix` to enable compilation of that subcrate when it's disabled.
   - The `release-health` has been removed from the `sentry-tracing` and `sentry-tower` subcrates, where it was unnecessary.
 - refactor(tracing): remove `EventFilter::exception` and always attach exception (#768) by @lcian
-  - The `EventFilter::Exception` enum variant has been removed. Please use `EventFilter::Event` instead for the same behavior.
-  - Using `EventFilter::Event` will always attach any error struct used within the `error` field passed to the `tracing` macro.
+  - The `EventFilter::Exception` enum variant has been removed. Please use `EventFilter::Event` instead to achieve the same behavior.
+  - Using `EventFilter::Event` will always attach any error struct used within the `error` field passed to the `tracing` macro, as `EventFilter::Exception` did previously.
   - The `error` field will also be attached to breadcrumbs as an `errors` field resembling the structure of Sentry events created from error structs.
 - refactor: remove Surf transport (#766) by @lcian
   - The Surf transport has been removed as the `surf` crate is unmaintained and it was holding back dependency upgrades.
