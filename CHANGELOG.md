@@ -59,6 +59,7 @@ An OpenTelemetry integration has been released. Please refer to the changelog en
 - build: add `sentry-opentelemetry` to workspace (#789) by @lcian
 - docs: update docs including OTEL and other integrations (#790) by @lcian
 - fix(otel): fix doctests (#794) by @lcian
+- fix(otel): fix span and trace ids for distributed tracing (#801) by @lcian
 
 ## 0.37.0
 
