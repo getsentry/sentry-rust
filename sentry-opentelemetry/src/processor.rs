@@ -110,8 +110,6 @@ impl SpanProcessor for SentrySpanProcessor {
         let span_description = span_description.as_str();
         let span_op = span_op.as_str();
 
-        println!("starting span with id {}", span_id.to_string(),);
-
         let sentry_span = {
             if let Some(parent_sentry_span) = parent_sentry_span {
                 // continue local trace
@@ -124,10 +122,6 @@ impl SpanProcessor for SentrySpanProcessor {
             } else {
                 let sentry_ctx = {
                     if let Some(sentry_trace) = ctx.get::<SentryTrace>() {
-                        println!(
-                            "continuing remote trace with span id {}",
-                            span_id.to_string(),
-                        );
                         // continue remote trace
                         TransactionContext::continue_from_sentry_trace(
                             span_description,
@@ -156,7 +150,6 @@ impl SpanProcessor for SentrySpanProcessor {
 
     fn on_end(&self, data: SpanData) {
         let span_id = data.span_context.span_id();
-        println!("ending span with id {}", span_id.to_string(),);
 
         let mut span_map = SPAN_MAP.lock().unwrap();
 
