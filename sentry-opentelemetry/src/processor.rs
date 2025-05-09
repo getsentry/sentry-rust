@@ -35,7 +35,7 @@ static SPAN_MAP: LazyLock<SpanMap> = LazyLock::new(|| Arc::new(Mutex::new(HashMa
 
 /// An OpenTelemetry SpanProcessor that converts OTEL spans to Sentry spans/transactions and sends
 /// them to Sentry.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct SentrySpanProcessor {}
 
 impl SentrySpanProcessor {
@@ -85,6 +85,13 @@ impl SentrySpanProcessor {
             });
         });
         Self {}
+    }
+}
+
+impl Default for SentrySpanProcessor {
+    /// Creates a default `SentrySpanProcessor`.
+    fn default() -> Self {
+        Self::new()
     }
 }
 
