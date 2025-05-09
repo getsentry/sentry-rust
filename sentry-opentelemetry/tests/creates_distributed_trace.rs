@@ -32,8 +32,13 @@ fn test_creates_distributed_trace() {
     });
 
     // Now simulate the second service receiving the headers and continuing the trace
+    let tracer_provider = SdkTracerProvider::builder()
+        .with_span_processor(SentrySpanProcessor::new())
+        .build();
+    let tracer = tracer_provider.tracer("test_2".to_string());
+    let propagator = SentryPropagator::new();
     let second_service_ctx =
-        propagator.extract_with_context(&Context::current(), &TestExtractor(&headers));
+        propagator.extract_with_context(&Context::new(), &TestExtractor(&headers));
 
     // Create a second service span that continues the trace
     // We need to use start_with_context here to connect with the previous context

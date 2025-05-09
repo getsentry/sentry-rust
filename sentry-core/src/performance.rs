@@ -180,7 +180,7 @@ impl TransactionContext {
         headers: I,
     ) -> Self {
         parse_headers(headers)
-            .map(|sentry_trace| Self::continue_from_sentry_trace(name, op, &sentry_trace))
+            .map(|sentry_trace| Self::continue_from_sentry_trace(name, op, &sentry_trace, None))
             .unwrap_or_else(|| Self {
                 name: name.into(),
                 op: op.into(),
@@ -193,7 +193,12 @@ impl TransactionContext {
     }
 
     /// Creates a new Transaction Context based on the provided distributed tracing data.
-    pub fn continue_from_sentry_trace(name: &str, op: &str, sentry_trace: &SentryTrace) -> Self {
+    pub fn continue_from_sentry_trace(
+        name: &str,
+        op: &str,
+        sentry_trace: &SentryTrace,
+        span_id: Option<SpanId>,
+    ) -> Self {
         let (trace_id, parent_span_id, sampled) =
             (sentry_trace.0, Some(sentry_trace.1), sentry_trace.2);
         Self {
@@ -201,8 +206,8 @@ impl TransactionContext {
             op: op.into(),
             trace_id,
             parent_span_id,
-            span_id: Default::default(),
             sampled,
+            span_id: span_id.unwrap_or_default(),
             custom: None,
         }
     }

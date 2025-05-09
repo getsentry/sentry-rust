@@ -9,7 +9,7 @@
 //! setting up both is provided in the [crate-level documentation](../).
 
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, LazyLock, Mutex};
 use std::time::SystemTime;
 
 use opentelemetry::global::ObjectSafeSpan;
@@ -31,12 +31,12 @@ use crate::converters::{
 /// to track OTEL spans across start/end calls.
 type SpanMap = Arc<Mutex<HashMap<sentry_core::protocol::SpanId, TransactionOrSpan>>>;
 
+static SPAN_MAP: LazyLock<SpanMap> = LazyLock::new(|| Arc::new(Mutex::new(HashMap::new())));
+
 /// An OpenTelemetry SpanProcessor that converts OTEL spans to Sentry spans/transactions and sends
 /// them to Sentry.
-#[derive(Debug, Clone)]
-pub struct SentrySpanProcessor {
-    span_map: SpanMap,
-}
+#[derive(Debug, Clone, Default)]
+pub struct SentrySpanProcessor {}
 
 impl SentrySpanProcessor {
     /// Creates a new `SentrySpanProcessor`.
@@ -46,10 +46,21 @@ impl SentrySpanProcessor {
             // This works as long as all Sentry spans/transactions are managed exclusively through OTEL APIs.
             scope.add_event_processor(|mut event| {
                 get_active_span(|otel_span| {
-                    let (span_id, trace_id) = (
-                        convert_span_id(&otel_span.span_context().span_id()),
-                        convert_trace_id(&otel_span.span_context().trace_id()),
-                    );
+                    let span_map = SPAN_MAP.lock().unwrap();
+
+                    let Some(sentry_span) = span_map.get(&convert_span_id(&otel_span.span_context().span_id())) else {
+                        return;
+                    };
+
+                    let (span_id, trace_id) = match sentry_span {
+                        TransactionOrSpan::Transaction(transaction) => (
+                            transaction.get_trace_context().span_id, 
+                            transaction.get_trace_context().trace_id,
+                        ),
+                        TransactionOrSpan::Span(span) => {
+                            (span.get_span_id(), span.get_trace_context().trace_id)
+                        }
+                    };
 
                     if let Some(sentry_core::protocol::Context::Trace(trace_context)) =
                         event.contexts.get_mut("trace")
@@ -71,16 +82,7 @@ impl SentrySpanProcessor {
                 Some(event)
             });
         });
-        Self {
-            span_map: Default::default(),
-        }
-    }
-}
-
-impl Default for SentrySpanProcessor {
-    /// Creates a default `SentrySpanProcessor`.
-    fn default() -> Self {
-        Self::new()
+        Self {}
     }
 }
 
@@ -89,7 +91,7 @@ impl SpanProcessor for SentrySpanProcessor {
         let span_id = span.span_context().span_id();
         let trace_id = span.span_context().trace_id();
 
-        let mut span_map = self.span_map.lock().unwrap();
+        let mut span_map = SPAN_MAP.lock().unwrap();
 
         let mut span_description = String::new();
         let mut span_op = String::new();
@@ -106,6 +108,8 @@ impl SpanProcessor for SentrySpanProcessor {
         let span_description = span_description.as_str();
         let span_op = span_op.as_str();
 
+        println!("starting span with id {}", span_id.to_string(),);
+
         let sentry_span = {
             if let Some(parent_sentry_span) = parent_sentry_span {
                 // continue local trace
@@ -118,11 +122,16 @@ impl SpanProcessor for SentrySpanProcessor {
             } else {
                 let sentry_ctx = {
                     if let Some(sentry_trace) = ctx.get::<SentryTrace>() {
+                        println!(
+                            "continuing remote trace with span id {}",
+                            span_id.to_string(),
+                        );
                         // continue remote trace
                         TransactionContext::continue_from_sentry_trace(
                             span_description,
                             span_op,
                             sentry_trace,
+                            Some(convert_span_id(&span_id)),
                         )
                     } else {
                         // start a new trace
@@ -145,8 +154,9 @@ impl SpanProcessor for SentrySpanProcessor {
 
     fn on_end(&self, data: SpanData) {
         let span_id = data.span_context.span_id();
+        println!("ending span with id {}", span_id.to_string(),);
 
-        let mut span_map = self.span_map.lock().unwrap();
+        let mut span_map = SPAN_MAP.lock().unwrap();
 
         let Some(sentry_span) = span_map.remove(&convert_span_id(&span_id)) else {
             return;
