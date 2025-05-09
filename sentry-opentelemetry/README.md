@@ -6,18 +6,20 @@
 
 # Sentry Rust SDK: sentry-opentelemetry
 
-Support for capturing Sentry spans from OpenTelemetry spans.
+OpenTelemetry support for Sentry.
 
-Sentry spans are automatically captured from OpenTelemetry spans via `SentrySpanProcessor`.
-Distributed tracing is supported via `SentryPropagator`.
-Note that it's assumed that only the OTEL API is used to create and manage spans.
-Mixing the OTEL and Sentry tracing API will not work, and will result in separate traces being captured.
-Using the Sentry API for other purposes is supported.
-For example, capturing an error inside a span will correctly send it to Sentry with the span association.
+This integration allows you to capture spans from your existing OpenTelemetry setup and send
+them to Sentry, with support for distributed tracing.
 
-If you're using `tracing-opentelemetry`, use `sentry-tracing` instead.
+It's assumed that only the [OpenTelemetry tracing
+API](https://opentelemetry.io/docs/specs/otel/trace/api/) is used to start/end/modify Spans.
+Mixing it with the Sentry tracing API (e.g. `sentry_core::start_transaction(ctx)`) will not
+work, as the spans created with the two methods will not be nested properly.
 
-# Configuration
+Capturing events with `sentry::capture_event` will send them to Sentry with the correct
+trace and span association.
+
+## Configuration
 
 Add the necessary dependencies to your Cargo.toml:
 
@@ -67,11 +69,12 @@ let tracer_provider = SdkTracerProvider::builder()
 global::set_tracer_provider(tracer_provider);
 ```
 
-# Usage
+## Usage
 
 Use the OpenTelemetry API to create spans. They will be captured by Sentry:
 
 ```rust
+
 let tracer = global::tracer("tracer");
 // Creates a Sentry span (transaction) with the name set to "example"
 tracer.in_span("example", |_| {
