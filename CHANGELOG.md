@@ -1,5 +1,65 @@
 # Changelog
 
+## Unreleased
+
+### OpenTelemetry integration
+
+An OpenTelemetry integration has been released. Please refer to the changelog entry below for the details.
+
+### Breaking changes
+
+- refactor(tracing): remove `EventFilter::exception` and always attach exception (#768) by @lcian
+  - The `EventFilter::Exception` enum variant has been removed. Please use `EventFilter::Event` instead to achieve the same behavior.
+  - Using `EventFilter::Event` will always attach any error struct used within the `error` field passed to the `tracing` macro, as `EventFilter::Exception` did previously.
+  - The `error` field will also be attached to breadcrumbs as an `errors` field resembling the structure of Sentry events created from error structs.
+- fix: use `release-health` flag in `sentry-actix` and remove it from subcrates where unneeded (#787) by @lcian
+  - As a follow-up from the changes in the previous release, the `ClientOptions` fields `auto_session_tracking` and `session_mode` are now gated behind the `release-health` feature flag of the `sentry` crate.
+  - If you depend on `sentry` with `default-features = false`, you need to include the `release-health` feature flag to benefit from the [Release Health](https://docs.sentry.io/product/releases/health/) features of Sentry and have access to the aforementioned client options.
+  - The `release-health` feature flag is used correctly in `sentry-actix` to enable compilation of that subcrate when it's disabled.
+  - The `release-health` has been removed from the `sentry-tracing` and `sentry-tower` subcrates, where it was unnecessary.
+- refactor: remove Surf transport (#766) by @lcian
+  - The Surf transport has been removed as the `surf` crate is unmaintained and it was holding back dependency upgrades.
+  - If you really want to still use Surf, you can define a custom `TransportFactory` and pass it as the `transport` in your `ClientOptions`
+
+### Behavioral changes
+
+- refactor: honor `send_default_pii` in `sentry-actix` and `sentry-tower` (#771) by @lcian
+  - The client option `send_default_pii` (disabled by default) is now honored by `sentry-actix` and `sentry-tower`.
+  - This means that potentially sensitive headers such as authorization, cookies, and those that usually contain the user's IP address are filtered and not sent to Sentry.
+  - If you want to get back to the previous behavior and capture all headers, please set `send_default_pii` to `true` in your `ClientOptions`.
+  - Please refer to our [Data Collected](https://docs.sentry.io/platforms/rust/data-management/data-collected/) page for a comprehensive view of the data collected by the SDK.
+- refactor(debug-images): force init `DEBUG_META` on integration init (#773) by @lcian
+  - The `DebugImages` integration has been updated to init the `DEBUG_META` `Lazy` immediately.
+  - Using this integration is known to cause issues in specific versions of the Linux kernel due to issues in a library it depends on.
+  - Previously, on problematic systems the SDK would cause deadlock after capturing the first event. Now the SDK will panic on initialization instead. Please open an issue if you're affected.
+
+### Features
+
+- feat(otel): add OpenTelemetry SpanProcessor, Propagator, Extractor (#779) by @lcian
+  - A new integration for the `opentelemetry` crate has been released.
+  - It can be used to capture spans created using the `opentelemetry` API and send them to Sentry.
+  - Distributed tracing is also supported, provided that the upstream/downstream services support the Sentry or W3C distributed tracing metadata format.
+  - Please refer to the subcrate's README or the crate docs to see an example of setup and usage.
+- feat: expose `sentry-actix` as a feature of `sentry` (#788) by @lcian
+  - `sentry-actix` is now exposed by the `sentry` crate as `sentry::integrations::actix`, gated behind the `actix` feature flag.
+  - Please update your dependencies to not depend on the `sentry-actix` subcrate directly.
+
+### Dependencies
+
+- build(deps): bump openssl from 0.10.71 to 0.10.72 (#762) by @dependabot
+- build(deps): bump tokio from 1.44.1 to 1.44.2 (#763) by @dependabot
+- chore(deps): bump some dependencies and update `Cargo.lock` (#772) by @lcian
+
+### Various fixes & improvements
+
+- Replace `once_cell` with `std::sync::LazyLock` (#776) by @FalkWoldmann
+- chore: update GH issue templates for Linear compatibility (#777) by @stephanie-anderson
+- chore: update issue templates with blank issue and Discord link (#778) by @lcian
+- refactor(core): fail with message if TLS backend not available (#784) by @lcian
+- build: add `sentry-opentelemetry` to workspace (#789) by @lcian
+- docs: update docs including OTEL and other integrations (#790) by @lcian
+- fix(otel): fix doctests (#794) by @lcian
+
 ## 0.37.0
 
 ### Breaking changes
