@@ -15,5 +15,7 @@ pub use v7 as latest;
 
 mod attachment;
 mod envelope;
+mod log;
 mod monitor;
 mod session;
+mod trace;
