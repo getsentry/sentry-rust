@@ -19,7 +19,7 @@ jobs:
     if: github.repository_owner == 'getsentry'
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install rust stable toolchain
         run: |
@@ -36,7 +36,7 @@ jobs:
     if: github.repository_owner == 'getsentry'
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       # FIXME: find a maintained alternative to audit-check
       - uses: actions-rs/audit-check@v1
