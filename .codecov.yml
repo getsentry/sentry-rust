@@ -6,5 +6,5 @@ coverage:
     patch: false
 
 comment:
-  layout: "diff, flags, files"
+  layout: "diff"
   require_changes: true
