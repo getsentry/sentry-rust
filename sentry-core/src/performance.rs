@@ -170,9 +170,8 @@ impl TransactionContext {
 
     /// Creates a new Transaction Context based on the distributed tracing `headers`.
     ///
-    /// The `headers` in particular need to include either the `sentry-trace` or W3C
-    /// `traceparent` header, which is used to associate the transaction with a distributed
-    /// trace. If both are present, `sentry-trace` takes precedence.
+    /// The `headers` in particular need to include the `sentry-trace` header,
+    /// which is used to associate the transaction with a distributed trace.
     #[must_use = "this must be used with `start_transaction`"]
     pub fn continue_from_headers<'a, I: IntoIterator<Item = (&'a str, &'a str)>>(
         name: &str,
@@ -1142,8 +1141,8 @@ impl Iterator for TraceHeadersIter {
     }
 }
 
-/// A container for distributed tracing metadata that can be extracted from e.g. HTTP headers such as
-/// `sentry-trace` and `traceparent`.
+/// A container for distributed tracing metadata that can be extracted from e.g. the `sentry-trace`
+/// HTTP header.
 #[derive(Debug, PartialEq)]
 pub struct SentryTrace(protocol::TraceId, protocol::SpanId, Option<bool>);
 
@@ -1173,25 +1172,8 @@ fn parse_sentry_trace(header: &str) -> Option<SentryTrace> {
     Some(SentryTrace(trace_id, parent_span_id, parent_sampled))
 }
 
-/// Parses a W3C traceparent header.
-/// Reference: <https://w3c.github.io/trace-context/#traceparent-header-field-values>
-fn parse_w3c_traceparent(header: &str) -> Option<SentryTrace> {
-    let header = header.trim();
-    let mut parts = header.splitn(4, '-');
-
-    let _version = parts.next()?;
-    let trace_id = parts.next()?.parse().ok()?;
-    let parent_span_id = parts.next()?.parse().ok()?;
-    let parent_sampled = parts
-        .next()
-        .and_then(|sampled| u8::from_str_radix(sampled, 16).ok())
-        .map(|flag| flag & 1 != 0);
-
-    Some(SentryTrace(trace_id, parent_span_id, parent_sampled))
-}
-
 /// Extracts distributed tracing metadata from headers (or, generally, key-value pairs),
-/// considering the values for both `sentry-trace` (prioritized) and `traceparent`.
+/// considering the values for `sentry-trace`.
 pub fn parse_headers<'a, I: IntoIterator<Item = (&'a str, &'a str)>>(
     headers: I,
 ) -> Option<SentryTrace> {
@@ -1200,10 +1182,6 @@ pub fn parse_headers<'a, I: IntoIterator<Item = (&'a str, &'a str)>>(
         if k.eq_ignore_ascii_case("sentry-trace") {
             trace = parse_sentry_trace(v);
             break;
-        }
-
-        if k.eq_ignore_ascii_case("traceparent") {
-            trace = parse_w3c_traceparent(v);
         }
     }
     trace
@@ -1239,26 +1217,6 @@ mod tests {
         let trace = SentryTrace(Default::default(), Default::default(), None);
         let parsed = parse_sentry_trace(&trace.to_string());
         assert_eq!(parsed, Some(trace));
-    }
-
-    #[test]
-    fn parses_traceparent() {
-        let trace_id = protocol::TraceId::from_str("4bf92f3577b34da6a3ce929d0e0e4736").unwrap();
-        let parent_trace_id = protocol::SpanId::from_str("00f067aa0ba902b7").unwrap();
-
-        let trace =
-            parse_w3c_traceparent("00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01");
-        assert_eq!(
-            trace,
-            Some(SentryTrace(trace_id, parent_trace_id, Some(true)))
-        );
-
-        let trace =
-            parse_w3c_traceparent("00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-00");
-        assert_eq!(
-            trace,
-            Some(SentryTrace(trace_id, parent_trace_id, Some(false)))
-        );
     }
 
     #[test]
