@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Fixes
+
+- build: include `sentry-actix` optionally when `release-health` is enabled (#806) by @lcian
+  - `sentry-actix` is now being included as a dependency only when explicitly added, either as a direct dependency or through the `actix` feature flag of the `sentry` crate.
+  - Due to a mistake in the `Cargo.toml`, it was previously being included as a dependency by default when using just the `sentry` crate with default features.
+
 ## 0.38.0
 
 ### OpenTelemetry integration
