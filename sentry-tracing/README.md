@@ -83,7 +83,7 @@ tracing::error!(
 );
 ```
 
-To track [error structs](https://docs.rs/sentry-tracing/0.38.0/sentry_tracing/std::error::Error), assign a reference to error trait object as field
+To track [error structs](https://docs.rs/sentry-tracing/0.38.1/sentry_tracing/std::error::Error), assign a reference to error trait object as field
 in one of the logging macros. By convention, it is recommended to use the `ERROR` level and
 assign it to a field called `error`, although the integration will also work with all other
 levels and field names.
