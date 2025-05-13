@@ -7,8 +7,8 @@ use uuid::Uuid;
 use super::v7 as protocol;
 
 use protocol::{
-    Attachment, AttachmentType, Event, MonitorCheckIn, SessionAggregates, SessionUpdate,
-    Transaction,
+    Attachment, AttachmentType, Event, LogEnvelopeItem, MonitorCheckIn, SessionAggregates,
+    SessionUpdate, Transaction,
 };
 
 /// Raised if a envelope cannot be parsed from a given input.
@@ -87,31 +87,36 @@ struct EnvelopeItemHeader {
 pub enum EnvelopeItem {
     /// An Event Item.
     ///
-    /// See the [Event Item documentation](https://develop.sentry.dev/sdk/envelopes/#event)
+    /// See the [Event Item documentation](https://develop.sentry.dev/sdk/data-model/envelope-items/#event)
     /// for more details.
     Event(Event<'static>),
     /// A Session Item.
     ///
-    /// See the [Session Item documentation](https://develop.sentry.dev/sdk/envelopes/#session)
+    /// See the [Session Item documentation](https://develop.sentry.dev/sdk/data-model/envelope-items/#session)
     /// for more details.
     SessionUpdate(SessionUpdate<'static>),
     /// A Session Aggregates Item.
     ///
-    /// See the [Session Aggregates Item documentation](https://develop.sentry.dev/sdk/envelopes/#sessions)
+    /// See the [Session Aggregates Item documentation](https://develop.sentry.dev/sdk/data-model/envelope-items/#sessions)
     /// for more details.
     SessionAggregates(SessionAggregates<'static>),
     /// A Transaction Item.
     ///
-    /// See the [Transaction Item documentation](https://develop.sentry.dev/sdk/envelopes/#transaction)
+    /// See the [Transaction Item documentation](https://develop.sentry.dev/sdk/data-model/envelope-items/#transaction)
     /// for more details.
     Transaction(Transaction<'static>),
     /// An Attachment Item.
     ///
-    /// See the [Attachment Item documentation](https://develop.sentry.dev/sdk/envelopes/#attachment)
+    /// See the [Attachment Item documentation](https://develop.sentry.dev/sdk/data-model/envelope-items/#attachment)
     /// for more details.
     Attachment(Attachment),
     /// A MonitorCheckIn item.
     MonitorCheckIn(MonitorCheckIn),
+    /// A Log item.
+    ///
+    /// See the [Log Item documentation](https://develop.sentry.dev/sdk/data-model/envelope-items/#log)
+    /// for more details.
+    Log(LogEnvelopeItem),
     /// This is a sentinel item used to `filter` raw envelopes.
     Raw,
     // TODO:
@@ -352,6 +357,7 @@ impl Envelope {
                 EnvelopeItem::MonitorCheckIn(check_in) => {
                     serde_json::to_writer(&mut item_buf, check_in)?
                 }
+                EnvelopeItem::Log(log) => serde_json::to_writer(&mut item_buf, log)?,
                 EnvelopeItem::Raw => {
                     continue;
                 }
@@ -362,6 +368,7 @@ impl Envelope {
                 EnvelopeItem::SessionAggregates(_) => "sessions",
                 EnvelopeItem::Transaction(_) => "transaction",
                 EnvelopeItem::MonitorCheckIn(_) => "check_in",
+                EnvelopeItem::Log(_) => "log",
                 EnvelopeItem::Attachment(_) | EnvelopeItem::Raw => unreachable!(),
             };
             writeln!(
@@ -920,7 +927,6 @@ some content
         }
     }
 
-    // Test all possible item types in a single envelope
     #[test]
     fn test_deserialize_serialized() {
         // Event

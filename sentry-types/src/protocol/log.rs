@@ -11,6 +11,15 @@ use crate::utils::ts_seconds_float;
 
 pub use super::trace::*;
 
+/// A Log Envelope Item
+///
+/// See: https://develop.sentry.dev/sdk/data-model/envelope-items/#log
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct LogEnvelopeItem {
+    /// A list of logs
+    pub items: Vec<Log>,
+}
+
 /// Represents a log that can be sent to Sentry.
 ///
 /// See: https://develop.sentry.dev/sdk/telemetry/logs/
