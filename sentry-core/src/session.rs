@@ -191,8 +191,14 @@ mod session_impl {
         transport: TransportArc,
         mode: SessionMode,
         queue: Arc<Mutex<SessionQueue>>,
-        shutdown: Arc<(Mutex<bool>, Condvar)>,
+        status: Arc<(Mutex<Status>, Condvar)>,
         worker: Option<JoinHandle<()>>,
+    }
+
+    enum Status {
+        STARTUP,
+        RUNNING,
+        SHUTDOWN,
     }
 
     impl SessionFlusher {
@@ -200,29 +206,37 @@ mod session_impl {
         pub fn new(transport: TransportArc, mode: SessionMode) -> Self {
             let queue = Arc::new(Mutex::new(Default::default()));
             #[allow(clippy::mutex_atomic)]
-            let shutdown = Arc::new((Mutex::new(false), Condvar::new()));
+            let status = Arc::new((Mutex::new(Status::STARTUP), Condvar::new()));
 
             let worker_transport = transport.clone();
             let worker_queue = queue.clone();
-            let worker_shutdown = shutdown.clone();
+            let worker_status = status.clone();
             let worker = std::thread::Builder::new()
                 .name("sentry-session-flusher".into())
                 .spawn(move || {
-                    let (lock, cvar) = worker_shutdown.as_ref();
-                    let mut shutdown = lock.lock().unwrap();
-                    // check this immediately, in case the main thread is already shutting down
-                    if *shutdown {
-                        return;
+                    let (lock, cvar) = worker_status.as_ref();
+                    {
+                        let mut status = lock.lock().unwrap();
+                        *status = Status::RUNNING;
                     }
+                    cvar.notify_all();
+
                     let mut last_flush = Instant::now();
                     loop {
                         let timeout = FLUSH_INTERVAL
                             .checked_sub(last_flush.elapsed())
                             .unwrap_or_else(|| Duration::from_secs(0));
-                        shutdown = cvar.wait_timeout(shutdown, timeout).unwrap().0;
-                        if *shutdown {
+
+                        let shutdown = {
+                            let (lock, cvar) = worker_status.as_ref();
+                            let mut status = lock.lock().unwrap();
+                            status = cvar.wait_timeout(status, timeout).unwrap().0;
+                            matches!(*status, Status::SHUTDOWN)
+                        };
+                        if shutdown {
                             return;
                         }
+
                         if last_flush.elapsed() < FLUSH_INTERVAL {
                             continue;
                         }
@@ -235,11 +249,19 @@ mod session_impl {
                 })
                 .unwrap();
 
+            let (lock, cvar) = status.as_ref();
+            {
+                let _guard = cvar
+                    .wait_while(lock.lock().unwrap(), |status| {
+                        matches!(*status, Status::STARTUP)
+                    })
+                    .unwrap();
+            }
             Self {
                 transport,
                 mode,
                 queue,
-                shutdown,
+                status,
                 worker: Some(worker),
             }
         }
@@ -355,8 +377,8 @@ mod session_impl {
 
     impl Drop for SessionFlusher {
         fn drop(&mut self) {
-            let (lock, cvar) = self.shutdown.as_ref();
-            *lock.lock().unwrap() = true;
+            let (lock, cvar) = self.status.as_ref();
+            *lock.lock().unwrap() = Status::SHUTDOWN;
             cvar.notify_one();
 
             if let Some(worker) = self.worker.take() {
