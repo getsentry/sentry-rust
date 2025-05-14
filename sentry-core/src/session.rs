@@ -378,6 +378,13 @@ mod session_impl {
     impl Drop for SessionFlusher {
         fn drop(&mut self) {
             let (lock, cvar) = self.status.as_ref();
+            {
+                let _guard = cvar
+                    .wait_while(lock.lock().unwrap(), |status| {
+                        matches!(*status, Status::STARTUP)
+                    })
+                    .unwrap();
+            }
             *lock.lock().unwrap() = Status::SHUTDOWN;
             cvar.notify_one();
 
