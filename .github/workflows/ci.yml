@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - run: rustup component add rustfmt clippy
 
@@ -36,7 +36,7 @@ jobs:
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - uses: Swatinem/rust-cache@v2
 
@@ -53,7 +53,7 @@ jobs:
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - uses: Swatinem/rust-cache@v2
 
@@ -72,7 +72,7 @@ jobs:
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install rust ${{ matrix.rust }} toolchain
         run: |
@@ -90,7 +90,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - run: rustup component add llvm-tools-preview
 
@@ -100,9 +100,10 @@ jobs:
 
       - run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
 
-      - uses: codecov/codecov-action@e156083f13aff6830c92fc5faa23505779fbf649
+      - uses: codecov/codecov-action@v5
         with:
           files: lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   doc:
     name: Build-test documentation
@@ -112,7 +113,7 @@ jobs:
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - run: rustup component add rust-docs
 
