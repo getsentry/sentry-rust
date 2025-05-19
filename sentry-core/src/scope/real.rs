@@ -5,6 +5,8 @@ use std::fmt;
 use std::sync::Mutex;
 use std::sync::{Arc, PoisonError, RwLock};
 
+use sentry_types::protocol::v7::{SpanId, TraceContext, TraceId};
+
 use crate::performance::TransactionOrSpan;
 use crate::protocol::{Attachment, Breadcrumb, Context, Event, Level, Transaction, User, Value};
 #[cfg(feature = "release-health")]
@@ -18,6 +20,12 @@ pub struct Stack {
 }
 
 pub type EventProcessor = Arc<dyn Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync>;
+
+#[derive(Debug, Default, Clone)]
+pub(crate) struct PropagationContext {
+    pub(crate) trace_id: TraceId,
+    pub(crate) span_id: SpanId,
+}
 
 /// Holds contextual data for the current scope.
 ///
@@ -52,6 +60,7 @@ pub struct Scope {
     pub(crate) session: Arc<Mutex<Option<Session>>>,
     pub(crate) span: Arc<Option<TransactionOrSpan>>,
     pub(crate) attachments: Arc<Vec<Attachment>>,
+    pub(crate) propagation_context: PropagationContext,
 }
 
 impl fmt::Debug for Scope {
@@ -74,6 +83,7 @@ impl fmt::Debug for Scope {
         debug_struct
             .field("span", &self.span)
             .field("attachments", &self.attachments.len())
+            .field("propagation_context", &self.propagation_context)
             .finish()
     }
 }
@@ -289,6 +299,8 @@ impl Scope {
 
         if let Some(span) = self.span.as_ref() {
             span.apply_to_event(&mut event);
+        } else {
+            self.apply_propagation_context(&mut event);
         }
 
         if event.transaction.is_none() {
@@ -356,5 +368,18 @@ impl Scope {
         if let Some(session) = self.session.lock().unwrap().as_mut() {
             session.update_from_event(event);
         }
+    }
+
+    pub(crate) fn apply_propagation_context(&self, event: &mut Event<'_>) {
+        if event.contexts.contains_key("trace") {
+            return;
+        }
+
+        let context = TraceContext {
+            trace_id: self.propagation_context.trace_id,
+            span_id: self.propagation_context.span_id,
+            ..Default::default()
+        };
+        event.contexts.insert("trace".into(), context.into());
     }
 }
