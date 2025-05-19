@@ -1149,7 +1149,7 @@ impl Iterator for TraceHeadersIter {
 
 /// A container for distributed tracing metadata that can be extracted from e.g. the `sentry-trace`
 /// HTTP header.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub struct SentryTrace(
     pub(crate) protocol::TraceId,
     pub(crate) protocol::SpanId,

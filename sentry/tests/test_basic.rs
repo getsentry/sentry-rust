@@ -29,7 +29,7 @@ fn test_basic_capture_message() {
 }
 
 #[test]
-fn test_event_propagation_context() {
+fn test_event_trace_context_from_propagation_context() {
     let mut last_event_id = None::<Uuid>;
     let mut span = None;
     let events = sentry::test::with_captured_events(|| {

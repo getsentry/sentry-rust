@@ -21,10 +21,10 @@ pub struct Stack {
 
 pub type EventProcessor = Arc<dyn Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync>;
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Copy)]
 pub(crate) struct PropagationContext {
-    pub(crate) trace_id: TraceId,
-    pub(crate) span_id: SpanId,
+    trace_id: TraceId,
+    span_id: SpanId,
 }
 
 /// Holds contextual data for the current scope.
