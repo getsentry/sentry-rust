@@ -476,6 +476,8 @@ impl TransactionOrSpan {
     }
 
     /// Returns the headers needed for distributed tracing.
+    /// [`crate::Scope::iter_trace_propagation_headers`] is preferred if the intention is to get
+    /// the distributed tracing headers for the currently active span/transaction.
     pub fn iter_headers(&self) -> TraceHeadersIter {
         match self {
             TransactionOrSpan::Transaction(transaction) => transaction.iter_headers(),
@@ -774,6 +776,8 @@ impl Transaction {
     }
 
     /// Returns the headers needed for distributed tracing.
+    /// [`crate::Scope::iter_trace_propagation_headers`] is preferred if the intention is to get
+    /// the distributed tracing headers for the currently active transaction.
     pub fn iter_headers(&self) -> TraceHeadersIter {
         let inner = self.inner.lock().unwrap();
         let trace = SentryTrace(
@@ -1026,6 +1030,8 @@ impl Span {
     }
 
     /// Returns the headers needed for distributed tracing.
+    /// [`crate::Scope::iter_trace_propagation_headers`] is preferred if the intention is to get
+    /// the distributed tracing headers for the currently active span.
     pub fn iter_headers(&self) -> TraceHeadersIter {
         let span = self.span.lock().unwrap();
         let trace = SentryTrace(span.trace_id, span.span_id, Some(self.sampled));
@@ -1130,7 +1136,7 @@ impl Span {
 /// This currently only yields the `sentry-trace` header, but other headers
 /// may be added in the future.
 pub struct TraceHeadersIter {
-    sentry_trace: Option<String>,
+    pub(crate) sentry_trace: Option<String>,
 }
 
 impl Iterator for TraceHeadersIter {
@@ -1144,7 +1150,11 @@ impl Iterator for TraceHeadersIter {
 /// A container for distributed tracing metadata that can be extracted from e.g. the `sentry-trace`
 /// HTTP header.
 #[derive(Debug, PartialEq)]
-pub struct SentryTrace(protocol::TraceId, protocol::SpanId, Option<bool>);
+pub struct SentryTrace(
+    pub(crate) protocol::TraceId,
+    pub(crate) protocol::SpanId,
+    pub(crate) Option<bool>, // sampled
+);
 
 impl SentryTrace {
     /// Creates a new [`SentryTrace`] from the provided parameters

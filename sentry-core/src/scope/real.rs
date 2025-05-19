@@ -11,7 +11,7 @@ use crate::performance::TransactionOrSpan;
 use crate::protocol::{Attachment, Breadcrumb, Context, Event, Level, Transaction, User, Value};
 #[cfg(feature = "release-health")]
 use crate::session::Session;
-use crate::Client;
+use crate::{Client, SentryTrace, TraceHeadersIter};
 
 #[derive(Debug)]
 pub struct Stack {
@@ -381,5 +381,21 @@ impl Scope {
             ..Default::default()
         };
         event.contexts.insert("trace".into(), context.into());
+    }
+
+    /// Returns the headers needed for distributed tracing.
+    pub fn iter_trace_propagation_headers(&self) -> TraceHeadersIter {
+        if let Some(span) = self.get_span() {
+            span.iter_headers()
+        } else {
+            let data = SentryTrace(
+                self.propagation_context.trace_id,
+                self.propagation_context.span_id,
+                None,
+            );
+            TraceHeadersIter {
+                sentry_trace: Some(data.to_string()),
+            }
+        }
     }
 }
