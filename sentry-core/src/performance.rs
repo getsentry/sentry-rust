@@ -778,11 +778,11 @@ impl Transaction {
     /// span's/transaction's distributed tracing headers.
     pub fn iter_headers(&self) -> TraceHeadersIter {
         let inner = self.inner.lock().unwrap();
-        let trace = SentryTrace {
-            trace_id: inner.context.trace_id,
-            span_id: inner.context.span_id,
-            sampled: Some(inner.sampled),
-        };
+        let trace = SentryTrace::new(
+            inner.context.trace_id,
+            inner.context.span_id,
+            Some(inner.sampled),
+        );
         TraceHeadersIter {
             sentry_trace: Some(trace.to_string()),
         }
