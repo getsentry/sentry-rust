@@ -476,8 +476,8 @@ impl TransactionOrSpan {
     }
 
     /// Returns the headers needed for distributed tracing.
-    /// [`crate::Scope::iter_trace_propagation_headers`] is preferred if the intention is to get
-    /// the distributed tracing headers for the currently active span/transaction.
+    /// Use [`crate::Scope::iter_trace_propagation_headers`] to obtain the active 
+    /// span's/transaction's distributed tracing headers.
     pub fn iter_headers(&self) -> TraceHeadersIter {
         match self {
             TransactionOrSpan::Transaction(transaction) => transaction.iter_headers(),
