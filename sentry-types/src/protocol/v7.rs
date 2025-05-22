@@ -1370,7 +1370,7 @@ impl fmt::Display for SpanId {
 
 impl fmt::Debug for SpanId {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "{}", self)
+        write!(fmt, "SpanId({})", self)
     }
 }
 
