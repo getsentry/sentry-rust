@@ -1423,7 +1423,7 @@ impl fmt::Display for TraceId {
 
 impl fmt::Debug for TraceId {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "{}", self)
+        write!(fmt, "TraceId({})", self)
     }
 }
 
