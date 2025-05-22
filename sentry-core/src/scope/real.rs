@@ -5,13 +5,13 @@ use std::fmt;
 use std::sync::Mutex;
 use std::sync::{Arc, PoisonError, RwLock};
 
-use sentry_types::protocol::v7::{SpanId, TraceContext, TraceId};
+use sentry_types::protocol::v7::TraceContext;
 
 use crate::performance::TransactionOrSpan;
 use crate::protocol::{Attachment, Breadcrumb, Context, Event, Level, Transaction, User, Value};
 #[cfg(feature = "release-health")]
 use crate::session::Session;
-use crate::{Client, SentryTrace, TraceHeadersIter};
+use crate::{Client, SentryTrace, TraceHeader, TraceHeadersIter};
 
 #[derive(Debug)]
 pub struct Stack {
@@ -20,12 +20,6 @@ pub struct Stack {
 }
 
 pub type EventProcessor = Arc<dyn Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync>;
-
-#[derive(Debug, Default, Clone, Copy)]
-pub(crate) struct PropagationContext {
-    trace_id: TraceId,
-    span_id: SpanId,
-}
 
 /// Holds contextual data for the current scope.
 ///
@@ -60,7 +54,7 @@ pub struct Scope {
     pub(crate) session: Arc<Mutex<Option<Session>>>,
     pub(crate) span: Arc<Option<TransactionOrSpan>>,
     pub(crate) attachments: Arc<Vec<Attachment>>,
-    pub(crate) propagation_context: PropagationContext,
+    pub(crate) propagation_context: SentryTrace,
 }
 
 impl fmt::Debug for Scope {
@@ -384,18 +378,16 @@ impl Scope {
     }
 
     /// Returns the headers needed for distributed tracing.
-    pub fn iter_trace_propagation_headers(&self) -> TraceHeadersIter {
+    pub fn iter_trace_propagation_headers(&self) -> impl Iterator<Item = TraceHeader> {
         if let Some(span) = self.get_span() {
             span.iter_headers()
         } else {
-            let data = SentryTrace(
+            let data = SentryTrace::new(
                 self.propagation_context.trace_id,
                 self.propagation_context.span_id,
                 None,
             );
-            TraceHeadersIter {
-                sentry_trace: Some(data.to_string()),
-            }
+            TraceHeadersIter::new(data.to_string())
         }
     }
 }
