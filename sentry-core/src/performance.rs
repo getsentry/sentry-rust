@@ -1030,8 +1030,8 @@ impl Span {
     }
 
     /// Returns the headers needed for distributed tracing.
-    /// [`crate::Scope::iter_trace_propagation_headers`] is preferred if the intention is to get
-    /// the distributed tracing headers for the currently active span.
+    /// Use [`crate::Scope::iter_trace_propagation_headers`] to obtain the active 
+    /// span's/transaction's distributed tracing headers.
     pub fn iter_headers(&self) -> TraceHeadersIter {
         let span = self.span.lock().unwrap();
         let trace = SentryTrace(span.trace_id, span.span_id, Some(self.sampled));
