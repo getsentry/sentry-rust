@@ -47,7 +47,6 @@ tracing = ["sentry-tracing"]
 opentelemetry = ["sentry-opentelemetry"]
 # other features
 test = ["sentry-core/test"]
-debug-logs = ["dep:log", "sentry-core/debug-logs"]
 release-health = ["sentry-core/release-health", "sentry-actix?/release-health"]
 # transports
 transport = ["reqwest", "native-tls"]

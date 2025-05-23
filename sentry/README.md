@@ -76,7 +76,6 @@ extra setup to function properly.
 | `test`            |         |                |            |                                                                                          |
 | `debug-images`    | ✅      | 🔌             |            |                                                                                          |
 | `log`             |         | 🔌             |            | Requires extra setup; See [`sentry-log`]'s documentation.                                |
-| `debug-logs`      |         |                | ❗         | Requires extra setup; See [`sentry-log`]'s documentation.                                |
 | `slog`            |         | 🔌             |            | Requires extra setup; See [`sentry-slog`]'s documentation.                               |
 | `reqwest`         | ✅      |                |            |                                                                                          |
 | `native-tls`      | ✅      |                |            | `reqwest` must be enabled.                                                               |
@@ -110,7 +109,6 @@ extra setup to function properly.
 ### Logging
 - `log`: Enables support for the `log` crate.
 - `slog`: Enables support for the `slog` crate.
-- `debug-logs`: **Deprecated**. Uses the `log` crate for internal logging.
 
 ### Transports
 - `reqwest`: **Default**. Enables the `reqwest` transport.
