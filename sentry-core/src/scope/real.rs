@@ -5,11 +5,13 @@ use std::fmt;
 use std::sync::Mutex;
 use std::sync::{Arc, PoisonError, RwLock};
 
+use sentry_types::protocol::v7::TraceContext;
+
 use crate::performance::TransactionOrSpan;
 use crate::protocol::{Attachment, Breadcrumb, Context, Event, Level, Transaction, User, Value};
 #[cfg(feature = "release-health")]
 use crate::session::Session;
-use crate::Client;
+use crate::{Client, SentryTrace, TraceHeader, TraceHeadersIter};
 
 #[derive(Debug)]
 pub struct Stack {
@@ -52,6 +54,7 @@ pub struct Scope {
     pub(crate) session: Arc<Mutex<Option<Session>>>,
     pub(crate) span: Arc<Option<TransactionOrSpan>>,
     pub(crate) attachments: Arc<Vec<Attachment>>,
+    pub(crate) propagation_context: SentryTrace,
 }
 
 impl fmt::Debug for Scope {
@@ -74,6 +77,7 @@ impl fmt::Debug for Scope {
         debug_struct
             .field("span", &self.span)
             .field("attachments", &self.attachments.len())
+            .field("propagation_context", &self.propagation_context)
             .finish()
     }
 }
@@ -289,6 +293,8 @@ impl Scope {
 
         if let Some(span) = self.span.as_ref() {
             span.apply_to_event(&mut event);
+        } else {
+            self.apply_propagation_context(&mut event);
         }
 
         if event.transaction.is_none() {
@@ -355,6 +361,33 @@ impl Scope {
         #[cfg(feature = "release-health")]
         if let Some(session) = self.session.lock().unwrap().as_mut() {
             session.update_from_event(event);
+        }
+    }
+
+    pub(crate) fn apply_propagation_context(&self, event: &mut Event<'_>) {
+        if event.contexts.contains_key("trace") {
+            return;
+        }
+
+        let context = TraceContext {
+            trace_id: self.propagation_context.trace_id,
+            span_id: self.propagation_context.span_id,
+            ..Default::default()
+        };
+        event.contexts.insert("trace".into(), context.into());
+    }
+
+    /// Returns the headers needed for distributed tracing.
+    pub fn iter_trace_propagation_headers(&self) -> impl Iterator<Item = TraceHeader> {
+        if let Some(span) = self.get_span() {
+            span.iter_headers()
+        } else {
+            let data = SentryTrace::new(
+                self.propagation_context.trace_id,
+                self.propagation_context.span_id,
+                None,
+            );
+            TraceHeadersIter::new(data.to_string())
         }
     }
 }
