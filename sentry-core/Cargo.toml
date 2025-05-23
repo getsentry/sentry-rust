@@ -29,8 +29,6 @@ test = ["client", "release-health"]
 release-health = []
 
 [dependencies]
-cadence = { version = "1.4.0", optional = true }
-crc32fast = { version = "1.4.0", optional = true }
 log = { version = "0.4.8", optional = true, features = ["std"] }
 rand = { version = "0.9.0", optional = true }
 regex = { version = "1.7.3", optional = true }
