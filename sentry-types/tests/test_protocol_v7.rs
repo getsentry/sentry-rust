@@ -1537,8 +1537,8 @@ mod test_logs {
                 r#"{"value":42,"type":"integer"}"#,
             ),
             (
-                LogAttribute(Value::from(3.14)),
-                r#"{"value":3.14,"type":"double"}"#,
+                LogAttribute(Value::from(3.1)),
+                r#"{"value":3.1,"type":"double"}"#,
             ),
             (
                 LogAttribute(Value::from("lol")),
@@ -1573,7 +1573,7 @@ mod test_logs {
     fn test_log_attribute_roundtrip() {
         let attributes = vec![
             LogAttribute(Value::from(42)),
-            LogAttribute(Value::from(3.14)),
+            LogAttribute(Value::from(3.1)),
             LogAttribute(Value::from("lol")),
             LogAttribute(Value::from(false)),
         ];

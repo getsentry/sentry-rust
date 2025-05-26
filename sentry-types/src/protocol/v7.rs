@@ -16,7 +16,6 @@ use std::str;
 use std::time::SystemTime;
 
 use self::debugid::{CodeId, DebugId};
-use serde::de::Unexpected;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
 
@@ -2119,6 +2118,7 @@ pub enum ItemsContainer {
     Logs(Vec<LogItem>),
 }
 
+#[allow(clippy::len_without_is_empty, reason = "is_empty is not needed")]
 impl ItemsContainer {
     /// Returns the number of items in this container.
     pub fn len(&self) -> usize {
