@@ -298,8 +298,6 @@ impl Client {
                     }
                 }
 
-                dbg!(&envelope);
-
                 transport.send_envelope(envelope);
                 return event_id;
             }
@@ -309,7 +307,6 @@ impl Client {
 
     /// Sends the specified [`Envelope`] to sentry.
     pub fn send_envelope(&self, envelope: Envelope) {
-        dbg!(&envelope);
         if let Some(ref transport) = *self.transport.read().unwrap() {
             transport.send_envelope(envelope);
         }
