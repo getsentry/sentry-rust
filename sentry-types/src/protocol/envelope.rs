@@ -74,15 +74,10 @@ enum EnvelopeItemType {
 struct EnvelopeItemHeader {
     r#type: EnvelopeItemType,
     length: Option<usize>,
-
-    content_type: Option<String>, // Applies (only) to both Attachment and ItemsContainer Item type
-
     // Fields below apply only to Attachment Item type
     filename: Option<String>,
     attachment_type: Option<AttachmentType>,
-
-    // Field below applies only to ItemsContainer Item type
-    item_count: Option<usize>,
+    content_type: Option<String>,
 }
 
 /// An Envelope Item.
