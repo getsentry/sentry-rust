@@ -1523,3 +1523,64 @@ fn test_orientation() {
         "\"portrait\""
     );
 }
+
+mod test_logs {
+    use sentry_types::protocol::v7::LogAttribute;
+    use serde_json::{json, Value};
+
+    #[test]
+    fn test_log_attribute_serialization() {
+        let attributes = vec![
+            // Supported types
+            (
+                LogAttribute(Value::from(42)),
+                r#"{"value":42,"type":"integer"}"#,
+            ),
+            (
+                LogAttribute(Value::from(3.14)),
+                r#"{"value":3.14,"type":"double"}"#,
+            ),
+            (
+                LogAttribute(Value::from("lol")),
+                r#"{"value":"lol","type":"string"}"#,
+            ),
+            (
+                LogAttribute(Value::from(false)),
+                r#"{"value":false,"type":"boolean"}"#,
+            ),
+            // Special case
+            (
+                LogAttribute(Value::Null),
+                r#"{"value":"null","type":"string"}"#,
+            ),
+            // Unsupported types (for now)
+            (
+                LogAttribute(json!(r#"[1,2,3,4]"#)),
+                r#"{"value":"[1,2,3,4]","type":"string"}"#,
+            ),
+            (
+                LogAttribute(json!(r#"["a","b","c"]"#)),
+                r#"{"value":"[\"a\",\"b\",\"c\"]","type":"string"}"#,
+            ),
+        ];
+        for (attribute, expected) in attributes {
+            let actual = serde_json::to_string(&attribute).unwrap();
+            assert_eq!(expected, actual);
+        }
+    }
+
+    #[test]
+    fn test_log_attribute_roundtrip() {
+        let attributes = vec![
+            LogAttribute(Value::from(42)),
+            LogAttribute(Value::from(3.14)),
+            LogAttribute(Value::from("lol")),
+            LogAttribute(Value::from(false)),
+        ];
+        for expected in attributes {
+            let serialized = serde_json::to_string(&expected).unwrap();
+            let actual: LogAttribute = serde_json::from_str(&serialized).unwrap();
+            assert_eq!(expected, actual);
+        }
+    }
+}

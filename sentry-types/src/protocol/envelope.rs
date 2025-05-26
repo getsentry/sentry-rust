@@ -4,7 +4,7 @@ use serde::Deserialize;
 use thiserror::Error;
 use uuid::Uuid;
 
-use super::v7 as protocol;
+use super::v7::{self as protocol, ItemsContainer};
 
 use protocol::{
     Attachment, AttachmentType, Event, MonitorCheckIn, SessionAggregates, SessionUpdate,
@@ -61,9 +61,12 @@ enum EnvelopeItemType {
     /// An Attachment Item type.
     #[serde(rename = "attachment")]
     Attachment,
-    /// A Monitor Check In Item Type
+    /// A Monitor Check In Item Type.
     #[serde(rename = "check_in")]
     MonitorCheckIn,
+    /// A Log Items Type.
+    #[serde(rename = "log")]
+    Log,
 }
 
 /// An Envelope Item Header.
@@ -71,10 +74,15 @@ enum EnvelopeItemType {
 struct EnvelopeItemHeader {
     r#type: EnvelopeItemType,
     length: Option<usize>,
+
+    content_type: Option<String>, // Applies (only) to both Attachment and ItemsContainer Item type
+
     // Fields below apply only to Attachment Item type
     filename: Option<String>,
     attachment_type: Option<AttachmentType>,
-    content_type: Option<String>,
+
+    // Field below applies only to ItemsContainer Item type
+    item_count: Option<usize>,
 }
 
 /// An Envelope Item.
@@ -112,6 +120,11 @@ pub enum EnvelopeItem {
     Attachment(Attachment),
     /// A MonitorCheckIn item.
     MonitorCheckIn(MonitorCheckIn),
+    /// A log item.
+    ///
+    /// See the [Log Item documentation](https://develop.sentry.dev/sdk/telemetry/logs/#log-envelope-item)
+    /// for more details.
+    ItemsContainer(ItemsContainer),
     /// This is a sentinel item used to `filter` raw envelopes.
     Raw,
     // TODO:
@@ -151,6 +164,12 @@ impl From<Attachment> for EnvelopeItem {
 impl From<MonitorCheckIn> for EnvelopeItem {
     fn from(check_in: MonitorCheckIn) -> Self {
         EnvelopeItem::MonitorCheckIn(check_in)
+    }
+}
+
+impl From<ItemsContainer> for EnvelopeItem {
+    fn from(container: ItemsContainer) -> Self {
+        EnvelopeItem::ItemsContainer(container)
     }
 }
 
@@ -352,6 +371,7 @@ impl Envelope {
                 EnvelopeItem::MonitorCheckIn(check_in) => {
                     serde_json::to_writer(&mut item_buf, check_in)?
                 }
+                EnvelopeItem::ItemsContainer(items) => serde_json::to_writer(&mut item_buf, items)?,
                 EnvelopeItem::Raw => {
                     continue;
                 }
@@ -362,14 +382,26 @@ impl Envelope {
                 EnvelopeItem::SessionAggregates(_) => "sessions",
                 EnvelopeItem::Transaction(_) => "transaction",
                 EnvelopeItem::MonitorCheckIn(_) => "check_in",
+                EnvelopeItem::ItemsContainer(container) => container.items_type(),
                 EnvelopeItem::Attachment(_) | EnvelopeItem::Raw => unreachable!(),
             };
-            writeln!(
-                writer,
-                r#"{{"type":"{}","length":{}}}"#,
-                item_type,
-                item_buf.len()
-            )?;
+
+            if let EnvelopeItem::ItemsContainer(container) = item {
+                writeln!(
+                    writer,
+                    r#"{{"type":"{}","item_count":{},"content_type":"{}"}}"#,
+                    item_type,
+                    container.len(),
+                    container.content_type()
+                )?;
+            } else {
+                writeln!(
+                    writer,
+                    r#"{{"type":"{}","length":{}}}"#,
+                    item_type,
+                    item_buf.len()
+                )?;
+            }
             writer.write_all(&item_buf)?;
             writeln!(writer)?;
             item_buf.clear();
@@ -506,6 +538,8 @@ impl Envelope {
             EnvelopeItemType::MonitorCheckIn => {
                 serde_json::from_slice(payload).map(EnvelopeItem::MonitorCheckIn)
             }
+            EnvelopeItemType::Log => serde_json::from_slice(payload)
+                .map(|logs| EnvelopeItem::ItemsContainer(ItemsContainer::Logs(logs))),
         }
         .map_err(EnvelopeError::InvalidItemPayload)?;
 
