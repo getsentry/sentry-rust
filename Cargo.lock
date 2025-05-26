@@ -3228,7 +3228,6 @@ dependencies = [
  "log",
  "rand 0.9.0",
  "rayon",
- "regex",
  "sentry",
  "sentry-types",
  "serde",
