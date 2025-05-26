@@ -115,9 +115,9 @@ pub enum EnvelopeItem {
     Attachment(Attachment),
     /// A MonitorCheckIn item.
     MonitorCheckIn(MonitorCheckIn),
-    /// A log item.
+    /// A container for multiple batched items.
     ///
-    /// See the [Log Item documentation](https://develop.sentry.dev/sdk/telemetry/logs/#log-envelope-item)
+    /// Currently, this is only used for logs. See the [Log Item documentation](https://develop.sentry.dev/sdk/telemetry/logs/#log-envelope-item)
     /// for more details.
     ItemsContainer(ItemsContainer),
     /// This is a sentinel item used to `filter` raw envelopes.
