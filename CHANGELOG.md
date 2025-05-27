@@ -1,5 +1,12 @@
 # Changelog
 
+### Unreleased
+
+### Breaking changes
+
+- refactor: remove `debug-logs` feature (#820) by @lcian
+  - The deprecated `debug-logs` feature of the `sentry` crate has been removed.
+
 ## 0.38.1
 
 ### Fixes
