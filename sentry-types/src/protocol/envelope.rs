@@ -565,13 +565,15 @@ mod test {
     use std::str::FromStr;
     use std::time::{Duration, SystemTime};
 
+    use protocol::Map;
+    use serde_json::Value;
     use time::format_description::well_known::Rfc3339;
     use time::OffsetDateTime;
 
     use super::*;
     use crate::protocol::v7::{
-        Level, MonitorCheckInStatus, MonitorConfig, MonitorSchedule, SessionAttributes,
-        SessionStatus, Span,
+        Level, LogAttribute, LogItem, MonitorCheckInStatus, MonitorConfig, MonitorSchedule,
+        SessionAttributes, SessionStatus, Span,
     };
 
     fn to_str(envelope: Envelope) -> String {
@@ -998,12 +1000,39 @@ some content
             ..Default::default()
         };
 
+        let mut attributes = Map::new();
+        attributes.insert("key".into(), Value::from("value").into());
+        attributes.insert("num".into(), Value::from(10).into());
+        attributes.insert("val".into(), Value::from(10.2).into());
+        attributes.insert("bool".into(), Value::from(false).into());
+        let mut attributes_2 = attributes.clone();
+        attributes_2.insert("more".into(), Value::from(true).into());
+        let logs = ItemsContainer::Logs(vec![
+            LogItem {
+                level: protocol::LogLevel::Warn,
+                body: "test".to_owned(),
+                trace_id: "335e53d614474acc9f89e632b776cc28".parse().unwrap(),
+                timestamp: timestamp("2022-07-25T14:51:14.296Z"),
+                severity_number: 10,
+                attributes,
+            },
+            LogItem {
+                level: protocol::LogLevel::Error,
+                body: "a body".to_owned(),
+                trace_id: "332253d614472a2c9f89e232b7762c28".parse().unwrap(),
+                timestamp: timestamp("2021-07-21T14:51:14.296Z"),
+                severity_number: 10,
+                attributes: attributes_2,
+            },
+        ]);
+
         let mut envelope: Envelope = Envelope::new();
 
         envelope.add_item(event);
         envelope.add_item(transaction);
         envelope.add_item(session);
         envelope.add_item(attachment);
+        envelope.add_item(logs);
 
         let serialized = to_str(envelope);
         let deserialized = Envelope::from_slice(serialized.as_bytes()).unwrap();
