@@ -589,7 +589,7 @@ mod tests {
                     // Current hub should have no events
                     _assert_hub_no_events();
 
-                    Err(io::Error::new(io::ErrorKind::Other, "Test Error").into())
+                    Err(io::Error::other("Test Error").into())
                 }
 
                 let app = init_service(
@@ -652,7 +652,7 @@ mod tests {
                 async fn original_transaction(_req: HttpRequest) -> Result<String, Error> {
                     // Override transaction name
                     sentry::configure_scope(|scope| scope.set_transaction(Some("new_transaction")));
-                    Err(io::Error::new(io::ErrorKind::Other, "Test Error").into())
+                    Err(io::Error::other("Test Error").into())
                 }
 
                 let app = init_service(

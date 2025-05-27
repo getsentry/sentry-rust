@@ -11,7 +11,7 @@ async fn healthy(_req: HttpRequest) -> Result<String, Error> {
 
 #[get("/err")]
 async fn errors(_req: HttpRequest) -> Result<String, Error> {
-    Err(io::Error::new(io::ErrorKind::Other, "An error happens here").into())
+    Err(io::Error::other("An error happens here").into())
 }
 
 #[get("/msg")]
