@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- feat(logs): add log protocol types (#821) by @lcian
+  - Basic types for [Sentry structured logs](https://docs.sentry.io/product/explore/logs/) have been added.
+  - It's possible to use them to send logs to Sentry by directly constructing an `Envelope` containing an `ItemsContainer::Logs` item and sending it through `Client::send_envelope`.
+  - A high-level API and integrations will come in the next release.
+
 ## 0.38.1
 
 ### Fixes
