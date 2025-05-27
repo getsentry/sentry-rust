@@ -12,7 +12,7 @@
 - feat(core): implement Tracing without Performance (#811) by @lcian
   - The SDK now implements Tracing without Performance, which makes it so that each `Scope` is associated with an object holding some tracing information.
   - This information is used as a fallback when capturing an event with tracing disabled or otherwise no ongoing span, to still allow related events to be linked by a trace.
-  - A new API `Scope::iter_trace_propagation_headers` has been provided that will use the fallback tracing information if there is no current `Span`.
+  - A new API `Scope::iter_trace_propagation_headers` has been provided that will use the fallback tracing information if there is no current `Span` on the `Scope`.
 
 ## 0.38.1
 
