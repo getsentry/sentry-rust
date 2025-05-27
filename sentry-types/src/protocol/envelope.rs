@@ -572,8 +572,8 @@ mod test {
 
     use super::*;
     use crate::protocol::v7::{
-        Level, LogItem, MonitorCheckInStatus, MonitorConfig, MonitorSchedule,
-        SessionAttributes, SessionStatus, Span,
+        Level, LogItem, MonitorCheckInStatus, MonitorConfig, MonitorSchedule, SessionAttributes,
+        SessionStatus, Span,
     };
 
     fn to_str(envelope: Envelope) -> String {
