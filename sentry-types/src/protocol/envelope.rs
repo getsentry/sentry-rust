@@ -572,7 +572,7 @@ mod test {
 
     use super::*;
     use crate::protocol::v7::{
-        Level, LogAttribute, LogItem, MonitorCheckInStatus, MonitorConfig, MonitorSchedule,
+        Level, LogItem, MonitorCheckInStatus, MonitorConfig, MonitorSchedule,
         SessionAttributes, SessionStatus, Span,
     };
 
