@@ -475,7 +475,7 @@ impl TransactionOrSpan {
 
     /// Returns the headers needed for distributed tracing.
     /// Use [`crate::Scope::iter_trace_propagation_headers`] to obtain the active
-    /// span's/transaction's distributed tracing headers.
+    /// trace's distributed tracing headers.
     pub fn iter_headers(&self) -> TraceHeadersIter {
         match self {
             TransactionOrSpan::Transaction(transaction) => transaction.iter_headers(),
@@ -775,7 +775,7 @@ impl Transaction {
 
     /// Returns the headers needed for distributed tracing.
     /// Use [`crate::Scope::iter_trace_propagation_headers`] to obtain the active
-    /// span's/transaction's distributed tracing headers.
+    /// trace's distributed tracing headers.
     pub fn iter_headers(&self) -> TraceHeadersIter {
         let inner = self.inner.lock().unwrap();
         let trace = SentryTrace::new(
@@ -1029,7 +1029,7 @@ impl Span {
 
     /// Returns the headers needed for distributed tracing.
     /// Use [`crate::Scope::iter_trace_propagation_headers`] to obtain the active
-    /// span's/transaction's distributed tracing headers.
+    /// trace's distributed tracing headers.
     pub fn iter_headers(&self) -> TraceHeadersIter {
         let span = self.span.lock().unwrap();
         let trace = SentryTrace::new(span.trace_id, span.span_id, Some(self.sampled));
@@ -1141,7 +1141,7 @@ pub struct TraceHeadersIter {
 }
 
 impl TraceHeadersIter {
-    #[cfg_attr(not(feature = "client"), allow(dead_code))]
+    #[cfg(feature = "client")]
     pub(crate) fn new(sentry_trace: String) -> Self {
         Self {
             sentry_trace: Some(sentry_trace),
