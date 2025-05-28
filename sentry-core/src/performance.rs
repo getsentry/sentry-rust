@@ -199,14 +199,12 @@ impl TransactionContext {
         sentry_trace: &SentryTrace,
         span_id: Option<SpanId>,
     ) -> Self {
-        let (trace_id, parent_span_id, sampled) =
-            (sentry_trace.0, Some(sentry_trace.1), sentry_trace.2);
         Self {
             name: name.into(),
             op: op.into(),
-            trace_id,
-            parent_span_id,
-            sampled,
+            trace_id: sentry_trace.trace_id,
+            parent_span_id: Some(sentry_trace.span_id),
+            sampled: sentry_trace.sampled,
             span_id: span_id.unwrap_or_default(),
             custom: None,
         }
@@ -476,6 +474,8 @@ impl TransactionOrSpan {
     }
 
     /// Returns the headers needed for distributed tracing.
+    /// Use [`crate::Scope::iter_trace_propagation_headers`] to obtain the active
+    /// trace's distributed tracing headers.
     pub fn iter_headers(&self) -> TraceHeadersIter {
         match self {
             TransactionOrSpan::Transaction(transaction) => transaction.iter_headers(),
@@ -774,9 +774,11 @@ impl Transaction {
     }
 
     /// Returns the headers needed for distributed tracing.
+    /// Use [`crate::Scope::iter_trace_propagation_headers`] to obtain the active
+    /// trace's distributed tracing headers.
     pub fn iter_headers(&self) -> TraceHeadersIter {
         let inner = self.inner.lock().unwrap();
-        let trace = SentryTrace(
+        let trace = SentryTrace::new(
             inner.context.trace_id,
             inner.context.span_id,
             Some(inner.sampled),
@@ -1026,9 +1028,11 @@ impl Span {
     }
 
     /// Returns the headers needed for distributed tracing.
+    /// Use [`crate::Scope::iter_trace_propagation_headers`] to obtain the active
+    /// trace's distributed tracing headers.
     pub fn iter_headers(&self) -> TraceHeadersIter {
         let span = self.span.lock().unwrap();
-        let trace = SentryTrace(span.trace_id, span.span_id, Some(self.sampled));
+        let trace = SentryTrace::new(span.trace_id, span.span_id, Some(self.sampled));
         TraceHeadersIter {
             sentry_trace: Some(trace.to_string()),
         }
@@ -1125,12 +1129,24 @@ impl Span {
     }
 }
 
+/// Represents a key-value pair such as an HTTP header.
+pub type TraceHeader = (&'static str, String);
+
 /// An Iterator over HTTP header names and values needed for distributed tracing.
 ///
 /// This currently only yields the `sentry-trace` header, but other headers
 /// may be added in the future.
 pub struct TraceHeadersIter {
     sentry_trace: Option<String>,
+}
+
+impl TraceHeadersIter {
+    #[cfg(feature = "client")]
+    pub(crate) fn new(sentry_trace: String) -> Self {
+        Self {
+            sentry_trace: Some(sentry_trace),
+        }
+    }
 }
 
 impl Iterator for TraceHeadersIter {
@@ -1143,8 +1159,12 @@ impl Iterator for TraceHeadersIter {
 
 /// A container for distributed tracing metadata that can be extracted from e.g. the `sentry-trace`
 /// HTTP header.
-#[derive(Debug, PartialEq)]
-pub struct SentryTrace(protocol::TraceId, protocol::SpanId, Option<bool>);
+#[derive(Debug, PartialEq, Clone, Copy, Default)]
+pub struct SentryTrace {
+    pub(crate) trace_id: protocol::TraceId,
+    pub(crate) span_id: protocol::SpanId,
+    pub(crate) sampled: Option<bool>,
+}
 
 impl SentryTrace {
     /// Creates a new [`SentryTrace`] from the provided parameters
@@ -1153,7 +1173,11 @@ impl SentryTrace {
         span_id: protocol::SpanId,
         sampled: Option<bool>,
     ) -> Self {
-        SentryTrace(trace_id, span_id, sampled)
+        SentryTrace {
+            trace_id,
+            span_id,
+            sampled,
+        }
     }
 }
 
@@ -1169,7 +1193,7 @@ fn parse_sentry_trace(header: &str) -> Option<SentryTrace> {
         _ => None,
     });
 
-    Some(SentryTrace(trace_id, parent_span_id, parent_sampled))
+    Some(SentryTrace::new(trace_id, parent_span_id, parent_sampled))
 }
 
 /// Extracts distributed tracing metadata from headers (or, generally, key-value pairs),
@@ -1189,8 +1213,8 @@ pub fn parse_headers<'a, I: IntoIterator<Item = (&'a str, &'a str)>>(
 
 impl std::fmt::Display for SentryTrace {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}-{}", self.0, self.1)?;
-        if let Some(sampled) = self.2 {
+        write!(f, "{}-{}", self.trace_id, self.span_id)?;
+        if let Some(sampled) = self.sampled {
             write!(f, "-{}", if sampled { '1' } else { '0' })?;
         }
         Ok(())
@@ -1211,10 +1235,10 @@ mod tests {
         let trace = parse_sentry_trace("09e04486820349518ac7b5d2adbf6ba5-9cf635fa5b870b3a-0");
         assert_eq!(
             trace,
-            Some(SentryTrace(trace_id, parent_trace_id, Some(false)))
+            Some(SentryTrace::new(trace_id, parent_trace_id, Some(false)))
         );
 
-        let trace = SentryTrace(Default::default(), Default::default(), None);
+        let trace = SentryTrace::new(Default::default(), Default::default(), None);
         let parsed = parse_sentry_trace(&trace.to_string());
         assert_eq!(parsed, Some(trace));
     }
@@ -1233,8 +1257,11 @@ mod tests {
         let header = span.iter_headers().next().unwrap().1;
         let parsed = parse_sentry_trace(&header).unwrap();
 
-        assert_eq!(&parsed.0.to_string(), "09e04486820349518ac7b5d2adbf6ba5");
-        assert_eq!(parsed.2, Some(true));
+        assert_eq!(
+            &parsed.trace_id.to_string(),
+            "09e04486820349518ac7b5d2adbf6ba5"
+        );
+        assert_eq!(parsed.sampled, Some(true));
     }
 
     #[test]

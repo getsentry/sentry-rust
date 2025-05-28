@@ -2,10 +2,24 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- refactor: remove `debug-logs` feature (#820) by @lcian
+  - The deprecated `debug-logs` feature of the `sentry` crate, used for the SDK's own internal logging, has been removed.
+
+### Behavioral changes
+
+- feat(core): implement Tracing without Performance (#811) by @lcian
+  - The SDK now implements Tracing without Performance, which makes it so that each `Scope` is associated with an object holding some tracing information.
+  - This information is used as a fallback when capturing an event with tracing disabled or otherwise no ongoing span, to still allow related events to be linked by a trace.
+  - A new API `Scope::iter_trace_propagation_headers` has been provided that will use the fallback tracing information if there is no current `Span` on the `Scope`.
+
+### Features
+
 - feat(logs): add log protocol types (#821) by @lcian
   - Basic types for [Sentry structured logs](https://docs.sentry.io/product/explore/logs/) have been added.
-  - It's possible to use them to send logs to Sentry by directly constructing an `Envelope` containing an `ItemsContainer::Logs` item and sending it through `Client::send_envelope`.
-  - A high-level API and integrations will come in the next release.
+  - It's possible to use them to send logs to Sentry by directly constructing an `Envelope` containing an `ItemContainer::Logs` envelope item and sending it through `Client::send_envelope`.
+  - A high-level API and integrations will come soon.
 
 ## 0.38.1
 

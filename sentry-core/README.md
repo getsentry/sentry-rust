@@ -95,9 +95,6 @@ functionality.
 - `feature = "test"`: Activates the [`test`] module, which can be used to
   write integration tests. It comes with a test transport which can capture
   all sent events for inspection.
-- `feature = "debug-logs"`: Uses the `log` crate for debug output, instead
-  of printing to `stderr`. This feature is **deprecated** and will be
-  replaced by a dedicated log callback in the future.
 
 [Sentry]: https://sentry.io/
 [`sentry`]: https://crates.io/crates/sentry

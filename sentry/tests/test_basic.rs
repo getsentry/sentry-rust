@@ -3,7 +3,7 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
-use sentry::protocol::{Attachment, EnvelopeItem};
+use sentry::protocol::{Attachment, Context, EnvelopeItem};
 use sentry::types::Uuid;
 
 #[test]
@@ -26,6 +26,25 @@ fn test_basic_capture_message() {
     );
 
     assert_eq!(Some(event.event_id), last_event_id);
+}
+
+#[test]
+fn test_event_trace_context_from_propagation_context() {
+    let mut last_event_id = None::<Uuid>;
+    let mut span = None;
+    let events = sentry::test::with_captured_events(|| {
+        sentry::configure_scope(|scope| {
+            span = scope.get_span();
+        });
+        sentry::capture_message("Hello World!", sentry::Level::Warning);
+        last_event_id = sentry::last_event_id();
+    });
+    assert_eq!(events.len(), 1);
+    let event = events.into_iter().next().unwrap();
+
+    let trace_context = event.contexts.get("trace");
+    assert!(span.is_none());
+    assert!(matches!(trace_context, Some(Context::Trace(_))));
 }
 
 #[test]

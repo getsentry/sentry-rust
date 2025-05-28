@@ -1352,7 +1352,7 @@ pub struct OtelContext {
 }
 
 /// Holds the identifier for a Span
-#[derive(Serialize, Deserialize, Debug, Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Serialize, Deserialize, Copy, Clone, Eq, PartialEq, Hash)]
 #[serde(try_from = "String", into = "String")]
 pub struct SpanId([u8; 8]);
 
@@ -1365,6 +1365,12 @@ impl Default for SpanId {
 impl fmt::Display for SpanId {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "{}", hex::encode(self.0))
+    }
+}
+
+impl fmt::Debug for SpanId {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "SpanId({})", self)
     }
 }
 
@@ -1399,7 +1405,7 @@ impl From<[u8; 8]> for SpanId {
 }
 
 /// Holds the identifier for a Trace
-#[derive(Serialize, Deserialize, Debug, Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Serialize, Deserialize, Copy, Clone, Eq, PartialEq, Hash)]
 #[serde(try_from = "String", into = "String")]
 pub struct TraceId([u8; 16]);
 
@@ -1412,6 +1418,12 @@ impl Default for TraceId {
 impl fmt::Display for TraceId {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "{}", hex::encode(self.0))
+    }
+}
+
+impl fmt::Debug for TraceId {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "TraceId({})", self)
     }
 }
 
