@@ -247,7 +247,7 @@ impl Hub {
     }
 
     /// Captures a log with the given message, level and optional additional attributes.
-    #[cfg(feature = "logs")]
+    #[cfg(feature = "UNSTABLE_logs")]
     pub fn capture_log(
         &self,
         message: &str,

@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use crate::constants::USER_AGENT;
 use crate::performance::TracesSampler;
-#[cfg(feature = "logs")]
+#[cfg(feature = "UNSTABLE_logs")]
 use crate::protocol::Log;
 use crate::protocol::{Breadcrumb, Event};
 use crate::types::Dsn;
@@ -147,7 +147,7 @@ pub struct ClientOptions {
     /// Callback that is executed for each Breadcrumb being added.
     pub before_breadcrumb: Option<BeforeCallback<Breadcrumb>>,
     /// Callback that is executed for each Log being added.
-    #[cfg(feature = "logs")]
+    #[cfg(feature = "UNSTABLE_logs")]
     pub before_send_log: Option<BeforeCallback<Log>>,
     // Transport options
     /// The transport to use.
@@ -172,7 +172,7 @@ pub struct ClientOptions {
     pub max_request_body_size: MaxRequestBodySize,
     /// Determines whether logs captured through the API/integrations should be sent to Sentry.
     /// (defaults to false)
-    #[cfg(feature = "logs")]
+    #[cfg(feature = "UNSTABLE_logs")]
     pub enable_logs: bool,
     // Other options not documented in Unified API
     /// Disable SSL verification.
@@ -233,7 +233,7 @@ impl fmt::Debug for ClientOptions {
         #[derive(Debug)]
         struct BeforeBreadcrumb;
         let before_breadcrumb = self.before_breadcrumb.as_ref().map(|_| BeforeBreadcrumb);
-        #[cfg(feature = "logs")]
+        #[cfg(feature = "UNSTABLE_logs")]
         let before_send_log = {
             #[derive(Debug)]
             struct BeforeSendLog;
@@ -280,7 +280,7 @@ impl fmt::Debug for ClientOptions {
             .field("auto_session_tracking", &self.auto_session_tracking)
             .field("session_mode", &self.session_mode);
 
-        #[cfg(feature = "logs")]
+        #[cfg(feature = "UNSTABLE_logs")]
         debug_struct
             .field("enable_logs", &self.enable_logs)
             .field("before_send_log", &before_send_log);
@@ -326,9 +326,9 @@ impl Default for ClientOptions {
             trim_backtraces: true,
             user_agent: Cow::Borrowed(USER_AGENT),
             max_request_body_size: MaxRequestBodySize::Medium,
-            #[cfg(feature = "logs")]
+            #[cfg(feature = "UNSTABLE_logs")]
             enable_logs: false,
-            #[cfg(feature = "logs")]
+            #[cfg(feature = "UNSTABLE_logs")]
             before_send_log: None,
         }
     }

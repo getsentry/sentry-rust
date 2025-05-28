@@ -265,7 +265,7 @@ fn test_panic_scope_pop() {
     );
 }
 
-#[cfg(feature = "logs")]
+#[cfg(feature = "UNSTABLE_logs")]
 #[test]
 fn test_basic_capture_log() {
     let options = sentry::ClientOptions {

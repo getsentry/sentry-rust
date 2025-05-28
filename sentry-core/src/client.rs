@@ -5,7 +5,7 @@ use std::panic::RefUnwindSafe;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
-#[cfg(feature = "logs")]
+#[cfg(feature = "UNSTABLE_logs")]
 use crate::protocol::EnvelopeItem;
 #[cfg(feature = "release-health")]
 use crate::protocol::SessionUpdate;
@@ -20,7 +20,7 @@ use crate::types::{Dsn, Uuid};
 #[cfg(feature = "release-health")]
 use crate::SessionMode;
 use crate::{ClientOptions, Envelope, Hub, Integration, Scope, Transport};
-#[cfg(feature = "logs")]
+#[cfg(feature = "UNSTABLE_logs")]
 use sentry_types::protocol::v7::{Log, LogAttribute};
 
 impl<T: Into<ClientOptions>> From<T> for Client {
@@ -369,7 +369,7 @@ impl Client {
     }
 
     /// Captures a log and sends it to Sentry.
-    #[cfg(feature = "logs")]
+    #[cfg(feature = "UNSTABLE_logs")]
     pub fn capture_log(&self, log: Log, scope: &Scope) {
         if !self.options().enable_logs {
             return;
@@ -386,7 +386,7 @@ impl Client {
 
     /// Prepares a log to be sent, setting the `trace_id` and other default attributes, and
     /// processing it through `before_send_log`.
-    #[cfg(feature = "logs")]
+    #[cfg(feature = "UNSTABLE_logs")]
     fn prepare_log(&self, mut log: Log, scope: &Scope) -> Option<Log> {
         scope.apply_to_log(&mut log, self.options.send_default_pii);
 
@@ -403,7 +403,7 @@ impl Client {
         Some(log)
     }
 
-    #[cfg(feature = "logs")]
+    #[cfg(feature = "UNSTABLE_logs")]
     fn set_log_default_attributes(&self, log: &mut Log) {
         if !log.attributes.contains_key("sentry.environment") {
             if let Some(environment) = self.options.environment.as_ref() {

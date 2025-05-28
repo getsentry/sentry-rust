@@ -1,6 +1,6 @@
 use std::fmt;
 
-#[cfg(feature = "logs")]
+#[cfg(feature = "UNSTABLE_logs")]
 use crate::protocol::Log;
 use crate::protocol::{Context, Event, Level, User, Value};
 use crate::TransactionOrSpan;
@@ -113,7 +113,7 @@ impl Scope {
     }
 
     /// Applies the contained scoped data to fill a log.
-    #[cfg(feature = "logs")]
+    #[cfg(feature = "UNSTABLE_logs")]
     pub fn apply_to_log(&self, log: &mut Log) {
         minimal_unreachable!();
     }
