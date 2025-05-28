@@ -2138,7 +2138,7 @@ pub struct Log {
     pub attributes: Map<String, LogAttribute>,
 }
 
-/// A string indicating the severity of a log, according to the
+/// Indicates the severity of a log, according to the
 /// OpenTelemetry [`SeverityText`](https://opentelemetry.io/docs/specs/otel/logs/data-model/#field-severitytext) spec.
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq)]
 #[serde(rename_all = "lowercase")]
@@ -2159,8 +2159,27 @@ pub enum LogLevel {
 
 /// A number indicating the severity of a log, according to the OpenTelemetry
 /// [`SeverityNumber`](https://opentelemetry.io/docs/specs/otel/logs/data-model/#field-severitynumber) spec.
-/// This should be a number between 1 and 24 (inclusive).
-pub type LogSeverityNumber = u8;
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq)]
+pub struct LogSeverityNumber(u8);
+
+impl LogSeverityNumber {
+    /// The minimum severity number.
+    pub const MIN: u8 = 1;
+    /// The maximum severity number.
+    pub const MAX: u8 = 24;
+}
+
+impl TryFrom<u8> for LogSeverityNumber {
+    type Error = &'static str;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        if (LogSeverityNumber::MIN..=LogSeverityNumber::MAX).contains(&value) {
+            Ok(Self(value))
+        } else {
+            Err("Log severity number must be between 1 and 24 (inclusive)")
+        }
+    }
+}
 
 /// An attribute that can be attached to a log.
 #[derive(Clone, Debug, PartialEq)]
