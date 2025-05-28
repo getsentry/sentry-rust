@@ -264,3 +264,36 @@ fn test_panic_scope_pop() {
         Some("Popped scope guard out of order".into())
     );
 }
+
+#[cfg(feature = "logs")]
+#[test]
+fn test_basic_capture_log() {
+    let options = sentry::ClientOptions {
+        enable_logs: true,
+        ..Default::default()
+    };
+    let envelopes = sentry::test::with_captured_envelopes_options(
+        || {
+            sentry::capture_log("this is a test", sentry::protocol::LogLevel::Warn, None);
+        },
+        options,
+    );
+    assert_eq!(envelopes.len(), 1);
+    let envelope = envelopes.first().expect("expected envelope");
+    let item = envelope.items().next().expect("expected envelope item");
+    match item {
+        EnvelopeItem::ItemContainer(container) => match container {
+            sentry::protocol::ItemContainer::Logs(logs) => {
+                let log = logs.iter().next().expect("expected log");
+                assert_eq!(sentry::protocol::LogLevel::Warn, log.level);
+                assert_eq!("this is a test", log.body);
+                assert!(log.trace_id.is_some());
+                assert!(log.timestamp.is_some());
+                assert!(log.severity_number.is_some());
+                assert!(log.attributes.contains_key("sentry.sdk.name"));
+                assert!(log.attributes.contains_key("sentry.sdk.version"));
+            }
+        },
+        _ => panic!("expected item container"),
+    }
+}

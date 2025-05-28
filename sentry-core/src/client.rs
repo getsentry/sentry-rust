@@ -5,9 +5,11 @@ use std::panic::RefUnwindSafe;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
-use rand::random;
+#[cfg(feature = "logs")]
+use crate::protocol::EnvelopeItem;
 #[cfg(feature = "release-health")]
-use sentry_types::protocol::v7::SessionUpdate;
+use crate::protocol::SessionUpdate;
+use rand::random;
 use sentry_types::random_uuid;
 
 use crate::constants::SDK_INFO;
@@ -18,6 +20,8 @@ use crate::types::{Dsn, Uuid};
 #[cfg(feature = "release-health")]
 use crate::SessionMode;
 use crate::{ClientOptions, Envelope, Hub, Integration, Scope, Transport};
+#[cfg(feature = "logs")]
+use sentry_types::protocol::v7::{Log, LogAttribute};
 
 impl<T: Into<ClientOptions>> From<T> for Client {
     fn from(o: T) -> Client {
@@ -361,6 +365,84 @@ impl Client {
             false
         } else {
             random::<f32>() < rate
+        }
+    }
+
+    /// Captures a log and sends it to Sentry.
+    #[cfg(feature = "logs")]
+    pub fn capture_log(&self, log: Log, scope: &Scope) {
+        if let Some(ref transport) = *self.transport.read().unwrap() {
+            if let Some(log) = self.prepare_log(log, scope) {
+                let mut envelope = Envelope::new();
+                let logs: EnvelopeItem = vec![log].into();
+                envelope.add_item(logs);
+                transport.send_envelope(envelope);
+            }
+        }
+    }
+
+    /// Prepares a log to be sent, setting the `trace_id` and other default attributes, and
+    /// processing it through `before_send_log`.
+    #[cfg(feature = "logs")]
+    fn prepare_log(&self, mut log: Log, scope: &Scope) -> Option<Log> {
+        scope.apply_to_log(&mut log, self.options.send_default_pii);
+
+        self.set_log_default_attributes(&mut log);
+
+        if let Some(ref func) = self.options.before_send_log {
+            if let Some(res) = func(log) {
+                log = res
+            } else {
+                return None;
+            }
+        }
+
+        Some(log)
+    }
+
+    #[cfg(feature = "logs")]
+    fn set_log_default_attributes(&self, log: &mut Log) {
+        if !log.attributes.contains_key("sentry.environment") {
+            if let Some(environment) = self.options.environment.as_ref() {
+                log.attributes.insert(
+                    "sentry.sdk.version".to_owned(),
+                    LogAttribute(environment.clone().into()),
+                );
+            }
+        }
+
+        if !log.attributes.contains_key("sentry.release") {
+            if let Some(release) = self.options.release.as_ref() {
+                log.attributes.insert(
+                    "sentry.release".to_owned(),
+                    LogAttribute(release.clone().into()),
+                );
+            }
+        }
+
+        if !log.attributes.contains_key("sentry.sdk.name") {
+            log.attributes.insert(
+                "sentry.sdk.name".to_owned(),
+                LogAttribute(self.sdk_info.name.to_owned().into()),
+            );
+        }
+
+        if !log.attributes.contains_key("sentry.sdk.version") {
+            log.attributes.insert(
+                "sentry.sdk.version".to_owned(),
+                LogAttribute(self.sdk_info.version.to_owned().into()),
+            );
+        }
+
+        // TODO: set OS (and Rust?) context
+
+        if !log.attributes.contains_key("server.address") {
+            if let Some(server) = &self.options.server_name {
+                log.attributes.insert(
+                    "server.address".to_owned(),
+                    LogAttribute(server.clone().into()),
+                );
+            }
         }
     }
 }

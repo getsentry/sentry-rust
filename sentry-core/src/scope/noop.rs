@@ -1,5 +1,7 @@
 use std::fmt;
 
+#[cfg(feature = "logs")]
+use crate::protocol::Log;
 use crate::protocol::{Context, Event, Level, User, Value};
 use crate::TransactionOrSpan;
 
@@ -107,6 +109,12 @@ impl Scope {
     /// Applies the contained scoped data to fill an event.
     pub fn apply_to_event(&self, event: Event<'static>) -> Option<Event<'static>> {
         let _event = event;
+        minimal_unreachable!();
+    }
+
+    /// Applies the contained scoped data to fill a log.
+    #[cfg(feature = "logs")]
+    pub fn apply_to_log(&self, log: &mut Log) {
         minimal_unreachable!();
     }
 

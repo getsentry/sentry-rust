@@ -4,7 +4,7 @@
 
 use std::sync::{Arc, RwLock};
 
-use crate::protocol::{Event, Level, SessionStatus};
+use crate::protocol::{Event, Level, Log, LogAttribute, LogLevel, Map, SessionStatus};
 use crate::types::Uuid;
 use crate::{Integration, IntoBreadcrumbs, Scope, ScopeGuard};
 
@@ -243,6 +243,22 @@ impl Hub {
                     }
                 }
             })
+        }}
+    }
+
+    /// Captures a log with the given message, level and optional additional attributes.
+    #[cfg(feature = "logs")]
+    pub fn capture_log(
+        &self,
+        message: &str,
+        level: LogLevel,
+        attributes: Option<Map<String, LogAttribute>>,
+    ) {
+        with_client_impl! {{
+            let log = Log::new(message, level, attributes);
+            let top = self.inner.with(|stack| stack.top().clone());
+            let Some(ref client) = top.client else { return };
+            client.capture_log(log, &top.scope);
         }}
     }
 }
