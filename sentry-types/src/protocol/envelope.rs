@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
 
-use super::v7::{self as protocol};
+use super::v7 as protocol;
 
 use protocol::{
     Attachment, AttachmentType, Event, Log, MonitorCheckIn, SessionAggregates, SessionUpdate,
@@ -133,6 +133,12 @@ pub enum ItemContainer {
     Logs(Vec<Log>),
 }
 
+impl From<Vec<Log>> for ItemContainer {
+    fn from(logs: Vec<Log>) -> Self {
+        Self::Logs(logs) 
+    }
+}
+
 #[allow(clippy::len_without_is_empty, reason = "is_empty is not needed")]
 impl ItemContainer {
     /// The number of items in this item container.
@@ -206,6 +212,12 @@ impl From<MonitorCheckIn> for EnvelopeItem {
 impl From<ItemContainer> for EnvelopeItem {
     fn from(container: ItemContainer) -> Self {
         EnvelopeItem::ItemContainer(container)
+    }
+}
+
+impl From<Vec<Log>> for EnvelopeItem {
+    fn from(logs: Vec<Log>) -> Self {
+        EnvelopeItem::ItemContainer(logs.into())
     }
 }
 
@@ -1055,7 +1067,7 @@ some content
         attributes.insert("bool".into(), Value::from(false).into());
         let mut attributes_2 = attributes.clone();
         attributes_2.insert("more".into(), Value::from(true).into());
-        let logs = ItemContainer::Logs(vec![
+        let logs: EnvelopeItem = vec![
             Log {
                 level: protocol::LogLevel::Warn,
                 body: "test".to_owned(),
@@ -1072,7 +1084,7 @@ some content
                 severity_number: 10,
                 attributes: attributes_2,
             },
-        ]);
+        ].into();
 
         let mut envelope: Envelope = Envelope::new();
 
