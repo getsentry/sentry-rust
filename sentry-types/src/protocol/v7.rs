@@ -2170,13 +2170,17 @@ impl LogSeverityNumber {
 }
 
 impl TryFrom<u8> for LogSeverityNumber {
-    type Error = &'static str;
+    type Error = String;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         if (LogSeverityNumber::MIN..=LogSeverityNumber::MAX).contains(&value) {
             Ok(Self(value))
         } else {
-            Err("Log severity number must be between 1 and 24 (inclusive)")
+            Err(format!(
+                "Log severity number must be between {} and {}",
+                LogSeverityNumber::MIN,
+                LogSeverityNumber::MAX
+            ))
         }
     }
 }
