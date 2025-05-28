@@ -371,6 +371,9 @@ impl Client {
     /// Captures a log and sends it to Sentry.
     #[cfg(feature = "logs")]
     pub fn capture_log(&self, log: Log, scope: &Scope) {
+        if !self.options().enable_logs {
+            return;
+        }
         if let Some(ref transport) = *self.transport.read().unwrap() {
             if let Some(log) = self.prepare_log(log, scope) {
                 let mut envelope = Envelope::new();
