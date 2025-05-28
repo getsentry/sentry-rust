@@ -7,8 +7,8 @@ use uuid::Uuid;
 use super::v7::{self as protocol};
 
 use protocol::{
-    Attachment, AttachmentType, Event, MonitorCheckIn, SessionAggregates, SessionUpdate,
-    Transaction, Log
+    Attachment, AttachmentType, Event, Log, MonitorCheckIn, SessionAggregates, SessionUpdate,
+    Transaction,
 };
 
 /// Raised if a envelope cannot be parsed from a given input.
@@ -116,7 +116,7 @@ pub enum EnvelopeItem {
     Attachment(Attachment),
     /// A MonitorCheckIn item.
     MonitorCheckIn(MonitorCheckIn),
-    /// A container for multiple batched items.
+    /// A container for a list of multiple items.
     ItemContainer(ItemContainer),
     /// This is a sentinel item used to `filter` raw envelopes.
     Raw,
@@ -124,25 +124,33 @@ pub enum EnvelopeItem {
     // etc…
 }
 
-#[derive(Deserialize, Clone, Debug, PartialEq)]
+/// A container for a list of multiple items.
+/// It's considered a single envelope item, with its `type` corresponding to the contained items'
+/// `type`.
+#[derive(Clone, Debug, PartialEq)]
 pub enum ItemContainer {
+    /// A list of logs.
     Logs(Vec<Log>),
 }
- 
+
+#[allow(clippy::len_without_is_empty, reason = "is_empty is not needed")]
 impl ItemContainer {
-    fn len(&self) -> usize {
+    /// The number of items in this item container.
+    pub fn len(&self) -> usize {
         match self {
             Self::Logs(logs) => logs.len(),
         }
     }
 
-    fn ty(&self) -> &'static str {
+    /// The `type` of this item container, which corresponds to the `type` of the contained items.
+    pub fn ty(&self) -> &'static str {
         match self {
             Self::Logs(_) => "log",
         }
     }
 
-    fn content_type(&self) -> &'static str {
+    /// The `content-type` expected by Relay for this item container.
+    pub fn content_type(&self) -> &'static str {
         match self {
             Self::Logs(_) => "application/vnd.sentry.items.log+json",
         }
@@ -399,14 +407,12 @@ impl Envelope {
                 EnvelopeItem::MonitorCheckIn(check_in) => {
                     serde_json::to_writer(&mut item_buf, check_in)?
                 }
-                EnvelopeItem::ItemContainer(container) => {
-                    match container {
-                        ItemContainer::Logs(logs) => {
-                            let wrapper = LogsSerializationWrapper { items: logs };
-                            serde_json::to_writer(&mut item_buf, &wrapper)?
-                        }
+                EnvelopeItem::ItemContainer(container) => match container {
+                    ItemContainer::Logs(logs) => {
+                        let wrapper = LogsSerializationWrapper { items: logs };
+                        serde_json::to_writer(&mut item_buf, &wrapper)?
                     }
-                }
+                },
                 EnvelopeItem::Raw => {
                     continue;
                 }
@@ -417,11 +423,7 @@ impl Envelope {
                 EnvelopeItem::SessionAggregates(_) => "sessions",
                 EnvelopeItem::Transaction(_) => "transaction",
                 EnvelopeItem::MonitorCheckIn(_) => "check_in",
-                EnvelopeItem::ItemContainer(container) => {
-                    match container {
-                        ItemContainer::Logs(_) => "log",
-                    }
-                }
+                EnvelopeItem::ItemContainer(container) => container.ty(),
                 EnvelopeItem::Attachment(_) | EnvelopeItem::Raw => unreachable!(),
             };
 
@@ -577,8 +579,10 @@ impl Envelope {
             EnvelopeItemType::MonitorCheckIn => {
                 serde_json::from_slice(payload).map(EnvelopeItem::MonitorCheckIn)
             }
-            EnvelopeItemType::LogsContainer => serde_json::from_slice::<LogsDeserializationWrapper>(payload)
-                .map(|x| EnvelopeItem::ItemContainer(ItemContainer::Logs(x.items))),
+            EnvelopeItemType::LogsContainer => {
+                serde_json::from_slice::<LogsDeserializationWrapper>(payload)
+                    .map(|x| EnvelopeItem::ItemContainer(ItemContainer::Logs(x.items)))
+            }
         }
         .map_err(EnvelopeError::InvalidItemPayload)?;
 
@@ -1066,7 +1070,7 @@ some content
                 trace_id: "332253d614472a2c9f89e232b7762c28".parse().unwrap(),
                 timestamp: timestamp("2021-07-21T14:51:14.296Z"),
                 severity_number: 10,
-                attributes: attributes_2, 
+                attributes: attributes_2,
             },
         ]);
 
