@@ -25,7 +25,6 @@ pub use uuid::Uuid;
 use crate::utils::{ts_rfc3339_opt, ts_seconds_float};
 
 pub use super::attachment::*;
-pub use super::envelope::*;
 pub use super::monitor::*;
 pub use super::session::*;
 
@@ -2107,62 +2106,9 @@ impl fmt::Display for Transaction<'_> {
     }
 }
 
-/// An homogeneous container for multiple items.
-/// This is considered a single envelope item.
-/// The serialized value for the `type` of this envelope item will match the type of the contained
-/// items.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct ItemsContainer<T: Containable> { 
-    pub items: Vec<T>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub enum ConcreteItemsContainer {
-    Logs(ItemsContainer<LogItem>)
-}
-
-impl<T: Containable> ItemsContainer<T> {
-    pub fn len(&self) -> usize {
-        self.items.len()
-    }
-}
-
-pub trait ContainerItem: FromValue + IntoValue {
-    /// The expected content type of the container for this type.
-    const CONTENT_TYPE: ContentType;
-}
-
-/// A container for multiple homogeneous envelope items.
-///
-/// Item containers are used to minimize the amount of single envelope items contained in an
-/// envelope. They massively improve parsing speed of envelopes in Relay but are also used
-/// to minimize metadata duplication on item headers.
-///
-/// Especially for small envelope items with high quantities (e.g. logs), this drastically
-/// improves fast path parsing speeds and minimizes serialization overheads, by minimizing
-/// the amount of items in an envelope.
-///
-/// An item container does not have a special [`super::ItemType`], but is identified by the
-/// content type of the item.
-#[derive(Debug)]
-pub struct ItemContainer<T> {
-    items: ContainerItems<T>,
-}
-
-/// A list of items in an item container.
-pub type ContainerItems<T> = Vec<[Annotated<T>; 3]>;
-
-/// Any item contained in an [`ItemContainer`] needs to implement this trait.
-pub trait ContainerItem {
-    /// The serialized type of the iteem.
-    const TYPE: &'static str;
-    /// The content type expected by Relay for the container of this type.
-    const CONTENT_TYPE: &'static str;
-}
-
 /// A single log.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct LogItem {
+pub struct Log {
     /// The severity of the log (required).
     pub level: LogLevel,
     /// The log body/message (required).
@@ -2177,17 +2123,6 @@ pub struct LogItem {
     /// Additional arbitrary attributes attached to the log.
     #[serde(default, skip_serializing_if = "Map::is_empty")]
     pub attributes: Map<String, LogAttribute>,
-}
-
-impl Containable for LogItem {
-    const TYPE: &'static str = "log";
-    const CONTENT_TYPE: &'static str = "whatever";
-}
-
-impl From<Vec<LogItem>> for ItemsContainer<LogItem> {
-    fn from(items: Vec<LogItem>) -> Self {
-        ItemsContainer { items }
-    }
 }
 
 /// A string indicating the severity of a log, according to the
