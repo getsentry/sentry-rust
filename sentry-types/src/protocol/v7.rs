@@ -2225,7 +2225,7 @@ impl Serialize for LogAttribute {
                 state.serialize_field("value", &b)?;
                 state.serialize_field("type", "boolean")?;
             }
-            // For any other type (Null, Array, Object), convert to string
+            // For any other type (Null, Array, Object), convert to string with JSON representation
             _ => {
                 state.serialize_field("value", &self.0.to_string())?;
                 state.serialize_field("type", "string")?;
