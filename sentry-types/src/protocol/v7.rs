@@ -2112,34 +2112,52 @@ impl fmt::Display for Transaction<'_> {
 /// The serialized value for the `type` of this envelope item will match the type of the contained
 /// items.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub enum ItemsContainer {
-    /// A list of logs.
-    #[serde(rename = "items")]
-    Logs(Vec<LogItem>),
+pub struct ItemsContainer<T: Containable> { 
+    pub items: Vec<T>,
 }
 
-#[allow(clippy::len_without_is_empty, reason = "is_empty is not needed")]
-impl ItemsContainer {
-    /// Returns the number of items in this container.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub enum ConcreteItemsContainer {
+    Logs(ItemsContainer<LogItem>)
+}
+
+impl<T: Containable> ItemsContainer<T> {
     pub fn len(&self) -> usize {
-        match self {
-            ItemsContainer::Logs(logs) => logs.len(),
-        }
+        self.items.len()
     }
+}
 
-    /// Returns the type of the items in this container as a string.
-    pub fn items_type(&self) -> &'static str {
-        match self {
-            ItemsContainer::Logs(_) => "log",
-        }
-    }
+pub trait ContainerItem: FromValue + IntoValue {
+    /// The expected content type of the container for this type.
+    const CONTENT_TYPE: ContentType;
+}
 
-    /// Returns the content-type expected by Relay for this container.
-    pub fn content_type(&self) -> &'static str {
-        match self {
-            ItemsContainer::Logs(_) => "application/vnd.sentry.items.log+json",
-        }
-    }
+/// A container for multiple homogeneous envelope items.
+///
+/// Item containers are used to minimize the amount of single envelope items contained in an
+/// envelope. They massively improve parsing speed of envelopes in Relay but are also used
+/// to minimize metadata duplication on item headers.
+///
+/// Especially for small envelope items with high quantities (e.g. logs), this drastically
+/// improves fast path parsing speeds and minimizes serialization overheads, by minimizing
+/// the amount of items in an envelope.
+///
+/// An item container does not have a special [`super::ItemType`], but is identified by the
+/// content type of the item.
+#[derive(Debug)]
+pub struct ItemContainer<T> {
+    items: ContainerItems<T>,
+}
+
+/// A list of items in an item container.
+pub type ContainerItems<T> = Vec<[Annotated<T>; 3]>;
+
+/// Any item contained in an [`ItemContainer`] needs to implement this trait.
+pub trait ContainerItem {
+    /// The serialized type of the iteem.
+    const TYPE: &'static str;
+    /// The content type expected by Relay for the container of this type.
+    const CONTENT_TYPE: &'static str;
 }
 
 /// A single log.
@@ -2161,9 +2179,14 @@ pub struct LogItem {
     pub attributes: Map<String, LogAttribute>,
 }
 
-impl From<Vec<LogItem>> for ItemsContainer {
-    fn from(logs: Vec<LogItem>) -> Self {
-        Self::Logs(logs)
+impl Containable for LogItem {
+    const TYPE: &'static str = "log";
+    const CONTENT_TYPE: &'static str = "whatever";
+}
+
+impl From<Vec<LogItem>> for ItemsContainer<LogItem> {
+    fn from(items: Vec<LogItem>) -> Self {
+        ItemsContainer { items }
     }
 }
 

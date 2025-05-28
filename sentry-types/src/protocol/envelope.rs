@@ -4,7 +4,7 @@ use serde::Deserialize;
 use thiserror::Error;
 use uuid::Uuid;
 
-use super::v7::{self as protocol, ItemsContainer};
+use super::v7::{self as protocol, ConcreteItemsContainer, ItemsContainer};
 
 use protocol::{
     Attachment, AttachmentType, Event, MonitorCheckIn, SessionAggregates, SessionUpdate,
@@ -64,7 +64,7 @@ enum EnvelopeItemType {
     /// A Monitor Check In Item Type.
     #[serde(rename = "check_in")]
     MonitorCheckIn,
-    /// A Log Items Type.
+    /// A Log (Container) Items Type.
     #[serde(rename = "log")]
     Log,
 }
@@ -119,7 +119,7 @@ pub enum EnvelopeItem {
     ///
     /// Currently, this is only used for logs. See the [Log Item documentation](https://develop.sentry.dev/sdk/telemetry/logs/#log-envelope-item)
     /// for more details.
-    ItemsContainer(ItemsContainer),
+    ItemsContainer(ConcreteItemsContainer), 
     /// This is a sentinel item used to `filter` raw envelopes.
     Raw,
     // TODO:
@@ -467,6 +467,8 @@ impl Envelope {
             let bytes = slice
                 .get(offset..)
                 .ok_or(EnvelopeError::MissingItemHeader)?;
+            println!("item");
+            println!("{}", String::from_utf8_lossy(bytes));
             let (item, item_size) = Self::parse_item(bytes)?;
             offset += item_size;
             items.push(item);
@@ -512,6 +514,8 @@ impl Envelope {
         };
 
         let payload = slice.get(payload_start..payload_end).unwrap();
+        println!("payload: {}", String::from_utf8_lossy(payload));
+        println!("type: {:?}", header.r#type);
 
         let item = match header.r#type {
             EnvelopeItemType::Event => serde_json::from_slice(payload).map(EnvelopeItem::Event),
@@ -534,7 +538,7 @@ impl Envelope {
                 serde_json::from_slice(payload).map(EnvelopeItem::MonitorCheckIn)
             }
             EnvelopeItemType::Log => serde_json::from_slice(payload)
-                .map(|logs| EnvelopeItem::ItemsContainer(ItemsContainer::Logs(logs))),
+                .map(EnvelopeItem::ItemsContainer)
         }
         .map_err(EnvelopeError::InvalidItemPayload)?;
 
@@ -1007,7 +1011,7 @@ some content
         attributes.insert("bool".into(), Value::from(false).into());
         let mut attributes_2 = attributes.clone();
         attributes_2.insert("more".into(), Value::from(true).into());
-        let logs = ItemsContainer::Logs(vec![
+        let logs: ItemsContainer<LogItem> = vec![
             LogItem {
                 level: protocol::LogLevel::Warn,
                 body: "test".to_owned(),
@@ -1022,9 +1026,9 @@ some content
                 trace_id: "332253d614472a2c9f89e232b7762c28".parse().unwrap(),
                 timestamp: timestamp("2021-07-21T14:51:14.296Z"),
                 severity_number: 10,
-                attributes: attributes_2,
+                attributes: attributes_2, 
             },
-        ]);
+        ].into();
 
         let mut envelope: Envelope = Envelope::new();
 
@@ -1035,6 +1039,7 @@ some content
         envelope.add_item(logs);
 
         let serialized = to_str(envelope);
+        print!("serialized: {}", serialized);
         let deserialized = Envelope::from_slice(serialized.as_bytes()).unwrap();
         assert_eq!(serialized, to_str(deserialized))
     }
