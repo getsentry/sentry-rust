@@ -14,6 +14,13 @@
   - This information is used as a fallback when capturing an event with tracing disabled or otherwise no ongoing span, to still allow related events to be linked by a trace.
   - A new API `Scope::iter_trace_propagation_headers` has been provided that will use the fallback tracing information if there is no current `Span` on the `Scope`.
 
+### Features
+
+- feat(logs): add log protocol types (#821) by @lcian
+  - Basic types for [Sentry structured logs](https://docs.sentry.io/product/explore/logs/) have been added.
+  - It's possible (but not recommended) to use them to send logs to Sentry by directly constructing an `Envelope` containing an `ItemContainer::Logs` envelope item and sending it through `Client::send_envelope`.
+  - A high-level API and integrations will come soon.
+
 ## 0.38.1
 
 ### Fixes
