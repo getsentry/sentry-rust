@@ -167,9 +167,10 @@ pub struct ClientOptions {
     pub https_proxy: Option<Cow<'static, str>>,
     /// The timeout on client drop for draining events on shutdown.
     pub shutdown_timeout: Duration,
-    /// Controls how much of request bodies are captured
+    /// Controls the maximum size of an HTTP request body that can be captured when using HTTP
+    /// server integrations. Needs `send_default_pii` to be enabled to have any effect.
     pub max_request_body_size: MaxRequestBodySize,
-    /// Determines whether logs captured through the API/integrations should be captured or not.
+    /// Determines whether logs captured through the API/integrations should be sent to Sentry.
     /// (defaults to false)
     #[cfg(feature = "logs")]
     pub enable_logs: bool,
