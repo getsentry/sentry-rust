@@ -133,12 +133,6 @@ pub enum ItemContainer {
     Logs(Vec<Log>),
 }
 
-impl From<Vec<Log>> for ItemContainer {
-    fn from(logs: Vec<Log>) -> Self {
-        Self::Logs(logs)
-    }
-}
-
 #[allow(clippy::len_without_is_empty, reason = "is_empty is not needed")]
 impl ItemContainer {
     /// The number of items in this item container.
@@ -160,6 +154,12 @@ impl ItemContainer {
         match self {
             Self::Logs(_) => "application/vnd.sentry.items.log+json",
         }
+    }
+}
+
+impl From<Vec<Log>> for ItemContainer {
+    fn from(logs: Vec<Log>) -> Self {
+        Self::Logs(logs)
     }
 }
 
