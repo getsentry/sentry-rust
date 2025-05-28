@@ -64,7 +64,7 @@ enum EnvelopeItemType {
     /// A Monitor Check In Item Type.
     #[serde(rename = "check_in")]
     MonitorCheckIn,
-    /// A Log (Container) Items Type.
+    /// A container of Log items.
     #[serde(rename = "log")]
     LogsContainer,
 }
