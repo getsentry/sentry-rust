@@ -128,6 +128,7 @@ pub enum EnvelopeItem {
 /// It's considered a single envelope item, with its `type` corresponding to the contained items'
 /// `type`.
 #[derive(Clone, Debug, PartialEq)]
+#[non_exhaustive]
 pub enum ItemContainer {
     /// A list of logs.
     Logs(Vec<Log>),
