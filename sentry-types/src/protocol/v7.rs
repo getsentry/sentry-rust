@@ -2131,8 +2131,9 @@ pub struct Log {
     /// The timestamp of the log (required).
     #[serde(with = "ts_seconds_float")]
     pub timestamp: SystemTime,
-    /// The severity number of the log (required).
-    pub severity_number: LogSeverityNumber,
+    /// The severity number of the log.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub severity_number: Option<LogSeverityNumber>,
     /// Additional arbitrary attributes attached to the log.
     #[serde(default, skip_serializing_if = "Map::is_empty")]
     pub attributes: Map<String, LogAttribute>,

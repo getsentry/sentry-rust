@@ -1073,7 +1073,7 @@ some content
                 body: "test".to_owned(),
                 trace_id: "335e53d614474acc9f89e632b776cc28".parse().unwrap(),
                 timestamp: timestamp("2022-07-25T14:51:14.296Z"),
-                severity_number: 1.try_into().unwrap(),
+                severity_number: Some(1.try_into().unwrap()),
                 attributes,
             },
             Log {
@@ -1081,7 +1081,7 @@ some content
                 body: "a body".to_owned(),
                 trace_id: "332253d614472a2c9f89e232b7762c28".parse().unwrap(),
                 timestamp: timestamp("2021-07-21T14:51:14.296Z"),
-                severity_number: 1.try_into().unwrap(),
+                severity_number: Some(1.try_into().unwrap()),
                 attributes: attributes_2,
             },
         ]
