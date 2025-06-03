@@ -2189,9 +2189,12 @@ impl TryFrom<u8> for LogSeverityNumber {
 #[derive(Clone, Debug, PartialEq)]
 pub struct LogAttribute(pub Value);
 
-impl From<Value> for LogAttribute {
-    fn from(value: Value) -> Self {
-        Self(value)
+impl<T> From<T> for LogAttribute
+where
+    Value: From<T>,
+{
+    fn from(value: T) -> Self {
+        Self(Value::from(value))
     }
 }
 

@@ -627,7 +627,6 @@ mod test {
     use std::time::{Duration, SystemTime};
 
     use protocol::Map;
-    use serde_json::Value;
     use time::format_description::well_known::Rfc3339;
     use time::OffsetDateTime;
 
@@ -1062,12 +1061,12 @@ some content
         };
 
         let mut attributes = Map::new();
-        attributes.insert("key".into(), Value::from("value").into());
-        attributes.insert("num".into(), Value::from(10).into());
-        attributes.insert("val".into(), Value::from(10.2).into());
-        attributes.insert("bool".into(), Value::from(false).into());
+        attributes.insert("key".into(), "value".into());
+        attributes.insert("num".into(), 10.into());
+        attributes.insert("val".into(), 10.2.into());
+        attributes.insert("bool".into(), false.into());
         let mut attributes_2 = attributes.clone();
-        attributes_2.insert("more".into(), Value::from(true).into());
+        attributes_2.insert("more".into(), true.into());
         let logs: EnvelopeItem = vec![
             Log {
                 level: protocol::LogLevel::Warn,

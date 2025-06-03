@@ -1532,20 +1532,14 @@ mod test_logs {
     fn test_log_attribute_serialization() {
         let attributes = vec![
             // Supported types
+            (LogAttribute(42.into()), r#"{"value":42,"type":"integer"}"#),
+            (LogAttribute(3.1.into()), r#"{"value":3.1,"type":"double"}"#),
             (
-                LogAttribute(Value::from(42)),
-                r#"{"value":42,"type":"integer"}"#,
-            ),
-            (
-                LogAttribute(Value::from(3.1)),
-                r#"{"value":3.1,"type":"double"}"#,
-            ),
-            (
-                LogAttribute(Value::from("lol")),
+                LogAttribute("lol".into()),
                 r#"{"value":"lol","type":"string"}"#,
             ),
             (
-                LogAttribute(Value::from(false)),
+                LogAttribute(false.into()),
                 r#"{"value":false,"type":"boolean"}"#,
             ),
             // Special case
@@ -1572,10 +1566,10 @@ mod test_logs {
     #[test]
     fn test_log_attribute_roundtrip() {
         let attributes = vec![
-            LogAttribute(Value::from(42)),
-            LogAttribute(Value::from(3.1)),
-            LogAttribute(Value::from("lol")),
-            LogAttribute(Value::from(false)),
+            LogAttribute(42.into()),
+            LogAttribute(3.1.into()),
+            LogAttribute("lol".into()),
+            LogAttribute(false.into()),
         ];
         for expected in attributes {
             let serialized = serde_json::to_string(&expected).unwrap();
