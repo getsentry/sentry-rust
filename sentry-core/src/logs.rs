@@ -6,7 +6,7 @@
 ///
 /// The supported attribute values are simple types, such as string, numbers, and boolean.
 ///
-/// See also the [`trace`], [`debug`], [`info`], [`warn`], [`error`], and [`fatal`] macros, which call `log!` with the corresponding level.
+/// See also the [`trace!`], [`debug!`], [`info!`], [`warn!`], [`error!`], and [`fatal!`] macros, which call `log!` with the corresponding level.
 ///
 /// # Examples
 ///
@@ -201,7 +201,7 @@ macro_rules! log {
 
 /// Captures a log at the trace level, with the given message and attributes.
 ///
-/// See the [`log`] macro for more details.
+/// See the [`log!`] macro for more details.
 ///
 /// # Examples
 ///
@@ -233,7 +233,7 @@ macro_rules! trace {
 
 /// Captures a log at the debug level, with the given message and attributes.
 ///
-/// See the [`log`] macro for more details.
+/// See the [`log!`] macro for more details.
 ///
 /// # Examples
 ///
@@ -265,7 +265,7 @@ macro_rules! debug {
 
 /// Captures a log at the info level, with the given message and attributes.
 ///
-/// See the [`log`] macro for more details.
+/// See the [`log!`] macro for more details.
 ///
 /// # Examples
 ///
@@ -333,7 +333,7 @@ macro_rules! warn {
 
 /// Captures a log at the error level, with the given message and attributes.
 ///
-/// See the [`log`] macro for more details.
+/// See the [`log!`] macro for more details.
 ///
 /// # Examples
 ///
@@ -365,7 +365,7 @@ macro_rules! error {
 
 /// Captures a log at the fatal level, with the given message and attributes.
 ///
-/// See the [`log`] macro for more details.
+/// See the [`log!`] macro for more details.
 ///
 /// # Examples
 ///
