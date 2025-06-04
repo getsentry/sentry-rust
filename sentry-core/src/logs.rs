@@ -297,11 +297,7 @@ macro_rules! info {
 
 /// Captures a log at the warn level, with the given message and attributes.
 ///
-/// It's possible to attach any number of attributes to the log using the syntax:
-/// - `identifier = value` for simple attributes
-/// - `identifier.with.dots = value` or `identifier-with-hyphens = value` for structured attributes
-///
-/// After specifying the attributes, the last parameter(s) consist of the message and optionally format args if the message is a format string.
+/// See the [`log!`] macro for more details.
 ///
 /// # Examples
 ///
