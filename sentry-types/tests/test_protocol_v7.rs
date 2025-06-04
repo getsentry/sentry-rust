@@ -1530,30 +1530,21 @@ mod test_logs {
 
     #[test]
     fn test_log_attribute_serialization() {
-        let attributes = vec![
+        let attributes: Vec<(LogAttribute, &str)> = vec![
             // Supported types
-            (LogAttribute(42.into()), r#"{"value":42,"type":"integer"}"#),
-            (LogAttribute(3.1.into()), r#"{"value":3.1,"type":"double"}"#),
-            (
-                LogAttribute("lol".into()),
-                r#"{"value":"lol","type":"string"}"#,
-            ),
-            (
-                LogAttribute(false.into()),
-                r#"{"value":false,"type":"boolean"}"#,
-            ),
+            (42.into(), r#"{"value":42,"type":"integer"}"#),
+            (3.1.into(), r#"{"value":3.1,"type":"double"}"#),
+            ("lol".into(), r#"{"value":"lol","type":"string"}"#),
+            (false.into(), r#"{"value":false,"type":"boolean"}"#),
             // Special case
-            (
-                LogAttribute(Value::Null),
-                r#"{"value":"null","type":"string"}"#,
-            ),
+            (Value::Null.into(), r#"{"value":"null","type":"string"}"#),
             // Unsupported types (for now)
             (
-                LogAttribute(json!(r#"[1,2,3,4]"#)),
+                json!(r#"[1,2,3,4]"#).into(),
                 r#"{"value":"[1,2,3,4]","type":"string"}"#,
             ),
             (
-                LogAttribute(json!(r#"["a","b","c"]"#)),
+                json!(r#"["a","b","c"]"#).into(),
                 r#"{"value":"[\"a\",\"b\",\"c\"]","type":"string"}"#,
             ),
         ];
@@ -1565,12 +1556,7 @@ mod test_logs {
 
     #[test]
     fn test_log_attribute_roundtrip() {
-        let attributes = vec![
-            LogAttribute(42.into()),
-            LogAttribute(3.1.into()),
-            LogAttribute("lol".into()),
-            LogAttribute(false.into()),
-        ];
+        let attributes: Vec<LogAttribute> = vec![42.into(), 3.1.into(), "lol".into(), false.into()];
         for expected in attributes {
             let serialized = serde_json::to_string(&expected).unwrap();
             let actual: LogAttribute = serde_json::from_str(&serialized).unwrap();
