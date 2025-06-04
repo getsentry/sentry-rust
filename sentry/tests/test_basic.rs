@@ -284,7 +284,7 @@ fn test_basic_capture_log() {
                 level: sentry::protocol::LogLevel::Warn,
                 body: "this is a test".into(),
                 trace_id: None,
-                timestamp: Some(SystemTime::now()),
+                timestamp: SystemTime::now(),
                 severity_number: None,
                 attributes,
             };
@@ -303,7 +303,6 @@ fn test_basic_capture_log() {
                 assert_eq!(sentry::protocol::LogLevel::Warn, log.level);
                 assert_eq!("this is a test", log.body);
                 assert!(log.trace_id.is_some());
-                assert!(log.timestamp.is_some());
                 assert!(log.severity_number.is_none());
                 assert!(log.attributes.contains_key("sentry.sdk.name"));
                 assert!(log.attributes.contains_key("sentry.sdk.version"));
