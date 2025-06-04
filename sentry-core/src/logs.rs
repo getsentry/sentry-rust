@@ -1,10 +1,10 @@
 /// Captures a log at the given level, with the given message and attributes.
+/// The attributes are passed as `key = value` arguments before the message, which can be a simple string or a format string with its arguments.
 ///
-/// It's possible to attach any number of attributes to the log, using either:
-/// - The `identifier = value` syntax for simple attributes
-/// - The `"string.with.dots" = value` syntax for structured attributes (e.g. `"user.id"` and `"user.email"` will be nested under `user` in the Sentry UI)
+/// The supported attribute keys are all valid Rust identifiers with up to 8 dots.
+/// Using dots will nest multiple attributes under their common prefix in the UI.
 ///
-/// After specifying the attributes, the last parameter(s) consist of the message and optionally format args if the message is a format string.
+/// The supported attribute values are simple types, such as string, numbers, and boolean.
 ///
 /// See also the [`trace`], [`debug`], [`info`], [`warn`], [`error`], and [`fatal`] macros, which call `log!` with the corresponding level.
 ///
@@ -22,8 +22,8 @@
 /// // Message with format args and attributes
 /// log!(LogLevel::Warn,
 ///     error_code = 500,
-///     "user.id" = "12345",
-///     "user.email" = "test@test.com",
+///     user.id = "12345",
+///     user.email = "test@test.com",
 ///     success = false,
 ///     "Error occurred: {}",
 ///     "bad input"
@@ -117,19 +117,82 @@ macro_rules! log {
         $crate::Hub::current().capture_log(log)
     }};
 
-    // Attributes recursive case: string literal key
-    (@internal $attrs:ident, $level:expr, $key:literal = $value:expr, $($rest:tt)+) => {{
+    // Attributes recursive case: key with no dots
+    (@internal $attrs:ident, $level:expr, $key:ident = $value:expr, $($rest:tt)+) => {{
         $attrs.insert(
-            $key.to_owned(),
+            stringify!($key).to_owned(),
             $crate::protocol::LogAttribute($crate::protocol::Value::from($value))
         );
         $crate::log!(@internal $attrs, $level, $($rest)+)
     }};
 
-    // Attributes recursive case: identifier key
-    (@internal $attrs:ident, $level:expr, $key:ident = $value:expr, $($rest:tt)+) => {{
+    // Attributes recursive case: key with 1 dot
+    (@internal $attrs:ident, $level:expr, $key1:ident . $key2:ident = $value:expr, $($rest:tt)+) => {{
         $attrs.insert(
-            stringify!($key).to_owned(),
+            concat!(stringify!($key1), ".", stringify!($key2)).to_owned(),
+            $crate::protocol::LogAttribute($crate::protocol::Value::from($value))
+        );
+        $crate::log!(@internal $attrs, $level, $($rest)+)
+    }};
+
+    // Attributes recursive case: key with 2 dots
+    (@internal $attrs:ident, $level:expr, $key1:ident . $key2:ident . $key3:ident = $value:expr, $($rest:tt)+) => {{
+        $attrs.insert(
+            concat!(stringify!($key1), ".", stringify!($key2), ".", stringify!($key3)).to_owned(),
+            $crate::protocol::LogAttribute($crate::protocol::Value::from($value))
+        );
+        $crate::log!(@internal $attrs, $level, $($rest)+)
+    }};
+
+    // Attributes recursive case: key with 3 dots
+    (@internal $attrs:ident, $level:expr, $key1:ident . $key2:ident . $key3:ident . $key4:ident = $value:expr, $($rest:tt)+) => {{
+        $attrs.insert(
+            concat!(stringify!($key1), ".", stringify!($key2), ".", stringify!($key3), ".", stringify!($key4)).to_owned(),
+            $crate::protocol::LogAttribute($crate::protocol::Value::from($value))
+        );
+        $crate::log!(@internal $attrs, $level, $($rest)+)
+    }};
+
+    // Attributes recursive case: key with 4 dots
+    (@internal $attrs:ident, $level:expr, $key1:ident . $key2:ident . $key3:ident . $key4:ident . $key5:ident = $value:expr, $($rest:tt)+) => {{
+        $attrs.insert(
+            concat!(stringify!($key1), ".", stringify!($key2), ".", stringify!($key3), ".", stringify!($key4), ".", stringify!($key5)).to_owned(),
+            $crate::protocol::LogAttribute($crate::protocol::Value::from($value))
+        );
+        $crate::log!(@internal $attrs, $level, $($rest)+)
+    }};
+
+    // Attributes recursive case: key with 5 dots
+    (@internal $attrs:ident, $level:expr, $key1:ident . $key2:ident . $key3:ident . $key4:ident . $key5:ident . $key6:ident = $value:expr, $($rest:tt)+) => {{
+        $attrs.insert(
+            concat!(stringify!($key1), ".", stringify!($key2), ".", stringify!($key3), ".", stringify!($key4), ".", stringify!($key5), ".", stringify!($key6)).to_owned(),
+            $crate::protocol::LogAttribute($crate::protocol::Value::from($value))
+        );
+        $crate::log!(@internal $attrs, $level, $($rest)+)
+    }};
+
+    // Attributes recursive case: key with 6 dots
+    (@internal $attrs:ident, $level:expr, $key1:ident . $key2:ident . $key3:ident . $key4:ident . $key5:ident . $key6:ident . $key7:ident = $value:expr, $($rest:tt)+) => {{
+        $attrs.insert(
+            concat!(stringify!($key1), ".", stringify!($key2), ".", stringify!($key3), ".", stringify!($key4), ".", stringify!($key5), ".", stringify!($key6), ".", stringify!($key7)).to_owned(),
+            $crate::protocol::LogAttribute($crate::protocol::Value::from($value))
+        );
+        $crate::log!(@internal $attrs, $level, $($rest)+)
+    }};
+
+    // Attributes recursive case: key with 7 dots
+    (@internal $attrs:ident, $level:expr, $key1:ident . $key2:ident . $key3:ident . $key4:ident . $key5:ident . $key6:ident . $key7:ident . $key8:ident = $value:expr, $($rest:tt)+) => {{
+        $attrs.insert(
+            concat!(stringify!($key1), ".", stringify!($key2), ".", stringify!($key3), ".", stringify!($key4), ".", stringify!($key5), ".", stringify!($key6), ".", stringify!($key7), ".", stringify!($key8)).to_owned(),
+            $crate::protocol::LogAttribute($crate::protocol::Value::from($value))
+        );
+        $crate::log!(@internal $attrs, $level, $($rest)+)
+    }};
+
+    // Attributes recursive case: key with 8 dots
+    (@internal $attrs:ident, $level:expr, $key1:ident . $key2:ident . $key3:ident . $key4:ident . $key5:ident . $key6:ident . $key7:ident . $key8:ident . $key9:ident = $value:expr, $($rest:tt)+) => {{
+        $attrs.insert(
+            concat!(stringify!($key1), ".", stringify!($key2), ".", stringify!($key3), ".", stringify!($key4), ".", stringify!($key5), ".", stringify!($key6), ".", stringify!($key7), ".", stringify!($key8), ".", stringify!($key9)).to_owned(),
             $crate::protocol::LogAttribute($crate::protocol::Value::from($value))
         );
         $crate::log!(@internal $attrs, $level, $($rest)+)
@@ -138,11 +201,7 @@ macro_rules! log {
 
 /// Captures a log at the trace level, with the given message and attributes.
 ///
-/// It's possible to attach any number of attributes to the log, using either:
-/// - The `identifier = value` syntax for simple attributes
-/// - The `"string.with.dots" = value` syntax for structured attributes (e.g. `"user.id"` and `"user.email"` will be nested under `user` in the Sentry UI)
-///
-/// After specifying the attributes, the last parameter(s) consist of the message and optionally format args if the message is a format string.
+/// See the [`log`] macro for more details.
 ///
 /// # Examples
 ///
@@ -158,8 +217,8 @@ macro_rules! log {
 /// // Message with format args and attributes
 /// trace!(
 ///     error_code = 500,
-///     "user.id" = "12345",
-///     "user.email" = "test@test.com",
+///     user.id = "12345",
+///     user.email = "test@test.com",
 ///     success = false,
 ///     "Error occurred: {}",
 ///     "bad input"
@@ -174,11 +233,7 @@ macro_rules! trace {
 
 /// Captures a log at the debug level, with the given message and attributes.
 ///
-/// It's possible to attach any number of attributes to the log, using either:
-/// - The `identifier = value` syntax for simple attributes
-/// - The `"string.with.dots" = value` syntax for structured attributes (e.g. `"user.id"` and `"user.email"` will be nested under `user` in the Sentry UI)
-///
-/// After specifying the attributes, the last parameter(s) consist of the message and optionally format args if the message is a format string.
+/// See the [`log`] macro for more details.
 ///
 /// # Examples
 ///
@@ -194,8 +249,8 @@ macro_rules! trace {
 /// // Message with format args and attributes
 /// debug!(
 ///     error_code = 500,
-///     "user.id" = "12345",
-///     "user.email" = "test@test.com",
+///     user.id = "12345",
+///     user.email = "test@test.com",
 ///     success = false,
 ///     "Error occurred: {}",
 ///     "bad input"
@@ -210,11 +265,7 @@ macro_rules! debug {
 
 /// Captures a log at the info level, with the given message and attributes.
 ///
-/// It's possible to attach any number of attributes to the log, using either:
-/// - The `identifier = value` syntax for simple attributes
-/// - The `"string.with.dots" = value` syntax for structured attributes (e.g. `"user.id"` and `"user.email"` will be nested under `user` in the Sentry UI)
-///
-/// After specifying the attributes, the last parameter(s) consist of the message and optionally format args if the message is a format string.
+/// See the [`log`] macro for more details.
 ///
 /// # Examples
 ///
@@ -230,8 +281,8 @@ macro_rules! debug {
 /// // Message with format args and attributes
 /// info!(
 ///     error_code = 500,
-///     "user.id" = "12345",
-///     "user.email" = "test@test.com",
+///     user.id = "12345",
+///     user.email = "test@test.com",
 ///     success = false,
 ///     "Error occurred: {}",
 ///     "bad input"
@@ -246,9 +297,9 @@ macro_rules! info {
 
 /// Captures a log at the warn level, with the given message and attributes.
 ///
-/// It's possible to attach any number of attributes to the log, using either:
-/// - The `identifier = value` syntax for simple attributes
-/// - The `"string.with.dots" = value` syntax for structured attributes (e.g. `"user.id"` and `"user.email"` will be nested under `user` in the Sentry UI)
+/// It's possible to attach any number of attributes to the log using the syntax:
+/// - `identifier = value` for simple attributes
+/// - `identifier.with.dots = value` or `identifier-with-hyphens = value` for structured attributes
 ///
 /// After specifying the attributes, the last parameter(s) consist of the message and optionally format args if the message is a format string.
 ///
@@ -266,8 +317,8 @@ macro_rules! info {
 /// // Message with format args and attributes
 /// warn!(
 ///     error_code = 500,
-///     "user.id" = "12345",
-///     "user.email" = "test@test.com",
+///     user.id = "12345",
+///     user.email = "test@test.com",
 ///     success = false,
 ///     "Error occurred: {}",
 ///     "bad input"
@@ -282,11 +333,7 @@ macro_rules! warn {
 
 /// Captures a log at the error level, with the given message and attributes.
 ///
-/// It's possible to attach any number of attributes to the log, using either:
-/// - The `identifier = value` syntax for simple identifiers
-/// - The `"string.with.dots" = value` syntax for structured attributes (e.g. `"user.id"` and `"user.email"` will be nested under `user` in the Sentry UI)
-///
-/// After specifying the attributes, the last parameter(s) consist of the message and optionally format args if the message is a format string.
+/// See the [`log`] macro for more details.
 ///
 /// # Examples
 ///
@@ -302,8 +349,8 @@ macro_rules! warn {
 /// // Message with format args and attributes
 /// error!(
 ///     error_code = 500,
-///     "user.id" = "12345",
-///     "user.email" = "test@test.com",
+///     user.id = "12345",
+///     user.email = "test@test.com",
 ///     success = false,
 ///     "Error occurred: {}",
 ///     "bad input"
@@ -318,11 +365,7 @@ macro_rules! error {
 
 /// Captures a log at the fatal level, with the given message and attributes.
 ///
-/// It's possible to attach any number of attributes to the log, using either:
-/// - The `identifier = value` syntax for simple attributes
-/// - The `"string.with.dots" = value` syntax for structured attributes (e.g. `"user.id"` and `"user.email"` will be nested under `user` in the Sentry UI)
-///
-/// After specifying the attributes, the last parameter(s) consist of the message and optionally format args if the message is a format string.
+/// See the [`log`] macro for more details.
 ///
 /// # Examples
 ///
@@ -338,8 +381,8 @@ macro_rules! error {
 /// // Message with format args and attributes
 /// fatal!(
 ///     error_code = 500,
-///     "user.id" = "12345",
-///     "user.email" = "test@test.com",
+///     user.id = "12345",
+///     user.email = "test@test.com",
 ///     success = false,
 ///     "Error occurred: {}",
 ///     "bad input"

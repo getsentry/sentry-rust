@@ -116,8 +116,6 @@ mod futures;
 mod hub;
 mod integration;
 mod intodsn;
-#[cfg(feature = "UNSTABLE_logs")]
-mod logs;
 mod performance;
 mod scope;
 mod transport;
@@ -134,6 +132,8 @@ pub use crate::intodsn::IntoDsn;
 pub use crate::performance::*;
 pub use crate::scope::{Scope, ScopeGuard};
 pub use crate::transport::{Transport, TransportFactory};
+#[cfg(feature = "UNSTABLE_logs")]
+mod logs; // logs macros exported with `#[macro_export]`
 
 // client feature
 #[cfg(feature = "client")]

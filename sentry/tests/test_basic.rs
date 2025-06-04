@@ -429,9 +429,9 @@ fn test_basic_capture_log_macro_message_with_attributes() {
     let envelopes = sentry::test::with_captured_envelopes_options(
         || {
             error!(
-                "user.id" = "12345",
-                "user.active" = true,
-                "request.duration" = 150,
+                user.id = "12345",
+                user.active = true,
+                request.duration = 150,
                 success = false,
                 "Failed to process request"
             );
@@ -489,9 +489,9 @@ fn test_basic_capture_log_macro_message_formatted_with_attributes() {
         || {
             debug!(
                 hello = "test",
-                "operation.name" = "database_query",
-                "operation.success" = true,
-                "operation.time_ms" = 42,
+                operation.name = "database_query",
+                operation.success = true,
+                operation.time_ms = 42,
                 world = 10,
                 "Database query {} completed in {} ms with {} results",
                 "users_by_region",
