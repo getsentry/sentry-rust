@@ -246,7 +246,7 @@ impl Hub {
         }}
     }
 
-    /// Captures a log with the given message, level and optional additional attributes.
+    /// Captures a structured log.
     #[cfg(feature = "UNSTABLE_logs")]
     pub fn capture_log(&self, log: Log) {
         with_client_impl! {{
