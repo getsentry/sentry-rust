@@ -116,6 +116,8 @@ mod futures;
 mod hub;
 mod integration;
 mod intodsn;
+#[cfg(feature = "UNSTABLE_logs")]
+mod logs;
 mod performance;
 mod scope;
 mod transport;

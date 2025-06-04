@@ -313,3 +313,268 @@ fn test_basic_capture_log() {
         _ => panic!("expected item container"),
     }
 }
+
+#[cfg(feature = "UNSTABLE_logs")]
+#[test]
+fn test_basic_capture_log_macro_message() {
+    use sentry_core::info;
+
+    let options = sentry::ClientOptions {
+        enable_logs: true,
+        ..Default::default()
+    };
+    let envelopes = sentry::test::with_captured_envelopes_options(
+        || {
+            info!("Hello, world!");
+        },
+        options,
+    );
+    assert_eq!(envelopes.len(), 1);
+    let envelope = envelopes.first().expect("expected envelope");
+    let item = envelope.items().next().expect("expected envelope item");
+    match item {
+        EnvelopeItem::ItemContainer(container) => match container {
+            sentry::protocol::ItemContainer::Logs(logs) => {
+                let log = logs.iter().next().expect("expected log");
+                assert_eq!(sentry_core::protocol::LogLevel::Info, log.level);
+                assert_eq!("Hello, world!", log.body);
+                assert!(log.trace_id.is_some());
+                assert!(log.severity_number.is_none());
+                assert!(log.attributes.contains_key("sentry.sdk.name"));
+                assert!(log.attributes.contains_key("sentry.sdk.version"));
+            }
+            _ => panic!("expected logs"),
+        },
+        _ => panic!("expected item container"),
+    }
+}
+
+#[cfg(feature = "UNSTABLE_logs")]
+#[test]
+fn test_basic_capture_log_macro_message_formatted() {
+    use sentry::protocol::LogAttribute;
+    use sentry_core::warn;
+
+    let options = sentry::ClientOptions {
+        enable_logs: true,
+        ..Default::default()
+    };
+    let envelopes = sentry::test::with_captured_envelopes_options(
+        || {
+            let failed_requests = ["request1", "request2", "request3"];
+            warn!(
+                "Critical system errors detected for user {}, total failures: {}",
+                "test_user",
+                failed_requests.len()
+            );
+        },
+        options,
+    );
+    assert_eq!(envelopes.len(), 1);
+    let envelope = envelopes.first().expect("expected envelope");
+    let item = envelope.items().next().expect("expected envelope item");
+    match item {
+        EnvelopeItem::ItemContainer(container) => match container {
+            sentry::protocol::ItemContainer::Logs(logs) => {
+                let log = logs.iter().next().expect("expected log");
+                assert_eq!(sentry_core::protocol::LogLevel::Warn, log.level);
+                assert_eq!(
+                    "Critical system errors detected for user test_user, total failures: 3",
+                    log.body
+                );
+                assert_eq!(
+                    LogAttribute::from(
+                        "Critical system errors detected for user {}, total failures: {}"
+                    ),
+                    log.attributes
+                        .get("sentry.message.template")
+                        .unwrap()
+                        .clone()
+                );
+                assert_eq!(
+                    LogAttribute::from("test_user"),
+                    log.attributes
+                        .get("sentry.message.parameter.0")
+                        .unwrap()
+                        .clone()
+                );
+                assert_eq!(
+                    LogAttribute::from(3),
+                    log.attributes
+                        .get("sentry.message.parameter.1")
+                        .unwrap()
+                        .clone()
+                );
+                assert!(log.trace_id.is_some());
+                assert!(log.severity_number.is_none());
+                assert!(log.attributes.contains_key("sentry.sdk.name"));
+                assert!(log.attributes.contains_key("sentry.sdk.version"));
+            }
+            _ => panic!("expected logs"),
+        },
+        _ => panic!("expected item container"),
+    }
+}
+
+#[cfg(feature = "UNSTABLE_logs")]
+#[test]
+fn test_basic_capture_log_macro_message_with_attributes() {
+    use sentry::protocol::LogAttribute;
+    use sentry_core::error;
+
+    let options = sentry::ClientOptions {
+        enable_logs: true,
+        ..Default::default()
+    };
+    let envelopes = sentry::test::with_captured_envelopes_options(
+        || {
+            error!(
+                "user.id" = "12345",
+                "user.active" = true,
+                "request.duration" = 150,
+                success = false,
+                "Failed to process request"
+            );
+        },
+        options,
+    );
+    assert_eq!(envelopes.len(), 1);
+    let envelope = envelopes.first().expect("expected envelope");
+    let item = envelope.items().next().expect("expected envelope item");
+    match item {
+        EnvelopeItem::ItemContainer(container) => match container {
+            sentry::protocol::ItemContainer::Logs(logs) => {
+                let log = logs.iter().next().expect("expected log");
+                assert_eq!(sentry_core::protocol::LogLevel::Error, log.level);
+                assert_eq!("Failed to process request", log.body);
+                assert_eq!(None, log.attributes.get("sentry.message.template"));
+                assert!(log.trace_id.is_some());
+                assert!(log.severity_number.is_none());
+                assert!(log.attributes.contains_key("sentry.sdk.name"));
+                assert!(log.attributes.contains_key("sentry.sdk.version"));
+                assert_eq!(
+                    LogAttribute::from("12345"),
+                    log.attributes.get("user.id").unwrap().clone()
+                );
+                assert_eq!(
+                    LogAttribute::from(true),
+                    log.attributes.get("user.active").unwrap().clone()
+                );
+                assert_eq!(
+                    LogAttribute::from(150u64),
+                    log.attributes.get("request.duration").unwrap().clone()
+                );
+                assert_eq!(
+                    LogAttribute::from(false),
+                    log.attributes.get("success").unwrap().clone()
+                );
+            }
+            _ => panic!("expected logs"),
+        },
+        _ => panic!("expected item container"),
+    }
+}
+
+#[cfg(feature = "UNSTABLE_logs")]
+#[test]
+fn test_basic_capture_log_macro_message_formatted_with_attributes() {
+    use sentry::protocol::LogAttribute;
+    use sentry_core::debug;
+
+    let options = sentry::ClientOptions {
+        enable_logs: true,
+        ..Default::default()
+    };
+    let envelopes = sentry::test::with_captured_envelopes_options(
+        || {
+            debug!(
+                hello = "test",
+                "operation.name" = "database_query",
+                "operation.success" = true,
+                "operation.time_ms" = 42,
+                world = 10,
+                "Database query {} completed in {} ms with {} results",
+                "users_by_region",
+                42,
+                15
+            );
+        },
+        options,
+    );
+    assert_eq!(envelopes.len(), 1);
+    let envelope = envelopes.first().expect("expected envelope");
+    let item = envelope.items().next().expect("expected envelope item");
+    match item {
+        EnvelopeItem::ItemContainer(container) => match container {
+            sentry::protocol::ItemContainer::Logs(logs) => {
+                let log = logs.iter().next().expect("expected log");
+                assert_eq!(sentry_core::protocol::LogLevel::Debug, log.level);
+                assert_eq!(
+                    "Database query users_by_region completed in 42 ms with 15 results",
+                    log.body
+                );
+                assert!(log.trace_id.is_some());
+                assert!(log.severity_number.is_none());
+                assert_eq!(
+                    LogAttribute::from("Database query {} completed in {} ms with {} results",),
+                    log.attributes
+                        .get("sentry.message.template")
+                        .unwrap()
+                        .clone()
+                );
+                assert!(log.attributes.contains_key("sentry.sdk.name"));
+                assert!(log.attributes.contains_key("sentry.sdk.version"));
+                assert_eq!(
+                    LogAttribute::from("test"),
+                    log.attributes.get("hello").unwrap().clone()
+                );
+                assert_eq!(
+                    LogAttribute::from("database_query"),
+                    log.attributes.get("operation.name").unwrap().clone()
+                );
+                assert_eq!(
+                    LogAttribute::from(true),
+                    log.attributes.get("operation.success").unwrap().clone()
+                );
+                assert_eq!(
+                    LogAttribute::from(42u64),
+                    log.attributes.get("operation.time_ms").unwrap().clone()
+                );
+                assert_eq!(
+                    LogAttribute::from(10),
+                    log.attributes.get("world").unwrap().clone()
+                );
+                assert_eq!(
+                    LogAttribute::from("Database query {} completed in {} ms with {} results"),
+                    log.attributes
+                        .get("sentry.message.template")
+                        .unwrap()
+                        .clone()
+                );
+                assert_eq!(
+                    LogAttribute::from("users_by_region"),
+                    log.attributes
+                        .get("sentry.message.parameter.0")
+                        .unwrap()
+                        .clone()
+                );
+                assert_eq!(
+                    LogAttribute::from(42),
+                    log.attributes
+                        .get("sentry.message.parameter.1")
+                        .unwrap()
+                        .clone()
+                );
+                assert_eq!(
+                    LogAttribute::from(15),
+                    log.attributes
+                        .get("sentry.message.parameter.2")
+                        .unwrap()
+                        .clone()
+                );
+            }
+            _ => panic!("expected logs"),
+        },
+        _ => panic!("expected item container"),
+    }
+}
