@@ -20,8 +20,8 @@
   - Basic types for [Sentry structured logs](https://docs.sentry.io/product/explore/logs/) have been added.
   - It's possible (but not recommended) to use them to send logs to Sentry by directly constructing an `Envelope` containing an `ItemContainer::Logs` envelope item and sending it through `Client::send_envelope`.
   - A high-level API and integrations will come soon.
-- feat(logs): add ability to send logs and basic API (#823) by @lcian
-  - A method `capture_log` has been added to the `Client` to enable sending logs.
+- feat(logs): add ability to capture and send logs (#823) by @lcian
+  - A method `capture_log` has been added to the `Hub` to enable sending logs.
   - This is gated behind the `UNSTABLE_logs` feature flag (disabled by default).
   - Additionally, the new client option `enable_logs` needs to be enabled for logs to be sent to Sentry.
 
