@@ -248,14 +248,8 @@ impl Hub {
 
     /// Captures a log with the given message, level and optional additional attributes.
     #[cfg(feature = "UNSTABLE_logs")]
-    pub fn capture_log(
-        &self,
-        message: &str,
-        level: LogLevel,
-        attributes: Option<Map<String, LogAttribute>>,
-    ) {
+    pub fn capture_log(&self, log: Log) {
         with_client_impl! {{
-            let log = Log::new(message, level, attributes);
             let top = self.inner.with(|stack| stack.top().clone());
             let Some(ref client) = top.client else { return };
             client.capture_log(log, &top.scope);

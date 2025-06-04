@@ -2119,7 +2119,7 @@ impl fmt::Display for Transaction<'_> {
     }
 }
 
-/// A single log.
+/// A single [structured log](https://docs.sentry.io/product/explore/logs/).
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Log {
     /// The severity of the log (required).
@@ -2127,36 +2127,17 @@ pub struct Log {
     /// The log body/message (required).
     pub body: String,
     /// The ID of the Trace in which this log happened (required).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub trace_id: Option<TraceId>,
     /// The timestamp of the log (required).
     #[serde(with = "ts_rfc3339_opt")]
     pub timestamp: Option<SystemTime>,
-    /// The severity number of the log (required).
+    /// The severity number of the log.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub severity_number: Option<LogSeverityNumber>,
     /// Additional arbitrary attributes attached to the log.
     #[serde(default, skip_serializing_if = "Map::is_empty")]
     pub attributes: Map<String, LogAttribute>,
-}
-
-impl Log {
-    /// Creates a new log with the given message, level, and attributes.
-    ///
-    /// The timestamp is set to the current timestamp and the severity number is inferred from the
-    /// level.
-    pub fn new(
-        message: &str,
-        level: LogLevel,
-        attributes: Option<Map<String, LogAttribute>>,
-    ) -> Self {
-        Self {
-            level,
-            body: message.to_owned(),
-            trace_id: None,
-            timestamp: Some(SystemTime::now()),
-            severity_number: Some(level.into()),
-            attributes: attributes.unwrap_or_default(),
-        }
-    }
 }
 
 /// Indicates the severity of a log, according to the
@@ -2206,27 +2187,16 @@ impl TryFrom<u8> for LogSeverityNumber {
     }
 }
 
-impl From<LogLevel> for LogSeverityNumber {
-    /// Maps a `LogLevel` to the lowest corresponding `LogSeverityNumber`
-    fn from(value: LogLevel) -> Self {
-        match value {
-            LogLevel::Trace => Self(1),
-            LogLevel::Debug => Self(5),
-            LogLevel::Info => Self(9),
-            LogLevel::Warn => Self(13),
-            LogLevel::Error => Self(17),
-            LogLevel::Fatal => Self(21),
-        }
-    }
-}
-
 /// An attribute that can be attached to a log.
 #[derive(Clone, Debug, PartialEq)]
 pub struct LogAttribute(pub Value);
 
-impl From<Value> for LogAttribute {
-    fn from(value: Value) -> Self {
-        Self(value)
+impl<T> From<T> for LogAttribute
+where
+    Value: From<T>,
+{
+    fn from(value: T) -> Self {
+        Self(Value::from(value))
     }
 }
 

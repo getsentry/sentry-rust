@@ -2,8 +2,6 @@
 use sentry_types::protocol::v7::SessionStatus;
 
 use crate::protocol::{Event, Level};
-#[cfg(feature = "UNSTABLE_logs")]
-use crate::protocol::{LogAttribute, LogLevel, Map};
 use crate::types::Uuid;
 use crate::{Hub, Integration, IntoBreadcrumbs, Scope};
 
@@ -303,10 +301,4 @@ pub fn end_session() {
 #[cfg(feature = "release-health")]
 pub fn end_session_with_status(status: SessionStatus) {
     Hub::with_active(|hub| hub.end_session_with_status(status))
-}
-
-/// Captures a log with the given message, level and optional additional attributes.
-#[cfg(feature = "UNSTABLE_logs")]
-pub fn capture_log(message: &str, level: LogLevel, attributes: Option<Map<String, LogAttribute>>) {
-    Hub::with_active(|hub| hub.capture_log(message, level, attributes))
 }

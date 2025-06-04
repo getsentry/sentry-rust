@@ -268,13 +268,28 @@ fn test_panic_scope_pop() {
 #[cfg(feature = "UNSTABLE_logs")]
 #[test]
 fn test_basic_capture_log() {
+    use std::time::SystemTime;
+
+    use sentry::{protocol::Log, protocol::LogAttribute, protocol::Map, Hub};
+
     let options = sentry::ClientOptions {
         enable_logs: true,
         ..Default::default()
     };
     let envelopes = sentry::test::with_captured_envelopes_options(
         || {
-            sentry::capture_log("this is a test", sentry::protocol::LogLevel::Warn, None);
+            let mut attributes: Map<String, LogAttribute> = Map::new();
+            attributes.insert("test".into(), "a string".into());
+            let log = Log {
+                level: sentry::protocol::LogLevel::Warn,
+                body: "this is a test".into(),
+                trace_id: None,
+                timestamp: Some(SystemTime::now()),
+                severity_number: None,
+                attributes,
+            };
+
+            Hub::current().capture_log(log);
         },
         options,
     );
@@ -289,10 +304,12 @@ fn test_basic_capture_log() {
                 assert_eq!("this is a test", log.body);
                 assert!(log.trace_id.is_some());
                 assert!(log.timestamp.is_some());
-                assert!(log.severity_number.is_some());
+                assert!(log.severity_number.is_none());
                 assert!(log.attributes.contains_key("sentry.sdk.name"));
                 assert!(log.attributes.contains_key("sentry.sdk.version"));
+                assert!(log.attributes.contains_key("test"));
             }
+            _ => panic!("expected logs"),
         },
         _ => panic!("expected item container"),
     }
