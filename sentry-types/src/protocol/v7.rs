@@ -2119,7 +2119,7 @@ impl fmt::Display for Transaction<'_> {
     }
 }
 
-/// A single log.
+/// A single [structured log](https://docs.sentry.io/product/explore/logs/).
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Log {
     /// The severity of the log (required).
