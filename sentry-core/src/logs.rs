@@ -6,7 +6,7 @@
 ///
 /// The supported attribute values are simple types, such as string, numbers, and boolean.
 ///
-/// See also the [`trace!`], [`debug!`], [`info!`], [`warn!`], [`error!`], and [`fatal!`] macros, which call `log!` with the corresponding level.
+/// See also the [`crate::trace!`], [`crate::debug!`], [`crate::info!`], [`crate::warn!`], [`crate::error!`], and [`crate::fatal!`] macros, which call `log!` with the corresponding level.
 ///
 /// # Examples
 ///
