@@ -2130,8 +2130,8 @@ pub struct Log {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub trace_id: Option<TraceId>,
     /// The timestamp of the log (required).
-    #[serde(with = "ts_rfc3339_opt")]
-    pub timestamp: Option<SystemTime>,
+    #[serde(with = "ts_seconds_float")]
+    pub timestamp: SystemTime,
     /// The severity number of the log.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub severity_number: Option<LogSeverityNumber>,
