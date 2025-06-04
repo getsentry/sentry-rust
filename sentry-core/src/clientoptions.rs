@@ -170,8 +170,7 @@ pub struct ClientOptions {
     /// Controls the maximum size of an HTTP request body that can be captured when using HTTP
     /// server integrations. Needs `send_default_pii` to be enabled to have any effect.
     pub max_request_body_size: MaxRequestBodySize,
-    /// Determines whether logs captured through the API/integrations should be sent to Sentry.
-    /// (defaults to false)
+    /// Determines whether captured structured logs should be sent to Sentry (defaults to false).
     #[cfg(feature = "UNSTABLE_logs")]
     pub enable_logs: bool,
     // Other options not documented in Unified API
