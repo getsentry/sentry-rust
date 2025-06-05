@@ -317,7 +317,7 @@ fn test_basic_capture_log() {
 #[cfg(feature = "UNSTABLE_logs")]
 #[test]
 fn test_basic_capture_log_macro_message() {
-    use sentry_core::info;
+    use sentry_core::logger_info;
 
     let options = sentry::ClientOptions {
         enable_logs: true,
@@ -325,7 +325,7 @@ fn test_basic_capture_log_macro_message() {
     };
     let envelopes = sentry::test::with_captured_envelopes_options(
         || {
-            info!("Hello, world!");
+            logger_info!("Hello, world!");
         },
         options,
     );
@@ -353,7 +353,7 @@ fn test_basic_capture_log_macro_message() {
 #[test]
 fn test_basic_capture_log_macro_message_formatted() {
     use sentry::protocol::LogAttribute;
-    use sentry_core::warn;
+    use sentry_core::logger_warn;
 
     let options = sentry::ClientOptions {
         enable_logs: true,
@@ -362,7 +362,7 @@ fn test_basic_capture_log_macro_message_formatted() {
     let envelopes = sentry::test::with_captured_envelopes_options(
         || {
             let failed_requests = ["request1", "request2", "request3"];
-            warn!(
+            logger_warn!(
                 "Critical system errors detected for user {}, total failures: {}",
                 "test_user",
                 failed_requests.len()
@@ -420,7 +420,7 @@ fn test_basic_capture_log_macro_message_formatted() {
 #[test]
 fn test_basic_capture_log_macro_message_with_attributes() {
     use sentry::protocol::LogAttribute;
-    use sentry_core::error;
+    use sentry_core::logger_error;
 
     let options = sentry::ClientOptions {
         enable_logs: true,
@@ -428,7 +428,7 @@ fn test_basic_capture_log_macro_message_with_attributes() {
     };
     let envelopes = sentry::test::with_captured_envelopes_options(
         || {
-            error!(
+            logger_error!(
                 user.id = "12345",
                 user.active = true,
                 request.duration = 150,
@@ -479,7 +479,7 @@ fn test_basic_capture_log_macro_message_with_attributes() {
 #[test]
 fn test_basic_capture_log_macro_message_formatted_with_attributes() {
     use sentry::protocol::LogAttribute;
-    use sentry_core::debug;
+    use sentry_core::logger_debug;
 
     let options = sentry::ClientOptions {
         enable_logs: true,
@@ -487,7 +487,7 @@ fn test_basic_capture_log_macro_message_formatted_with_attributes() {
     };
     let envelopes = sentry::test::with_captured_envelopes_options(
         || {
-            debug!(
+            logger_debug!(
                 hello = "test",
                 operation.name = "database_query",
                 operation.success = true,

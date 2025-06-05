@@ -133,7 +133,7 @@ pub use crate::performance::*;
 pub use crate::scope::{Scope, ScopeGuard};
 pub use crate::transport::{Transport, TransportFactory};
 #[cfg(feature = "UNSTABLE_logs")]
-mod logs; // logs macros exported with `#[macro_export]`
+mod logger; // structured logging macros exported with `#[macro_export]`
 
 // client feature
 #[cfg(feature = "client")]

@@ -1,36 +1,9 @@
-/// Captures a log at the given level, with the given message and attributes.
-/// The attributes are passed as `key = value` arguments before the message, which can be a simple string or a format string with its arguments.
-///
-/// The supported attribute keys are all valid Rust identifiers with up to 8 dots.
-/// Using dots will nest multiple attributes under their common prefix in the UI.
-///
-/// The supported attribute values are simple types, such as string, numbers, and boolean.
-///
-/// See also the [`crate::trace!`], [`crate::debug!`], [`crate::info!`], [`crate::warn!`], [`crate::error!`], and [`crate::fatal!`] macros, which call `log!` with the corresponding level.
-///
-/// # Examples
-///
-/// ```
-/// use sentry::{log, protocol::LogLevel};
-///
-/// // Simple message
-/// log!(LogLevel::Info, "Hello world");
-///
-/// // Message with format args
-/// log!(LogLevel::Debug, "Value is {}", 42);
-///
-/// // Message with format args and attributes
-/// log!(LogLevel::Warn,
-///     error_code = 500,
-///     user.id = "12345",
-///     user.email = "test@test.com",
-///     success = false,
-///     "Error occurred: {}",
-///     "bad input"
-/// );
-/// ```
+//! Macros for Sentry [structured logging](https://docs.sentry.io/product/explore/logs/).
+
+// Helper macro to capture a log at the given level. Should not be used directly.
+#[doc(hidden)]
 #[macro_export]
-macro_rules! log {
+macro_rules! logger_log {
     // Simple message
     ($level:expr, $msg:literal) => {{
         let log = $crate::protocol::Log {
@@ -75,7 +48,7 @@ macro_rules! log {
     // Attributes entrypoint
     ($level:expr, $($rest:tt)+) => {{
         let mut attributes = $crate::protocol::Map::new();
-        $crate::log!(@internal attributes, $level, $($rest)+)
+        $crate::logger_log!(@internal attributes, $level, $($rest)+)
     }};
 
     // Attributes base case: no more attributes, simple message
@@ -123,7 +96,7 @@ macro_rules! log {
             stringify!($key).to_owned(),
             $crate::protocol::LogAttribute($crate::protocol::Value::from($value))
         );
-        $crate::log!(@internal $attrs, $level, $($rest)+)
+        $crate::logger_log!(@internal $attrs, $level, $($rest)+)
     }};
 
     // Attributes recursive case: key with 1 dot
@@ -132,7 +105,7 @@ macro_rules! log {
             concat!(stringify!($key1), ".", stringify!($key2)).to_owned(),
             $crate::protocol::LogAttribute($crate::protocol::Value::from($value))
         );
-        $crate::log!(@internal $attrs, $level, $($rest)+)
+        $crate::logger_log!(@internal $attrs, $level, $($rest)+)
     }};
 
     // Attributes recursive case: key with 2 dots
@@ -141,7 +114,7 @@ macro_rules! log {
             concat!(stringify!($key1), ".", stringify!($key2), ".", stringify!($key3)).to_owned(),
             $crate::protocol::LogAttribute($crate::protocol::Value::from($value))
         );
-        $crate::log!(@internal $attrs, $level, $($rest)+)
+        $crate::logger_log!(@internal $attrs, $level, $($rest)+)
     }};
 
     // Attributes recursive case: key with 3 dots
@@ -150,7 +123,7 @@ macro_rules! log {
             concat!(stringify!($key1), ".", stringify!($key2), ".", stringify!($key3), ".", stringify!($key4)).to_owned(),
             $crate::protocol::LogAttribute($crate::protocol::Value::from($value))
         );
-        $crate::log!(@internal $attrs, $level, $($rest)+)
+        $crate::logger_log!(@internal $attrs, $level, $($rest)+)
     }};
 
     // Attributes recursive case: key with 4 dots
@@ -159,7 +132,7 @@ macro_rules! log {
             concat!(stringify!($key1), ".", stringify!($key2), ".", stringify!($key3), ".", stringify!($key4), ".", stringify!($key5)).to_owned(),
             $crate::protocol::LogAttribute($crate::protocol::Value::from($value))
         );
-        $crate::log!(@internal $attrs, $level, $($rest)+)
+        $crate::logger_log!(@internal $attrs, $level, $($rest)+)
     }};
 
     // Attributes recursive case: key with 5 dots
@@ -168,7 +141,7 @@ macro_rules! log {
             concat!(stringify!($key1), ".", stringify!($key2), ".", stringify!($key3), ".", stringify!($key4), ".", stringify!($key5), ".", stringify!($key6)).to_owned(),
             $crate::protocol::LogAttribute($crate::protocol::Value::from($value))
         );
-        $crate::log!(@internal $attrs, $level, $($rest)+)
+        $crate::logger_log!(@internal $attrs, $level, $($rest)+)
     }};
 
     // Attributes recursive case: key with 6 dots
@@ -177,7 +150,7 @@ macro_rules! log {
             concat!(stringify!($key1), ".", stringify!($key2), ".", stringify!($key3), ".", stringify!($key4), ".", stringify!($key5), ".", stringify!($key6), ".", stringify!($key7)).to_owned(),
             $crate::protocol::LogAttribute($crate::protocol::Value::from($value))
         );
-        $crate::log!(@internal $attrs, $level, $($rest)+)
+        $crate::logger_log!(@internal $attrs, $level, $($rest)+)
     }};
 
     // Attributes recursive case: key with 7 dots
@@ -186,7 +159,7 @@ macro_rules! log {
             concat!(stringify!($key1), ".", stringify!($key2), ".", stringify!($key3), ".", stringify!($key4), ".", stringify!($key5), ".", stringify!($key6), ".", stringify!($key7), ".", stringify!($key8)).to_owned(),
             $crate::protocol::LogAttribute($crate::protocol::Value::from($value))
         );
-        $crate::log!(@internal $attrs, $level, $($rest)+)
+        $crate::logger_log!(@internal $attrs, $level, $($rest)+)
     }};
 
     // Attributes recursive case: key with 8 dots
@@ -195,27 +168,33 @@ macro_rules! log {
             concat!(stringify!($key1), ".", stringify!($key2), ".", stringify!($key3), ".", stringify!($key4), ".", stringify!($key5), ".", stringify!($key6), ".", stringify!($key7), ".", stringify!($key8), ".", stringify!($key9)).to_owned(),
             $crate::protocol::LogAttribute($crate::protocol::Value::from($value))
         );
-        $crate::log!(@internal $attrs, $level, $($rest)+)
+        $crate::logger_log!(@internal $attrs, $level, $($rest)+)
     }};
 }
 
 /// Captures a log at the trace level, with the given message and attributes.
 ///
-/// See the [`log!`] macro for more details.
+/// To attach attributes to a log, pass them with the `key = value` syntax before the message.
+/// The message can be a simple string or a format string with its arguments.
+///
+/// The supported attribute keys are all valid Rust identifiers with up to 8 dots.
+/// Using dots will nest multiple attributes under their common prefix in the UI.
+///
+/// The supported attribute values are simple types, such as string, numbers, and boolean.
 ///
 /// # Examples
 ///
 /// ```
-/// use sentry::trace;
+/// use sentry::logger_trace;
 ///
 /// // Simple message
-/// trace!("Hello world");
+/// logger_trace!("Hello world");
 ///
 /// // Message with format args
-/// trace!("Value is {}", 42);
+/// logger_trace!("Value is {}", 42);
 ///
 /// // Message with format args and attributes
-/// trace!(
+/// logger_trace!(
 ///     error_code = 500,
 ///     user.id = "12345",
 ///     user.email = "test@test.com",
@@ -225,29 +204,35 @@ macro_rules! log {
 /// );
 /// ```
 #[macro_export]
-macro_rules! trace {
+macro_rules! logger_trace {
     ($($arg:tt)+) => {
-        $crate::log!($crate::protocol::LogLevel::Trace, $($arg)+)
+        $crate::logger_log!($crate::protocol::LogLevel::Trace, $($arg)+)
     };
 }
 
 /// Captures a log at the debug level, with the given message and attributes.
 ///
-/// See the [`log!`] macro for more details.
+/// To attach attributes to a log, pass them with the `key = value` syntax before the message.
+/// The message can be a simple string or a format string with its arguments.
+///
+/// The supported attribute keys are all valid Rust identifiers with up to 8 dots.
+/// Using dots will nest multiple attributes under their common prefix in the UI.
+///
+/// The supported attribute values are simple types, such as string, numbers, and boolean.
 ///
 /// # Examples
 ///
 /// ```
-/// use sentry::debug;
+/// use sentry::logger_debug;
 ///
 /// // Simple message
-/// debug!("Hello world");
+/// logger_debug!("Hello world");
 ///
 /// // Message with format args
-/// debug!("Value is {}", 42);
+/// logger_debug!("Value is {}", 42);
 ///
 /// // Message with format args and attributes
-/// debug!(
+/// logger_debug!(
 ///     error_code = 500,
 ///     user.id = "12345",
 ///     user.email = "test@test.com",
@@ -257,29 +242,35 @@ macro_rules! trace {
 /// );
 /// ```
 #[macro_export]
-macro_rules! debug {
+macro_rules! logger_debug {
     ($($arg:tt)+) => {
-        $crate::log!($crate::protocol::LogLevel::Debug, $($arg)+)
+        $crate::logger_log!($crate::protocol::LogLevel::Debug, $($arg)+)
     };
 }
 
 /// Captures a log at the info level, with the given message and attributes.
 ///
-/// See the [`log!`] macro for more details.
+/// To attach attributes to a log, pass them with the `key = value` syntax before the message.
+/// The message can be a simple string or a format string with its arguments.
+///
+/// The supported attribute keys are all valid Rust identifiers with up to 8 dots.
+/// Using dots will nest multiple attributes under their common prefix in the UI.
+///
+/// The supported attribute values are simple types, such as string, numbers, and boolean.
 ///
 /// # Examples
 ///
 /// ```
-/// use sentry::info;
+/// use sentry::logger_info;
 ///
 /// // Simple message
-/// info!("Hello world");
+/// logger_info!("Hello world");
 ///
 /// // Message with format args
-/// info!("Value is {}", 42);
+/// logger_info!("Value is {}", 42);
 ///
 /// // Message with format args and attributes
-/// info!(
+/// logger_info!(
 ///     error_code = 500,
 ///     user.id = "12345",
 ///     user.email = "test@test.com",
@@ -289,29 +280,35 @@ macro_rules! debug {
 /// );
 /// ```
 #[macro_export]
-macro_rules! info {
+macro_rules! logger_info {
     ($($arg:tt)+) => {
-        $crate::log!($crate::protocol::LogLevel::Info, $($arg)+)
+        $crate::logger_log!($crate::protocol::LogLevel::Info, $($arg)+)
     };
 }
 
 /// Captures a log at the warn level, with the given message and attributes.
 ///
-/// See the [`log!`] macro for more details.
+/// To attach attributes to a log, pass them with the `key = value` syntax before the message.
+/// The message can be a simple string or a format string with its arguments.
+///
+/// The supported attribute keys are all valid Rust identifiers with up to 8 dots.
+/// Using dots will nest multiple attributes under their common prefix in the UI.
+///
+/// The supported attribute values are simple types, such as string, numbers, and boolean.
 ///
 /// # Examples
 ///
 /// ```
-/// use sentry::warn;
+/// use sentry::logger_warn;
 ///
 /// // Simple message
-/// warn!("Hello world");
+/// logger_warn!("Hello world");
 ///
 /// // Message with format args
-/// warn!("Value is {}", 42);
+/// logger_warn!("Value is {}", 42);
 ///
 /// // Message with format args and attributes
-/// warn!(
+/// logger_warn!(
 ///     error_code = 500,
 ///     user.id = "12345",
 ///     user.email = "test@test.com",
@@ -321,29 +318,35 @@ macro_rules! info {
 /// );
 /// ```
 #[macro_export]
-macro_rules! warn {
+macro_rules! logger_warn {
     ($($arg:tt)+) => {
-        $crate::log!($crate::protocol::LogLevel::Warn, $($arg)+)
+        $crate::logger_log!($crate::protocol::LogLevel::Warn, $($arg)+)
     };
 }
 
 /// Captures a log at the error level, with the given message and attributes.
 ///
-/// See the [`log!`] macro for more details.
+/// To attach attributes to a log, pass them with the `key = value` syntax before the message.
+/// The message can be a simple string or a format string with its arguments.
+///
+/// The supported attribute keys are all valid Rust identifiers with up to 8 dots.
+/// Using dots will nest multiple attributes under their common prefix in the UI.
+///
+/// The supported attribute values are simple types, such as string, numbers, and boolean.
 ///
 /// # Examples
 ///
 /// ```
-/// use sentry::error;
+/// use sentry::logger_error;
 ///
 /// // Simple message
-/// error!("Hello world");
+/// logger_error!("Hello world");
 ///
 /// // Message with format args
-/// error!("Value is {}", 42);
+/// logger_error!("Value is {}", 42);
 ///
 /// // Message with format args and attributes
-/// error!(
+/// logger_error!(
 ///     error_code = 500,
 ///     user.id = "12345",
 ///     user.email = "test@test.com",
@@ -353,29 +356,35 @@ macro_rules! warn {
 /// );
 /// ```
 #[macro_export]
-macro_rules! error {
+macro_rules! logger_error {
     ($($arg:tt)+) => {
-        $crate::log!($crate::protocol::LogLevel::Error, $($arg)+)
+        $crate::logger_log!($crate::protocol::LogLevel::Error, $($arg)+)
     };
 }
 
 /// Captures a log at the fatal level, with the given message and attributes.
 ///
-/// See the [`log!`] macro for more details.
+/// To attach attributes to a log, pass them with the `key = value` syntax before the message.
+/// The message can be a simple string or a format string with its arguments.
+///
+/// The supported attribute keys are all valid Rust identifiers with up to 8 dots.
+/// Using dots will nest multiple attributes under their common prefix in the UI.
+///
+/// The supported attribute values are simple types, such as string, numbers, and boolean.
 ///
 /// # Examples
 ///
 /// ```
-/// use sentry::fatal;
+/// use sentry::logger_fatal;
 ///
 /// // Simple message
-/// fatal!("Hello world");
+/// logger_fatal!("Hello world");
 ///
 /// // Message with format args
-/// fatal!("Value is {}", 42);
+/// logger_fatal!("Value is {}", 42);
 ///
 /// // Message with format args and attributes
-/// fatal!(
+/// logger_fatal!(
 ///     error_code = 500,
 ///     user.id = "12345",
 ///     user.email = "test@test.com",
@@ -385,8 +394,8 @@ macro_rules! error {
 /// );
 /// ```
 #[macro_export]
-macro_rules! fatal {
+macro_rules! logger_fatal {
     ($($arg:tt)+) => {
-        $crate::log!($crate::protocol::LogLevel::Fatal, $($arg)+)
+        $crate::logger_log!($crate::protocol::LogLevel::Fatal, $($arg)+)
     };
 }
