@@ -40,7 +40,7 @@ macro_rules! logger_log {
             trace_id: None,
             timestamp: ::std::time::SystemTime::now(),
             severity_number: None,
-            attributes: attributes,
+            attributes,
         };
         $crate::Hub::current().capture_log(log)
     }};
@@ -59,6 +59,7 @@ macro_rules! logger_log {
             trace_id: None,
             timestamp: ::std::time::SystemTime::now(),
             severity_number: None,
+            #[allow(clippy::redundant_field_names)]
             attributes: $attrs,
         };
         $crate::Hub::current().capture_log(log)
@@ -85,6 +86,7 @@ macro_rules! logger_log {
             trace_id: None,
             timestamp: ::std::time::SystemTime::now(),
             severity_number: None,
+            #[allow(clippy::redundant_field_names)]
             attributes: $attrs,
         };
         $crate::Hub::current().capture_log(log)
