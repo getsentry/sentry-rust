@@ -90,82 +90,10 @@ macro_rules! logger_log {
         $crate::Hub::current().capture_log(log)
     }};
 
-    // Attributes recursive case: key with no dots
-    (@internal $attrs:ident, $level:expr, $key:ident = $value:expr, $($rest:tt)+) => {{
+    // Attributes recursive case
+    (@internal $attrs:ident, $level:expr, $($key:ident).+ = $value:expr, $($rest:tt)+) => {{
         $attrs.insert(
-            stringify!($key).to_owned(),
-            $crate::protocol::LogAttribute($crate::protocol::Value::from($value))
-        );
-        $crate::logger_log!(@internal $attrs, $level, $($rest)+)
-    }};
-
-    // Attributes recursive case: key with 1 dot
-    (@internal $attrs:ident, $level:expr, $key1:ident . $key2:ident = $value:expr, $($rest:tt)+) => {{
-        $attrs.insert(
-            concat!(stringify!($key1), ".", stringify!($key2)).to_owned(),
-            $crate::protocol::LogAttribute($crate::protocol::Value::from($value))
-        );
-        $crate::logger_log!(@internal $attrs, $level, $($rest)+)
-    }};
-
-    // Attributes recursive case: key with 2 dots
-    (@internal $attrs:ident, $level:expr, $key1:ident . $key2:ident . $key3:ident = $value:expr, $($rest:tt)+) => {{
-        $attrs.insert(
-            concat!(stringify!($key1), ".", stringify!($key2), ".", stringify!($key3)).to_owned(),
-            $crate::protocol::LogAttribute($crate::protocol::Value::from($value))
-        );
-        $crate::logger_log!(@internal $attrs, $level, $($rest)+)
-    }};
-
-    // Attributes recursive case: key with 3 dots
-    (@internal $attrs:ident, $level:expr, $key1:ident . $key2:ident . $key3:ident . $key4:ident = $value:expr, $($rest:tt)+) => {{
-        $attrs.insert(
-            concat!(stringify!($key1), ".", stringify!($key2), ".", stringify!($key3), ".", stringify!($key4)).to_owned(),
-            $crate::protocol::LogAttribute($crate::protocol::Value::from($value))
-        );
-        $crate::logger_log!(@internal $attrs, $level, $($rest)+)
-    }};
-
-    // Attributes recursive case: key with 4 dots
-    (@internal $attrs:ident, $level:expr, $key1:ident . $key2:ident . $key3:ident . $key4:ident . $key5:ident = $value:expr, $($rest:tt)+) => {{
-        $attrs.insert(
-            concat!(stringify!($key1), ".", stringify!($key2), ".", stringify!($key3), ".", stringify!($key4), ".", stringify!($key5)).to_owned(),
-            $crate::protocol::LogAttribute($crate::protocol::Value::from($value))
-        );
-        $crate::logger_log!(@internal $attrs, $level, $($rest)+)
-    }};
-
-    // Attributes recursive case: key with 5 dots
-    (@internal $attrs:ident, $level:expr, $key1:ident . $key2:ident . $key3:ident . $key4:ident . $key5:ident . $key6:ident = $value:expr, $($rest:tt)+) => {{
-        $attrs.insert(
-            concat!(stringify!($key1), ".", stringify!($key2), ".", stringify!($key3), ".", stringify!($key4), ".", stringify!($key5), ".", stringify!($key6)).to_owned(),
-            $crate::protocol::LogAttribute($crate::protocol::Value::from($value))
-        );
-        $crate::logger_log!(@internal $attrs, $level, $($rest)+)
-    }};
-
-    // Attributes recursive case: key with 6 dots
-    (@internal $attrs:ident, $level:expr, $key1:ident . $key2:ident . $key3:ident . $key4:ident . $key5:ident . $key6:ident . $key7:ident = $value:expr, $($rest:tt)+) => {{
-        $attrs.insert(
-            concat!(stringify!($key1), ".", stringify!($key2), ".", stringify!($key3), ".", stringify!($key4), ".", stringify!($key5), ".", stringify!($key6), ".", stringify!($key7)).to_owned(),
-            $crate::protocol::LogAttribute($crate::protocol::Value::from($value))
-        );
-        $crate::logger_log!(@internal $attrs, $level, $($rest)+)
-    }};
-
-    // Attributes recursive case: key with 7 dots
-    (@internal $attrs:ident, $level:expr, $key1:ident . $key2:ident . $key3:ident . $key4:ident . $key5:ident . $key6:ident . $key7:ident . $key8:ident = $value:expr, $($rest:tt)+) => {{
-        $attrs.insert(
-            concat!(stringify!($key1), ".", stringify!($key2), ".", stringify!($key3), ".", stringify!($key4), ".", stringify!($key5), ".", stringify!($key6), ".", stringify!($key7), ".", stringify!($key8)).to_owned(),
-            $crate::protocol::LogAttribute($crate::protocol::Value::from($value))
-        );
-        $crate::logger_log!(@internal $attrs, $level, $($rest)+)
-    }};
-
-    // Attributes recursive case: key with 8 dots
-    (@internal $attrs:ident, $level:expr, $key1:ident . $key2:ident . $key3:ident . $key4:ident . $key5:ident . $key6:ident . $key7:ident . $key8:ident . $key9:ident = $value:expr, $($rest:tt)+) => {{
-        $attrs.insert(
-            concat!(stringify!($key1), ".", stringify!($key2), ".", stringify!($key3), ".", stringify!($key4), ".", stringify!($key5), ".", stringify!($key6), ".", stringify!($key7), ".", stringify!($key8), ".", stringify!($key9)).to_owned(),
+            stringify!($($key).+).to_owned(),
             $crate::protocol::LogAttribute($crate::protocol::Value::from($value))
         );
         $crate::logger_log!(@internal $attrs, $level, $($rest)+)
