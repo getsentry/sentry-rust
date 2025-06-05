@@ -393,11 +393,7 @@ impl Client {
         self.set_log_default_attributes(&mut log);
 
         if let Some(ref func) = self.options.before_send_log {
-            if let Some(res) = func(log) {
-                log = res
-            } else {
-                return None;
-            }
+            log = func(log)?;
         }
 
         Some(log)
