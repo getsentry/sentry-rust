@@ -21,7 +21,7 @@
 - feat(logs): add macro-based API (#827) by @lcian
   - Support for [Sentry structured logs](https://docs.sentry.io/product/explore/logs/) has been added.
   - To enable logs, enable the `UNSTABLE_logs` feature of the `sentry` crate and set `enable_logs` to `true` in your client options.
-  - Then, use the `trace!`, `debug!`, `info!`, `warn!`, `error!` and `fatal!` macros to capture logs.
+  - Then, use the `logger_trace!`, `logger_debug!`, `logger_info!`, `logger_warn!`, `logger_error!` and `logger_fatal!` macros to capture logs.
   - Please note that breaking changes could occur until the API is finalized.
 
 ## 0.38.1
