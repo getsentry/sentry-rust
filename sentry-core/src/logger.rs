@@ -31,9 +31,9 @@ macro_rules! logger_log {
                 format!("sentry.message.parameter.{}", i),
                 $crate::protocol::LogAttribute($crate::protocol::Value::from($arg))
             );
-            #[allow(unused_assignments)]
             i += 1;
         )*
+        let _ = i; // need this as the last increment could otherwise trigger the `unused_assignments` lint
 
         let log = $crate::protocol::Log {
             level: $level,
@@ -78,9 +78,9 @@ macro_rules! logger_log {
                 format!("sentry.message.parameter.{}", i),
                 $crate::protocol::LogAttribute($crate::protocol::Value::from($arg))
             );
-            #[allow(unused_assignments)]
             i += 1;
         )*
+        let _ = i; // need this as the last increment could otherwise trigger the `unused_assignments` lint
 
         let log = $crate::protocol::Log {
             level: $level,
