@@ -31,6 +31,7 @@ macro_rules! logger_log {
                 format!("sentry.message.parameter.{}", i),
                 $crate::protocol::LogAttribute($crate::protocol::Value::from($arg))
             );
+            #[allow(unused_assignments)]
             i += 1;
         )*
 
@@ -77,6 +78,7 @@ macro_rules! logger_log {
                 format!("sentry.message.parameter.{}", i),
                 $crate::protocol::LogAttribute($crate::protocol::Value::from($arg))
             );
+            #[allow(unused_assignments)]
             i += 1;
         )*
 
