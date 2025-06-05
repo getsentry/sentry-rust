@@ -374,26 +374,28 @@ impl Scope {
         }
 
         if send_default_pii {
-            if !log.attributes.contains_key("user.id") {
-                if let Some(id) = self.user().and_then(|user| user.id.as_ref()) {
-                    log.attributes
-                        .insert("user.id".to_owned(), LogAttribute(id.to_owned().into()));
+            if let Some(user) = self.user.as_ref() {
+                if !log.attributes.contains_key("user.id") {
+                    if let Some(id) = user.id.as_ref() {
+                        log.attributes
+                            .insert("user.id".to_owned(), LogAttribute(id.to_owned().into()));
+                    }
                 }
-            }
 
-            if !log.attributes.contains_key("user.name") {
-                if let Some(name) = self.user().and_then(|user| user.username.as_ref()) {
-                    log.attributes
-                        .insert("user.name".to_owned(), LogAttribute(name.to_owned().into()));
+                if !log.attributes.contains_key("user.name") {
+                    if let Some(name) = user.username.as_ref() {
+                        log.attributes
+                            .insert("user.name".to_owned(), LogAttribute(name.to_owned().into()));
+                    }
                 }
-            }
 
-            if !log.attributes.contains_key("user.email") {
-                if let Some(email) = self.user().and_then(|user| user.email.as_ref()) {
-                    log.attributes.insert(
-                        "user.email".to_owned(),
-                        LogAttribute(email.to_owned().into()),
-                    );
+                if !log.attributes.contains_key("user.email") {
+                    if let Some(email) = user.email.as_ref() {
+                        log.attributes.insert(
+                            "user.email".to_owned(),
+                            LogAttribute(email.to_owned().into()),
+                        );
+                    }
                 }
             }
         }
