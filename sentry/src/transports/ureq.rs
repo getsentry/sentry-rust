@@ -1,19 +1,9 @@
-use std::sync::Arc;
 use std::time::Duration;
 
-#[cfg(feature = "native-tls")]
-use native_tls::TlsConnector;
-#[cfg(feature = "rustls")]
-use rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier};
-#[cfg(feature = "rustls")]
-use rustls::crypto::{verify_tls12_signature, verify_tls13_signature};
-#[cfg(feature = "rustls")]
-use rustls::pki_types::{CertificateDer, ServerName, TrustAnchor, UnixTime};
-#[cfg(feature = "rustls")]
-use rustls::{ClientConfig, DigitallySignedStruct, RootCertStore};
-use ureq::{Agent, AgentBuilder, Proxy};
-#[cfg(feature = "rustls")]
-use webpki_roots::TLS_SERVER_ROOTS;
+use ureq::http::Response;
+#[cfg(any(feature = "rustls", feature = "native-tls"))]
+use ureq::tls::{TlsConfig, TlsProvider};
+use ureq::{Agent, Proxy};
 
 use super::thread::TransportThread;
 
@@ -42,92 +32,33 @@ impl UreqHttpTransport {
         let dsn = options.dsn.as_ref().unwrap();
         let scheme = dsn.scheme();
         let agent = agent.unwrap_or_else(|| {
-            let mut builder = AgentBuilder::new();
+            let mut builder = Agent::config_builder();
 
             #[cfg(feature = "native-tls")]
             {
-                let mut tls_connector_builder = TlsConnector::builder();
-
-                if options.accept_invalid_certs {
-                    tls_connector_builder.danger_accept_invalid_certs(true);
-                }
-
-                builder = builder.tls_connector(Arc::new(tls_connector_builder.build().unwrap()));
+                builder = builder.tls_config(
+                    TlsConfig::builder()
+                        .provider(TlsProvider::NativeTls)
+                        .disable_verification(options.accept_invalid_certs)
+                        .build(),
+                );
+            }
+            #[cfg(feature = "rustls")]
+            {
+                builder = builder.tls_config(
+                    TlsConfig::builder()
+                        .provider(TlsProvider::Rustls)
+                        .disable_verification(options.accept_invalid_certs)
+                        .build(),
+                );
             }
 
-            if options.accept_invalid_certs {
-                #[cfg(feature = "rustls")]
-                {
-                    #[derive(Debug)]
-                    struct NoVerifier;
-
-                    impl ServerCertVerifier for NoVerifier {
-                        fn verify_server_cert(
-                            &self,
-                            _end_entity: &CertificateDer<'_>,
-                            _intermediates: &[CertificateDer<'_>],
-                            _server_name: &ServerName<'_>,
-                            _ocsp: &[u8],
-                            _now: UnixTime,
-                        ) -> Result<ServerCertVerified, rustls::Error> {
-                            Ok(ServerCertVerified::assertion())
-                        }
-
-                        fn verify_tls12_signature(
-                            &self,
-                            message: &[u8],
-                            cert: &CertificateDer<'_>,
-                            dss: &DigitallySignedStruct,
-                        ) -> Result<HandshakeSignatureValid, rustls::Error>
-                        {
-                            verify_tls12_signature(
-                                message,
-                                cert,
-                                dss,
-                                &rustls::crypto::ring::default_provider()
-                                    .signature_verification_algorithms,
-                            )
-                        }
-
-                        fn verify_tls13_signature(
-                            &self,
-                            message: &[u8],
-                            cert: &CertificateDer<'_>,
-                            dss: &DigitallySignedStruct,
-                        ) -> Result<HandshakeSignatureValid, rustls::Error>
-                        {
-                            verify_tls13_signature(
-                                message,
-                                cert,
-                                dss,
-                                &rustls::crypto::ring::default_provider()
-                                    .signature_verification_algorithms,
-                            )
-                        }
-
-                        fn supported_verify_schemes(&self) -> Vec<rustls::SignatureScheme> {
-                            rustls::crypto::ring::default_provider()
-                                .signature_verification_algorithms
-                                .supported_schemes()
-                        }
-                    }
-
-                    let mut root_store = RootCertStore::empty();
-                    root_store.extend(TLS_SERVER_ROOTS.iter().map(TrustAnchor::to_owned));
-                    let mut config = ClientConfig::builder()
-                        .with_root_certificates(root_store)
-                        .with_no_client_auth();
-                    config
-                        .dangerous()
-                        .set_certificate_verifier(Arc::new(NoVerifier));
-                    builder = builder.tls_config(Arc::new(config));
-                }
-            }
+            let mut maybe_proxy = None;
 
             match (scheme, &options.http_proxy, &options.https_proxy) {
                 (Scheme::Https, _, Some(proxy)) => match Proxy::new(proxy) {
                     Ok(proxy) => {
-                        builder = builder.proxy(proxy);
+                        maybe_proxy = Some(proxy);
                     }
                     Err(err) => {
                         sentry_debug!("invalid proxy: {:?}", err);
@@ -135,7 +66,7 @@ impl UreqHttpTransport {
                 },
                 (_, Some(proxy), _) => match Proxy::new(proxy) {
                     Ok(proxy) => {
-                        builder = builder.proxy(proxy);
+                        maybe_proxy = Some(proxy);
                     }
                     Err(err) => {
                         sentry_debug!("invalid proxy: {:?}", err);
@@ -144,7 +75,9 @@ impl UreqHttpTransport {
                 _ => {}
             }
 
-            builder.build()
+            builder = builder.proxy(maybe_proxy);
+
+            builder.build().new_agent()
         });
         let user_agent = options.user_agent.clone();
         let auth = dsn.to_auth(Some(&user_agent)).to_string();
@@ -153,22 +86,23 @@ impl UreqHttpTransport {
         let thread = TransportThread::new(move |envelope, rl| {
             let mut body = Vec::new();
             envelope.to_writer(&mut body).unwrap();
-            let request = agent
-                .post(&url)
-                .set("X-Sentry-Auth", &auth)
-                .send_bytes(&body);
+            let request = agent.post(&url).header("X-Sentry-Auth", &auth).send(&body);
 
             match request {
-                Ok(response) => {
-                    if let Some(sentry_header) = response.header("x-sentry-rate-limits") {
+                Ok(mut response) => {
+                    fn header_str<'a, B>(response: &'a Response<B>, key: &str) -> Option<&'a str> {
+                        response.headers().get(key)?.to_str().ok()
+                    }
+
+                    if let Some(sentry_header) = header_str(&response, "x-sentry-rate-limits") {
                         rl.update_from_sentry_header(sentry_header);
-                    } else if let Some(retry_after) = response.header("retry-after") {
+                    } else if let Some(retry_after) = header_str(&response, "retry-after") {
                         rl.update_from_retry_after(retry_after);
                     } else if response.status() == 429 {
                         rl.update_from_429();
                     }
 
-                    match response.into_string() {
+                    match response.body_mut().read_to_string() {
                         Err(err) => {
                             sentry_debug!("Failed to read sentry response: {}", err);
                         }
