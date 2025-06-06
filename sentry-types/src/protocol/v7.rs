@@ -2127,7 +2127,8 @@ pub struct Log {
     /// The log body/message (required).
     pub body: String,
     /// The ID of the Trace in which this log happened (required).
-    pub trace_id: TraceId,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trace_id: Option<TraceId>,
     /// The timestamp of the log (required).
     #[serde(with = "ts_seconds_float")]
     pub timestamp: SystemTime,

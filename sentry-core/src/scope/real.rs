@@ -5,10 +5,12 @@ use std::fmt;
 use std::sync::Mutex;
 use std::sync::{Arc, PoisonError, RwLock};
 
-use sentry_types::protocol::v7::TraceContext;
-
 use crate::performance::TransactionOrSpan;
-use crate::protocol::{Attachment, Breadcrumb, Context, Event, Level, Transaction, User, Value};
+use crate::protocol::{
+    Attachment, Breadcrumb, Context, Event, Level, TraceContext, Transaction, User, Value,
+};
+#[cfg(feature = "UNSTABLE_logs")]
+use crate::protocol::{Log, LogAttribute};
 #[cfg(feature = "release-health")]
 use crate::session::Session;
 use crate::{Client, SentryTrace, TraceHeader, TraceHeadersIter};
@@ -344,6 +346,59 @@ impl Scope {
                 .iter()
                 .map(|(k, v)| (k.to_owned(), v.to_owned())),
         );
+    }
+
+    /// Applies the contained scoped data to a log, setting the `trace_id` and certain default
+    /// attributes.
+    #[cfg(feature = "UNSTABLE_logs")]
+    pub fn apply_to_log(&self, log: &mut Log, send_default_pii: bool) {
+        if let Some(span) = self.span.as_ref() {
+            log.trace_id = Some(span.get_trace_context().trace_id);
+        } else {
+            log.trace_id = Some(self.propagation_context.trace_id);
+        }
+
+        if !log.attributes.contains_key("sentry.trace.parent_span_id") {
+            if let Some(span) = self.get_span() {
+                let span_id = match span {
+                    crate::TransactionOrSpan::Transaction(transaction) => {
+                        transaction.get_trace_context().span_id
+                    }
+                    crate::TransactionOrSpan::Span(span) => span.get_span_id(),
+                };
+                log.attributes.insert(
+                    "parent_span_id".to_owned(),
+                    LogAttribute(span_id.to_string().into()),
+                );
+            }
+        }
+
+        if send_default_pii {
+            if let Some(user) = self.user.as_ref() {
+                if !log.attributes.contains_key("user.id") {
+                    if let Some(id) = user.id.as_ref() {
+                        log.attributes
+                            .insert("user.id".to_owned(), LogAttribute(id.to_owned().into()));
+                    }
+                }
+
+                if !log.attributes.contains_key("user.name") {
+                    if let Some(name) = user.username.as_ref() {
+                        log.attributes
+                            .insert("user.name".to_owned(), LogAttribute(name.to_owned().into()));
+                    }
+                }
+
+                if !log.attributes.contains_key("user.email") {
+                    if let Some(email) = user.email.as_ref() {
+                        log.attributes.insert(
+                            "user.email".to_owned(),
+                            LogAttribute(email.to_owned().into()),
+                        );
+                    }
+                }
+            }
+        }
     }
 
     /// Set the given [`TransactionOrSpan`] as the active span for this scope.

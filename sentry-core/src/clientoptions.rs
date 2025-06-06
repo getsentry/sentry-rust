@@ -5,6 +5,8 @@ use std::time::Duration;
 
 use crate::constants::USER_AGENT;
 use crate::performance::TracesSampler;
+#[cfg(feature = "UNSTABLE_logs")]
+use crate::protocol::Log;
 use crate::protocol::{Breadcrumb, Event};
 use crate::types::Dsn;
 use crate::{Integration, IntoDsn, TransportFactory};
@@ -144,6 +146,9 @@ pub struct ClientOptions {
     pub before_send: Option<BeforeCallback<Event<'static>>>,
     /// Callback that is executed for each Breadcrumb being added.
     pub before_breadcrumb: Option<BeforeCallback<Breadcrumb>>,
+    /// Callback that is executed for each Log being added.
+    #[cfg(feature = "UNSTABLE_logs")]
+    pub before_send_log: Option<BeforeCallback<Log>>,
     // Transport options
     /// The transport to use.
     ///
@@ -162,6 +167,12 @@ pub struct ClientOptions {
     pub https_proxy: Option<Cow<'static, str>>,
     /// The timeout on client drop for draining events on shutdown.
     pub shutdown_timeout: Duration,
+    /// Controls the maximum size of an HTTP request body that can be captured when using HTTP
+    /// server integrations. Needs `send_default_pii` to be enabled to have any effect.
+    pub max_request_body_size: MaxRequestBodySize,
+    /// Determines whether captured structured logs should be sent to Sentry (defaults to false).
+    #[cfg(feature = "UNSTABLE_logs")]
+    pub enable_logs: bool,
     // Other options not documented in Unified API
     /// Disable SSL verification.
     ///
@@ -186,8 +197,6 @@ pub struct ClientOptions {
     pub trim_backtraces: bool,
     /// The user agent that should be reported.
     pub user_agent: Cow<'static, str>,
-    /// Controls how much of request bodies are captured
-    pub max_request_body_size: MaxRequestBodySize,
 }
 
 impl ClientOptions {
@@ -223,6 +232,12 @@ impl fmt::Debug for ClientOptions {
         #[derive(Debug)]
         struct BeforeBreadcrumb;
         let before_breadcrumb = self.before_breadcrumb.as_ref().map(|_| BeforeBreadcrumb);
+        #[cfg(feature = "UNSTABLE_logs")]
+        let before_send_log = {
+            #[derive(Debug)]
+            struct BeforeSendLog;
+            self.before_send_log.as_ref().map(|_| BeforeSendLog)
+        };
         #[derive(Debug)]
         struct TransportFactory;
 
@@ -263,6 +278,11 @@ impl fmt::Debug for ClientOptions {
         debug_struct
             .field("auto_session_tracking", &self.auto_session_tracking)
             .field("session_mode", &self.session_mode);
+
+        #[cfg(feature = "UNSTABLE_logs")]
+        debug_struct
+            .field("enable_logs", &self.enable_logs)
+            .field("before_send_log", &before_send_log);
 
         debug_struct
             .field("extra_border_frames", &self.extra_border_frames)
@@ -305,6 +325,10 @@ impl Default for ClientOptions {
             trim_backtraces: true,
             user_agent: Cow::Borrowed(USER_AGENT),
             max_request_body_size: MaxRequestBodySize::Medium,
+            #[cfg(feature = "UNSTABLE_logs")]
+            enable_logs: false,
+            #[cfg(feature = "UNSTABLE_logs")]
+            before_send_log: None,
         }
     }
 }

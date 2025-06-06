@@ -4,7 +4,7 @@
 
 use std::sync::{Arc, RwLock};
 
-use crate::protocol::{Event, Level, SessionStatus};
+use crate::protocol::{Event, Level, Log, LogAttribute, LogLevel, Map, SessionStatus};
 use crate::types::Uuid;
 use crate::{Integration, IntoBreadcrumbs, Scope, ScopeGuard};
 
@@ -243,6 +243,16 @@ impl Hub {
                     }
                 }
             })
+        }}
+    }
+
+    /// Captures a structured log.
+    #[cfg(feature = "UNSTABLE_logs")]
+    pub fn capture_log(&self, log: Log) {
+        with_client_impl! {{
+            let top = self.inner.with(|stack| stack.top().clone());
+            let Some(ref client) = top.client else { return };
+            client.capture_log(log, &top.scope);
         }}
     }
 }
