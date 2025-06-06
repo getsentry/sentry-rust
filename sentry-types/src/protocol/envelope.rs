@@ -1,13 +1,13 @@
 use std::{io::Write, path::Path};
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
 
 use super::v7 as protocol;
 
 use protocol::{
-    Attachment, AttachmentType, Event, MonitorCheckIn, SessionAggregates, SessionUpdate,
+    Attachment, AttachmentType, Event, Log, MonitorCheckIn, SessionAggregates, SessionUpdate,
     Transaction,
 };
 
@@ -61,9 +61,12 @@ enum EnvelopeItemType {
     /// An Attachment Item type.
     #[serde(rename = "attachment")]
     Attachment,
-    /// A Monitor Check In Item Type
+    /// A Monitor Check In Item Type.
     #[serde(rename = "check_in")]
     MonitorCheckIn,
+    /// A container of Log items.
+    #[serde(rename = "log")]
+    LogsContainer,
 }
 
 /// An Envelope Item Header.
@@ -71,10 +74,11 @@ enum EnvelopeItemType {
 struct EnvelopeItemHeader {
     r#type: EnvelopeItemType,
     length: Option<usize>,
-    // Fields below apply only to Attachment Item type
+    // Applies both to Attachment and ItemContainer Item type
+    content_type: Option<String>,
+    // Fields below apply only to Attachment Item types
     filename: Option<String>,
     attachment_type: Option<AttachmentType>,
-    content_type: Option<String>,
 }
 
 /// An Envelope Item.
@@ -112,10 +116,62 @@ pub enum EnvelopeItem {
     Attachment(Attachment),
     /// A MonitorCheckIn item.
     MonitorCheckIn(MonitorCheckIn),
+    /// A container for a list of multiple items.
+    ItemContainer(ItemContainer),
     /// This is a sentinel item used to `filter` raw envelopes.
     Raw,
     // TODO:
     // etc…
+}
+
+/// A container for a list of multiple items.
+/// It's considered a single envelope item, with its `type` corresponding to the contained items'
+/// `type`.
+#[derive(Clone, Debug, PartialEq)]
+#[non_exhaustive]
+pub enum ItemContainer {
+    /// A list of logs.
+    Logs(Vec<Log>),
+}
+
+#[allow(clippy::len_without_is_empty, reason = "is_empty is not needed")]
+impl ItemContainer {
+    /// The number of items in this item container.
+    pub fn len(&self) -> usize {
+        match self {
+            Self::Logs(logs) => logs.len(),
+        }
+    }
+
+    /// The `type` of this item container, which corresponds to the `type` of the contained items.
+    pub fn ty(&self) -> &'static str {
+        match self {
+            Self::Logs(_) => "log",
+        }
+    }
+
+    /// The `content-type` expected by Relay for this item container.
+    pub fn content_type(&self) -> &'static str {
+        match self {
+            Self::Logs(_) => "application/vnd.sentry.items.log+json",
+        }
+    }
+}
+
+impl From<Vec<Log>> for ItemContainer {
+    fn from(logs: Vec<Log>) -> Self {
+        Self::Logs(logs)
+    }
+}
+
+#[derive(Serialize)]
+struct LogsSerializationWrapper<'a> {
+    items: &'a [Log],
+}
+
+#[derive(Deserialize)]
+struct LogsDeserializationWrapper {
+    items: Vec<Log>,
 }
 
 impl From<Event<'static>> for EnvelopeItem {
@@ -151,6 +207,18 @@ impl From<Attachment> for EnvelopeItem {
 impl From<MonitorCheckIn> for EnvelopeItem {
     fn from(check_in: MonitorCheckIn) -> Self {
         EnvelopeItem::MonitorCheckIn(check_in)
+    }
+}
+
+impl From<ItemContainer> for EnvelopeItem {
+    fn from(container: ItemContainer) -> Self {
+        EnvelopeItem::ItemContainer(container)
+    }
+}
+
+impl From<Vec<Log>> for EnvelopeItem {
+    fn from(logs: Vec<Log>) -> Self {
+        EnvelopeItem::ItemContainer(logs.into())
     }
 }
 
@@ -352,6 +420,12 @@ impl Envelope {
                 EnvelopeItem::MonitorCheckIn(check_in) => {
                     serde_json::to_writer(&mut item_buf, check_in)?
                 }
+                EnvelopeItem::ItemContainer(container) => match container {
+                    ItemContainer::Logs(logs) => {
+                        let wrapper = LogsSerializationWrapper { items: logs };
+                        serde_json::to_writer(&mut item_buf, &wrapper)?
+                    }
+                },
                 EnvelopeItem::Raw => {
                     continue;
                 }
@@ -362,14 +436,26 @@ impl Envelope {
                 EnvelopeItem::SessionAggregates(_) => "sessions",
                 EnvelopeItem::Transaction(_) => "transaction",
                 EnvelopeItem::MonitorCheckIn(_) => "check_in",
+                EnvelopeItem::ItemContainer(container) => container.ty(),
                 EnvelopeItem::Attachment(_) | EnvelopeItem::Raw => unreachable!(),
             };
-            writeln!(
-                writer,
-                r#"{{"type":"{}","length":{}}}"#,
-                item_type,
-                item_buf.len()
-            )?;
+
+            if let EnvelopeItem::ItemContainer(container) = item {
+                writeln!(
+                    writer,
+                    r#"{{"type":"{}","item_count":{},"content_type":"{}"}}"#,
+                    item_type,
+                    container.len(),
+                    container.content_type()
+                )?;
+            } else {
+                writeln!(
+                    writer,
+                    r#"{{"type":"{}","length":{}}}"#,
+                    item_type,
+                    item_buf.len()
+                )?;
+            }
             writer.write_all(&item_buf)?;
             writeln!(writer)?;
             item_buf.clear();
@@ -506,6 +592,10 @@ impl Envelope {
             EnvelopeItemType::MonitorCheckIn => {
                 serde_json::from_slice(payload).map(EnvelopeItem::MonitorCheckIn)
             }
+            EnvelopeItemType::LogsContainer => {
+                serde_json::from_slice::<LogsDeserializationWrapper>(payload)
+                    .map(|x| EnvelopeItem::ItemContainer(ItemContainer::Logs(x.items)))
+            }
         }
         .map_err(EnvelopeError::InvalidItemPayload)?;
 
@@ -536,6 +626,7 @@ mod test {
     use std::str::FromStr;
     use std::time::{Duration, SystemTime};
 
+    use protocol::Map;
     use time::format_description::well_known::Rfc3339;
     use time::OffsetDateTime;
 
@@ -969,12 +1060,40 @@ some content
             ..Default::default()
         };
 
+        let mut attributes = Map::new();
+        attributes.insert("key".into(), "value".into());
+        attributes.insert("num".into(), 10.into());
+        attributes.insert("val".into(), 10.2.into());
+        attributes.insert("bool".into(), false.into());
+        let mut attributes_2 = attributes.clone();
+        attributes_2.insert("more".into(), true.into());
+        let logs: EnvelopeItem = vec![
+            Log {
+                level: protocol::LogLevel::Warn,
+                body: "test".to_owned(),
+                trace_id: "335e53d614474acc9f89e632b776cc28".parse().unwrap(),
+                timestamp: timestamp("2022-07-25T14:51:14.296Z"),
+                severity_number: Some(1.try_into().unwrap()),
+                attributes,
+            },
+            Log {
+                level: protocol::LogLevel::Error,
+                body: "a body".to_owned(),
+                trace_id: "332253d614472a2c9f89e232b7762c28".parse().unwrap(),
+                timestamp: timestamp("2021-07-21T14:51:14.296Z"),
+                severity_number: Some(1.try_into().unwrap()),
+                attributes: attributes_2,
+            },
+        ]
+        .into();
+
         let mut envelope: Envelope = Envelope::new();
 
         envelope.add_item(event);
         envelope.add_item(transaction);
         envelope.add_item(session);
         envelope.add_item(attachment);
+        envelope.add_item(logs);
 
         let serialized = to_str(envelope);
         let deserialized = Envelope::from_slice(serialized.as_bytes()).unwrap();

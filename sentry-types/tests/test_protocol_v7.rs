@@ -1523,3 +1523,44 @@ fn test_orientation() {
         "\"portrait\""
     );
 }
+
+mod test_logs {
+    use sentry_types::protocol::v7::LogAttribute;
+    use serde_json::{json, Value};
+
+    #[test]
+    fn test_log_attribute_serialization() {
+        let attributes: Vec<(LogAttribute, &str)> = vec![
+            // Supported types
+            (42.into(), r#"{"value":42,"type":"integer"}"#),
+            (3.1.into(), r#"{"value":3.1,"type":"double"}"#),
+            ("lol".into(), r#"{"value":"lol","type":"string"}"#),
+            (false.into(), r#"{"value":false,"type":"boolean"}"#),
+            // Special case
+            (Value::Null.into(), r#"{"value":"null","type":"string"}"#),
+            // Unsupported types (for now)
+            (
+                json!(r#"[1,2,3,4]"#).into(),
+                r#"{"value":"[1,2,3,4]","type":"string"}"#,
+            ),
+            (
+                json!(r#"["a","b","c"]"#).into(),
+                r#"{"value":"[\"a\",\"b\",\"c\"]","type":"string"}"#,
+            ),
+        ];
+        for (attribute, expected) in attributes {
+            let actual = serde_json::to_string(&attribute).unwrap();
+            assert_eq!(expected, actual);
+        }
+    }
+
+    #[test]
+    fn test_log_attribute_roundtrip() {
+        let attributes: Vec<LogAttribute> = vec![42.into(), 3.1.into(), "lol".into(), false.into()];
+        for expected in attributes {
+            let serialized = serde_json::to_string(&expected).unwrap();
+            let actual: LogAttribute = serde_json::from_str(&serialized).unwrap();
+            assert_eq!(expected, actual);
+        }
+    }
+}

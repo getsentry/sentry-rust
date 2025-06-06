@@ -2118,3 +2118,217 @@ impl fmt::Display for Transaction<'_> {
         )
     }
 }
+
+/// A single [structured log](https://docs.sentry.io/product/explore/logs/).
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct Log {
+    /// The severity of the log (required).
+    pub level: LogLevel,
+    /// The log body/message (required).
+    pub body: String,
+    /// The ID of the Trace in which this log happened (required).
+    pub trace_id: TraceId,
+    /// The timestamp of the log (required).
+    #[serde(with = "ts_seconds_float")]
+    pub timestamp: SystemTime,
+    /// The severity number of the log.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub severity_number: Option<LogSeverityNumber>,
+    /// Additional arbitrary attributes attached to the log.
+    #[serde(default, skip_serializing_if = "Map::is_empty")]
+    pub attributes: Map<String, LogAttribute>,
+}
+
+/// Indicates the severity of a log, according to the
+/// OpenTelemetry [`SeverityText`](https://opentelemetry.io/docs/specs/otel/logs/data-model/#field-severitytext) spec.
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum LogLevel {
+    /// A fine-grained debugging event.
+    Trace,
+    /// A debugging event.
+    Debug,
+    /// An informational event. Indicates that an event happened.
+    Info,
+    /// A warning event. Not an error but is likely more important than an informational event.
+    Warn,
+    /// An error event. Something went wrong.
+    Error,
+    /// A fatal error such as application or system crash.
+    Fatal,
+}
+
+/// A number indicating the severity of a log, according to the OpenTelemetry
+/// [`SeverityNumber`](https://opentelemetry.io/docs/specs/otel/logs/data-model/#field-severitynumber) spec.
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq)]
+pub struct LogSeverityNumber(u8);
+
+impl LogSeverityNumber {
+    /// The minimum severity number.
+    pub const MIN: u8 = 1;
+    /// The maximum severity number.
+    pub const MAX: u8 = 24;
+}
+
+impl TryFrom<u8> for LogSeverityNumber {
+    type Error = String;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        if (LogSeverityNumber::MIN..=LogSeverityNumber::MAX).contains(&value) {
+            Ok(Self(value))
+        } else {
+            Err(format!(
+                "Log severity number must be between {} and {}",
+                LogSeverityNumber::MIN,
+                LogSeverityNumber::MAX
+            ))
+        }
+    }
+}
+
+/// An attribute that can be attached to a log.
+#[derive(Clone, Debug, PartialEq)]
+pub struct LogAttribute(pub Value);
+
+impl<T> From<T> for LogAttribute
+where
+    Value: From<T>,
+{
+    fn from(value: T) -> Self {
+        Self(Value::from(value))
+    }
+}
+
+impl Serialize for LogAttribute {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::SerializeStruct;
+        let mut state = serializer.serialize_struct("LogAttribute", 2)?;
+
+        match &self.0 {
+            Value::String(s) => {
+                state.serialize_field("value", s.as_str())?;
+                state.serialize_field("type", "string")?;
+            }
+            Value::Number(n) => {
+                if let Some(i) = n.as_i64() {
+                    state.serialize_field("value", &i)?;
+                    state.serialize_field("type", "integer")?;
+                } else if let Some(f) = n.as_f64() {
+                    state.serialize_field("value", &f)?;
+                    state.serialize_field("type", "double")?;
+                } else {
+                    // This should be unreachable, as a `Value::Number` can only be built from an i64, u64 or f64
+                    state.serialize_field("value", &n.to_string())?;
+                    state.serialize_field("type", "string")?;
+                }
+            }
+            Value::Bool(b) => {
+                state.serialize_field("value", &b)?;
+                state.serialize_field("type", "boolean")?;
+            }
+            // For any other type (Null, Array, Object), convert to string with JSON representation
+            _ => {
+                state.serialize_field("value", &self.0.to_string())?;
+                state.serialize_field("type", "string")?;
+            }
+        }
+
+        state.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for LogAttribute {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::de::{self, MapAccess, Visitor};
+        use std::fmt;
+
+        struct LogAttributeVisitor;
+
+        impl<'de> Visitor<'de> for LogAttributeVisitor {
+            type Value = LogAttribute;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a LogAttribute with value and type fields")
+            }
+
+            fn visit_map<V>(self, mut map: V) -> Result<LogAttribute, V::Error>
+            where
+                V: MapAccess<'de>,
+            {
+                let mut value: Option<serde_json::Value> = None;
+                let mut type_str: Option<String> = None;
+
+                while let Some(key) = map.next_key::<String>()? {
+                    match key.as_str() {
+                        "value" => {
+                            if value.is_some() {
+                                return Err(de::Error::duplicate_field("value"));
+                            }
+                            value = Some(map.next_value()?);
+                        }
+                        "type" => {
+                            if type_str.is_some() {
+                                return Err(de::Error::duplicate_field("type"));
+                            }
+                            type_str = Some(map.next_value()?);
+                        }
+                        _ => {
+                            // Ignore unknown fields
+                            let _: serde_json::Value = map.next_value()?;
+                        }
+                    }
+                }
+
+                let value = value.ok_or_else(|| de::Error::missing_field("value"))?;
+                let type_str = type_str.ok_or_else(|| de::Error::missing_field("type"))?;
+
+                match type_str.as_str() {
+                    "string" => {
+                        if !value.is_string() {
+                            return Err(de::Error::custom(
+                                "type is 'string' but value is not a string",
+                            ));
+                        }
+                    }
+                    "integer" => {
+                        if !value.is_i64() {
+                            return Err(de::Error::custom(
+                                "type is 'integer' but value is not an integer",
+                            ));
+                        }
+                    }
+                    "double" => {
+                        if !value.is_f64() {
+                            return Err(de::Error::custom(
+                                "type is 'double' but value is not a double",
+                            ));
+                        }
+                    }
+                    "boolean" => {
+                        if !value.is_boolean() {
+                            return Err(de::Error::custom(
+                                "type is 'boolean' but value is not a boolean",
+                            ));
+                        }
+                    }
+                    _ => {
+                        return Err(de::Error::custom(format!(
+                        "expected type to be 'string' | 'integer' | 'double' | 'boolean', found {}",
+                        type_str
+                    )))
+                    }
+                }
+
+                Ok(LogAttribute(value))
+            }
+        }
+
+        deserializer.deserialize_map(LogAttributeVisitor)
+    }
+}
