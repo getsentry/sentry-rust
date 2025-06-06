@@ -12,7 +12,7 @@ fn breadcrumbs_should_capture_span_fields() {
     let event = data.first().expect("should have 1 event");
     let event = match event.items().next().unwrap() {
         sentry::protocol::EnvelopeItem::Event(event) => event,
-        unexpected => panic!("Expected event, but got {:#?}", unexpected),
+        unexpected => panic!("Expected event, but got {unexpected:#?}"),
     };
 
     assert_eq!(event.breadcrumbs.len(), 1);

@@ -63,14 +63,14 @@ fn test_creates_distributed_trace() {
     for envelope in &envelopes {
         let tx = match envelope.items().next().unwrap() {
             sentry::protocol::EnvelopeItem::Transaction(tx) => tx.clone(),
-            unexpected => panic!("Expected transaction, but got {:#?}", unexpected),
+            unexpected => panic!("Expected transaction, but got {unexpected:#?}"),
         };
 
         // Determine which service this transaction belongs to based on name
         match tx.name.as_deref() {
             Some("first_service") => first_tx = Some(tx),
             Some("second_service") => second_tx = Some(tx),
-            name => panic!("Unexpected transaction name: {:?}", name),
+            name => panic!("Unexpected transaction name: {name:?}"),
         }
     }
 

@@ -16,13 +16,13 @@ fn should_instrument_function_with_event() {
     let event = data.first().expect("should have 1 event");
     let event = match event.items().next().unwrap() {
         sentry::protocol::EnvelopeItem::Event(event) => event,
-        unexpected => panic!("Expected event, but got {:#?}", unexpected),
+        unexpected => panic!("Expected event, but got {unexpected:#?}"),
     };
 
     //Validate transaction is created
     let trace = match event.contexts.get("trace").expect("to get 'trace' context") {
         sentry::protocol::Context::Trace(trace) => trace,
-        unexpected => panic!("Expected trace context but got {:?}", unexpected),
+        unexpected => panic!("Expected trace context but got {unexpected:?}"),
     };
     assert_eq!(trace.op.as_deref().unwrap(), "function_with_tags");
 
@@ -30,7 +30,7 @@ fn should_instrument_function_with_event() {
     let transaction = data.get(1).expect("should have 1 transaction");
     let transaction = match transaction.items().next().unwrap() {
         sentry::protocol::EnvelopeItem::Transaction(transaction) => transaction,
-        unexpected => panic!("Expected transaction, but got {:#?}", unexpected),
+        unexpected => panic!("Expected transaction, but got {unexpected:#?}"),
     };
     assert_eq!(transaction.tags.len(), 1);
     assert_eq!(trace.data.len(), 2);
