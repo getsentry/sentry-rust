@@ -5,7 +5,7 @@
 ### Features
 
 Support for [Sentry structured logs](https://docs.sentry.io/product/explore/logs/) has been added to the SDK.
-- To set up logs, enable the `UNSTABLE_logs` feature of the `sentry` crate and set `enable_logs` to `true` in your client options.
+- To set up logs, enable the `logs` feature of the `sentry` crate and set `enable_logs` to `true` in your client options.
 - Then, use the `logger_trace!`, `logger_debug!`, `logger_info!`, `logger_warn!`, `logger_error!` and `logger_fatal!` macros to capture logs.
 - To filter or update logs before they are sent, you can use the `before_send_log` client option.
 - Please note that breaking changes could occur until the API is finalized. 
