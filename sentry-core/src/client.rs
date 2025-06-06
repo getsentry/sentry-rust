@@ -5,14 +5,14 @@ use std::panic::RefUnwindSafe;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
-#[cfg(feature = "UNSTABLE_logs")]
-use crate::protocol::EnvelopeItem;
 #[cfg(feature = "release-health")]
 use crate::protocol::SessionUpdate;
 use rand::random;
 use sentry_types::random_uuid;
 
 use crate::constants::SDK_INFO;
+#[cfg(feature = "UNSTABLE_logs")]
+use crate::logs::LogsBatcher;
 use crate::protocol::{ClientSdkInfo, Event};
 #[cfg(feature = "release-health")]
 use crate::session::SessionFlusher;
@@ -53,6 +53,8 @@ pub struct Client {
     transport: TransportArc,
     #[cfg(feature = "release-health")]
     session_flusher: RwLock<Option<SessionFlusher>>,
+    #[cfg(feature = "UNSTABLE_logs")]
+    logs_batcher: RwLock<Option<LogsBatcher>>,
     integrations: Vec<(TypeId, Arc<dyn Integration>)>,
     pub(crate) sdk_info: ClientSdkInfo,
 }
@@ -76,11 +78,20 @@ impl Clone for Client {
             self.options.session_mode,
         )));
 
+        #[cfg(feature = "UNSTABLE_logs")]
+        let logs_batcher = RwLock::new(if self.options.enable_logs {
+            Some(LogsBatcher::new(transport.clone()))
+        } else {
+            None
+        });
+
         Client {
             options: self.options.clone(),
             transport,
             #[cfg(feature = "release-health")]
             session_flusher,
+            #[cfg(feature = "UNSTABLE_logs")]
+            logs_batcher,
             integrations: self.integrations.clone(),
             sdk_info: self.sdk_info.clone(),
         }
@@ -150,11 +161,20 @@ impl Client {
             options.session_mode,
         )));
 
+        #[cfg(feature = "UNSTABLE_logs")]
+        let logs_batcher = RwLock::new(if options.enable_logs {
+            Some(LogsBatcher::new(transport.clone()))
+        } else {
+            None
+        });
+
         Client {
             options,
             transport,
             #[cfg(feature = "release-health")]
             session_flusher,
+            #[cfg(feature = "UNSTABLE_logs")]
+            logs_batcher,
             integrations,
             sdk_info,
         }
@@ -329,6 +349,10 @@ impl Client {
         if let Some(ref flusher) = *self.session_flusher.read().unwrap() {
             flusher.flush();
         }
+        #[cfg(feature = "UNSTABLE_logs")]
+        if let Some(ref batcher) = *self.logs_batcher.read().unwrap() {
+            batcher.flush();
+        }
         if let Some(ref transport) = *self.transport.read().unwrap() {
             transport.flush(timeout.unwrap_or(self.options.shutdown_timeout))
         } else {
@@ -346,6 +370,8 @@ impl Client {
     pub fn close(&self, timeout: Option<Duration>) -> bool {
         #[cfg(feature = "release-health")]
         drop(self.session_flusher.write().unwrap().take());
+        #[cfg(feature = "UNSTABLE_logs")]
+        drop(self.logs_batcher.write().unwrap().take());
         let transport_opt = self.transport.write().unwrap().take();
         if let Some(transport) = transport_opt {
             sentry_debug!("client close; request transport to shut down");
@@ -374,12 +400,9 @@ impl Client {
         if !self.options().enable_logs {
             return;
         }
-        if let Some(ref transport) = *self.transport.read().unwrap() {
-            if let Some(log) = self.prepare_log(log, scope) {
-                let mut envelope = Envelope::new();
-                let logs: EnvelopeItem = vec![log].into();
-                envelope.add_item(logs);
-                transport.send_envelope(envelope);
+        if let Some(log) = self.prepare_log(log, scope) {
+            if let Some(ref batcher) = *self.logs_batcher.read().unwrap() {
+                batcher.enqueue(log);
             }
         }
     }

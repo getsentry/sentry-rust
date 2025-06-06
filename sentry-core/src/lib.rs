@@ -140,6 +140,8 @@ mod logger; // structured logging macros exported with `#[macro_export]`
 mod client;
 #[cfg(feature = "client")]
 mod hub_impl;
+#[cfg(all(feature = "client", feature = "UNSTABLE_logs"))]
+mod logs;
 #[cfg(feature = "client")]
 mod session;
 
