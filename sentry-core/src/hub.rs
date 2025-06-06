@@ -247,7 +247,7 @@ impl Hub {
     }
 
     /// Captures a structured log.
-    #[cfg(feature = "UNSTABLE_logs")]
+    #[cfg(feature = "logs")]
     pub fn capture_log(&self, log: Log) {
         with_client_impl! {{
             let top = self.inner.with(|stack| stack.top().clone());

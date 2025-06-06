@@ -11,7 +11,7 @@ use rand::random;
 use sentry_types::random_uuid;
 
 use crate::constants::SDK_INFO;
-#[cfg(feature = "UNSTABLE_logs")]
+#[cfg(feature = "logs")]
 use crate::logs::LogsBatcher;
 use crate::protocol::{ClientSdkInfo, Event};
 #[cfg(feature = "release-health")]
@@ -20,7 +20,7 @@ use crate::types::{Dsn, Uuid};
 #[cfg(feature = "release-health")]
 use crate::SessionMode;
 use crate::{ClientOptions, Envelope, Hub, Integration, Scope, Transport};
-#[cfg(feature = "UNSTABLE_logs")]
+#[cfg(feature = "logs")]
 use sentry_types::protocol::v7::{Log, LogAttribute};
 
 impl<T: Into<ClientOptions>> From<T> for Client {
@@ -53,7 +53,7 @@ pub struct Client {
     transport: TransportArc,
     #[cfg(feature = "release-health")]
     session_flusher: RwLock<Option<SessionFlusher>>,
-    #[cfg(feature = "UNSTABLE_logs")]
+    #[cfg(feature = "logs")]
     logs_batcher: RwLock<Option<LogsBatcher>>,
     integrations: Vec<(TypeId, Arc<dyn Integration>)>,
     pub(crate) sdk_info: ClientSdkInfo,
@@ -78,7 +78,7 @@ impl Clone for Client {
             self.options.session_mode,
         )));
 
-        #[cfg(feature = "UNSTABLE_logs")]
+        #[cfg(feature = "logs")]
         let logs_batcher = RwLock::new(if self.options.enable_logs {
             Some(LogsBatcher::new(transport.clone()))
         } else {
@@ -90,7 +90,7 @@ impl Clone for Client {
             transport,
             #[cfg(feature = "release-health")]
             session_flusher,
-            #[cfg(feature = "UNSTABLE_logs")]
+            #[cfg(feature = "logs")]
             logs_batcher,
             integrations: self.integrations.clone(),
             sdk_info: self.sdk_info.clone(),
@@ -161,7 +161,7 @@ impl Client {
             options.session_mode,
         )));
 
-        #[cfg(feature = "UNSTABLE_logs")]
+        #[cfg(feature = "logs")]
         let logs_batcher = RwLock::new(if options.enable_logs {
             Some(LogsBatcher::new(transport.clone()))
         } else {
@@ -173,7 +173,7 @@ impl Client {
             transport,
             #[cfg(feature = "release-health")]
             session_flusher,
-            #[cfg(feature = "UNSTABLE_logs")]
+            #[cfg(feature = "logs")]
             logs_batcher,
             integrations,
             sdk_info,
@@ -349,7 +349,7 @@ impl Client {
         if let Some(ref flusher) = *self.session_flusher.read().unwrap() {
             flusher.flush();
         }
-        #[cfg(feature = "UNSTABLE_logs")]
+        #[cfg(feature = "logs")]
         if let Some(ref batcher) = *self.logs_batcher.read().unwrap() {
             batcher.flush();
         }
@@ -370,7 +370,7 @@ impl Client {
     pub fn close(&self, timeout: Option<Duration>) -> bool {
         #[cfg(feature = "release-health")]
         drop(self.session_flusher.write().unwrap().take());
-        #[cfg(feature = "UNSTABLE_logs")]
+        #[cfg(feature = "logs")]
         drop(self.logs_batcher.write().unwrap().take());
         let transport_opt = self.transport.write().unwrap().take();
         if let Some(transport) = transport_opt {
@@ -395,7 +395,7 @@ impl Client {
     }
 
     /// Captures a log and sends it to Sentry.
-    #[cfg(feature = "UNSTABLE_logs")]
+    #[cfg(feature = "logs")]
     pub fn capture_log(&self, log: Log, scope: &Scope) {
         if !self.options().enable_logs {
             return;
@@ -409,7 +409,7 @@ impl Client {
 
     /// Prepares a log to be sent, setting the `trace_id` and other default attributes, and
     /// processing it through `before_send_log`.
-    #[cfg(feature = "UNSTABLE_logs")]
+    #[cfg(feature = "logs")]
     fn prepare_log(&self, mut log: Log, scope: &Scope) -> Option<Log> {
         scope.apply_to_log(&mut log, self.options.send_default_pii);
 
@@ -422,7 +422,7 @@ impl Client {
         Some(log)
     }
 
-    #[cfg(feature = "UNSTABLE_logs")]
+    #[cfg(feature = "logs")]
     fn set_log_default_attributes(&self, log: &mut Log) {
         if !log.attributes.contains_key("sentry.environment") {
             if let Some(environment) = self.options.environment.as_ref() {

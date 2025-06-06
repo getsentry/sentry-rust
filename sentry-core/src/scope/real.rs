@@ -9,7 +9,7 @@ use crate::performance::TransactionOrSpan;
 use crate::protocol::{
     Attachment, Breadcrumb, Context, Event, Level, TraceContext, Transaction, User, Value,
 };
-#[cfg(feature = "UNSTABLE_logs")]
+#[cfg(feature = "logs")]
 use crate::protocol::{Log, LogAttribute};
 #[cfg(feature = "release-health")]
 use crate::session::Session;
@@ -350,7 +350,7 @@ impl Scope {
 
     /// Applies the contained scoped data to a log, setting the `trace_id` and certain default
     /// attributes.
-    #[cfg(feature = "UNSTABLE_logs")]
+    #[cfg(feature = "logs")]
     pub fn apply_to_log(&self, log: &mut Log, send_default_pii: bool) {
         if let Some(span) = self.span.as_ref() {
             log.trace_id = Some(span.get_trace_context().trace_id);

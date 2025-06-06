@@ -265,7 +265,7 @@ fn test_panic_scope_pop() {
     );
 }
 
-#[cfg(feature = "UNSTABLE_logs")]
+#[cfg(feature = "logs")]
 #[test]
 fn test_basic_capture_log() {
     use std::time::SystemTime;
@@ -314,7 +314,7 @@ fn test_basic_capture_log() {
     }
 }
 
-#[cfg(feature = "UNSTABLE_logs")]
+#[cfg(feature = "logs")]
 #[test]
 fn test_basic_capture_log_macro_message() {
     use sentry_core::logger_info;
@@ -349,7 +349,7 @@ fn test_basic_capture_log_macro_message() {
     }
 }
 
-#[cfg(feature = "UNSTABLE_logs")]
+#[cfg(feature = "logs")]
 #[test]
 fn test_basic_capture_log_macro_message_formatted() {
     use sentry::protocol::LogAttribute;
@@ -416,7 +416,7 @@ fn test_basic_capture_log_macro_message_formatted() {
     }
 }
 
-#[cfg(feature = "UNSTABLE_logs")]
+#[cfg(feature = "logs")]
 #[test]
 fn test_basic_capture_log_macro_message_with_attributes() {
     use sentry::protocol::LogAttribute;
@@ -475,7 +475,7 @@ fn test_basic_capture_log_macro_message_with_attributes() {
     }
 }
 
-#[cfg(feature = "UNSTABLE_logs")]
+#[cfg(feature = "logs")]
 #[test]
 fn test_basic_capture_log_macro_message_formatted_with_attributes() {
     use sentry::protocol::LogAttribute;
