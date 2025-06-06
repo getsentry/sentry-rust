@@ -115,6 +115,7 @@ impl Scope {
     /// Applies the contained scoped data to fill a log.
     #[cfg(feature = "UNSTABLE_logs")]
     pub fn apply_to_log(&self, log: &mut Log) {
+        let _log = log;
         minimal_unreachable!();
     }
 

@@ -17,8 +17,8 @@
 ### Features
 
 - feat(logs): add log protocol types (#821) by @lcian
-- feat(logs): add ability to capture and send logs (#823) by @lcian
-- feat(logs): add macro-based API (#827) by @lcian
+- feat(logs): add ability to capture and send logs (#823) by @lcian & @Swatinem
+- feat(logs): add macro-based API (#827) by @lcian & @szokeasaurusrex
   - Support for [Sentry structured logs](https://docs.sentry.io/product/explore/logs/) has been added.
   - To enable logs, enable the `UNSTABLE_logs` feature of the `sentry` crate and set `enable_logs` to `true` in your client options.
   - Then, use the `logger_trace!`, `logger_debug!`, `logger_info!`, `logger_warn!`, `logger_error!` and `logger_fatal!` macros to capture logs.
