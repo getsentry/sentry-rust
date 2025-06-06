@@ -37,6 +37,6 @@ fn test_captures_transaction() {
         sentry::protocol::EnvelopeItem::Transaction(tx) => {
             assert_eq!(tx.name.as_deref(), Some("root_span"));
         }
-        unexpected => panic!("Expected transaction, but got {:#?}", unexpected),
+        unexpected => panic!("Expected transaction, but got {unexpected:#?}"),
     }
 }
