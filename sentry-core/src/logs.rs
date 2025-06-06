@@ -1,4 +1,4 @@
-//! Batching for Sentry [structured logging](https://docs.sentry.io/product/explore/logs/).
+//! Batching for Sentry [structured logs](https://docs.sentry.io/product/explore/logs/).
 
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::thread::JoinHandle;
