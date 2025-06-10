@@ -18,7 +18,7 @@ pub(crate) fn convert_span_status(status: &opentelemetry::trace::Status) -> Span
 }
 
 pub(crate) fn convert_span_kind(kind: opentelemetry::trace::SpanKind) -> Value {
-    format!("{:?}", kind).to_lowercase().into()
+    format!("{kind:?}").to_lowercase().into()
 }
 
 pub(crate) fn convert_value(value: opentelemetry::Value) -> Value {
