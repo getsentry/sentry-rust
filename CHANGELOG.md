@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixes
+
+- fix(logs): send environment in `sentry.environment` default attribute (#837) by @lcian
+
 ## 0.39.0
 
 ### Features
