@@ -67,6 +67,6 @@ fn test_captures_transaction_with_nested_spans() {
             assert_eq!(grandchild_span.parent_span_id, Some(child_span.span_id));
             assert_eq!(child_span.parent_span_id, Some(tx_span_id));
         }
-        unexpected => panic!("Expected transaction, but got {:#?}", unexpected),
+        unexpected => panic!("Expected transaction, but got {unexpected:#?}"),
     }
 }

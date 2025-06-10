@@ -308,7 +308,7 @@ impl Envelope {
     }
 
     /// Create an [`Iterator`] over all the [`EnvelopeItem`]s.
-    pub fn items(&self) -> EnvelopeItemIter {
+    pub fn items(&self) -> EnvelopeItemIter<'_> {
         let inner = match &self.items {
             Items::EnvelopeItems(items) => items.iter(),
             Items::Raw(_) => [].iter(),
