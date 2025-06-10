@@ -1370,7 +1370,7 @@ impl fmt::Display for SpanId {
 
 impl fmt::Debug for SpanId {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "SpanId({})", self)
+        write!(fmt, "SpanId({self})")
     }
 }
 
@@ -1423,7 +1423,7 @@ impl fmt::Display for TraceId {
 
 impl fmt::Debug for TraceId {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "TraceId({})", self)
+        write!(fmt, "TraceId({self})")
     }
 }
 
@@ -2320,8 +2320,7 @@ impl<'de> Deserialize<'de> for LogAttribute {
                     }
                     _ => {
                         return Err(de::Error::custom(format!(
-                        "expected type to be 'string' | 'integer' | 'double' | 'boolean', found {}",
-                        type_str
+                        "expected type to be 'string' | 'integer' | 'double' | 'boolean', found {type_str}"
                     )))
                     }
                 }
