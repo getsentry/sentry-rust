@@ -48,7 +48,7 @@ opentelemetry = ["sentry-opentelemetry"]
 # other features
 test = ["sentry-core/test"]
 release-health = ["sentry-core/release-health", "sentry-actix?/release-health"]
-UNSTABLE_logs = ["sentry-core/UNSTABLE_logs"]
+logs = ["sentry-core/logs"]
 # transports
 transport = ["reqwest", "native-tls"]
 reqwest = ["dep:reqwest", "httpdate", "tokio"]
