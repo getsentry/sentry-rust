@@ -427,7 +427,7 @@ impl Client {
         if !log.attributes.contains_key("sentry.environment") {
             if let Some(environment) = self.options.environment.as_ref() {
                 log.attributes.insert(
-                    "sentry.sdk.version".to_owned(),
+                    "sentry.environment".to_owned(),
                     LogAttribute(environment.clone().into()),
                 );
             }
