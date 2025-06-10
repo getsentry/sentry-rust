@@ -2,10 +2,18 @@
 
 ## Unreleased
 
-### Breaking changes
+### Features
 
-- refactor: remove `debug-logs` feature (#820) by @lcian
-  - The deprecated `debug-logs` feature of the `sentry` crate, used for the SDK's own internal logging, has been removed.
+Support for [Sentry structured logs](https://docs.sentry.io/product/explore/logs/) has been added to the SDK.
+- To set up logs, enable the `logs` feature of the `sentry` crate and set `enable_logs` to `true` in your client options.
+- Then, use the `logger_trace!`, `logger_debug!`, `logger_info!`, `logger_warn!`, `logger_error!` and `logger_fatal!` macros to capture logs.
+- To filter or update logs before they are sent, you can use the `before_send_log` client option.
+- Please note that breaking changes could occur until the API is finalized. 
+
+- feat(logs): add log protocol types (#821) by @lcian
+- feat(logs): add ability to capture and send logs (#823) by @lcian & @Swatinem
+- feat(logs): add macro-based API (#827) by @lcian & @szokeasaurusrex
+- feat(logs): send logs in batches (#831) by @lcian
 
 ### Behavioral changes
 
@@ -14,15 +22,10 @@
   - This information is used as a fallback when capturing an event with tracing disabled or otherwise no ongoing span, to still allow related events to be linked by a trace.
   - A new API `Scope::iter_trace_propagation_headers` has been provided that will use the fallback tracing information if there is no current `Span` on the `Scope`.
 
-### Features
+### Breaking changes
 
-- feat(logs): add log protocol types (#821) by @lcian
-- feat(logs): add ability to capture and send logs (#823) by @lcian & @Swatinem
-- feat(logs): add macro-based API (#827) by @lcian & @szokeasaurusrex
-  - Support for [Sentry structured logs](https://docs.sentry.io/product/explore/logs/) has been added.
-  - To enable logs, enable the `UNSTABLE_logs` feature of the `sentry` crate and set `enable_logs` to `true` in your client options.
-  - Then, use the `logger_trace!`, `logger_debug!`, `logger_info!`, `logger_warn!`, `logger_error!` and `logger_fatal!` macros to capture logs.
-  - Please note that breaking changes could occur until the API is finalized.
+- refactor: remove `debug-logs` feature (#820) by @lcian
+  - The deprecated `debug-logs` feature of the `sentry` crate, used for the SDK's own internal logging, has been removed.
 
 ## 0.38.1
 
