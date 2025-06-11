@@ -6,7 +6,7 @@ use std::sync::{Arc, RwLock};
 
 use crate::protocol::{Event, Level, Log, LogAttribute, LogLevel, Map, SessionStatus};
 use crate::types::Uuid;
-use crate::{Integration, IntoBreadcrumbs, Scope, ScopeGuard};
+use crate::{Integration, IntoBreadcrumbs, Scope, ScopeGuard, sentry_debug};
 
 /// The central object that can manage scopes and clients.
 ///
@@ -99,10 +99,15 @@ impl Hub {
     /// for more documentation.
     pub fn capture_event(&self, event: Event<'static>) -> Uuid {
         with_client_impl! {{
+            sentry_debug!("[Hub] Capturing event: {}", event.event_id);
             let top = self.inner.with(|stack| stack.top().clone());
-            let Some(ref client) = top.client else { return Default::default() };
+            let Some(ref client) = top.client else { 
+                sentry_debug!("[Hub] No client bound, dropping event {}", event.event_id);
+                return Default::default() 
+            };
             let event_id = client.capture_event(event, Some(&top.scope));
             *self.last_event_id.write().unwrap() = Some(event_id);
+            sentry_debug!("[Hub] Event captured with ID: {}", event_id);
             event_id
         }}
     }
@@ -113,6 +118,7 @@ impl Hub {
     /// for more documentation.
     pub fn capture_message(&self, msg: &str, level: Level) -> Uuid {
         with_client_impl! {{
+            sentry_debug!("[Hub] Capturing message at {} level: {}", level, msg);
             let event = Event {
                 message: Some(msg.to_string()),
                 level,
@@ -129,13 +135,17 @@ impl Hub {
     #[cfg(feature = "release-health")]
     pub fn start_session(&self) {
         with_client_impl! {{
+            sentry_debug!("[Hub] Starting new session");
             self.inner.with_mut(|stack| {
                 let top = stack.top_mut();
                 if let Some(session) = crate::session::Session::from_stack(top) {
+                    sentry_debug!("[Hub] Created new session");
                     // When creating a *new* session, we make sure it is unique,
                     // as to no inherit *backwards* to any parents.
                     let mut scope = Arc::make_mut(&mut top.scope);
                     scope.session = Arc::new(std::sync::Mutex::new(Some(session)));
+                } else {
+                    sentry_debug!("[Hub] Unable to create session (no client or release)");
                 }
             })
         }}
@@ -146,6 +156,7 @@ impl Hub {
     /// See the global [`sentry::end_session`](crate::end_session) for more documentation.
     #[cfg(feature = "release-health")]
     pub fn end_session(&self) {
+        sentry_debug!("[Hub] Ending session with status: Exited");
         self.end_session_with_status(SessionStatus::Exited)
     }
 
@@ -156,11 +167,15 @@ impl Hub {
     #[cfg(feature = "release-health")]
     pub fn end_session_with_status(&self, status: SessionStatus) {
         with_client_impl! {{
+            sentry_debug!("[Hub] Ending session with status: {:?}", status);
             self.inner.with_mut(|stack| {
                 let top = stack.top_mut();
                 // drop will close and enqueue the session
                 if let Some(mut session) = top.scope.session.lock().unwrap().take() {
+                    sentry_debug!("[Hub] Closing active session");
                     session.close(status);
+                } else {
+                    sentry_debug!("[Hub] No active session to close");
                 }
             })
         }}
@@ -171,9 +186,12 @@ impl Hub {
     /// This returns a guard that when dropped will pop the scope again.
     pub fn push_scope(&self) -> ScopeGuard {
         with_client_impl! {{
+            sentry_debug!("[Hub] Pushing new scope");
             self.inner.with_mut(|stack| {
                 stack.push();
-                ScopeGuard(Some((self.inner.stack.clone(), stack.depth())))
+                let depth = stack.depth();
+                sentry_debug!("[Hub] New scope pushed (depth: {})", depth);
+                ScopeGuard(Some((self.inner.stack.clone(), depth)))
             })
         }}
     }
@@ -226,9 +244,11 @@ impl Hub {
             self.inner.with_mut(|stack| {
                 let top = stack.top_mut();
                 if let Some(ref client) = top.client {
+                    sentry_debug!("[Hub] Adding breadcrumb to scope");
                     let scope = Arc::make_mut(&mut top.scope);
                     let options = client.options();
                     let breadcrumbs = Arc::make_mut(&mut scope.breadcrumbs);
+                    let mut added_count = 0;
                     for breadcrumb in breadcrumb.into_breadcrumbs() {
                         let breadcrumb_opt = match options.before_breadcrumb {
                             Some(ref callback) => callback(breadcrumb),
@@ -236,11 +256,17 @@ impl Hub {
                         };
                         if let Some(breadcrumb) = breadcrumb_opt {
                             breadcrumbs.push_back(breadcrumb);
+                            added_count += 1;
                         }
                         while breadcrumbs.len() > options.max_breadcrumbs {
                             breadcrumbs.pop_front();
                         }
                     }
+                    if added_count > 0 {
+                        sentry_debug!("[Hub] Added {} breadcrumb(s), total: {}", added_count, breadcrumbs.len());
+                    }
+                } else {
+                    sentry_debug!("[Hub] No client available, breadcrumb dropped");
                 }
             })
         }}
@@ -250,8 +276,12 @@ impl Hub {
     #[cfg(feature = "logs")]
     pub fn capture_log(&self, log: Log) {
         with_client_impl! {{
+            sentry_debug!("[Hub] Capturing log with level: {:?}", log.level);
             let top = self.inner.with(|stack| stack.top().clone());
-            let Some(ref client) = top.client else { return };
+            let Some(ref client) = top.client else { 
+                sentry_debug!("[Hub] No client available, log dropped");
+                return 
+            };
             client.capture_log(log, &top.scope);
         }}
     }

@@ -4,6 +4,7 @@ use std::{borrow::Cow, sync::Arc};
 use crate::transports::DefaultTransportFactory;
 use crate::types::Dsn;
 use crate::{ClientOptions, Integration};
+use sentry_core::sentry_debug;
 
 /// Apply default client options.
 ///
@@ -49,33 +50,42 @@ pub fn apply_defaults(mut opts: ClientOptions) -> ClientOptions {
         opts.transport = Some(Arc::new(DefaultTransportFactory));
     }
     if opts.default_integrations {
+        sentry_debug!("[apply_defaults] Adding default integrations");
         // default integrations need to be ordered *before* custom integrations,
         // since they also process events in order
         let mut integrations: Vec<Arc<dyn Integration>> = vec![];
         #[cfg(feature = "backtrace")]
         {
+            sentry_debug!("[apply_defaults] Adding AttachStacktraceIntegration");
             integrations.push(Arc::new(sentry_backtrace::AttachStacktraceIntegration));
         }
         #[cfg(feature = "debug-images")]
         {
+            sentry_debug!("[apply_defaults] Adding DebugImagesIntegration");
             integrations.push(Arc::new(
                 sentry_debug_images::DebugImagesIntegration::default(),
             ))
         }
         #[cfg(feature = "contexts")]
         {
+            sentry_debug!("[apply_defaults] Adding ContextIntegration");
             integrations.push(Arc::new(sentry_contexts::ContextIntegration::default()));
         }
         #[cfg(feature = "panic")]
         {
+            sentry_debug!("[apply_defaults] Adding PanicIntegration");
             integrations.push(Arc::new(sentry_panic::PanicIntegration::default()));
         }
         #[cfg(feature = "backtrace")]
         {
+            sentry_debug!("[apply_defaults] Adding ProcessStacktraceIntegration");
             integrations.push(Arc::new(sentry_backtrace::ProcessStacktraceIntegration));
         }
         integrations.extend(opts.integrations);
         opts.integrations = integrations;
+        sentry_debug!("[apply_defaults] Total integrations configured: {}", opts.integrations.len());
+    } else {
+        sentry_debug!("[apply_defaults] Default integrations disabled, using {} custom integrations only", opts.integrations.len());
     }
     if opts.dsn.is_none() {
         opts.dsn = env::var("SENTRY_DSN")

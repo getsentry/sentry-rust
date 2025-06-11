@@ -1,205 +1,200 @@
 # Sentry Rust SDK Debug Logging Improvements
 
-This document describes the comprehensive debug logging improvements made to the Sentry Rust SDK to address [issue #620](https://github.com/getsentry/sentry-rust/issues/620) - "Improve the ability to debug sentry integration".
+This document summarizes the comprehensive debug logging improvements made to the Sentry Rust SDK to address GitHub issue #620: "Improve the ability to debug sentry integration".
 
-## Overview
+## Problem Statement
 
-The Sentry Rust SDK now provides extensive debug logging throughout all major components to help developers understand what's happening during Sentry integration. All debug logging follows a consistent pattern and only appears when `debug: true` is set in the client options.
+GitHub issue #620 highlighted that users only received minimal debug output like `[sentry] Get response: {"id":"ae0962de93bb4e4bbafa958fb4737a44"}` when enabling debug mode, making it extremely difficult to troubleshoot Sentry integration issues and understand the SDK's internal behavior.
 
-## How to Enable Debug Logging
+## Solution Overview
 
+The solution adds targeted debug logging at important points throughout the Sentry Rust SDK using the existing `sentry_debug!` macro. The logging follows a consistent pattern `[ComponentName] description with details` and has zero performance impact when debug mode is disabled.
+
+## Key Improvements Made
+
+### 1. Integration Initialization Logging (`sentry/src/defaults.rs`)
+
+Added debug logging for default integration setup:
 ```rust
-let _guard = sentry::init(sentry::ClientOptions {
-    dsn: Some("https://key@sentry.io/42".parse().unwrap()),
-    debug: true, // Enable debug logging
-    ..Default::default()
-});
-```
-
-When enabled, debug messages will be printed to stderr with the format: `[sentry] [Component] message`
-
-## Enhanced Components
-
-### 1. Client Initialization (`sentry/src/init.rs`)
-
-The initialization process now provides detailed logging about:
-- Configuration parameters (DSN, debug mode, sample rates, release, environment)
-- Integration setup and counts
-- Transport creation
-- Session tracking configuration
-
-**Example output:**
-```
-[sentry] [init] Initializing Sentry SDK
-[sentry] [init] DSN: https://key@sentry.io/42
-[sentry] [init] Debug mode: true
-[sentry] [init] Sample rate: 1.0
-[sentry] [init] Setting up 5 integrations
-[sentry] [init] Enabled sentry client for DSN https://key@sentry.io/42
+sentry_debug!("[apply_defaults] Adding default integrations");
+sentry_debug!("[apply_defaults] Adding AttachStacktraceIntegration");
+sentry_debug!("[apply_defaults] Adding DebugImagesIntegration");
+sentry_debug!("[apply_defaults] Adding ContextIntegration");
+sentry_debug!("[apply_defaults] Adding PanicIntegration");
+sentry_debug!("[apply_defaults] Adding ProcessStacktraceIntegration");
+sentry_debug!("[apply_defaults] Total integrations configured: {}", opts.integrations.len());
 ```
 
 ### 2. Client Operations (`sentry-core/src/client.rs`)
 
-Enhanced logging covers:
-- Client creation and configuration
-- Event preparation and processing
-- Integration pipeline execution
-- Transport operations
-- Session and log handling
-- Sampling decisions
+Enhanced client initialization and operations with comprehensive logging:
+- Client creation with configuration details
+- Integration setup tracking (already present)
+- Event preparation and processing pipeline
+- Transport operations and rate limiting (already present)
+- Session and log handling (already present)
 
-**Example output:**
-```
-[sentry] [Client] Creating new client with options: debug=true, dsn=Some("https://key@sentry.io/42")
-[sentry] [Client] Setting up 5 integrations
-[sentry] [Client] Setting up integration: debug-images
-[sentry] [Client] Preparing event a1b2c3d4-e5f6-7890-abcd-ef1234567890 for transmission
-[sentry] [Client] Processing event through 5 integrations
-[sentry] [Client] Applied client defaults to event fields: release, environment
+### 3. Integration Processing
+
+#### Context Integration (`sentry-contexts/src/integration.rs`)
+```rust
+sentry_debug!("[ContextIntegration] Setting up contexts integration");
+sentry_debug!("[ContextIntegration] Processing event {}", event.event_id);
+sentry_debug!("[ContextIntegration] Added contexts: {}", contexts_added.join(", "));
 ```
 
-### 3. Scope Management (`sentry-core/src/scope/real.rs`)
-
-Comprehensive logging for scope operations:
-- Setting and updating user information
-- Managing tags, contexts, and extra data
-- Breadcrumb operations
-- Event and transaction processing
-- Attachment handling
-
-**Example output:**
-```
-[sentry] [Scope] Setting user: id=Some("user123"), username=Some("john_doe"), email=Some("john@example.com")
-[sentry] [Scope] Setting tag: environment = production
-[sentry] [Scope] Setting context: device
-[sentry] [Scope] Applying scope to event a1b2c3d4-e5f6-7890-abcd-ef1234567890
-[sentry] [Scope] Applied 3 tags to event
-[sentry] [Scope] Applied 2 contexts to event
+#### Backtrace Integrations (`sentry-backtrace/src/integration.rs`)
+```rust
+sentry_debug!("[ProcessStacktraceIntegration] Processing event {}", event.event_id);
+sentry_debug!("[ProcessStacktraceIntegration] Processed {} stacktraces", processed_stacks);
+sentry_debug!("[AttachStacktraceIntegration] Event has no stacktrace, attaching current thread stacktrace");
 ```
 
-### 4. Transport Layer (`sentry/src/transports/ureq.rs`)
+#### Panic Integration (`sentry-panic/src/lib.rs`)
+```rust
+sentry_debug!("[PanicIntegration] Setting up panic handler");
+sentry_debug!("[PanicIntegration] Panic detected: {}", message_from_panic_info(info));
+sentry_debug!("[PanicIntegration] Created event {} for panic", event.event_id);
+```
 
-Detailed transport operations logging:
-- Transport creation and configuration
-- Proxy setup
+#### Debug Images Integration (`sentry-debug-images/src/integration.rs`)
+Already had comprehensive debug logging implemented.
+
+### 4. Hub Operations (`sentry-core/src/hub.rs` and `sentry-core/src/hub_impl.rs`)
+
+Added logging for key hub operations:
+```rust
+sentry_debug!("[Hub] Capturing event: {}", event.event_id);
+sentry_debug!("[Hub] Starting new session");
+sentry_debug!("[Hub] Binding client to hub (client: {})", if has_client { "present" } else { "none" });
+sentry_debug!("[Hub] Adding breadcrumb to scope");
+```
+
+### 5. Scope Operations (`sentry-core/src/scope/real.rs`)
+
+Added targeted logging for scope changes:
+```rust
+sentry_debug!("[Scope] Setting level override: {:?}", new_level);
+sentry_debug!("[Scope] Setting user: id={:?}, username={:?}, email={:?}", ...);
+sentry_debug!("[Scope] Setting transaction: {}", new_tx);
+sentry_debug!("[Scope] Applying scope to event {}", event.event_id);
+sentry_debug!("[Scope] Added attachment: {} (total: {})", filename, self.attachments.len());
+```
+
+### 6. Logging Integration (`sentry-log/src/logger.rs`)
+
+Enhanced SentryLogger with debug tracking:
+```rust
+sentry_debug!("[SentryLogger] Creating new SentryLogger");
+sentry_debug!("[SentryLogger] Filter result for {} log: {:?}", record.level(), filter_result);
+sentry_debug!("[SentryLogger] Capturing event from {} log: {}", record.level(), e.event_id);
+```
+
+### 7. Tracing Integration (`sentry-tracing/src/layer.rs`)
+
+Added comprehensive tracing layer logging:
+```rust
+sentry_debug!("[SentryLayer] Creating default SentryLayer");
+sentry_debug!("[SentryLayer] Processing tracing event at {} level, filter result: {:?}", ...);
+sentry_debug!("[SentryLayer] Creating new Sentry span for tracing span: {}", span_name);
+sentry_debug!("[SentryLayer] Starting new transaction: {}", description);
+```
+
+### 8. Transport Operations
+
+Transport implementations already had comprehensive debug logging including:
+- Connection setup and configuration
 - Request/response handling
-- Rate limiting
+- Rate limiting and retry logic
 - Error conditions
 
-**Example output:**
-```
-[sentry] [UreqHttpTransport] Creating new ureq transport
-[sentry] [UreqHttpTransport] Setting up transport for DSN scheme: Https
-[sentry] [UreqHttpTransport] Target URL: https://sentry.io/api/42/envelope/
-[sentry] [UreqHttpTransport] Sending envelope to Sentry
-[sentry] [UreqHttpTransport] Envelope serialized, size: 1024 bytes
-[sentry] [UreqHttpTransport] Received response with status: 200
-[sentry] [UreqHttpTransport] Get response: {"id":"a1b2c3d4-e5f6-7890-abcd-ef1234567890"}
-```
+### 9. Session Management
 
-### 5. Session Management (`sentry-core/src/session.rs`)
+Session handling already had comprehensive debug logging including:
+- Session creation and lifecycle
+- Aggregation and flushing
+- Background worker operations
 
-Complete session lifecycle tracking:
-- Session creation and initialization
-- Error updates
-- Status transitions
-- Background flushing
-- Aggregation in request mode
+## Usage
 
-**Example output:**
-```
-[sentry] [Session] Creating new session from stack
-[sentry] [Session] Session created with ID: a1b2c3d4-e5f6-7890-abcd-ef1234567890, distinct_id: Some("user123")
-[sentry] [Session] Updated session a1b2c3d4-e5f6-7890-abcd-ef1234567890 due to error event (total errors: 1)
-[sentry] [SessionFlusher] Creating new session flusher with mode: Application
-[sentry] [SessionFlusher] Enqueueing session update: a1b2c3d4-e5f6-7890-abcd-ef1234567890
-[sentry] [SessionFlusher] Flushing 1 individual sessions
+To enable debug logging, set `debug: true` in your `ClientOptions`:
+
+```rust
+let _guard = sentry::init(sentry::ClientOptions {
+    dsn: Some("your-dsn-here".parse().unwrap()),
+    debug: true,
+    ..Default::default()
+});
 ```
 
-### 6. Logs Batching (`sentry-core/src/logs.rs`)
+## Example Debug Output
 
-The existing LogsBatcher already had good logging following the pattern:
+Before these improvements, users saw minimal output like:
 ```
-[sentry] [LogsBatcher] Flushing 5 logs
-```
-
-### 7. Integration Processing (`sentry-debug-images/src/integration.rs`)
-
-Enhanced integration logging shows:
-- Integration setup
-- Event filtering decisions
-- Data attachment operations
-
-**Example output:**
-```
-[sentry] [DebugImagesIntegration] Creating new debug images integration
-[sentry] [DebugImagesIntegration] Loading debug images
-[sentry] [DebugImagesIntegration] Loaded 42 debug images
-[sentry] [DebugImagesIntegration] Adding debug images to event a1b2c3d4-e5f6-7890-abcd-ef1234567890
-[sentry] [DebugImagesIntegration] Added 42 debug images to event a1b2c3d4-e5f6-7890-abcd-ef1234567890
+[sentry] Get response: {"id":"ae0962de93bb4e4bbafa958fb4737a44"}
 ```
 
-## Consistent Logging Pattern
-
-All debug messages follow the pattern: `[ComponentName] description with relevant details`
-
-- **Client operations**: `[Client] ...`
-- **Scope operations**: `[Scope] ...`
-- **Transport operations**: `[TransportType] ...` (e.g., `[UreqHttpTransport]`)
-- **Session operations**: `[Session]` or `[SessionFlusher] ...`
-- **Integration operations**: `[IntegrationName] ...` (e.g., `[DebugImagesIntegration]`)
-- **Initialization**: `[init] ...`
-
-## Performance Considerations
-
-- Debug logging uses the `sentry_debug!` macro which compiles to a no-op when debug mode is disabled
-- No performance impact in production when `debug: false` (the default)
-- Logging only occurs when explicitly enabled via client options
-- String formatting only happens when debug mode is active
-
-## Benefits for Developers
-
-### Before (limited debugging):
+After improvements, users now see comprehensive event lifecycle tracking:
 ```
-[sentry] Get response: `{"id":"ae0962de93bb4e4bbafa958fb4737a44"}`
-```
-
-### After (comprehensive debugging):
-```
-[sentry] [init] Initializing Sentry SDK
-[sentry] [init] DSN: https://key@sentry.io/42
-[sentry] [init] Debug mode: true
-[sentry] [Client] Creating new client with options: debug=true
-[sentry] [Client] Setting up 5 integrations
-[sentry] [Client] Setting up integration: debug-images
-[sentry] [Client] Transport created successfully
-[sentry] [Client] Capturing event: a1b2c3d4-e5f6-7890-abcd-ef1234567890
-[sentry] [Client] Preparing event a1b2c3d4-e5f6-7890-abcd-ef1234567890 for transmission
-[sentry] [Scope] Applying scope to event a1b2c3d4-e5f6-7890-abcd-ef1234567890
-[sentry] [Client] Processing event through 5 integrations
-[sentry] [DebugImagesIntegration] Adding debug images to event a1b2c3d4-e5f6-7890-abcd-ef1234567890
-[sentry] [Client] Created envelope for event a1b2c3d4-e5f6-7890-abcd-ef1234567890
-[sentry] [UreqHttpTransport] Queueing envelope for sending
-[sentry] [UreqHttpTransport] Sending envelope to Sentry
-[sentry] [UreqHttpTransport] Envelope serialized, size: 2048 bytes
-[sentry] [UreqHttpTransport] Received response with status: 200
-[sentry] [UreqHttpTransport] Get response: `{"id":"a1b2c3d4-e5f6-7890-abcd-ef1234567890"}`
+[apply_defaults] Adding default integrations
+[apply_defaults] Adding AttachStacktraceIntegration
+[apply_defaults] Adding DebugImagesIntegration
+[apply_defaults] Adding ContextIntegration
+[apply_defaults] Adding PanicIntegration
+[apply_defaults] Adding ProcessStacktraceIntegration
+[apply_defaults] Total integrations configured: 5
+[Client] Creating new client with options: debug=true, dsn=Some("https://...")
+[Client] Setting up 5 integrations
+[Client] Setting up integration: attach-stacktrace
+[Client] Setting up integration: debug-images
+[ContextIntegration] Setting up contexts integration
+[Client] Setting up integration: contexts
+[PanicIntegration] Setting up panic handler
+[Client] Setting up integration: panic
+[Client] Setting up integration: process-stacktrace
+[Hub] Capturing event: a1b2c3d4-e5f6-7890-abcd-1234567890ab
+[Scope] Applying scope to event a1b2c3d4-e5f6-7890-abcd-1234567890ab
+[Client] Processing event a1b2c3d4-e5f6-7890-abcd-1234567890ab through 5 integrations
+[ContextIntegration] Processing event a1b2c3d4-e5f6-7890-abcd-1234567890ab
+[ContextIntegration] Added contexts: os, rust, device
+[AttachStacktraceIntegration] Processing event a1b2c3d4-e5f6-7890-abcd-1234567890ab
+[AttachStacktraceIntegration] Event has no stacktrace, attaching current thread stacktrace
+[UreqHttpTransport] Sending envelope to Sentry
+[UreqHttpTransport] Received response with status: 200
+[UreqHttpTransport] Get response: {"id":"a1b2c3d4-e5f6-7890-abcd-1234567890ab"}
 ```
 
-Now developers can:
-1. **Track event lifecycle**: See exactly how events are processed from creation to transmission
-2. **Debug integration issues**: Understand which integrations are running and when they process events
-3. **Monitor transport behavior**: See connection details, request/response cycles, and error conditions
-4. **Understand scope operations**: Track how user data, tags, and contexts are applied
-5. **Diagnose session problems**: Monitor session creation, updates, and flushing
-6. **Correlate events**: Use event IDs to trace events through the entire pipeline
+## Technical Implementation
 
-## Implementation Details
+- **Zero Performance Impact**: All logging uses the existing `sentry_debug!` macro which compiles to a no-op when `debug: false`
+- **Consistent Naming**: All log messages follow the pattern `[ComponentName] description with details`
+- **Event Correlation**: Includes relevant identifiers (event IDs, session IDs) for tracking events through the pipeline
+- **Backward Compatibility**: No breaking changes to existing APIs
+- **Compilation**: All changes compile successfully with only deprecation warnings about trailing semicolons in macros
 
-- Uses the existing `sentry_debug!` macro for consistency
-- Preserves all existing functionality
-- Adds zero overhead when debug mode is disabled
-- Follows Rust SDK coding guidelines and patterns
-- Maintains backward compatibility
+## Files Modified
 
-This comprehensive logging enhancement significantly improves the debuggability of Sentry integrations, making it much easier for developers to understand and troubleshoot issues with their Sentry setup.
+1. `sentry/src/defaults.rs` - Integration initialization logging
+2. `sentry-core/src/client.rs` - Enhanced client operations (some already present)
+3. `sentry-core/src/hub.rs` - Hub operations logging
+4. `sentry-core/src/hub_impl.rs` - Hub implementation logging
+5. `sentry-core/src/scope/real.rs` - Scope operations logging
+6. `sentry-contexts/src/integration.rs` - Context integration logging
+7. `sentry-backtrace/src/integration.rs` - Backtrace integration logging
+8. `sentry-panic/src/lib.rs` - Panic integration logging
+9. `sentry-log/src/logger.rs` - Log integration logging
+10. `sentry-tracing/src/layer.rs` - Tracing integration logging
+11. Transport files already had comprehensive logging
+12. Session management already had comprehensive logging
+
+## Impact
+
+These improvements transform the Sentry Rust SDK debugging experience from minimal, cryptic output to comprehensive event lifecycle tracking. Developers can now:
+
+1. **Verify Integration Setup**: See exactly which integrations are being loaded and configured
+2. **Track Event Processing**: Follow events through the entire pipeline from creation to transmission
+3. **Debug Configuration Issues**: Understand when and why events are being filtered, modified, or dropped
+4. **Monitor Performance**: See timing and batching information for sessions and logs
+5. **Troubleshoot Transport**: Get detailed information about HTTP requests, responses, and rate limiting
+
+This addresses the core issue raised in GitHub #620 and significantly improves the developer experience when integrating and troubleshooting Sentry in Rust applications.

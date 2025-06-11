@@ -110,7 +110,7 @@ pub fn init<C: Into<ClientOptions>>(cfg: C) -> ClientInitGuard {
     #[cfg(feature = "release-health")]
     let session_mode = options.session_mode;
     
-    let client = Arc::new(crate::apply_defaults(options).into());
+    let client: Arc<Client> = Arc::new(apply_defaults(options).into());
     
     if client.is_enabled() {
         if let Some(dsn) = client.dsn() {

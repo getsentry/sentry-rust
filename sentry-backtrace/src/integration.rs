@@ -1,7 +1,7 @@
 use std::thread;
 
 use sentry_core::protocol::{Event, Thread};
-use sentry_core::{ClientOptions, Integration};
+use sentry_core::{ClientOptions, Integration, sentry_debug};
 
 use crate::current_stacktrace;
 use crate::process::process_event_stacktrace;
@@ -32,19 +32,31 @@ impl Integration for ProcessStacktraceIntegration {
         mut event: Event<'static>,
         options: &ClientOptions,
     ) -> Option<Event<'static>> {
+        sentry_debug!("[ProcessStacktraceIntegration] Processing event {}", event.event_id);
+        
+        let mut processed_stacks = 0;
+        
         for exc in &mut event.exception {
             if let Some(ref mut stacktrace) = exc.stacktrace {
                 process_event_stacktrace(stacktrace, options);
+                processed_stacks += 1;
             }
         }
         for th in &mut event.threads {
             if let Some(ref mut stacktrace) = th.stacktrace {
                 process_event_stacktrace(stacktrace, options);
+                processed_stacks += 1;
             }
         }
         if let Some(ref mut stacktrace) = event.stacktrace {
             process_event_stacktrace(stacktrace, options);
+            processed_stacks += 1;
         }
+        
+        if processed_stacks > 0 {
+            sentry_debug!("[ProcessStacktraceIntegration] Processed {} stacktraces", processed_stacks);
+        }
+        
         Some(event)
     }
 }
@@ -73,11 +85,21 @@ impl Integration for AttachStacktraceIntegration {
         mut event: Event<'static>,
         options: &ClientOptions,
     ) -> Option<Event<'static>> {
+        sentry_debug!("[AttachStacktraceIntegration] Processing event {}", event.event_id);
+        
         if options.attach_stacktrace && !has_stacktrace(&event) {
+            sentry_debug!("[AttachStacktraceIntegration] Event has no stacktrace, attaching current thread stacktrace");
             let thread = current_thread(true);
             if thread.stacktrace.is_some() {
                 event.threads.values.push(thread);
+                sentry_debug!("[AttachStacktraceIntegration] Attached stacktrace to event");
+            } else {
+                sentry_debug!("[AttachStacktraceIntegration] Failed to capture current stacktrace");
             }
+        } else if !options.attach_stacktrace {
+            sentry_debug!("[AttachStacktraceIntegration] attach_stacktrace is disabled");
+        } else {
+            sentry_debug!("[AttachStacktraceIntegration] Event already has stacktrace, not attaching");
         }
         Some(event)
     }

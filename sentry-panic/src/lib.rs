@@ -25,7 +25,7 @@ use std::sync::Once;
 
 use sentry_backtrace::current_stacktrace;
 use sentry_core::protocol::{Event, Exception, Level, Mechanism};
-use sentry_core::{ClientOptions, Integration};
+use sentry_core::{ClientOptions, Integration, sentry_debug};
 
 /// A panic handler that sends to Sentry.
 ///
@@ -34,9 +34,13 @@ use sentry_core::{ClientOptions, Integration};
 /// Sentry panic handler.
 #[allow(deprecated)] // `PanicHookInfo` is only available in Rust 1.81+.
 pub fn panic_handler(info: &PanicInfo<'_>) {
+    sentry_debug!("[PanicIntegration] Panic detected: {}", message_from_panic_info(info));
     sentry_core::with_integration(|integration: &PanicIntegration, hub| {
-        hub.capture_event(integration.event_from_panic_info(info));
+        let event = integration.event_from_panic_info(info);
+        sentry_debug!("[PanicIntegration] Created event {} for panic", event.event_id);
+        hub.capture_event(event);
         if let Some(client) = hub.client() {
+            sentry_debug!("[PanicIntegration] Flushing client after panic");
             client.flush(None);
         }
     });
@@ -67,7 +71,9 @@ impl Integration for PanicIntegration {
     }
 
     fn setup(&self, _cfg: &mut ClientOptions) {
+        sentry_debug!("[PanicIntegration] Setting up panic handler");
         INIT.call_once(|| {
+            sentry_debug!("[PanicIntegration] Installing panic hook (one-time setup)");
             let next = panic::take_hook();
             panic::set_hook(Box::new(move |info| {
                 panic_handler(info);
@@ -92,6 +98,7 @@ pub fn message_from_panic_info<'a>(info: &'a PanicInfo<'_>) -> &'a str {
 impl PanicIntegration {
     /// Creates a new Panic Integration.
     pub fn new() -> Self {
+        sentry_debug!("[PanicIntegration] Creating new panic integration");
         Self::default()
     }
 
@@ -102,6 +109,7 @@ impl PanicIntegration {
     where
         F: Fn(&PanicInfo<'_>) -> Option<Event<'static>> + Send + Sync + 'static,
     {
+        sentry_debug!("[PanicIntegration] Adding custom panic extractor");
         self.extractors.push(Box::new(f));
         self
     }
@@ -111,14 +119,19 @@ impl PanicIntegration {
     /// The stacktrace is calculated from the current frame.
     #[allow(deprecated)] // `PanicHookInfo` is only available in Rust 1.81+.
     pub fn event_from_panic_info(&self, info: &PanicInfo<'_>) -> Event<'static> {
+        sentry_debug!("[PanicIntegration] Creating event from panic info, {} extractors available", self.extractors.len());
+        
         for extractor in &self.extractors {
             if let Some(event) = extractor(info) {
+                sentry_debug!("[PanicIntegration] Custom extractor created event");
                 return event;
             }
         }
 
+        sentry_debug!("[PanicIntegration] Using default panic event creation");
+
         // TODO: We would ideally want to downcast to `std::error:Error` here
-        // and use `event_from_error`, but that way we won‘t get meaningful
+        // and use `event_from_error`, but that way we won't get meaningful
         // backtraces yet.
 
         let msg = message_from_panic_info(info);

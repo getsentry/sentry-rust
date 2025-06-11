@@ -12,6 +12,7 @@ mod session_impl {
     use std::sync::{Arc, Condvar, Mutex, MutexGuard};
     use std::thread::JoinHandle;
     use std::time::{Duration, Instant, SystemTime};
+    use std::borrow::Cow;
 
     use crate::client::TransportArc;
     use crate::clientoptions::SessionMode;
@@ -62,7 +63,7 @@ mod session_impl {
                 errors: 0,
                 attributes: SessionAttributes {
                     release: release.unwrap_or_default(),
-                    environment: environment.map(|e| e.into_owned()),
+                    environment: environment.map(|e| Cow::Owned(e.into_owned())),
                     user_agent: None,
                     ip_address: None,
                 },

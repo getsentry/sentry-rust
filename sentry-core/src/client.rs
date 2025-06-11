@@ -16,7 +16,7 @@ use crate::logs::LogsBatcher;
 use crate::protocol::{ClientSdkInfo, Event};
 #[cfg(feature = "release-health")]
 use crate::session::SessionFlusher;
-use crate::types::{Dsn, Uuid};
+use crate::types::{Dsn, Uuid, Scheme};
 #[cfg(feature = "release-health")]
 use crate::SessionMode;
 use crate::{ClientOptions, Envelope, Hub, Integration, Scope, Transport};
@@ -137,7 +137,7 @@ impl Client {
         Hub::with(|_| {});
 
         let create_transport = || {
-            if options.dsn.as_ref()?.scheme().is_supported() {
+            if options.dsn.as_ref()?.scheme() == Scheme::Https || options.dsn.as_ref()?.scheme() == Scheme::Http {
                 sentry_debug!("[Client] DSN scheme is supported, creating transport");
             } else {
                 sentry_debug!("[Client] DSN scheme is not supported");

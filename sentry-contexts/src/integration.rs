@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use sentry_core::protocol::map::Entry;
 use sentry_core::protocol::Event;
-use sentry_core::{ClientOptions, Integration};
+use sentry_core::{ClientOptions, Integration, sentry_debug};
 
 use crate::utils::{device_context, os_context, rust_context, server_name};
 
@@ -72,8 +72,12 @@ impl Integration for ContextIntegration {
     }
 
     fn setup(&self, options: &mut ClientOptions) {
+        sentry_debug!("[ContextIntegration] Setting up contexts integration");
         if options.server_name.is_none() {
-            options.server_name = server_name().map(Cow::Owned);
+            if let Some(server_name) = server_name() {
+                sentry_debug!("[ContextIntegration] Setting server_name from system: {}", server_name);
+                options.server_name = Some(Cow::Owned(server_name));
+            }
         }
     }
 
@@ -82,10 +86,15 @@ impl Integration for ContextIntegration {
         mut event: Event<'static>,
         _cfg: &ClientOptions,
     ) -> Option<Event<'static>> {
+        sentry_debug!("[ContextIntegration] Processing event {}", event.event_id);
+        
+        let mut contexts_added = Vec::new();
+        
         if self.add_os {
             if let Entry::Vacant(entry) = event.contexts.entry("os".to_string()) {
                 if let Some(os) = os_context() {
                     entry.insert(os);
+                    contexts_added.push("os");
                 }
             }
         }
@@ -94,12 +103,18 @@ impl Integration for ContextIntegration {
                 .contexts
                 .entry("rust".to_string())
                 .or_insert_with(rust_context);
+            contexts_added.push("rust");
         }
         if self.add_device {
             event
                 .contexts
                 .entry("device".to_string())
                 .or_insert_with(device_context);
+            contexts_added.push("device");
+        }
+
+        if !contexts_added.is_empty() {
+            sentry_debug!("[ContextIntegration] Added contexts: {}", contexts_added.join(", "));
         }
 
         Some(event)

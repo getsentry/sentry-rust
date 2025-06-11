@@ -303,7 +303,11 @@ impl Scope {
 
     /// Adds an attachment to the scope
     pub fn add_attachment(&mut self, attachment: Attachment) {
-        let filename = attachment.filename.clone().unwrap_or_else(|| "<unnamed>".to_string());
+        let filename = if attachment.filename.is_empty() { 
+            "<unnamed>".to_string() 
+        } else { 
+            attachment.filename.clone() 
+        };
         Arc::make_mut(&mut self.attachments).push(attachment);
         sentry_debug!("[Scope] Added attachment: {} (total: {})", filename, self.attachments.len());
     }

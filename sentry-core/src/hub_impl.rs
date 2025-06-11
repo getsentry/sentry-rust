@@ -3,7 +3,7 @@ use std::sync::{Arc, LazyLock, PoisonError, RwLock};
 use std::thread;
 
 use crate::Scope;
-use crate::{scope::Stack, Client, Hub};
+use crate::{scope::Stack, Client, Hub, sentry_debug};
 
 static PROCESS_HUB: LazyLock<(Arc<Hub>, thread::ThreadId)> = LazyLock::new(|| {
     (
@@ -95,6 +95,8 @@ impl HubImpl {
 impl Hub {
     /// Creates a new hub from the given client and scope.
     pub fn new(client: Option<Arc<Client>>, scope: Arc<Scope>) -> Hub {
+        let has_client = client.is_some();
+        sentry_debug!("[Hub] Creating new hub (client: {})", if has_client { "present" } else { "none" });
         Hub {
             inner: HubImpl {
                 stack: Arc::new(RwLock::new(Stack::from_client_and_scope(client, scope))),
@@ -105,9 +107,12 @@ impl Hub {
 
     /// Creates a new hub based on the top scope of the given hub.
     pub fn new_from_top<H: AsRef<Hub>>(other: H) -> Hub {
+        sentry_debug!("[Hub] Creating new hub from top scope");
         let hub = other.as_ref();
         hub.inner.with(|stack| {
             let top = stack.top();
+            let has_client = top.client.is_some();
+            sentry_debug!("[Hub] Inheriting from parent (client: {})", if has_client { "present" } else { "none" });
             Hub::new(top.client.clone(), top.scope.clone())
         })
     }
@@ -163,6 +168,7 @@ impl Hub {
     /// Once the function is finished executing, including after it
     /// panicked, the original hub is re-installed if one was present.
     pub fn run<F: FnOnce() -> R, R>(hub: Arc<Hub>, f: F) -> R {
+        sentry_debug!("[Hub] Running with custom hub");
         let _guard = SwitchGuard::new(hub);
         f()
     }
@@ -174,6 +180,8 @@ impl Hub {
 
     /// Binds a new client to the hub.
     pub fn bind_client(&self, client: Option<Arc<Client>>) {
+        let has_client = client.is_some();
+        sentry_debug!("[Hub] Binding client to hub (client: {})", if has_client { "present" } else { "none" });
         self.inner.with_mut(|stack| {
             stack.top_mut().client = client;
         })

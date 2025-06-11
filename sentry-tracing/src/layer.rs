@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use sentry_core::protocol::Value;
-use sentry_core::{Breadcrumb, TransactionOrSpan};
+use sentry_core::{Breadcrumb, TransactionOrSpan, sentry_debug};
 use tracing_core::field::Visit;
 use tracing_core::{span, Event, Field, Level, Metadata, Subscriber};
 use tracing_subscriber::layer::{Context, Layer};
@@ -81,6 +81,7 @@ impl<S> SentryLayer<S> {
     where
         F: Fn(&Metadata) -> EventFilter + Send + Sync + 'static,
     {
+        sentry_debug!("[SentryLayer] Setting custom event filter");
         self.event_filter = Box::new(filter);
         self
     }
@@ -94,6 +95,7 @@ impl<S> SentryLayer<S> {
     where
         F: Fn(&Event, Context<'_, S>) -> EventMapping + Send + Sync + 'static,
     {
+        sentry_debug!("[SentryLayer] Setting custom event mapper");
         self.event_mapper = Some(Box::new(mapper));
         self
     }
@@ -109,6 +111,7 @@ impl<S> SentryLayer<S> {
     where
         F: Fn(&Metadata) -> bool + Send + Sync + 'static,
     {
+        sentry_debug!("[SentryLayer] Setting custom span filter");
         self.span_filter = Box::new(filter);
         self
     }
@@ -122,6 +125,7 @@ impl<S> SentryLayer<S> {
     /// while configuring your sentry client.
     #[must_use]
     pub fn enable_span_attributes(mut self) -> Self {
+        sentry_debug!("[SentryLayer] Enabling span attributes collection");
         self.with_span_attributes = true;
         self
     }
@@ -132,6 +136,7 @@ where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
     fn default() -> Self {
+        sentry_debug!("[SentryLayer] Creating default SentryLayer");
         Self {
             event_filter: Box::new(default_event_filter),
             event_mapper: None,
@@ -205,11 +210,18 @@ where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
     fn on_event(&self, event: &Event, ctx: Context<'_, S>) {
+        let filter_result = (self.event_filter)(event.metadata());
+        sentry_debug!("[SentryLayer] Processing tracing event at {} level, filter result: {:?}", 
+                     event.metadata().level(), filter_result);
+        
         let item = match &self.event_mapper {
-            Some(mapper) => mapper(event, ctx),
+            Some(mapper) => {
+                sentry_debug!("[SentryLayer] Using custom event mapper");
+                mapper(event, ctx)
+            },
             None => {
                 let span_ctx = self.with_span_attributes.then_some(ctx);
-                match (self.event_filter)(event.metadata()) {
+                match filter_result {
                     EventFilter::Ignore => EventMapping::Ignore,
                     EventFilter::Breadcrumb => {
                         EventMapping::Breadcrumb(breadcrumb_from_event(event, span_ctx))
@@ -221,10 +233,16 @@ where
 
         match item {
             EventMapping::Event(event) => {
+                sentry_debug!("[SentryLayer] Capturing event: {}", event.event_id);
                 sentry_core::capture_event(event);
             }
-            EventMapping::Breadcrumb(breadcrumb) => sentry_core::add_breadcrumb(breadcrumb),
-            _ => (),
+            EventMapping::Breadcrumb(breadcrumb) => {
+                sentry_debug!("[SentryLayer] Adding breadcrumb from tracing event");
+                sentry_core::add_breadcrumb(breadcrumb);
+            }
+            EventMapping::Ignore => {
+                sentry_debug!("[SentryLayer] Ignoring tracing event");
+            }
         }
     }
 
@@ -236,9 +254,13 @@ where
             None => return,
         };
 
+        let span_name = span.name();
         if !(self.span_filter)(span.metadata()) {
+            sentry_debug!("[SentryLayer] Span '{}' filtered out by span filter", span_name);
             return;
         }
+
+        sentry_debug!("[SentryLayer] Creating new Sentry span for tracing span: {}", span_name);
 
         let (description, data) = extract_span_data(attrs);
         let op = span.name();
@@ -258,15 +280,22 @@ where
         let parent_sentry_span = hub.configure_scope(|scope| scope.get_span());
 
         let sentry_span: sentry_core::TransactionOrSpan = match &parent_sentry_span {
-            Some(parent) => parent.start_child(op, &description).into(),
+            Some(parent) => {
+                sentry_debug!("[SentryLayer] Starting child span '{}' under parent", description);
+                parent.start_child(op, &description).into()
+            },
             None => {
+                sentry_debug!("[SentryLayer] Starting new transaction: {}", description);
                 let ctx = sentry_core::TransactionContext::new(&description, op);
                 sentry_core::start_transaction(ctx).into()
             }
         };
         // Add the data from the original span to the sentry span.
         // This comes from typically the `fields` in `tracing::instrument`.
-        record_fields(&sentry_span, data);
+        if !data.is_empty() {
+            sentry_debug!("[SentryLayer] Recording {} fields to Sentry span", data.len());
+            record_fields(&sentry_span, data);
+        }
 
         let mut extensions = span.extensions_mut();
         extensions.insert(SentrySpanData {
@@ -287,6 +316,7 @@ where
 
         let mut extensions = span.extensions_mut();
         if let Some(data) = extensions.get_mut::<SentrySpanData>() {
+            sentry_debug!("[SentryLayer] Entering span: {}", span.name());
             data.hub_switch_guard = Some(sentry_core::HubSwitchGuard::new(data.hub.clone()));
             data.hub.configure_scope(|scope| {
                 scope.set_span(Some(data.sentry_span.clone()));
@@ -303,6 +333,7 @@ where
 
         let mut extensions = span.extensions_mut();
         if let Some(data) = extensions.get_mut::<SentrySpanData>() {
+            sentry_debug!("[SentryLayer] Exiting span: {}", span.name());
             data.hub.configure_scope(|scope| {
                 scope.set_span(data.parent_sentry_span.clone());
             });
@@ -324,6 +355,7 @@ where
             None => return,
         };
 
+        sentry_debug!("[SentryLayer] Closing span: {}", span.name());
         sentry_span.finish();
     }
 
@@ -335,7 +367,7 @@ where
         };
 
         let mut extensions = span.extensions_mut();
-        let span = match extensions.get_mut::<SentrySpanData>() {
+        let span_data = match extensions.get_mut::<SentrySpanData>() {
             Some(t) => &t.sentry_span,
             _ => return,
         };
@@ -343,7 +375,10 @@ where
         let mut data = FieldVisitor::default();
         values.record(&mut data);
 
-        record_fields(span, data.json_values);
+        if !data.json_values.is_empty() {
+            sentry_debug!("[SentryLayer] Recording {} new fields to span", data.json_values.len());
+            record_fields(span_data, data.json_values);
+        }
     }
 }
 
@@ -352,6 +387,7 @@ pub fn layer<S>() -> SentryLayer<S>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
+    sentry_debug!("[SentryLayer] Creating new Sentry tracing layer");
     Default::default()
 }
 
