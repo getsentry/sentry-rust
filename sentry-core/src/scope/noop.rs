@@ -142,6 +142,30 @@ impl Scope {
     }
 
     /// Sets a context for a key.
+    ///
+    /// Contexts provide structured information about the environment in which an event occurred.
+    /// Unlike tags, contexts can hold rich, structured data and are designed for providing
+    /// detailed debugging information. Common contexts include device info, OS info, runtime info,
+    /// and custom application contexts.
+    ///
+    /// Contexts appear in the Sentry interface as expandable sections with detailed information.
+    ///
+    /// # Examples
+    /// ```
+    /// use sentry_core::protocol::{Context, RuntimeContext};
+    /// 
+    /// // Set a custom context with structured data
+    /// scope.set_context("custom", Context::Other(
+    ///     [("key".to_string(), "value".into())].into()
+    /// ));
+    /// 
+    /// // Set a runtime context
+    /// scope.set_context("runtime", RuntimeContext {
+    ///     name: Some("node".to_string()),
+    ///     version: Some("18.0.0".to_string()),
+    ///     ..Default::default()
+    /// });
+    /// ```
     pub fn set_context<C: Into<Context>>(&mut self, key: &str, value: C) {
         let _key = key;
         let _value = value;
@@ -154,7 +178,27 @@ impl Scope {
         minimal_unreachable!();
     }
 
-    /// Sets a extra to a specific value.
+    /// Sets extra information to a specific value.
+    ///
+    /// Extra data provides additional arbitrary information that doesn't fit into other
+    /// structured fields. Unlike tags (which are strings only), extra data can contain
+    /// any JSON-serializable value including objects, arrays, and nested structures.
+    ///
+    /// Extra data appears in the "Additional Data" section in the Sentry interface.
+    /// Use this for debugging information, configuration values, or any other data
+    /// that might be helpful when investigating an issue.
+    ///
+    /// # Examples
+    /// ```
+    /// use sentry_core::protocol::Value;
+    /// 
+    /// scope.set_extra("request_id", "abc123".into());
+    /// scope.set_extra("user_settings", Value::Object([
+    ///     ("theme".to_string(), "dark".into()),
+    ///     ("notifications".to_string(), true.into()),
+    /// ].into()));
+    /// scope.set_extra("response_time_ms", 150.into());
+    /// ```
     pub fn set_extra(&mut self, key: &str, value: Value) {
         let _key = key;
         let _value = value;
