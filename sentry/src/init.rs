@@ -44,7 +44,88 @@ impl Drop for ClientInitGuard {
 
 /// Creates the Sentry client for a given client config and binds it.
 ///
-/// This returns a client init guard that must be kept in scope and that will help the
+/// This is the primary way to initialize Sentry in your application. It creates a Sentry client
+/// based on the provided configuration, sets up default integrations and transport, and binds
+/// the client to the current thread's [`Hub`].
+///
+/// The function returns a [`ClientInitGuard`] that must be kept in scope. When this guard is
+/// dropped, it will flush any pending events and shut down the transport. This ensures that
+/// events are sent before your application terminates.
+///
+/// # Supported Configuration Types
+///
+/// This function accepts various configuration types:
+/// 
+/// - **DSN string**: `"https://key@sentry.io/project-id"` 
+/// - **Empty/disabled**: `""`, `()`, or `None` to disable Sentry
+/// - **[`ClientOptions`]**: Full configuration object for advanced setup
+/// - **Tuple**: `(dsn, ClientOptions)` to combine DSN with options
+///
+/// # Environment Variables
+///
+/// The following environment variables are automatically read:
+/// - `SENTRY_DSN`: Used as default DSN if not provided in config
+/// - `SENTRY_ENVIRONMENT`: Sets the environment (e.g., "production", "staging")
+/// - `SENTRY_RELEASE`: Sets the release identifier
+///
+/// # Examples
+///
+/// ## Basic setup with DSN
+/// ```
+/// let _guard = sentry::init("https://key@sentry.io/project-id");
+/// sentry::capture_message("Hello Sentry!", sentry::Level::Info);
+/// ```
+///
+/// ## Advanced configuration
+/// ```
+/// let _guard = sentry::init(sentry::ClientOptions {
+///     dsn: "https://key@sentry.io/project-id".parse().ok(),
+///     release: Some("my-app@1.0.0".into()),
+///     environment: Some("production".into()),
+///     sample_rate: 0.5, // Sample 50% of events
+///     traces_sample_rate: 0.1, // Sample 10% of performance traces
+///     attach_stacktrace: true,
+///     send_default_pii: false,
+///     max_breadcrumbs: 50,
+///     ..Default::default()
+/// });
+/// ```
+///
+/// ## Disable Sentry (for development/testing)
+/// ```
+/// let _guard = sentry::init(sentry::ClientOptions::default()); // No DSN = disabled
+/// // or
+/// let _guard = sentry::init(""); // Empty DSN = disabled
+/// ```
+///
+/// ## Configure with custom integrations
+/// ```
+/// let _guard = sentry::init(sentry::ClientOptions {
+///     dsn: "https://key@sentry.io/project-id".parse().ok(),
+///     default_integrations: false, // Disable default integrations
+///     ..Default::default()
+/// }.add_integration(sentry::integrations::panic::PanicIntegration::new()));
+/// ```
+///
+/// ## Long-running applications
+/// ```
+/// let guard = sentry::init("https://key@sentry.io/project-id");
+/// 
+/// // Your application logic here...
+/// 
+/// // Explicitly flush and shutdown (optional - guard drop will do this too)
+/// drop(guard); // or std::mem::drop(guard);
+/// ```
+///
+/// ## Don't wait for shutdown (not recommended)
+/// ```
+/// std::mem::forget(sentry::init("https://key@sentry.io/project-id"));
+/// // Events may be lost if the application terminates quickly
+/// ```
+///
+/// # Return Value
+///
+/// This returns a guard that when dropped will help the
 /// client send events before the application closes. When the guard is
 /// dropped, then the transport that was initialized shuts down and no
 /// further events can be sent on it.
@@ -52,32 +133,13 @@ impl Drop for ClientInitGuard {
 /// If you don't want (or can not) keep the guard around, it's permissible to
 /// call `mem::forget` on it.
 ///
-/// # Examples
+/// # Panics
 ///
-/// ```
-/// let _sentry = sentry::init("https://key@sentry.io/1234");
-/// ```
+/// This will panic when the provided DSN is invalid.
+/// If you want to handle invalid DSNs you need to parse them manually by
+/// calling `parse` on each of them and handle the error.
 ///
-/// Or if draining on shutdown should be ignored:
-/// This is not recommended, as events or session updates that have been queued
-/// might be lost.
-///
-/// ```
-/// std::mem::forget(sentry::init("https://key@sentry.io/1234"));
-/// ```
-///
-/// The guard returned can also be inspected to see if a client has been
-/// created to enable further configuration:
-///
-/// ```
-/// let sentry = sentry::init(sentry::ClientOptions {
-///     release: Some("foo-bar-baz@1.0.0".into()),
-///     ..Default::default()
-/// });
-/// if sentry.is_enabled() {
-///     // some other initialization
-/// }
-/// ```
+/// # Integration Setup
 ///
 /// This behaves similar to creating a client by calling `Client::from_config`
 /// and to then bind it to the hub except it also applies default integrations,
@@ -85,12 +147,6 @@ impl Drop for ClientInitGuard {
 /// variables.
 /// For more information about the formats accepted see `Client::from_config`,
 /// and `ClientOptions`.
-///
-/// # Panics
-///
-/// This will panic when the provided DSN is invalid.
-/// If you want to handle invalid DSNs you need to parse them manually by
-/// calling `parse` on each of them and handle the error.
 pub fn init<C>(opts: C) -> ClientInitGuard
 where
     C: Into<ClientOptions>,

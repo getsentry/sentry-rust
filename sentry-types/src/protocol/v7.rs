@@ -1,4 +1,4 @@
-THIS SHOULD BE A LINTER ERROR//! The current latest sentry protocol version.
+//! The current latest sentry protocol version.
 //!
 //! Most constructs in the protocol map directly to types here but some
 //! cleanup by renaming attributes has been applied.  The idea here is that
@@ -736,6 +736,56 @@ mod breadcrumb {
 }
 
 /// Represents a single breadcrumb.
+///
+/// Breadcrumbs are a trail of events that happened prior to an issue. They appear in Sentry
+/// as a chronological list and help developers understand what led up to an error or crash.
+/// Each breadcrumb represents a specific action, state change, or notable event.
+///
+/// Common breadcrumb types include:
+/// - `navigation`: Page or screen changes
+/// - `http`: HTTP requests  
+/// - `user`: User interactions (clicks, form submissions)
+/// - `info`: General informational messages
+/// - `debug`: Debug-level information
+/// - `error`: Error-level information
+/// - `default`: Fallback category
+///
+/// # Examples
+///
+/// ```
+/// use sentry_types::protocol::{Breadcrumb, Level, Map, Value};
+/// use std::time::SystemTime;
+///
+/// // HTTP request breadcrumb
+/// let http_breadcrumb = Breadcrumb {
+///     ty: "http".to_string(),
+///     category: Some("xhr".to_string()),
+///     message: Some("GET /api/users".to_string()),
+///     level: Level::Info,
+///     data: {
+///         let mut map = Map::new();
+///         map.insert("method".to_string(), Value::String("GET".to_string()));
+///         map.insert("url".to_string(), Value::String("/api/users".to_string()));
+///         map.insert("status_code".to_string(), Value::Number(200.into()));
+///         map
+///     },
+///     timestamp: SystemTime::now(),
+/// };
+///
+/// // User interaction breadcrumb  
+/// let user_breadcrumb = Breadcrumb {
+///     ty: "user".to_string(),
+///     category: Some("click".to_string()),
+///     message: Some("User clicked submit button".to_string()),
+///     level: Level::Info,
+///     data: {
+///         let mut map = Map::new();
+///         map.insert("target".to_string(), Value::String("#submit-btn".to_string()));
+///         map
+///     },
+///     timestamp: SystemTime::now(),
+/// };
+/// ```
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Breadcrumb {
     /// The timestamp of the breadcrumb.  This is required.

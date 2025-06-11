@@ -60,6 +60,73 @@ impl log::Log for NoopLogger {
 }
 
 /// Provides a dispatching logger.
+///
+/// A logger implementation that forwards logs to both a destination logger and Sentry.
+/// This allows you to keep your existing logging setup while automatically capturing
+/// important logs as Sentry events or breadcrumbs.
+///
+/// The `SentryLogger` acts as a wrapper around any existing [`log::Log`] implementation,
+/// forwarding all log records to it while also processing them for Sentry based on
+/// configurable filters.
+///
+/// By default:
+/// - `ERROR` level logs become Sentry exception events
+/// - `WARN` and `INFO` level logs become Sentry breadcrumbs
+/// - `DEBUG` and `TRACE` level logs are ignored by Sentry
+///
+/// # Examples
+///
+/// ## Basic usage with existing logger
+/// ```
+/// use sentry_log::{SentryLogger, LogFilter};
+/// 
+/// // Wrap your existing logger
+/// let logger = SentryLogger::with_dest(env_logger::Builder::new().build());
+/// log::set_boxed_logger(Box::new(logger)).unwrap();
+/// log::set_max_level(log::LevelFilter::Info);
+/// 
+/// // This will appear in both your regular logs and as a Sentry breadcrumb
+/// log::info!("User logged in");
+/// 
+/// // This will appear in both your regular logs and as a Sentry error event
+/// log::error!("Database connection failed");
+/// ```
+///
+/// ## Custom filtering
+/// ```
+/// use sentry_log::{SentryLogger, LogFilter};
+/// 
+/// let logger = SentryLogger::new()
+///     .filter(|metadata| match metadata.level() {
+///         log::Level::Error => LogFilter::Event,
+///         log::Level::Warn => LogFilter::Breadcrumb,
+///         _ => LogFilter::Ignore, // Only capture errors and warnings
+///     });
+/// ```
+///
+/// ## Custom mapping for more control
+/// ```
+/// use sentry_log::{SentryLogger, RecordMapping};
+/// use sentry_core::protocol::{Breadcrumb, Level};
+/// 
+/// let logger = SentryLogger::new()
+///     .mapper(|record| {
+///         if record.target().starts_with("my_app") {
+///             // Only process logs from our application
+///             RecordMapping::Breadcrumb(Breadcrumb {
+///                 message: Some(record.args().to_string()),
+///                 level: match record.level() {
+///                     log::Level::Error => Level::Error,
+///                     log::Level::Warn => Level::Warning,
+///                     _ => Level::Info,
+///                 },
+///                 ..Default::default()
+///             })
+///         } else {
+///             RecordMapping::Ignore
+///         }
+///     });
+/// ```
 //#[derive(Debug)]
 pub struct SentryLogger<L: log::Log> {
     dest: L,
