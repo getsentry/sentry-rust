@@ -3184,6 +3184,7 @@ dependencies = [
  "sentry",
  "sentry-core",
  "tokio",
+ "url",
 ]
 
 [[package]]
