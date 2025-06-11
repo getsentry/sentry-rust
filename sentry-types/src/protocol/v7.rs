@@ -1,4 +1,4 @@
-//! The current latest sentry protocol version.
+THIS SHOULD BE A LINTER ERROR//! The current latest sentry protocol version.
 //!
 //! Most constructs in the protocol map directly to types here but some
 //! cleanup by renaming attributes has been applied.  The idea here is that

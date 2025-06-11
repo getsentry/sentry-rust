@@ -190,6 +190,16 @@ impl Client {
     }
 
     /// Prepares an event for transmission to sentry.
+    ///
+    /// This method processes an event through the complete event pipeline before sending it.
+    /// It applies scope data, runs integration processors, applies client options like release
+    /// and environment, runs the `before_send` callback, and performs sampling decisions.
+    ///
+    /// Returns `None` if the event should be dropped (due to sampling, before_send callback,
+    /// or integration processing), otherwise returns the processed event ready for transmission.
+    ///
+    /// This method is primarily used internally by the SDK, but can be useful for testing
+    /// or custom event processing scenarios.
     pub fn prepare_event(
         &self,
         mut event: Event<'static>,
@@ -294,6 +304,27 @@ impl Client {
     }
 
     /// Captures an event and sends it to sentry.
+    ///
+    /// This is the main method for sending events to Sentry. It processes the event through
+    /// the complete pipeline (via [`prepare_event`](Self::prepare_event)), packages it into
+    /// an envelope, optionally includes session data and attachments from the scope, and
+    /// sends it via the configured transport.
+    ///
+    /// Returns the event ID of the captured event, or a nil UUID if the event was dropped
+    /// (due to no transport, sampling, filtering, etc.).
+    ///
+    /// # Examples
+    /// ```
+    /// use sentry_core::protocol::{Event, Level};
+    /// 
+    /// let client = sentry::Client::from(sentry::ClientOptions::default());
+    /// let event = Event {
+    ///     message: Some("Something went wrong".to_string()),
+    ///     level: Level::Error,
+    ///     ..Default::default()
+    /// };
+    /// let event_id = client.capture_event(event, None);
+    /// ```
     pub fn capture_event(&self, event: Event<'static>, scope: Option<&Scope>) -> Uuid {
         if let Some(ref transport) = *self.transport.read().unwrap() {
             if let Some(event) = self.prepare_event(event, scope) {
@@ -344,6 +375,20 @@ impl Client {
     }
 
     /// Drains all pending events without shutting down.
+    ///
+    /// This method blocks until all pending events, sessions, and logs are sent to Sentry
+    /// or until the timeout is reached. Unlike [`close`](Self::close), this does not shut
+    /// down the transport, so the client remains usable afterwards.
+    ///
+    /// This is useful when you want to ensure all events are sent before a critical
+    /// section of code or before the application sleeps/pauses.
+    ///
+    /// # Arguments
+    /// * `timeout` - Maximum time to wait for flushing. If `None`, uses the client's
+    ///   configured `shutdown_timeout`.
+    ///
+    /// # Returns
+    /// `true` if all events were successfully flushed within the timeout, `false` otherwise.
     pub fn flush(&self, timeout: Option<Duration>) -> bool {
         #[cfg(feature = "release-health")]
         if let Some(ref flusher) = *self.session_flusher.read().unwrap() {
@@ -362,6 +407,18 @@ impl Client {
 
     /// Drains all pending events and shuts down the transport behind the
     /// client.  After shutting down the transport is removed.
+    ///
+    /// This method performs a final flush of all pending events, sessions, and logs,
+    /// then permanently shuts down the client's transport. After calling this method,
+    /// the client becomes unusable - any subsequent calls to send events will be ignored.
+    ///
+    /// This is typically called during application shutdown to ensure all events are
+    /// sent before the process terminates. Unlike [`flush`](Self::flush), this is a
+    /// one-way operation that cannot be undone.
+    ///
+    /// # Arguments
+    /// * `timeout` - Maximum time to wait for the final flush and shutdown. If `None`,
+    ///   uses the client's configured `shutdown_timeout`.
     ///
     /// This returns `true` if the queue was successfully drained in the
     /// given time or `false` if not (for instance because of a timeout).

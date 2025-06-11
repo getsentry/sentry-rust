@@ -87,6 +87,19 @@ impl Hub {
     }
 
     /// Returns the last event id.
+    ///
+    /// This returns the UUID of the most recently captured event sent through this hub.
+    /// It can be useful for tracking or referencing specific events, such as showing
+    /// the event ID to users in error messages or logs.
+    ///
+    /// Returns `None` if no events have been captured yet through this hub.
+    ///
+    /// # Examples
+    /// ```
+    /// let event_id = sentry::capture_message("Something happened", sentry::Level::Info);
+    /// let last_id = sentry::Hub::current().last_event_id();
+    /// assert_eq!(Some(event_id), last_id);
+    /// ```
     pub fn last_event_id(&self) -> Option<Uuid> {
         *self.last_event_id.read().unwrap()
     }
@@ -167,6 +180,26 @@ impl Hub {
     }
 
     /// Pushes a new scope.
+    ///
+    /// This creates a new scope that inherits all data from the current scope, but allows
+    /// you to modify it independently. The new scope becomes the active scope until the
+    /// returned [`ScopeGuard`] is dropped, at which point the previous scope is restored.
+    ///
+    /// This is useful when you want to temporarily add context (like tags, user info, or
+    /// breadcrumbs) to a specific section of code without affecting the parent scope.
+    ///
+    /// # Examples
+    /// ```
+    /// {
+    ///     let _guard = hub.push_scope();
+    ///     hub.configure_scope(|scope| {
+    ///         scope.set_tag("operation", "payment");
+    ///     });
+    ///     // Events captured here will have the "operation" tag
+    ///     sentry::capture_message("Processing payment", sentry::Level::Info);
+    /// }
+    /// // The "operation" tag is no longer active here
+    /// ```
     ///
     /// This returns a guard that when dropped will pop the scope again.
     pub fn push_scope(&self) -> ScopeGuard {

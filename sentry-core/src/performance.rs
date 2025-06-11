@@ -708,7 +708,21 @@ impl Transaction {
         }
     }
 
-    /// Set a data attribute to be sent with this Transaction.
+    /// Set some extra information to be sent with this Transaction.
+    ///
+    /// Data attributes provide structured debugging information that will be attached
+    /// to this transaction in Sentry. Unlike tags (which are strings), data can be
+    /// any JSON-serializable value and is primarily used for debugging and context.
+    ///
+    /// Common use cases include database query details, HTTP response codes,
+    /// file sizes, or any other relevant debugging information for this transaction.
+    ///
+    /// # Examples
+    /// ```
+    /// transaction.set_data("sql.query", "SELECT * FROM users WHERE id = ?".into());
+    /// transaction.set_data("http.status_code", 200.into());
+    /// transaction.set_data("file.size_bytes", 1024.into());
+    /// ```
     pub fn set_data(&self, key: &str, value: protocol::Value) {
         let mut inner = self.inner.lock().unwrap();
         if inner.transaction.is_some() {
@@ -754,12 +768,46 @@ impl Transaction {
     }
 
     /// Get the status of the Transaction.
+    ///
+    /// The status indicates the outcome of the transaction and helps with performance
+    /// monitoring and error tracking. Common statuses include `Ok` for successful
+    /// operations, `InvalidArgument` for client errors, `InternalError` for server
+    /// errors, and others defined in [`protocol::SpanStatus`].
+    ///
+    /// Setting an appropriate status helps Sentry categorize and analyze your
+    /// transaction performance data.
+    ///
+    /// # Examples
+    /// ```
+    /// use sentry_core::protocol::SpanStatus;
+    /// 
+    /// transaction.set_status(SpanStatus::Ok); // Successful operation
+    /// transaction.set_status(SpanStatus::InvalidArgument); // Client error
+    /// transaction.set_status(SpanStatus::InternalError); // Server error
+    /// ```
     pub fn get_status(&self) -> Option<protocol::SpanStatus> {
         let inner = self.inner.lock().unwrap();
         inner.context.status
     }
 
     /// Set the status of the Transaction.
+    ///
+    /// The status indicates the outcome of the transaction and helps with performance
+    /// monitoring and error tracking. Common statuses include `Ok` for successful
+    /// operations, `InvalidArgument` for client errors, `InternalError` for server
+    /// errors, and others defined in [`protocol::SpanStatus`].
+    ///
+    /// Setting an appropriate status helps Sentry categorize and analyze your
+    /// transaction performance data.
+    ///
+    /// # Examples
+    /// ```
+    /// use sentry_core::protocol::SpanStatus;
+    /// 
+    /// transaction.set_status(SpanStatus::Ok); // Successful operation
+    /// transaction.set_status(SpanStatus::InvalidArgument); // Client error
+    /// transaction.set_status(SpanStatus::InternalError); // Server error
+    /// ```
     pub fn set_status(&self, status: protocol::SpanStatus) {
         let mut inner = self.inner.lock().unwrap();
         inner.context.status = Some(status);
@@ -774,6 +822,23 @@ impl Transaction {
     }
 
     /// Returns the headers needed for distributed tracing.
+    ///
+    /// This method generates HTTP headers (specifically the `sentry-trace` header)
+    /// that should be included in outgoing requests to enable distributed tracing
+    /// across services. When the receiving service processes these headers, it can
+    /// connect its spans to this transaction, creating a complete trace.
+    ///
+    /// For the active transaction/span in the current scope, use
+    /// [`crate::Scope::iter_trace_propagation_headers`] instead.
+    ///
+    /// # Examples
+    /// ```
+    /// for (header_name, header_value) in transaction.iter_headers() {
+    ///     // Add these headers to your outgoing HTTP request
+    ///     request.headers.insert(header_name, header_value);
+    /// }
+    /// ```
+    /// 
     /// Use [`crate::Scope::iter_trace_propagation_headers`] to obtain the active
     /// trace's distributed tracing headers.
     pub fn iter_headers(&self) -> TraceHeadersIter {
@@ -901,6 +966,20 @@ pub struct Data<'a>(MutexGuard<'a, protocol::Span>);
 
 impl Data<'_> {
     /// Set some extra information to be sent with this Span.
+    ///
+    /// Data attributes provide structured debugging information that will be attached
+    /// to this span in Sentry. Unlike tags (which are strings), data can be
+    /// any JSON-serializable value and is primarily used for debugging and context.
+    ///
+    /// Common use cases include database query details, HTTP response codes,
+    /// file sizes, or any other relevant debugging information for this span.
+    ///
+    /// # Examples
+    /// ```
+    /// span.set_data("sql.query", "SELECT * FROM users WHERE id = ?".into());
+    /// span.set_data("http.status_code", 200.into());
+    /// span.set_data("file.size_bytes", 1024.into());
+    /// ```
     pub fn set_data(&mut self, key: String, value: protocol::Value) {
         self.0.data.insert(key, value);
     }
@@ -940,6 +1019,20 @@ type SpanArc = Arc<Mutex<protocol::Span>>;
 
 impl Span {
     /// Set some extra information to be sent with this Transaction.
+    ///
+    /// Data attributes provide structured debugging information that will be attached
+    /// to this span in Sentry. Unlike tags (which are strings), data can be
+    /// any JSON-serializable value and is primarily used for debugging and context.
+    ///
+    /// Common use cases include database query details, HTTP response codes,
+    /// file sizes, or any other relevant debugging information for this span.
+    ///
+    /// # Examples
+    /// ```
+    /// span.set_data("sql.query", "SELECT * FROM users WHERE id = ?".into());
+    /// span.set_data("http.status_code", 200.into());
+    /// span.set_data("file.size_bytes", 1024.into());
+    /// ```
     pub fn set_data(&self, key: &str, value: protocol::Value) {
         let mut span = self.span.lock().unwrap();
         span.data.insert(key.into(), value);
