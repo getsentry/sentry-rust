@@ -6,6 +6,10 @@
 
 - fix(logs): send environment in `sentry.environment` default attribute (#837) by @lcian
 
+### Dependencies
+
+- chore(deps): upgrade `ureq` to 3.x (#835) by @algesten
+
 ## 0.39.0
 
 ### Features
