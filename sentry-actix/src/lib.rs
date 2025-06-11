@@ -89,7 +89,7 @@ use futures_util::{FutureExt as _, TryStreamExt as _};
 use url::Url;
 
 use sentry_core::protocol::{self, ClientSdkPackage, Event, Request};
-use sentry_core::utils::is_sensitive_header;
+use sentry_core::utils::{is_sensitive_header, strip_url_for_privacy};
 use sentry_core::MaxRequestBodySize;
 use sentry_core::{Hub, SentryFutureExt};
 
@@ -416,28 +416,6 @@ fn map_status(status: StatusCode) -> protocol::SpanStatus {
 fn transaction_name_from_http(req: &ServiceRequest) -> String {
     let path_part = req.match_pattern().unwrap_or_else(|| "<none>".to_string());
     format!("{} {}", req.method(), path_part)
-}
-
-/// Strip query parameters and fragment from URL to prevent PII leaks
-/// Returns (stripped_url, query_string, fragment)
-fn strip_url_for_privacy(mut url: Url) -> (Url, Option<String>, Option<String>) {
-    let query = if url.query().is_some() {
-        Some(url.query().unwrap().to_string())
-    } else {
-        None
-    };
-    
-    let fragment = if url.fragment().is_some() {
-        Some(url.fragment().unwrap().to_string())
-    } else {
-        None
-    };
-    
-    // Clear query and fragment to prevent PII leaks
-    url.set_query(None);
-    url.set_fragment(None);
-    
-    (url, query, fragment)
 }
 
 /// Build a Sentry request struct from the HTTP request

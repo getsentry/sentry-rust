@@ -5,11 +5,10 @@ use std::task::{Context, Poll};
 
 use http::{header, uri, Request, Response, StatusCode};
 use pin_project::pinned_drop;
-use sentry_core::utils::is_sensitive_header;
+use sentry_core::utils::{is_sensitive_header, strip_url_for_privacy};
 use sentry_core::{protocol, Hub};
 use tower_layer::Layer;
 use tower_service::Service;
-use url::Url;
 
 /// Tower Layer that captures Http Request information.
 ///
@@ -276,70 +275,56 @@ fn get_url_from_request<B>(request: &Request<B>) -> Option<url::Url> {
     uri.to_string().parse().ok()
 }
 
-/// Strip query parameters and fragment from URL to prevent PII leaks
-/// Returns (stripped_url, query_string, fragment)
-fn strip_url_for_privacy(mut url: Url) -> (Url, Option<String>, Option<String>) {
-    let query = if url.query().is_some() {
-        Some(url.query().unwrap().to_string())
-    } else {
-        None
-    };
-    
-    let fragment = if url.fragment().is_some() {
-        Some(url.fragment().unwrap().to_string())
-    } else {
-        None
-    };
-    
-    // Clear query and fragment to prevent PII leaks
-    url.set_query(None);
-    url.set_fragment(None);
-    
-    (url, query, fragment)
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sentry_core::test::with_captured_events;
+    use tower::{service_fn, ServiceExt};
+    use std::convert::Infallible;
 
-#[test]
-fn test_url_stripping_for_pii_prevention() {
-    let events = with_captured_events(|| {
-        futures::executor::block_on(async {
-            let service = service_fn(|_: Request<()>| async {
-                sentry_core::capture_message("Test message", sentry_core::Level::Error);
-                Ok::<_, Infallible>(http::Response::builder().status(StatusCode::OK).body(()).unwrap())
-            });
+    #[test]
+    fn test_url_stripping_for_pii_prevention() {
+        let events = with_captured_events(|| {
+            futures::executor::block_on(async {
+                let service = service_fn(|_: Request<()>| async {
+                    sentry_core::capture_message("Test message", sentry_core::Level::Error);
+                    Ok::<_, Infallible>(http::Response::builder().status(StatusCode::OK).body(()).unwrap())
+                });
 
-            let mut service = SentryHttpLayer::new()
-                .layer(service);
+                let mut service = SentryHttpLayer::new()
+                    .layer(service);
 
-            // Test request with query params that should be stripped
-            let request = Request::builder()
-                .uri("http://example.com/api/users/123?password=secret&token=abc123&user_id=456")
-                .header("host", "example.com")
-                .body(())
-                .unwrap();
+                // Test request with query params that should be stripped
+                let request = Request::builder()
+                    .uri("http://example.com/api/users/123?password=secret&token=abc123&user_id=456")
+                    .header("host", "example.com")
+                    .body(())
+                    .unwrap();
 
-            let response = service.ready().await.unwrap().call(request).await.unwrap();
-            assert_eq!(response.status(), StatusCode::OK);
-        })
-    });
+                let response = service.ready().await.unwrap().call(request).await.unwrap();
+                assert_eq!(response.status(), StatusCode::OK);
+            })
+        });
 
-    assert_eq!(events.len(), 1);
-    let event = &events[0];
-    let request = event.request.as_ref().expect("Request should be set");
-    
-    // URL should be stripped of query params
-    let url = request.url.as_ref().expect("URL should be set");
-    assert!(!url.as_str().contains("password"));
-    assert!(!url.as_str().contains("token"));
-    assert!(!url.as_str().contains("user_id"));
-    assert!(!url.as_str().contains("?"));
-    
-    // Base path should still be intact
-    assert!(url.as_str().contains("/api/users/123"));
-    
-    // Query string should be stored separately
-    assert!(request.query_string.is_some());
-    let query_string = request.query_string.as_ref().unwrap();
-    assert!(query_string.contains("password=secret"));
-    assert!(query_string.contains("token=abc123"));
-    assert!(query_string.contains("user_id=456"));
+        assert_eq!(events.len(), 1);
+        let event = &events[0];
+        let request = event.request.as_ref().expect("Request should be set");
+        
+        // URL should be stripped of query params
+        let url = request.url.as_ref().expect("URL should be set");
+        assert!(!url.as_str().contains("password"));
+        assert!(!url.as_str().contains("token"));
+        assert!(!url.as_str().contains("user_id"));
+        assert!(!url.as_str().contains("?"));
+        
+        // Base path should still be intact
+        assert!(url.as_str().contains("/api/users/123"));
+        
+        // Query string should be stored separately
+        assert!(request.query_string.is_some());
+        let query_string = request.query_string.as_ref().unwrap();
+        assert!(query_string.contains("password=secret"));
+        assert!(query_string.contains("token=abc123"));
+        assert!(query_string.contains("user_id=456"));
+    }
 }
