@@ -25,6 +25,8 @@ mod session_impl {
     use crate::types::random_uuid;
     use crate::{Client, Envelope};
 
+    use crate::sentry_debug;
+
     #[derive(Clone, Debug)]
     pub struct Session {
         client: Arc<Client>,
@@ -35,97 +37,92 @@ mod session_impl {
 
     impl Drop for Session {
         fn drop(&mut self) {
+            sentry_debug!("[Session] Dropping session, closing with status: {:?}", self.session_update.status);
             self.close(SessionStatus::Exited);
-            if self.dirty {
-                self.client.enqueue_session(self.session_update.clone());
-            }
         }
     }
 
     impl Session {
         pub fn from_stack(stack: &StackLayer) -> Option<Self> {
+            sentry_debug!("[Session] Creating new session from stack");
             let client = stack.client.as_ref()?;
-            let options = client.options();
-            let user = stack.scope.user.as_deref();
-            let distinct_id = user
-                .and_then(|user| {
-                    user.id
-                        .as_ref()
-                        .or(user.email.as_ref())
-                        .or(user.username.as_ref())
-                })
-                .cloned();
-            Some(Self {
-                client: client.clone(),
-                session_update: SessionUpdate {
-                    session_id: random_uuid(),
-                    distinct_id,
-                    sequence: None,
-                    timestamp: None,
-                    started: SystemTime::now(),
-                    init: true,
-                    duration: None,
-                    status: SessionStatus::Ok,
-                    errors: 0,
-                    attributes: SessionAttributes {
-                        release: options.release.clone()?,
-                        environment: options.environment.clone(),
-                        ip_address: None,
-                        user_agent: None,
-                    },
+            let release = client.options().release.clone();
+            let environment = client.options().environment.clone();
+            let distinct_id = stack.scope.user().and_then(|u| u.id.clone());
+
+            let session_update = SessionUpdate {
+                session_id: random_uuid(),
+                distinct_id,
+                sequence: None,
+                timestamp: Some(SystemTime::now().into()),
+                started: SystemTime::now(),
+                init: true,
+                duration: None,
+                status: SessionStatus::Ok,
+                errors: 0,
+                attributes: SessionAttributes {
+                    release: release.unwrap_or_default(),
+                    environment: environment.map(|e| e.into_owned()),
+                    user_agent: None,
+                    ip_address: None,
                 },
+            };
+
+            sentry_debug!("[Session] Session created with ID: {}, distinct_id: {:?}", 
+                         session_update.session_id, session_update.distinct_id);
+
+            Some(Session {
+                client: client.clone(),
+                session_update,
                 started: Instant::now(),
-                dirty: true,
+                dirty: false,
             })
         }
 
         pub(crate) fn update_from_event(&mut self, event: &Event<'static>) {
-            if self.session_update.status != SessionStatus::Ok {
-                // a session that has already transitioned to a "terminal" state
-                // should not receive any more updates
-                return;
-            }
-            let mut has_error = event.level >= Level::Error;
-            let mut is_crash = false;
-            for exc in &event.exception.values {
-                has_error = true;
-                if let Some(mechanism) = &exc.mechanism {
-                    if let Some(false) = mechanism.handled {
-                        is_crash = true;
-                        break;
-                    }
-                }
-            }
+            let should_update = self.session_update.status == SessionStatus::Ok
+                && event.level == Level::Error
+                && event.exception.len() != 0;
 
-            if is_crash {
-                self.session_update.status = SessionStatus::Crashed;
-            }
-            if has_error {
+            if should_update {
                 self.session_update.errors += 1;
                 self.dirty = true;
+                sentry_debug!("[Session] Updated session {} due to error event {} (total errors: {})", 
+                             self.session_update.session_id, event.event_id, self.session_update.errors);
             }
         }
 
         pub(crate) fn close(&mut self, status: SessionStatus) {
-            if self.session_update.status == SessionStatus::Ok {
-                let status = match status {
-                    SessionStatus::Ok => SessionStatus::Exited,
-                    s => s,
-                };
-                self.session_update.duration = Some(self.started.elapsed().as_secs_f64());
-                self.session_update.status = status;
-                self.dirty = true;
+            if self.session_update.status != SessionStatus::Ok {
+                sentry_debug!("[Session] Session {} already closed with status: {:?}, ignoring close request", 
+                             self.session_update.session_id, self.session_update.status);
+                return;
             }
+
+            self.session_update.status = status;
+            self.session_update.duration = Some(self.started.elapsed().as_secs_f64());
+            self.dirty = true;
+            
+            sentry_debug!("[Session] Closing session {} with status: {:?}, duration: {:.3}s, errors: {}", 
+                         self.session_update.session_id, status, 
+                         self.session_update.duration.unwrap_or(0.0), 
+                         self.session_update.errors);
+
+            self.client
+                .enqueue_session(self.session_update.clone());
         }
 
         pub(crate) fn create_envelope_item(&mut self) -> Option<EnvelopeItem> {
-            if self.dirty {
-                let item = self.session_update.clone().into();
-                self.session_update.init = false;
-                self.dirty = false;
-                return Some(item);
+            if !self.dirty {
+                return None;
             }
-            None
+            self.dirty = false;
+            self.session_update.init = false;
+            
+            sentry_debug!("[Session] Creating envelope item for session {} (status: {:?}, errors: {})",
+                         self.session_update.session_id, self.session_update.status, self.session_update.errors);
+
+            Some(self.session_update.clone().into())
         }
     }
 
@@ -198,6 +195,8 @@ mod session_impl {
     impl SessionFlusher {
         /// Creates a new Flusher that will submit envelopes to the given `transport`.
         pub fn new(transport: TransportArc, mode: SessionMode) -> Self {
+            sentry_debug!("[SessionFlusher] Creating new session flusher with mode: {:?}", mode);
+            
             let queue = Arc::new(Mutex::new(Default::default()));
             #[allow(clippy::mutex_atomic)]
             let shutdown = Arc::new((Mutex::new(false), Condvar::new()));
@@ -208,10 +207,12 @@ mod session_impl {
             let worker = std::thread::Builder::new()
                 .name("sentry-session-flusher".into())
                 .spawn(move || {
+                    sentry_debug!("[SessionFlusher] Background worker thread started");
                     let (lock, cvar) = worker_shutdown.as_ref();
                     let mut shutdown = lock.lock().unwrap();
                     // check this immediately, in case the main thread is already shutting down
                     if *shutdown {
+                        sentry_debug!("[SessionFlusher] Worker thread exiting immediately due to shutdown");
                         return;
                     }
                     let mut last_flush = Instant::now();
@@ -221,11 +222,13 @@ mod session_impl {
                             .unwrap_or_else(|| Duration::from_secs(0));
                         shutdown = cvar.wait_timeout(shutdown, timeout).unwrap().0;
                         if *shutdown {
+                            sentry_debug!("[SessionFlusher] Worker thread received shutdown signal");
                             return;
                         }
                         if last_flush.elapsed() < FLUSH_INTERVAL {
                             continue;
                         }
+                        sentry_debug!("[SessionFlusher] Background flush triggered (interval: {}s)", FLUSH_INTERVAL.as_secs());
                         SessionFlusher::flush_queue_internal(
                             worker_queue.lock().unwrap(),
                             &worker_transport,
@@ -234,6 +237,8 @@ mod session_impl {
                     }
                 })
                 .unwrap();
+
+            sentry_debug!("[SessionFlusher] Session flusher created successfully");
 
             Self {
                 transport,
@@ -249,18 +254,28 @@ mod session_impl {
         /// This will aggregate session counts in request mode, for all sessions
         /// that were not yet partially sent.
         pub fn enqueue(&self, session_update: SessionUpdate<'static>) {
+            sentry_debug!("[SessionFlusher] Enqueueing session update: {} (mode: {:?}, status: {:?})", 
+                         session_update.session_id, self.mode, session_update.status);
+            
             let mut queue = self.queue.lock().unwrap();
             if self.mode == SessionMode::Application || !session_update.init {
                 queue.individual.push(session_update);
+                sentry_debug!("[SessionFlusher] Added session to individual queue (total: {})", queue.individual.len());
+                
                 if queue.individual.len() >= MAX_SESSION_ITEMS {
+                    sentry_debug!("[SessionFlusher] Individual queue reached max size ({}), flushing", MAX_SESSION_ITEMS);
                     SessionFlusher::flush_queue_internal(queue, &self.transport);
                 }
                 return;
             }
 
-            let aggregate = queue.aggregated.get_or_insert_with(|| AggregatedSessions {
-                buckets: HashMap::with_capacity(1),
-                attributes: session_update.attributes.clone(),
+            // Request mode aggregation
+            let aggregate = queue.aggregated.get_or_insert_with(|| {
+                sentry_debug!("[SessionFlusher] Creating new aggregated sessions");
+                AggregatedSessions {
+                    buckets: HashMap::with_capacity(1),
+                    attributes: session_update.attributes.clone(),
+                }
             });
 
             let duration = session_update
@@ -274,7 +289,7 @@ mod session_impl {
 
             let key = AggregationKey {
                 started,
-                distinct_id: session_update.distinct_id,
+                distinct_id: session_update.distinct_id.clone(),
             };
 
             let bucket = aggregate.buckets.entry(key).or_default();
@@ -283,24 +298,29 @@ mod session_impl {
                 SessionStatus::Exited => {
                     if session_update.errors > 0 {
                         bucket.errored += 1;
+                        sentry_debug!("[SessionFlusher] Aggregated errored session (total errored: {})", bucket.errored);
                     } else {
                         bucket.exited += 1;
+                        sentry_debug!("[SessionFlusher] Aggregated exited session (total exited: {})", bucket.exited);
                     }
                 }
                 SessionStatus::Crashed => {
                     bucket.crashed += 1;
+                    sentry_debug!("[SessionFlusher] Aggregated crashed session (total crashed: {})", bucket.crashed);
                 }
                 SessionStatus::Abnormal => {
                     bucket.abnormal += 1;
+                    sentry_debug!("[SessionFlusher] Aggregated abnormal session (total abnormal: {})", bucket.abnormal);
                 }
                 SessionStatus::Ok => {
-                    sentry_debug!("unreachable: only closed sessions will be enqueued");
+                    sentry_debug!("[SessionFlusher] Unreachable: only closed sessions will be enqueued");
                 }
             }
         }
 
         /// Flushes the queue to the transport.
         pub fn flush(&self) {
+            sentry_debug!("[SessionFlusher] Manual flush requested");
             let queue = self.queue.lock().unwrap();
             SessionFlusher::flush_queue_internal(queue, &self.transport);
         }
@@ -319,10 +339,14 @@ mod session_impl {
 
             // send aggregates
             if let Some(aggregate) = aggregate {
+                sentry_debug!("[SessionFlusher] Flushing aggregated sessions ({} buckets)", aggregate.buckets.len());
                 if let Some(ref transport) = *transport.read().unwrap() {
                     let mut envelope = Envelope::new();
                     envelope.add_item(aggregate);
                     transport.send_envelope(envelope);
+                    sentry_debug!("[SessionFlusher] Sent aggregated sessions envelope");
+                } else {
+                    sentry_debug!("[SessionFlusher] No transport available for aggregated sessions");
                 }
             }
 
@@ -331,13 +355,18 @@ mod session_impl {
                 return;
             }
 
+            sentry_debug!("[SessionFlusher] Flushing {} individual sessions", queue.len());
+
             let mut envelope = Envelope::new();
             let mut items = 0;
 
             for session_update in queue {
                 if items >= MAX_SESSION_ITEMS {
                     if let Some(ref transport) = *transport.read().unwrap() {
+                        sentry_debug!("[SessionFlusher] Sending envelope with {} session items", items);
                         transport.send_envelope(envelope);
+                    } else {
+                        sentry_debug!("[SessionFlusher] No transport available for session envelope");
                     }
                     envelope = Envelope::new();
                     items = 0;
@@ -347,22 +376,34 @@ mod session_impl {
                 items += 1;
             }
 
-            if let Some(ref transport) = *transport.read().unwrap() {
-                transport.send_envelope(envelope);
+            if items > 0 {
+                if let Some(ref transport) = *transport.read().unwrap() {
+                    sentry_debug!("[SessionFlusher] Sending final envelope with {} session items", items);
+                    transport.send_envelope(envelope);
+                } else {
+                    sentry_debug!("[SessionFlusher] No transport available for final session envelope");
+                }
             }
         }
     }
 
     impl Drop for SessionFlusher {
         fn drop(&mut self) {
+            sentry_debug!("[SessionFlusher] Dropping session flusher, shutting down worker");
+            
             let (lock, cvar) = self.shutdown.as_ref();
             *lock.lock().unwrap() = true;
             cvar.notify_one();
 
             if let Some(worker) = self.worker.take() {
+                sentry_debug!("[SessionFlusher] Waiting for worker thread to finish");
                 worker.join().ok();
+                sentry_debug!("[SessionFlusher] Worker thread finished");
             }
+            
+            sentry_debug!("[SessionFlusher] Performing final flush");
             SessionFlusher::flush_queue_internal(self.queue.lock().unwrap(), &self.transport);
+            sentry_debug!("[SessionFlusher] Session flusher cleanup complete");
         }
     }
 

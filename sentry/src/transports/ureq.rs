@@ -30,25 +30,32 @@ pub struct UreqHttpTransport {
 impl UreqHttpTransport {
     /// Creates a new Transport.
     pub fn new(options: &ClientOptions) -> Self {
+        sentry_debug!("[UreqHttpTransport] Creating new ureq transport");
         Self::new_internal(options, None)
     }
 
     /// Creates a new Transport that uses the specified [`ureq::Agent`].
     pub fn with_agent(options: &ClientOptions, agent: Agent) -> Self {
+        sentry_debug!("[UreqHttpTransport] Creating ureq transport with custom agent");
         Self::new_internal(options, Some(agent))
     }
 
     fn new_internal(options: &ClientOptions, agent: Option<Agent>) -> Self {
         let dsn = options.dsn.as_ref().unwrap();
         let scheme = dsn.scheme();
+        sentry_debug!("[UreqHttpTransport] Setting up transport for DSN scheme: {:?}", scheme);
+        
         let agent = agent.unwrap_or_else(|| {
+            sentry_debug!("[UreqHttpTransport] Creating default ureq agent");
             let mut builder = AgentBuilder::new();
 
             #[cfg(feature = "native-tls")]
             {
+                sentry_debug!("[UreqHttpTransport] Configuring native-tls");
                 let mut tls_connector_builder = TlsConnector::builder();
 
                 if options.accept_invalid_certs {
+                    sentry_debug!("[UreqHttpTransport] Accepting invalid certificates");
                     tls_connector_builder.danger_accept_invalid_certs(true);
                 }
 
@@ -58,6 +65,7 @@ impl UreqHttpTransport {
             if options.accept_invalid_certs {
                 #[cfg(feature = "rustls")]
                 {
+                    sentry_debug!("[UreqHttpTransport] Configuring rustls with invalid cert acceptance");
                     #[derive(Debug)]
                     struct NoVerifier;
 
@@ -125,23 +133,33 @@ impl UreqHttpTransport {
             }
 
             match (scheme, &options.http_proxy, &options.https_proxy) {
-                (Scheme::Https, _, Some(proxy)) => match Proxy::new(proxy) {
-                    Ok(proxy) => {
-                        builder = builder.proxy(proxy);
-                    }
-                    Err(err) => {
-                        sentry_debug!("invalid proxy: {:?}", err);
-                    }
-                },
-                (_, Some(proxy), _) => match Proxy::new(proxy) {
-                    Ok(proxy) => {
-                        builder = builder.proxy(proxy);
-                    }
-                    Err(err) => {
-                        sentry_debug!("invalid proxy: {:?}", err);
+                (Scheme::Https, _, Some(proxy)) => {
+                    sentry_debug!("[UreqHttpTransport] Configuring HTTPS proxy: {}", proxy);
+                    match Proxy::new(proxy) {
+                        Ok(proxy) => {
+                            builder = builder.proxy(proxy);
+                            sentry_debug!("[UreqHttpTransport] HTTPS proxy configured successfully");
+                        }
+                        Err(err) => {
+                            sentry_debug!("[UreqHttpTransport] Invalid HTTPS proxy: {:?}", err);
+                        }
                     }
                 },
-                _ => {}
+                (_, Some(proxy), _) => {
+                    sentry_debug!("[UreqHttpTransport] Configuring HTTP proxy: {}", proxy);
+                    match Proxy::new(proxy) {
+                        Ok(proxy) => {
+                            builder = builder.proxy(proxy);
+                            sentry_debug!("[UreqHttpTransport] HTTP proxy configured successfully");
+                        }
+                        Err(err) => {
+                            sentry_debug!("[UreqHttpTransport] Invalid HTTP proxy: {:?}", err);
+                        }
+                    }
+                },
+                _ => {
+                    sentry_debug!("[UreqHttpTransport] No proxy configuration");
+                }
             }
 
             builder.build()
@@ -149,10 +167,17 @@ impl UreqHttpTransport {
         let user_agent = options.user_agent.clone();
         let auth = dsn.to_auth(Some(&user_agent)).to_string();
         let url = dsn.envelope_api_url().to_string();
+        
+        sentry_debug!("[UreqHttpTransport] Target URL: {}", url);
+        sentry_debug!("[UreqHttpTransport] User-Agent: {}", user_agent);
 
         let thread = TransportThread::new(move |envelope, rl| {
+            sentry_debug!("[UreqHttpTransport] Sending envelope to Sentry");
             let mut body = Vec::new();
             envelope.to_writer(&mut body).unwrap();
+            
+            sentry_debug!("[UreqHttpTransport] Envelope serialized, size: {} bytes", body.len());
+            
             let request = agent
                 .post(&url)
                 .set("X-Sentry-Auth", &auth)
@@ -160,41 +185,57 @@ impl UreqHttpTransport {
 
             match request {
                 Ok(response) => {
+                    let status = response.status();
+                    sentry_debug!("[UreqHttpTransport] Received response with status: {}", status);
+                    
                     if let Some(sentry_header) = response.header("x-sentry-rate-limits") {
+                        sentry_debug!("[UreqHttpTransport] Processing rate limit header: {}", sentry_header);
                         rl.update_from_sentry_header(sentry_header);
                     } else if let Some(retry_after) = response.header("retry-after") {
+                        sentry_debug!("[UreqHttpTransport] Processing retry-after header: {}", retry_after);
                         rl.update_from_retry_after(retry_after);
                     } else if response.status() == 429 {
+                        sentry_debug!("[UreqHttpTransport] Rate limited (429), no retry-after header");
                         rl.update_from_429();
                     }
 
                     match response.into_string() {
                         Err(err) => {
-                            sentry_debug!("Failed to read sentry response: {}", err);
+                            sentry_debug!("[UreqHttpTransport] Failed to read sentry response: {}", err);
                         }
                         Ok(text) => {
-                            sentry_debug!("Get response: `{}`", text);
+                            sentry_debug!("[UreqHttpTransport] Get response: `{}`", text);
                         }
                     }
                 }
                 Err(err) => {
-                    sentry_debug!("Failed to send envelope: {}", err);
+                    sentry_debug!("[UreqHttpTransport] Failed to send envelope: {}", err);
                 }
             }
         });
+        
+        sentry_debug!("[UreqHttpTransport] Transport thread created successfully");
         Self { thread }
     }
 }
 
 impl Transport for UreqHttpTransport {
     fn send_envelope(&self, envelope: Envelope) {
+        sentry_debug!("[UreqHttpTransport] Queueing envelope for sending");
         self.thread.send(envelope)
     }
+    
     fn flush(&self, timeout: Duration) -> bool {
-        self.thread.flush(timeout)
+        sentry_debug!("[UreqHttpTransport] Flushing transport (timeout: {}ms)", timeout.as_millis());
+        let result = self.thread.flush(timeout);
+        sentry_debug!("[UreqHttpTransport] Flush completed: {}", if result { "success" } else { "timeout" });
+        result
     }
 
     fn shutdown(&self, timeout: Duration) -> bool {
-        self.flush(timeout)
+        sentry_debug!("[UreqHttpTransport] Shutting down transport (timeout: {}ms)", timeout.as_millis());
+        let result = self.flush(timeout);
+        sentry_debug!("[UreqHttpTransport] Shutdown completed: {}", if result { "success" } else { "timeout" });
+        result
     }
 }
