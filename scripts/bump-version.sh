@@ -14,3 +14,4 @@ perl -pi -e "s/^version = \".*?\"/version = \"$NEW_VERSION\"/" sentry*/Cargo.tom
 perl -pi -e "s/^(sentry.*)?version = \".*?\"/\$1version = \"$NEW_VERSION\"/" sentry*/Cargo.toml
 
 "$SCRIPT_DIR"/update-readme.sh "$NEW_VERSION"
+cargo metadata --format-version 1 > /dev/null # update `Cargo.lock`

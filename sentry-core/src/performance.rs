@@ -313,7 +313,7 @@ impl TransactionContext {
 
         // And set our key
         let existing_value = custom.insert(key, value);
-        std::mem::swap(&mut self.custom, &mut Some(custom));
+        self.custom = Some(custom);
         existing_value
     }
 

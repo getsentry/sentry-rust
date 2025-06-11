@@ -132,7 +132,7 @@ pub use crate::intodsn::IntoDsn;
 pub use crate::performance::*;
 pub use crate::scope::{Scope, ScopeGuard};
 pub use crate::transport::{Transport, TransportFactory};
-#[cfg(feature = "UNSTABLE_logs")]
+#[cfg(feature = "logs")]
 mod logger; // structured logging macros exported with `#[macro_export]`
 
 // client feature
@@ -140,6 +140,8 @@ mod logger; // structured logging macros exported with `#[macro_export]`
 mod client;
 #[cfg(feature = "client")]
 mod hub_impl;
+#[cfg(all(feature = "client", feature = "logs"))]
+mod logs;
 #[cfg(feature = "client")]
 mod session;
 

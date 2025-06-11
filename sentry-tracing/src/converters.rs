@@ -77,7 +77,7 @@ where
                     TransactionOrSpan::Span(span) => {
                         for (key, value) in span.data().iter() {
                             if key != "message" {
-                                let key = format!("{}:{}", name, key);
+                                let key = format!("{name}:{key}");
                                 visitor.json_values.insert(key, value.clone());
                             }
                         }
@@ -85,7 +85,7 @@ where
                     TransactionOrSpan::Transaction(transaction) => {
                         for (key, value) in transaction.data().iter() {
                             if key != "message" {
-                                let key = format!("{}:{}", name, key);
+                                let key = format!("{name}:{key}");
                                 visitor.json_values.insert(key, value.clone());
                             }
                         }
