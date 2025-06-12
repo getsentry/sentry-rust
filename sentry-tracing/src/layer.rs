@@ -13,7 +13,7 @@ use tracing_subscriber::registry::LookupSpan;
 use crate::converters::*;
 use crate::TAGS_PREFIX;
 
-/// The action that Sentry should perform for a [`Metadata`]
+/// The action that Sentry should perform for a given [`Event`]
 #[derive(Debug, Clone, Copy)]
 pub enum EventFilter {
     /// Ignore the [`Event`]

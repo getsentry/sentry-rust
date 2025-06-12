@@ -6,6 +6,12 @@
 
 - fix(logs): send environment in `sentry.environment` default attribute (#837) by @lcian
 
+### Behavioral changes
+
+- refactor(tracing): refactor internal code and improve docs (#839) by @lcian
+  - Errors carried by breadcrumbs will now be stored in the breadcrumb `data` under their original field name.
+  - Before, they were all stored under a single key called `errors`.
+
 ### Dependencies
 
 - chore(deps): upgrade `ureq` to 3.x (#835) by @algesten
