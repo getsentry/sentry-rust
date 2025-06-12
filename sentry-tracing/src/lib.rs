@@ -1,10 +1,20 @@
-//! Support for automatic breadcrumb, event, and trace capturing from `tracing` events.
+//! Support for automatic breadcrumb, event, and trace capturing from `tracing` events and spans.
 //!
-//! The `tracing` crate is supported in three ways. First, events can be captured as breadcrumbs for
-//! later. Secondly, error events can be captured as events to Sentry. Finally, spans can be
-//! recorded as structured transaction events. By default, events above `Info` are recorded as
-//! breadcrumbs, events above `Error` are captured as error events, and spans above `Info` are
-//! recorded as transactions.
+//! The `tracing` crate is supported in three ways:
+//! - `tracing` events can be captured as Sentry events. These are grouped and show up in the Sentry
+//!   [issues](https://docs.sentry.io/product/issues/) page, representing high severity issues to be
+//!   acted upon.
+//! - `tracing` events can be captured as [breadcrumbs](https://docs.sentry.io/product/issues/issue-details/breadcrumbs/).
+//!   Breadcrumbs create a trail of what happened prior to an event, and are therefore sent only when
+//!   an event is captured, either manually through [`sentry::capture_message`] or through integrations
+//!   (e.g. the panic integration is enabled (default) and a panic happens).
+//! - `tracing` spans can be captured as Sentry spans. These can be used to provide more contextual
+//!   information for errors, diagnose [performance
+//!   issues](https://docs.sentry.io/product/insights/overview/), and capture additional attributes to
+//!   aggregate and compute [metrics](https://docs.sentry.io/product/explore/trace-explorer/).
+//!
+//! By default, events above `Info` are recorded as breadcrumbs, events above `Error` are captured
+//! as error events, and spans above `Info` are recorded as spans.
 //!
 //! # Configuration
 //!
@@ -23,21 +33,24 @@
 //! // Register the Sentry tracing layer to capture breadcrumbs, events, and spans:
 //! tracing_subscriber::registry()
 //!     .with(tracing_subscriber::fmt::layer())
-//!     .with(sentry_tracing::layer())
+//!     .with(sentry::integrations::tracing::layer())
 //!     .init();
 //! ```
 //!
-//! It is also possible to set an explicit filter, to customize which log events are captured by
-//! Sentry:
+//! You can customize the behavior of the layer by providing an explicit event filter, to customize which events
+//! are captured by Sentry and the data type they are mapped to.
+//! Similarly, you can provide a span filter to customize which spans are captured by Sentry.
 //!
 //! ```
-//! use sentry_tracing::EventFilter;
+//! use sentry::integrations::tracing::EventFilter;
 //! use tracing_subscriber::prelude::*;
 //!
-//! let sentry_layer = sentry_tracing::layer().event_filter(|md| match md.level() {
-//!     &tracing::Level::ERROR => EventFilter::Event,
-//!     _ => EventFilter::Ignore,
-//! });
+//! let sentry_layer = sentry::integrations::tracing::layer()
+//!     .event_filter(|md| match *md.level() {
+//!         tracing::Level::ERROR => EventFilter::Event,
+//!         _ => EventFilter::Ignore,
+//!     })
+//!     .span_filter(|md| matches!(*md.level(), tracing::Level::ERROR | tracing::Level::WARN));
 //!
 //! tracing_subscriber::registry()
 //!     .with(tracing_subscriber::fmt::layer())
@@ -45,7 +58,12 @@
 //!     .init();
 //! ```
 //!
-//! # Logging Messages
+//! In addition, a custom event mapper can be provided, to fully customize if and how `tracing` events are converted to Sentry data.
+//!
+//! Note that if both an event mapper and event filter are set, the mapper takes precedence, thus the
+//! filter has no effect.
+//!
+//! # Capturing breadcrumbs
 //!
 //! Tracing events automatically create breadcrumbs that are attached to the current scope in
 //! Sentry. They show up on errors and transactions captured within this scope as shown in the
