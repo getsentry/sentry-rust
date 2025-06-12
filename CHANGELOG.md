@@ -12,6 +12,10 @@
   - Errors carried by breadcrumbs will now be stored in the breadcrumb `data` under their original field name.
   - Before, they were all stored under a single key called `errors`.
 
+### Dependencies
+
+- chore(deps): upgrade `ureq` to 3.x (#835) by @algesten
+
 ## 0.39.0
 
 ### Features
