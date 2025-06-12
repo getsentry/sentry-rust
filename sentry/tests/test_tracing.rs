@@ -28,7 +28,7 @@ fn test_tracing() {
 
         let err = "NaN".parse::<usize>().unwrap_err();
         let err: &dyn std::error::Error = &err;
-        tracing::info!(something = err, "Breadcrumb with error");
+        tracing::warn!(something = err, "Breadcrumb with error");
         tracing::error!(err, tagname = "tagvalue");
         let _ = fn_errors();
     });
@@ -102,7 +102,7 @@ fn test_tracing() {
         _ => panic!("Wrong context type"),
     }
 
-    assert_eq!(event.breadcrumbs[2].level, sentry::Level::Info);
+    assert_eq!(event.breadcrumbs[2].level, sentry::Level::Warning);
     assert_eq!(
         event.breadcrumbs[2].message,
         Some("Breadcrumb with error".into())
