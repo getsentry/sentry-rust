@@ -4,7 +4,7 @@
 //! - Records can be captured as Sentry events. These are grouped and show up in the Sentry
 //!   [issues](https://docs.sentry.io/product/issues/) page, representing high severity issues to be
 //!   acted upon.
-//! - Records events can be captured as [breadcrumbs](https://docs.sentry.io/product/issues/issue-details/breadcrumbs/).
+//! - Records can be captured as [breadcrumbs](https://docs.sentry.io/product/issues/issue-details/breadcrumbs/).
 //!   Breadcrumbs create a trail of what happened prior to an event, and are therefore sent only when
 //!   an event is captured, either manually through e.g. `sentry::capture_message` or through integrations
 //!   (e.g. the panic integration is enabled (default) and a panic happens).
