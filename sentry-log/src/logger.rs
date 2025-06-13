@@ -1,6 +1,8 @@
 use log::Record;
 use sentry_core::protocol::{Breadcrumb, Event};
 
+#[cfg(feature = "logs")]
+use crate::converters::log_from_record;
 use crate::converters::{breadcrumb_from_record, event_from_record, exception_from_record};
 
 /// The action that Sentry should perform for a [`log::Metadata`].
@@ -14,6 +16,9 @@ pub enum LogFilter {
     Event,
     /// Create an exception [`Event`] from this [`Record`].
     Exception,
+    /// Create a [`Log`] from this [`Record`].
+    #[cfg(feature = "logs")]
+    Log,
 }
 
 /// The type of Data Sentry should ingest for a [`log::Record`].
@@ -26,6 +31,9 @@ pub enum RecordMapping {
     Breadcrumb(Breadcrumb),
     /// Captures the [`Event`] to Sentry.
     Event(Event<'static>),
+    /// Captures the [`sentry_core::protocol::Log`] to Sentry.
+    #[cfg(feature = "logs")]
+    Log(sentry_core::protocol::Log),
 }
 
 /// The default log filter.
@@ -135,6 +143,8 @@ impl<L: log::Log> log::Log for SentryLogger<L> {
                 LogFilter::Breadcrumb => RecordMapping::Breadcrumb(breadcrumb_from_record(record)),
                 LogFilter::Event => RecordMapping::Event(event_from_record(record)),
                 LogFilter::Exception => RecordMapping::Event(exception_from_record(record)),
+                #[cfg(feature = "logs")]
+                LogFilter::Log => RecordMapping::Log(log_from_record(record)),
             },
         };
 
@@ -144,6 +154,8 @@ impl<L: log::Log> log::Log for SentryLogger<L> {
             RecordMapping::Event(e) => {
                 sentry_core::capture_event(e);
             }
+            #[cfg(feature = "logs")]
+            RecordMapping::Log(log) => sentry_core::Hub::with_active(|hub| hub.capture_log(log)),
         }
 
         self.dest.log(record)
