@@ -10,6 +10,20 @@
 
 - chore(deps): upgrade `ureq` to 3.x (#835) by @algesten
 
+### Features
+
+- feat(log): add support for logs (#841) by @lcian
+  - To capture `log` records as Sentry structured logs, enable the `logs` feature of the `sentry` crate.
+  - Then, initialize the SDK with `enable_logs: true` in your client options.
+  - Finally, set up a custom event filter to map records to Sentry logs based on criteria such as severity. For example:
+  ```rust
+      let logger = sentry::integrations::log::SentryLogger::new().filter(|md| match md.level() {
+          log::Level::Error => LogFilter::Event,
+          log::Level::Trace => LogFilter::Ignore,
+          _ => LogFilter::Log,
+      });
+  ```
+
 ## 0.39.0
 
 ### Features
