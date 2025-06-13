@@ -411,7 +411,7 @@ impl Client {
     /// processing it through `before_send_log`.
     #[cfg(feature = "logs")]
     fn prepare_log(&self, mut log: Log, scope: &Scope) -> Option<Log> {
-        scope.apply_to_log(&mut log, self.options.send_default_pii);
+        scope.apply_to_log(&mut log);
 
         self.set_log_default_attributes(&mut log);
 
