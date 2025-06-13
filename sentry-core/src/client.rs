@@ -1,5 +1,7 @@
 use std::any::TypeId;
 use std::borrow::Cow;
+#[cfg(feature = "logs")]
+use std::collections::BTreeMap;
 use std::fmt;
 use std::panic::RefUnwindSafe;
 use std::sync::{Arc, RwLock};
@@ -20,6 +22,8 @@ use crate::types::{Dsn, Uuid};
 #[cfg(feature = "release-health")]
 use crate::SessionMode;
 use crate::{ClientOptions, Envelope, Hub, Integration, Scope, Transport};
+#[cfg(feature = "logs")]
+use sentry_types::protocol::v7::Context;
 #[cfg(feature = "logs")]
 use sentry_types::protocol::v7::{Log, LogAttribute};
 
@@ -55,6 +59,8 @@ pub struct Client {
     session_flusher: RwLock<Option<SessionFlusher>>,
     #[cfg(feature = "logs")]
     logs_batcher: RwLock<Option<LogsBatcher>>,
+    #[cfg(feature = "logs")]
+    default_log_attributes: Option<BTreeMap<String, LogAttribute>>,
     integrations: Vec<(TypeId, Arc<dyn Integration>)>,
     pub(crate) sdk_info: ClientSdkInfo,
 }
@@ -92,6 +98,8 @@ impl Clone for Client {
             session_flusher,
             #[cfg(feature = "logs")]
             logs_batcher,
+            #[cfg(feature = "logs")]
+            default_log_attributes: self.default_log_attributes.clone(),
             integrations: self.integrations.clone(),
             sdk_info: self.sdk_info.clone(),
         }
@@ -168,16 +176,87 @@ impl Client {
             None
         });
 
-        Client {
+        #[allow(unused_mut)]
+        let mut client = Client {
             options,
             transport,
             #[cfg(feature = "release-health")]
             session_flusher,
             #[cfg(feature = "logs")]
             logs_batcher,
+            #[cfg(feature = "logs")]
+            default_log_attributes: None,
             integrations,
             sdk_info,
+        };
+
+        #[cfg(feature = "logs")]
+        client.cache_default_log_attributes();
+
+        client
+    }
+
+    #[cfg(feature = "logs")]
+    fn cache_default_log_attributes(&mut self) {
+        let mut attributes = BTreeMap::new();
+
+        if let Some(environment) = self.options.environment.as_ref() {
+            attributes.insert(
+                "sentry.environment".to_owned(),
+                LogAttribute(environment.clone().into()),
+            );
         }
+
+        if let Some(release) = self.options.release.as_ref() {
+            attributes.insert(
+                "sentry.release".to_owned(),
+                LogAttribute(release.clone().into()),
+            );
+        }
+
+        attributes.insert(
+            "sentry.sdk.name".to_owned(),
+            LogAttribute(self.sdk_info.name.to_owned().into()),
+        );
+
+        attributes.insert(
+            "sentry.sdk.version".to_owned(),
+            LogAttribute(self.sdk_info.version.to_owned().into()),
+        );
+
+        // Process a fake event through integrations, so that `ContextIntegration` (if available)
+        // provides the OS Context.
+        // This is needed as that integration adds the OS Context to events using an event
+        // processor, which logs don't go through.
+        // We cannot get the `ContextIntegration` directly, as its type lives in `sentry-contexts`,
+        // which `sentry-core` doesn't depend on.
+        let mut fake_event = Event::default();
+        for (_, integration) in self.integrations.iter() {
+            if let Some(res) = integration.process_event(fake_event.clone(), &self.options) {
+                fake_event = res;
+            }
+        }
+
+        if let Some(Context::Os(os)) = fake_event.contexts.get("os") {
+            if let Some(name) = os.name.as_ref() {
+                attributes.insert("os.name".to_owned(), LogAttribute(name.to_owned().into()));
+            }
+            if let Some(version) = os.version.as_ref() {
+                attributes.insert(
+                    "os.version".to_owned(),
+                    LogAttribute(version.to_owned().into()),
+                );
+            }
+        }
+
+        if let Some(server) = &self.options.server_name {
+            attributes.insert(
+                "server.address".to_owned(),
+                LogAttribute(server.clone().into()),
+            );
+        }
+
+        self.default_log_attributes = Some(attributes);
     }
 
     pub(crate) fn get_integration<I>(&self) -> Option<&I>
@@ -413,59 +492,17 @@ impl Client {
     fn prepare_log(&self, mut log: Log, scope: &Scope) -> Option<Log> {
         scope.apply_to_log(&mut log, self.options.send_default_pii);
 
-        self.set_log_default_attributes(&mut log);
+        if let Some(default_attributes) = self.default_log_attributes.clone() {
+            for (key, val) in default_attributes.into_iter() {
+                log.attributes.entry(key).or_insert(val);
+            }
+        }
 
         if let Some(ref func) = self.options.before_send_log {
             log = func(log)?;
         }
 
         Some(log)
-    }
-
-    #[cfg(feature = "logs")]
-    fn set_log_default_attributes(&self, log: &mut Log) {
-        if !log.attributes.contains_key("sentry.environment") {
-            if let Some(environment) = self.options.environment.as_ref() {
-                log.attributes.insert(
-                    "sentry.environment".to_owned(),
-                    LogAttribute(environment.clone().into()),
-                );
-            }
-        }
-
-        if !log.attributes.contains_key("sentry.release") {
-            if let Some(release) = self.options.release.as_ref() {
-                log.attributes.insert(
-                    "sentry.release".to_owned(),
-                    LogAttribute(release.clone().into()),
-                );
-            }
-        }
-
-        if !log.attributes.contains_key("sentry.sdk.name") {
-            log.attributes.insert(
-                "sentry.sdk.name".to_owned(),
-                LogAttribute(self.sdk_info.name.to_owned().into()),
-            );
-        }
-
-        if !log.attributes.contains_key("sentry.sdk.version") {
-            log.attributes.insert(
-                "sentry.sdk.version".to_owned(),
-                LogAttribute(self.sdk_info.version.to_owned().into()),
-            );
-        }
-
-        // TODO: set OS (and Rust?) context
-
-        if !log.attributes.contains_key("server.address") {
-            if let Some(server) = &self.options.server_name {
-                log.attributes.insert(
-                    "server.address".to_owned(),
-                    LogAttribute(server.clone().into()),
-                );
-            }
-        }
     }
 }
 

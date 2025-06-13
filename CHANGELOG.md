@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Features
+
+- refactor(logs): cache default attributes and add OS attributes (#842) by @lcian
+  - `os.name` and `os.version` are now being attached to logs as default attributes.
+
 ### Fixes
 
 - fix(logs): send environment in `sentry.environment` default attribute (#837) by @lcian
