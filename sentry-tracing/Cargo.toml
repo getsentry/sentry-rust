@@ -18,6 +18,7 @@ all-features = true
 [features]
 default = []
 backtrace = ["dep:sentry-backtrace"]
+logs = ["sentry-core/logs"]
 
 [dependencies]
 sentry-core = { version = "0.39.0", path = "../sentry-core", features = [

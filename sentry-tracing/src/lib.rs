@@ -1,6 +1,6 @@
 //! Support for automatic breadcrumb, event, and trace capturing from `tracing` events and spans.
 //!
-//! The `tracing` crate is supported in three ways:
+//! The `tracing` crate is supported in four ways:
 //! - `tracing` events can be captured as Sentry events. These are grouped and show up in the Sentry
 //!   [issues](https://docs.sentry.io/product/issues/) page, representing high severity issues to be
 //!   acted upon.
@@ -8,6 +8,9 @@
 //!   Breadcrumbs create a trail of what happened prior to an event, and are therefore sent only when
 //!   an event is captured, either manually through e.g. `sentry::capture_message` or through integrations
 //!   (e.g. the panic integration is enabled (default) and a panic happens).
+//! - `tracing` events can be captured as traditional [structured logs](https://docs.sentry.io/product/explore/logs/).
+//!   The `tracing` fields are captured as attributes on the logs, which can be queried in the Logs
+//!   explorer. (Available on crate feature `logs`)
 //! - `tracing` spans can be captured as Sentry spans. These can be used to provide more contextual
 //!   information for errors, diagnose [performance
 //!   issues](https://docs.sentry.io/product/insights/overview/), and capture additional attributes to
@@ -78,6 +81,23 @@
 //!     tracing::debug!(number = i, "Generates a breadcrumb");
 //! }
 //! ```
+//!
+//! # Capturing logs
+//!
+//! Tracing events can be captured as traditional structured logs in Sentry.
+//! This is gated by the `logs` feature flag and requires setting up a custom Event filter/mapper
+//! to capture logs.
+//!
+//! ```
+//! // assuming `tracing::Level::INFO => EventFilter::Log` in your `event_filter`
+//! for i in 0..10 {
+//!     tracing::info!(number = i, my.key = "val", my.num = 42, "This is a log");
+//! }
+//! ```
+//!
+//! The fields of a `tracing` event are captured as attributes of the log.
+//! Logs can be viewed and queried in the Logs explorer based on message and attributes.
+//! Fields containing dots will be displayed as nested under their common prefix in the UI.
 //!
 //! # Tracking Errors
 //!
