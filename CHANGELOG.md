@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- refactor(core): apply user attributes to log regardless of `send_default_pii` (#843) by @lcian
+  - User attributes should be applied to logs regardless of `send_default_pii`. Therefore, that parameter was removed from `sentry_core::Scope::apply_to_log`.
+
 ### Fixes
 
 - fix(logs): send environment in `sentry.environment` default attribute (#837) by @lcian
