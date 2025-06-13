@@ -5,7 +5,9 @@
 ### Features
 
 - feat(tracing): add support for logs (#840) by @lcian
-  - To capture `tracing` events as Sentry structured logs, enable the `logs` feature of the `sentry` (or `sentry-tracing`) crate. Then, set up a custom event filter to map events to logs based on criteria such as severity. For example:
+  - To capture `tracing` events as Sentry structured logs, enable the `logs` feature of the `sentry` crate.
+  - Then, initialize the SDK with `enable_logs: true` in your client options.
+  - Finally, set up a custom event filter to map events to logs based on criteria such as severity. For example:
   ```rust
       let sentry_layer = sentry_tracing::layer().event_filter(|md| match *md.level() {
           tracing::Level::ERROR => EventFilter::Event,
