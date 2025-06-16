@@ -2,7 +2,11 @@ use std::collections::BTreeMap;
 use std::error::Error;
 
 use sentry_core::protocol::{Event, Exception, Mechanism, Value};
+#[cfg(feature = "logs")]
+use sentry_core::protocol::{Log, LogAttribute, LogLevel};
 use sentry_core::{event_from_error, Breadcrumb, Level, TransactionOrSpan};
+#[cfg(feature = "logs")]
+use std::time::SystemTime;
 use tracing_core::field::{Field, Visit};
 use tracing_core::Subscriber;
 use tracing_subscriber::layer::Context;
@@ -11,13 +15,25 @@ use tracing_subscriber::registry::LookupSpan;
 use super::layer::SentrySpanData;
 use crate::TAGS_PREFIX;
 
-/// Converts a [`tracing_core::Level`] to a Sentry [`Level`].
+/// Converts a [`tracing_core::Level`] to a Sentry [`Level`], used for events and breadcrumbs.
 fn level_to_sentry_level(level: &tracing_core::Level) -> Level {
     match *level {
         tracing_core::Level::TRACE | tracing_core::Level::DEBUG => Level::Debug,
         tracing_core::Level::INFO => Level::Info,
         tracing_core::Level::WARN => Level::Warning,
         tracing_core::Level::ERROR => Level::Error,
+    }
+}
+
+/// Converts a [`tracing_core::Level`] to a Sentry [`LogLevel`], used for logs.
+#[cfg(feature = "logs")]
+fn level_to_log_level(level: &tracing_core::Level) -> LogLevel {
+    match *level {
+        tracing_core::Level::TRACE => LogLevel::Trace,
+        tracing_core::Level::DEBUG => LogLevel::Debug,
+        tracing_core::Level::INFO => LogLevel::Info,
+        tracing_core::Level::WARN => LogLevel::Warn,
+        tracing_core::Level::ERROR => LogLevel::Error,
     }
 }
 
@@ -306,5 +322,45 @@ where
         tags: extract_and_remove_tags(&mut json_values),
         contexts: contexts_from_event(event, json_values),
         ..Default::default()
+    }
+}
+
+/// Creates a [`Log`] from a given [`tracing_core::Event`]
+#[cfg(feature = "logs")]
+pub fn log_from_event<'context, S>(
+    event: &tracing_core::Event,
+    ctx: impl Into<Option<Context<'context, S>>>,
+) -> Log
+where
+    S: Subscriber + for<'a> LookupSpan<'a>,
+{
+    let (message, visitor) = extract_event_data_with_context(event, ctx.into(), true);
+
+    let mut attributes: BTreeMap<String, LogAttribute> = visitor
+        .json_values
+        .into_iter()
+        .map(|(key, val)| (key, val.into()))
+        .collect();
+
+    let event_meta = event.metadata();
+    if let Some(module_path) = event_meta.module_path() {
+        attributes.insert("tracing.module_path".to_owned(), module_path.into());
+    }
+    if let Some(file) = event_meta.file() {
+        attributes.insert("tracing.file".to_owned(), file.into());
+    }
+    if let Some(line) = event_meta.line() {
+        attributes.insert("tracing.line".to_owned(), line.into());
+    }
+
+    attributes.insert("sentry.origin".to_owned(), "auto.tracing".into());
+
+    Log {
+        level: level_to_log_level(event.metadata().level()),
+        body: message.unwrap_or_default(),
+        trace_id: None,
+        timestamp: SystemTime::now(),
+        severity_number: None,
+        attributes,
     }
 }
