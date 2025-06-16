@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- refactor(logs): apply user attributes to log regardless of `send_default_pii` (#843) by @lcian
+  - User attributes should be applied to logs regardless of `send_default_pii`. Therefore, that parameter was removed from `sentry_core::Scope::apply_to_log`.
+
 ### Features
 
 - feat(tracing): add support for logs (#840) by @lcian
@@ -15,7 +20,6 @@
           _ => EventFilter::Log,
       });
   ```
-
 
 ### Fixes
 
