@@ -239,21 +239,15 @@ impl Client {
 
         if let Some(Context::Os(os)) = fake_event.contexts.get("os") {
             if let Some(name) = os.name.as_ref() {
-                attributes.insert("os.name".to_owned(), LogAttribute(name.to_owned().into()));
+                attributes.insert("os.name".to_owned(), name.to_owned().into());
             }
             if let Some(version) = os.version.as_ref() {
-                attributes.insert(
-                    "os.version".to_owned(),
-                    LogAttribute(version.to_owned().into()),
-                );
+                attributes.insert("os.version".to_owned(), version.to_owned().into());
             }
         }
 
         if let Some(server) = &self.options.server_name {
-            attributes.insert(
-                "server.address".to_owned(),
-                LogAttribute(server.clone().into()),
-            );
+            attributes.insert("server.address".to_owned(), server.clone().into());
         }
 
         self.default_log_attributes = Some(attributes);
