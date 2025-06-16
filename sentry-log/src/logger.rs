@@ -16,7 +16,7 @@ pub enum LogFilter {
     Event,
     /// Create an exception [`Event`] from this [`Record`].
     Exception,
-    /// Create a [`Log`] from this [`Record`].
+    /// Create a [`sentry_core::protocol::Log`] from this [`Record`].
     #[cfg(feature = "logs")]
     Log,
 }
