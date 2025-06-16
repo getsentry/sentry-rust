@@ -18,6 +18,7 @@ all-features = true
 [features]
 default = []
 backtrace = ["dep:sentry-backtrace"]
+logs = ["sentry-core/logs"]
 
 [dependencies]
 sentry-core = { version = "0.39.0", path = "../sentry-core", features = [
@@ -31,7 +32,7 @@ sentry-backtrace = { version = "0.39.0", path = "../sentry-backtrace", optional 
 
 [dev-dependencies]
 log = "0.4"
-sentry = { path = "../sentry", default-features = false, features = ["test"] }
+sentry = { path = "../sentry", default-features = false, features = ["test", "tracing"] }
 serde_json = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3.1", features = ["fmt", "registry"] }

@@ -28,6 +28,7 @@ fn test_tracing() {
 
         let err = "NaN".parse::<usize>().unwrap_err();
         let err: &dyn std::error::Error = &err;
+        tracing::warn!(something = err, "Breadcrumb with error");
         tracing::error!(err, tagname = "tagvalue");
         let _ = fn_errors();
     });
@@ -78,6 +79,7 @@ fn test_tracing() {
     );
 
     let event = events.next().unwrap();
+    assert_eq!(event.breadcrumbs.len(), 3);
     assert!(!event.exception.is_empty());
     assert_eq!(event.exception[0].ty, "ParseIntError");
     assert_eq!(
@@ -99,6 +101,17 @@ fn test_tracing() {
         }
         _ => panic!("Wrong context type"),
     }
+
+    assert_eq!(event.breadcrumbs[2].level, sentry::Level::Warning);
+    assert_eq!(
+        event.breadcrumbs[2].message,
+        Some("Breadcrumb with error".into())
+    );
+    assert!(event.breadcrumbs[2].data.contains_key("something"));
+    assert_eq!(
+        event.breadcrumbs[2].data.get("something").unwrap(),
+        &Value::from(vec!("ParseIntError: invalid digit found in string"))
+    );
 
     let event = events.next().unwrap();
     assert_eq!(event.message, Some("I'm broken!".to_string()));
@@ -179,4 +192,88 @@ fn test_set_transaction() {
 
     assert_eq!(transaction.name.as_deref().unwrap(), "new name");
     assert!(transaction.request.is_some());
+}
+
+#[cfg(feature = "logs")]
+#[test]
+fn test_tracing_logs() {
+    let sentry_layer = sentry_tracing::layer().event_filter(|_| sentry_tracing::EventFilter::Log);
+
+    let _dispatcher = tracing_subscriber::registry()
+        .with(sentry_layer)
+        .set_default();
+
+    let options = sentry::ClientOptions {
+        enable_logs: true,
+        ..Default::default()
+    };
+
+    let envelopes = sentry::test::with_captured_envelopes_options(
+        || {
+            #[derive(Debug)]
+            struct ConnectionError {
+                message: String,
+                source: Option<std::io::Error>,
+            }
+
+            impl std::fmt::Display for ConnectionError {
+                fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                    write!(f, "{}", self.message)
+                }
+            }
+
+            impl std::error::Error for ConnectionError {
+                fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+                    self.source
+                        .as_ref()
+                        .map(|e| e as &(dyn std::error::Error + 'static))
+                }
+            }
+
+            let io_error =
+                std::io::Error::new(std::io::ErrorKind::ConnectionRefused, "Connection refused");
+            let connection_error = ConnectionError {
+                message: "Failed to connect to database server".to_string(),
+                source: Some(io_error),
+            };
+
+            tracing::error!(
+                my.key = "hello",
+                an.error = &connection_error as &dyn std::error::Error,
+                "This is an error log: {}",
+                "hello"
+            );
+        },
+        options,
+    );
+
+    assert_eq!(envelopes.len(), 1);
+    let envelope = envelopes.first().expect("expected envelope");
+    let item = envelope.items().next().expect("expected envelope item");
+
+    match item {
+        sentry::protocol::EnvelopeItem::ItemContainer(container) => match container {
+            sentry::protocol::ItemContainer::Logs(logs) => {
+                assert_eq!(logs.len(), 1);
+
+                let log = &logs[0];
+                assert_eq!(log.level, sentry::protocol::LogLevel::Error);
+                assert_eq!(log.body, "This is an error log: hello");
+                assert!(log.trace_id.is_some());
+                assert_eq!(
+                    log.attributes.get("my.key").unwrap().clone(),
+                    sentry::protocol::LogAttribute::from("hello")
+                );
+                assert_eq!(
+                    log.attributes.get("an.error").unwrap().clone(),
+                    sentry::protocol::LogAttribute::from(vec![
+                        "ConnectionError: Failed to connect to database server",
+                        "Custom: Connection refused"
+                    ])
+                );
+            }
+            _ => panic!("expected logs container"),
+        },
+        _ => panic!("expected item container"),
+    }
 }

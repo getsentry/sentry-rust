@@ -490,7 +490,7 @@ impl Client {
     /// processing it through `before_send_log`.
     #[cfg(feature = "logs")]
     fn prepare_log(&self, mut log: Log, scope: &Scope) -> Option<Log> {
-        scope.apply_to_log(&mut log, self.options.send_default_pii);
+        scope.apply_to_log(&mut log);
 
         if let Some(default_attributes) = self.default_log_attributes.as_ref() {
             for (key, val) in default_attributes.iter() {
