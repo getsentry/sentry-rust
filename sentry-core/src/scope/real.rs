@@ -351,7 +351,7 @@ impl Scope {
     /// Applies the contained scoped data to a log, setting the `trace_id` and certain default
     /// attributes.
     #[cfg(feature = "logs")]
-    pub fn apply_to_log(&self, log: &mut Log, send_default_pii: bool) {
+    pub fn apply_to_log(&self, log: &mut Log) {
         if let Some(span) = self.span.as_ref() {
             log.trace_id = Some(span.get_trace_context().trace_id);
         } else {
@@ -373,29 +373,27 @@ impl Scope {
             }
         }
 
-        if send_default_pii {
-            if let Some(user) = self.user.as_ref() {
-                if !log.attributes.contains_key("user.id") {
-                    if let Some(id) = user.id.as_ref() {
-                        log.attributes
-                            .insert("user.id".to_owned(), LogAttribute(id.to_owned().into()));
-                    }
+        if let Some(user) = self.user.as_ref() {
+            if !log.attributes.contains_key("user.id") {
+                if let Some(id) = user.id.as_ref() {
+                    log.attributes
+                        .insert("user.id".to_owned(), LogAttribute(id.to_owned().into()));
                 }
+            }
 
-                if !log.attributes.contains_key("user.name") {
-                    if let Some(name) = user.username.as_ref() {
-                        log.attributes
-                            .insert("user.name".to_owned(), LogAttribute(name.to_owned().into()));
-                    }
+            if !log.attributes.contains_key("user.name") {
+                if let Some(name) = user.username.as_ref() {
+                    log.attributes
+                        .insert("user.name".to_owned(), LogAttribute(name.to_owned().into()));
                 }
+            }
 
-                if !log.attributes.contains_key("user.email") {
-                    if let Some(email) = user.email.as_ref() {
-                        log.attributes.insert(
-                            "user.email".to_owned(),
-                            LogAttribute(email.to_owned().into()),
-                        );
-                    }
+            if !log.attributes.contains_key("user.email") {
+                if let Some(email) = user.email.as_ref() {
+                    log.attributes.insert(
+                        "user.email".to_owned(),
+                        LogAttribute(email.to_owned().into()),
+                    );
                 }
             }
         }

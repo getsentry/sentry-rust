@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- refactor(logs): apply user attributes to log regardless of `send_default_pii` (#843) by @lcian
+  - User attributes should be applied to logs regardless of `send_default_pii`. Therefore, that parameter was removed from `sentry_core::Scope::apply_to_log`.
+
+### Features
+
+- feat(tracing): add support for logs (#840) by @lcian
+  - To capture `tracing` events as Sentry structured logs, enable the `logs` feature of the `sentry` crate.
+  - Then, initialize the SDK with `enable_logs: true` in your client options.
+  - Finally, set up a custom event filter to map events to logs based on criteria such as severity. For example:
+  ```rust
+      let sentry_layer = sentry_tracing::layer().event_filter(|md| match *md.level() {
+          tracing::Level::ERROR => EventFilter::Event,
+          tracing::Level::TRACE => EventFilter::Ignore,
+          _ => EventFilter::Log,
+      });
+  ```
+
 ### Fixes
 
 - fix(logs): send environment in `sentry.environment` default attribute (#837) by @lcian
