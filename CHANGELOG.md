@@ -2,8 +2,6 @@
 
 ## Unreleased
 
-### Features
-
 ### Breaking changes
 
 - refactor(logs): apply user attributes to log regardless of `send_default_pii` (#843) by @lcian
