@@ -28,6 +28,7 @@ fn test_tracing() {
 
         let err = "NaN".parse::<usize>().unwrap_err();
         let err: &dyn std::error::Error = &err;
+        tracing::warn!(something = err, "Breadcrumb with error");
         tracing::error!(err, tagname = "tagvalue");
         let _ = fn_errors();
     });
@@ -78,6 +79,7 @@ fn test_tracing() {
     );
 
     let event = events.next().unwrap();
+    assert_eq!(event.breadcrumbs.len(), 3);
     assert!(!event.exception.is_empty());
     assert_eq!(event.exception[0].ty, "ParseIntError");
     assert_eq!(
@@ -99,6 +101,17 @@ fn test_tracing() {
         }
         _ => panic!("Wrong context type"),
     }
+
+    assert_eq!(event.breadcrumbs[2].level, sentry::Level::Warning);
+    assert_eq!(
+        event.breadcrumbs[2].message,
+        Some("Breadcrumb with error".into())
+    );
+    assert!(event.breadcrumbs[2].data.contains_key("something"));
+    assert_eq!(
+        event.breadcrumbs[2].data.get("something").unwrap(),
+        &Value::from(vec!("ParseIntError: invalid digit found in string"))
+    );
 
     let event = events.next().unwrap();
     assert_eq!(event.message, Some("I'm broken!".to_string()));
