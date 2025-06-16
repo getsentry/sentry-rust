@@ -201,27 +201,21 @@ impl Client {
         let mut attributes = BTreeMap::new();
 
         if let Some(environment) = self.options.environment.as_ref() {
-            attributes.insert(
-                "sentry.environment".to_owned(),
-                LogAttribute(environment.clone().into()),
-            );
+            attributes.insert("sentry.environment".to_owned(), environment.clone().into());
         }
 
         if let Some(release) = self.options.release.as_ref() {
-            attributes.insert(
-                "sentry.release".to_owned(),
-                LogAttribute(release.clone().into()),
-            );
+            attributes.insert("sentry.release".to_owned(), release.clone().into());
         }
 
         attributes.insert(
             "sentry.sdk.name".to_owned(),
-            LogAttribute(self.sdk_info.name.to_owned().into()),
+            self.sdk_info.name.to_owned().into(),
         );
 
         attributes.insert(
             "sentry.sdk.version".to_owned(),
-            LogAttribute(self.sdk_info.version.to_owned().into()),
+            self.sdk_info.version.to_owned().into(),
         );
 
         // Process a fake event through integrations, so that `ContextIntegration` (if available)
