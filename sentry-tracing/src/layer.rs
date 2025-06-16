@@ -13,7 +13,7 @@ use tracing_subscriber::registry::LookupSpan;
 use crate::converters::*;
 use crate::TAGS_PREFIX;
 
-/// The action that Sentry should perform for a [`Metadata`]
+/// The action that Sentry should perform for a given [`Event`]
 #[derive(Debug, Clone, Copy)]
 pub enum EventFilter {
     /// Ignore the [`Event`]
@@ -22,6 +22,9 @@ pub enum EventFilter {
     Breadcrumb,
     /// Create a [`sentry_core::protocol::Event`] from this [`Event`]
     Event,
+    /// Create a [`sentry_core::protocol::Log`] from this [`Event`]
+    #[cfg(feature = "logs")]
+    Log,
 }
 
 /// The type of data Sentry should ingest for a [`Event`]
@@ -34,6 +37,9 @@ pub enum EventMapping {
     Breadcrumb(Breadcrumb),
     /// Captures the [`sentry_core::protocol::Event`] to Sentry.
     Event(sentry_core::protocol::Event<'static>),
+    /// Captures the [`sentry_core::protocol::Log`] to Sentry.
+    #[cfg(feature = "logs")]
+    Log(sentry_core::protocol::Log),
 }
 
 /// The default event filter.
@@ -215,6 +221,8 @@ where
                         EventMapping::Breadcrumb(breadcrumb_from_event(event, span_ctx))
                     }
                     EventFilter::Event => EventMapping::Event(event_from_event(event, span_ctx)),
+                    #[cfg(feature = "logs")]
+                    EventFilter::Log => EventMapping::Log(log_from_event(event, span_ctx)),
                 }
             }
         };
@@ -224,6 +232,8 @@ where
                 sentry_core::capture_event(event);
             }
             EventMapping::Breadcrumb(breadcrumb) => sentry_core::add_breadcrumb(breadcrumb),
+            #[cfg(feature = "logs")]
+            EventMapping::Log(log) => sentry_core::Hub::with_active(|hub| hub.capture_log(log)),
             _ => (),
         }
     }
