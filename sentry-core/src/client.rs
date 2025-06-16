@@ -492,9 +492,9 @@ impl Client {
     fn prepare_log(&self, mut log: Log, scope: &Scope) -> Option<Log> {
         scope.apply_to_log(&mut log, self.options.send_default_pii);
 
-        if let Some(default_attributes) = self.default_log_attributes.clone() {
-            for (key, val) in default_attributes.into_iter() {
-                log.attributes.entry(key).or_insert(val);
+        if let Some(default_attributes) = self.default_log_attributes.as_ref() {
+            for (key, val) in default_attributes.iter() {
+                log.attributes.entry(key.to_owned()).or_insert(val.clone());
             }
         }
 
