@@ -6,12 +6,26 @@
 
 # Sentry Rust SDK: sentry-log
 
-Adds support for automatic Breadcrumb and Event capturing from logs.
+Adds support for automatic Breadcrumb, Event, and Log capturing from `log` records.
 
-The `log` crate is supported in two ways. First, logs can be captured as
-breadcrumbs for later. Secondly, error logs can be captured as events to
-Sentry. By default anything above `Info` is recorded as a breadcrumb and
+The `log` crate is supported in three ways:
+- Records can be captured as Sentry events. These are grouped and show up in the Sentry
+  [issues](https://docs.sentry.io/product/issues/) page, representing high severity issues to be
+  acted upon.
+- Records can be captured as [breadcrumbs](https://docs.sentry.io/product/issues/issue-details/breadcrumbs/).
+  Breadcrumbs create a trail of what happened prior to an event, and are therefore sent only when
+  an event is captured, either manually through e.g. `sentry::capture_message` or through integrations
+  (e.g. the panic integration is enabled (default) and a panic happens).
+- Records can be captured as traditional [logs](https://docs.sentry.io/product/explore/logs/)
+  Logs can be viewed and queried in the Logs explorer.
+
+By default anything above `Info` is recorded as a breadcrumb and
 anything above `Error` is captured as error event.
+
+To capture records as Sentry logs:
+1. Enable the `logs` feature of the `sentry` crate.
+2. Initialize the SDK with `enable_logs: true` in your client options.
+3. Set up a custom filter (see below) to map records to logs (`LogFilter::Log`) based on criteria such as severity.
 
 ## Examples
 
