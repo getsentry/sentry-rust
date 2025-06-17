@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixes
+
+- fix(logs): stringify u64 attributes greater than `i64::MAX` (#846) by @lcian
+
 ## 0.40.0
 
 ### Breaking changes

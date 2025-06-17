@@ -2217,6 +2217,10 @@ impl Serialize for LogAttribute {
                 if let Some(i) = n.as_i64() {
                     state.serialize_field("value", &i)?;
                     state.serialize_field("type", "integer")?;
+                } else if let Some(u) = n.as_u64() {
+                    // Converting to a f64 could lead to precision loss
+                    state.serialize_field("value", &u.to_string())?;
+                    state.serialize_field("type", "string")?;
                 } else if let Some(f) = n.as_f64() {
                     state.serialize_field("value", &f)?;
                     state.serialize_field("type", "double")?;

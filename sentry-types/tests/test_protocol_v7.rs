@@ -1536,8 +1536,12 @@ mod test_logs {
             (3.1.into(), r#"{"value":3.1,"type":"double"}"#),
             ("lol".into(), r#"{"value":"lol","type":"string"}"#),
             (false.into(), r#"{"value":false,"type":"boolean"}"#),
-            // Special case
+            // Special cases
             (Value::Null.into(), r#"{"value":"null","type":"string"}"#),
+            (
+                (u64::MAX - 1).into(),
+                r#"{"value":"18446744073709551614","type":"string"}"#,
+            ),
             // Unsupported types (for now)
             (
                 json!(r#"[1,2,3,4]"#).into(),
