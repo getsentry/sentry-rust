@@ -18,7 +18,7 @@ logs = ["sentry-core/logs"]
 
 [dependencies]
 sentry-core = { version = "0.40.0", path = "../sentry-core" }
-log = { version = "0.4.8", features = ["std"] }
+log = { version = "0.4.8", features = ["std", "kv"] }
 
 [dev-dependencies]
 sentry = { path = "../sentry", default-features = false, features = ["test"] }
