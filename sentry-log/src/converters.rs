@@ -118,6 +118,7 @@ pub fn event_from_record(record: &log::Record<'_>) -> Event<'static> {
         logger: Some(record.target().into()),
         level: convert_log_level(record.level()),
         message: Some(record.args().to_string()),
+        contexts: context,
         ..Default::default()
     }
 }

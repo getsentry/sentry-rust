@@ -18,7 +18,7 @@ fn test_log_logs() {
 
     let envelopes = sentry::test::with_captured_envelopes_options(
         || {
-            log::info!("This is a log");
+            log::info!(user_id = 42, request_id = "abc123"; "This is a log");
         },
         options,
     );
@@ -37,6 +37,14 @@ fn test_log_logs() {
                     .find(|log| log.level == sentry::protocol::LogLevel::Info)
                     .expect("expected info log");
                 assert_eq!(info_log.body, "This is a log");
+                assert_eq!(
+                    info_log.attributes.get("user_id").unwrap().clone(),
+                    42.into()
+                );
+                assert_eq!(
+                    info_log.attributes.get("request_id").unwrap().clone(),
+                    "abc123".into()
+                );
                 assert_eq!(
                     info_log.attributes.get("logger.target").unwrap().clone(),
                     "test_log_logs".into()

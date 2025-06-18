@@ -13,8 +13,8 @@ fn test_log() {
             scope.set_tag("worker", "worker1");
         });
 
-        log::info!("Hello World!");
-        log::error!("Shit's on fire yo");
+        log::info!(user_id = 42, request_id = "abc123"; "Hello World!");
+        log::error!(error_code = 500, retry_count = 3; "Shit's on fire yo");
     });
 
     assert_eq!(events.len(), 1);
@@ -22,8 +22,17 @@ fn test_log() {
 
     assert_eq!(event.tags["worker"], "worker1");
     assert_eq!(event.level, sentry::Level::Error);
+    if let Some(sentry::protocol::Context::Other(attributes)) = event.contexts.get("Rust Log Attributes") {
+        assert_eq!(attributes.get("error_code"), 500.into());
+        assert_eq!(attributes.get("retry_count"), 3.into());
+    } else {
+        panic!("Expected 'Rust Log Attributes' context to be present");
+    }
+    
     assert_eq!(event.breadcrumbs[0].level, sentry::Level::Info);
     assert_eq!(event.breadcrumbs[0].message, Some("Hello World!".into()));
+    assert_eq!(event.breadcrumbs[0].data.get("user_id"), 42.into());
+    assert_eq!(event.breadcrumbs[0].data.get("request_id"), "abc123".into());
 }
 
 #[test]
