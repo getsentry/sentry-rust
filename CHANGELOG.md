@@ -6,6 +6,10 @@
 
 - fix(logs): stringify u64 attributes greater than `i64::MAX` (#846) by @lcian
 
+### Dependencies
+
+- chore(deps): bump `anyhow` and disable its `backtrace` feature (#632) by @LunaBorowska
+
 ## 0.40.0
 
 ### Breaking changes
