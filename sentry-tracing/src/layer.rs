@@ -43,6 +43,7 @@ pub enum EventMapping {
     #[cfg(feature = "logs")]
     Log(sentry_core::protocol::Log),
     /// Captures multiple items to Sentry.
+    /// Nesting multiple `EventMapping::Combined` inside each other will cause the inner mappings to be ignored.
     Combined(CombinedEventMapping),
 }
 
@@ -270,7 +271,7 @@ where
                 }
                 #[cfg(feature = "logs")]
                 EventMapping::Log(log) => sentry_core::Hub::with_active(|hub| hub.capture_log(log)),
-                _ => (),
+                EventMapping::Combined(_) => sentry_debug!("[SentryLayer] found nested CombinedEventMapping, ignoring"),
             }
         }
     }
