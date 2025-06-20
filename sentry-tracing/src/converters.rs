@@ -77,7 +77,7 @@ fn extract_event_data(
 /// Extracts the message and metadata from an event, including the data in the current span.
 fn extract_event_data_with_context<S>(
     event: &tracing_core::Event,
-    ctx: Option<Context<S>>,
+    ctx: Option<&Context<S>>,
     store_errors_in_values: bool,
 ) -> (Option<String>, FieldVisitor)
 where
@@ -182,7 +182,7 @@ impl Visit for FieldVisitor {
 /// Creates a [`Breadcrumb`] from a given [`tracing_core::Event`].
 pub fn breadcrumb_from_event<'context, S>(
     event: &tracing_core::Event,
-    ctx: impl Into<Option<Context<'context, S>>>,
+    ctx: impl Into<Option<&'context Context<'context, S>>>,
 ) -> Breadcrumb
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
@@ -261,7 +261,7 @@ fn contexts_from_event(
 /// Creates an [`Event`] (possibly carrying exceptions) from a given [`tracing_core::Event`].
 pub fn event_from_event<'context, S>(
     event: &tracing_core::Event,
-    ctx: impl Into<Option<Context<'context, S>>>,
+    ctx: impl Into<Option<&'context Context<'context, S>>>,
 ) -> Event<'static>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
@@ -329,7 +329,7 @@ where
 #[cfg(feature = "logs")]
 pub fn log_from_event<'context, S>(
     event: &tracing_core::Event,
-    ctx: impl Into<Option<Context<'context, S>>>,
+    ctx: impl Into<Option<&'context Context<'context, S>>>,
 ) -> Log
 where
     S: Subscriber + for<'a> LookupSpan<'a>,

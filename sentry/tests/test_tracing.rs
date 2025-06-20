@@ -277,3 +277,84 @@ fn test_tracing_logs() {
         _ => panic!("expected item container"),
     }
 }
+
+#[test]
+fn test_combined_event_filters() {
+    let sentry_layer = sentry_tracing::layer().event_filter(|md| match *md.level() {
+        tracing::Level::ERROR => {
+            sentry_tracing::EventFilter::Breadcrumb | sentry_tracing::EventFilter::Event
+        }
+        tracing::Level::WARN => sentry_tracing::EventFilter::Event,
+        _ => sentry_tracing::EventFilter::Ignore,
+    });
+
+    let _dispatcher = tracing_subscriber::registry()
+        .with(sentry_layer)
+        .set_default();
+
+    let events = sentry::test::with_captured_events(|| {
+        tracing::error!("Both a breadcrumb and an event");
+        tracing::warn!("An event");
+    });
+
+    assert_eq!(events.len(), 2);
+
+    assert_eq!(
+        events[0].message,
+        Some("Both a breadcrumb and an event".to_owned())
+    );
+
+    assert_eq!(events[1].message, Some("An event".to_owned()));
+    assert_eq!(events[1].breadcrumbs.len(), 1);
+    assert_eq!(
+        events[1].breadcrumbs[0].message,
+        Some("Both a breadcrumb and an event".into())
+    );
+}
+
+#[test]
+fn test_combined_event_mapper() {
+    let sentry_layer =
+        sentry_tracing::layer().event_mapper(|event, ctx| match *event.metadata().level() {
+            tracing::Level::ERROR => {
+                let breadcrumb = sentry_tracing::breadcrumb_from_event(event, Some(&ctx));
+                let sentry_event = sentry_tracing::event_from_event(event, Some(&ctx));
+
+                sentry_tracing::EventMapping::Combined(
+                    vec![
+                        sentry_tracing::EventMapping::Breadcrumb(breadcrumb),
+                        sentry_tracing::EventMapping::Event(sentry_event),
+                    ]
+                    .into(),
+                )
+            }
+            tracing::Level::WARN => {
+                let sentry_event = sentry_tracing::event_from_event(event, Some(&ctx));
+                sentry_tracing::EventMapping::Event(sentry_event)
+            }
+            _ => sentry_tracing::EventMapping::Ignore,
+        });
+
+    let _dispatcher = tracing_subscriber::registry()
+        .with(sentry_layer)
+        .set_default();
+
+    let events = sentry::test::with_captured_events(|| {
+        tracing::error!("Both a breadcrumb and an event");
+        tracing::warn!("An event");
+    });
+
+    assert_eq!(events.len(), 2);
+
+    assert_eq!(
+        events[0].message,
+        Some("Both a breadcrumb and an event".to_owned())
+    );
+
+    assert_eq!(events[1].message, Some("An event".to_owned()));
+    assert_eq!(events[1].breadcrumbs.len(), 1);
+    assert_eq!(
+        events[1].breadcrumbs[0].message,
+        Some("Both a breadcrumb and an event".into())
+    );
+}

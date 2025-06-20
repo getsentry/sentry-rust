@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- feat(tracing): support combined EventFilters and EventMappings (#847) by @lcian
+  - `EventFilter` has been changed to a `bitflags` struct.
+  - It's now possible to map a `tracing` event to multiple items in Sentry by combining multiple event filters in the `event_filter`, e.g. `tracing::Level::ERROR => EventFilter::Event | EventFilter::Log`.
+  - It's also possible to use `EventMapping::Combined` to map a `tracing` event to multiple items in Sentry.
+  - `ctx` in the signatures of `event_from_event`, `breadcrumb_from_event` and `log_from_event` has been changed to take `impl Into<Option<&'context Context<'context, S>>>` to avoid cloning the `Context` when mapping to multiple items.
+
 ### Fixes
 
 - fix(logs): stringify u64 attributes greater than `i64::MAX` (#846) by @lcian

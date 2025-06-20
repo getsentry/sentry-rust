@@ -3,6 +3,7 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
+use bitflags::bitflags;
 use sentry_core::protocol::Value;
 use sentry_core::{Breadcrumb, TransactionOrSpan};
 use tracing_core::field::Visit;
@@ -13,21 +14,22 @@ use tracing_subscriber::registry::LookupSpan;
 use crate::converters::*;
 use crate::TAGS_PREFIX;
 
-/// The action that Sentry should perform for a given [`Event`]
-#[derive(Debug, Clone, Copy)]
-pub enum EventFilter {
-    /// Ignore the [`Event`]
-    Ignore,
-    /// Create a [`Breadcrumb`] from this [`Event`]
-    Breadcrumb,
-    /// Create a [`sentry_core::protocol::Event`] from this [`Event`]
-    Event,
-    /// Create a [`sentry_core::protocol::Log`] from this [`Event`]
-    #[cfg(feature = "logs")]
-    Log,
+bitflags! {
+    /// The action that Sentry should perform for a given [`Event`]
+    #[derive(Debug, Clone, Copy)]
+    pub struct EventFilter: u32 {
+        /// Ignore the [`Event`]
+        const Ignore = 0b000;
+        /// Create a [`Breadcrumb`] from this [`Event`]
+        const Breadcrumb = 0b001;
+        /// Create a [`sentry_core::protocol::Event`] from this [`Event`]
+        const Event = 0b010;
+        /// Create a [`sentry_core::protocol::Log`] from this [`Event`]
+        const Log = 0b100;
+    }
 }
 
-/// The type of data Sentry should ingest for a [`Event`]
+/// The type of data Sentry should ingest for an [`Event`].
 #[derive(Debug)]
 #[allow(clippy::large_enum_variant)]
 pub enum EventMapping {
@@ -40,6 +42,27 @@ pub enum EventMapping {
     /// Captures the [`sentry_core::protocol::Log`] to Sentry.
     #[cfg(feature = "logs")]
     Log(sentry_core::protocol::Log),
+    /// Captures multiple items to Sentry.
+    Combined(CombinedEventMapping),
+}
+
+/// A list of event mappings.
+#[derive(Debug)]
+pub struct CombinedEventMapping(Vec<EventMapping>);
+
+impl From<EventMapping> for CombinedEventMapping {
+    fn from(value: EventMapping) -> Self {
+        match value {
+            EventMapping::Combined(combined) => combined,
+            _ => CombinedEventMapping(vec![value]),
+        }
+    }
+}
+
+impl From<Vec<EventMapping>> for CombinedEventMapping {
+    fn from(value: Vec<EventMapping>) -> Self {
+        Self(value)
+    }
 }
 
 /// The default event filter.
@@ -211,30 +234,44 @@ where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
     fn on_event(&self, event: &Event, ctx: Context<'_, S>) {
-        let item = match &self.event_mapper {
+        let items = match &self.event_mapper {
             Some(mapper) => mapper(event, ctx),
             None => {
                 let span_ctx = self.with_span_attributes.then_some(ctx);
-                match (self.event_filter)(event.metadata()) {
-                    EventFilter::Ignore => EventMapping::Ignore,
-                    EventFilter::Breadcrumb => {
-                        EventMapping::Breadcrumb(breadcrumb_from_event(event, span_ctx))
-                    }
-                    EventFilter::Event => EventMapping::Event(event_from_event(event, span_ctx)),
-                    #[cfg(feature = "logs")]
-                    EventFilter::Log => EventMapping::Log(log_from_event(event, span_ctx)),
+                let filter = (self.event_filter)(event.metadata());
+                let mut items = vec![];
+                if filter.contains(EventFilter::Breadcrumb) {
+                    items.push(EventMapping::Breadcrumb(breadcrumb_from_event(
+                        event,
+                        span_ctx.as_ref(),
+                    )));
                 }
+                if filter.contains(EventFilter::Event) {
+                    items.push(EventMapping::Event(event_from_event(
+                        event,
+                        span_ctx.as_ref(),
+                    )));
+                }
+                #[cfg(feature = "logs")]
+                if filter.contains(EventFilter::Log) {
+                    items.push(EventMapping::Log(log_from_event(event, span_ctx.as_ref())));
+                }
+                EventMapping::Combined(CombinedEventMapping(items))
             }
         };
+        let items = CombinedEventMapping::from(items);
 
-        match item {
-            EventMapping::Event(event) => {
-                sentry_core::capture_event(event);
+        for item in items.0 {
+            match item {
+                EventMapping::Ignore => (),
+                EventMapping::Breadcrumb(breadcrumb) => sentry_core::add_breadcrumb(breadcrumb),
+                EventMapping::Event(event) => {
+                    sentry_core::capture_event(event);
+                }
+                #[cfg(feature = "logs")]
+                EventMapping::Log(log) => sentry_core::Hub::with_active(|hub| hub.capture_log(log)),
+                _ => (),
             }
-            EventMapping::Breadcrumb(breadcrumb) => sentry_core::add_breadcrumb(breadcrumb),
-            #[cfg(feature = "logs")]
-            EventMapping::Log(log) => sentry_core::Hub::with_active(|hub| hub.capture_log(log)),
-            _ => (),
         }
     }
 
