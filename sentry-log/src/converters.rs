@@ -89,7 +89,7 @@ pub fn event_from_record(record: &log::Record<'_>) -> Event<'static> {
     let visitor = extract_record_attributes(record);
     let attributes = visitor.json_values;
 
-    let mut context = BTreeMap::new();
+    let mut contexts = BTreeMap::new();
 
     let mut metadata_map = BTreeMap::new();
     metadata_map.insert("logger.target".into(), record.target().into());
@@ -102,13 +102,13 @@ pub fn event_from_record(record: &log::Record<'_>) -> Event<'static> {
     if let Some(line) = record.line() {
         metadata_map.insert("logger.line".into(), line.into());
     }
-    context.insert(
+    contexts.insert(
         "Rust Log Metadata".to_string(),
         sentry_core::protocol::Context::Other(metadata_map),
     );
 
     if !attributes.is_empty() {
-        context.insert(
+        contexts.insert(
             "Rust Log Attributes".to_string(),
             sentry_core::protocol::Context::Other(attributes),
         );
@@ -118,7 +118,7 @@ pub fn event_from_record(record: &log::Record<'_>) -> Event<'static> {
         logger: Some(record.target().into()),
         level: convert_log_level(record.level()),
         message: Some(record.args().to_string()),
-        contexts: context,
+        contexts,
         ..Default::default()
     }
 }
