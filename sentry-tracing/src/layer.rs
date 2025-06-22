@@ -271,7 +271,11 @@ where
                 }
                 #[cfg(feature = "logs")]
                 EventMapping::Log(log) => sentry_core::Hub::with_active(|hub| hub.capture_log(log)),
-                EventMapping::Combined(_) => sentry_debug!("[SentryLayer] found nested CombinedEventMapping, ignoring"),
+                EventMapping::Combined(_) => {
+                    sentry_core::sentry_debug!(
+                        "[SentryLayer] found nested CombinedEventMapping, ignoring"
+                    )
+                }
             }
         }
     }
