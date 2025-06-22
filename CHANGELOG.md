@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Features 
+
+- feat(core): emit debug log when calling capture_log but logs are disabled (#849) by @lcian
+
 ### Fixes
 
 - fix(logs): stringify u64 attributes greater than `i64::MAX` (#846) by @lcian
