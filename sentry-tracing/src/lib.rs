@@ -86,7 +86,7 @@
 //!
 //! Tracing events can be captured as traditional structured logs in Sentry.
 //! This is gated by the `logs` feature flag and requires setting up a custom Event filter/mapper
-//! to capture logs.
+//! to capture logs. You also need to pass `enable_logs: true` in your `sentry::init` call.
 //!
 //! ```
 //! // assuming `tracing::Level::INFO => EventFilter::Log` in your `event_filter`
@@ -140,6 +140,23 @@
 //! let custom_error = io::Error::new(io::ErrorKind::Other, "oh no");
 //! tracing::error!(error = &custom_error as &dyn Error, "my operation failed");
 //! ```
+//!
+//! # Sending multiple items to Sentry
+//!
+//! To map a `tracing` event to multiple items in Sentry, you can combine multiple event filters
+//! using the bitwise or operator:
+//!
+//! ```
+//! let sentry_layer = sentry::integrations::tracing::layer()
+//!     .event_filter(|md| match *md.level() {
+//!         tracing::Level::ERROR => EventFilter::Event | EventFilter::Log,
+//!         tracing::Level::TRACE => EventFilter::Ignore,
+//!         _ => EventFilter::Log,
+//!     })
+//!     .span_filter(|md| matches!(*md.level(), tracing::Level::ERROR | tracing::Level::WARN));
+//! ```
+//!
+//! If you're using a custom event mapper instead of an event filter, use `EventMapping::Combined`.
 //!
 //! # Tracing Spans
 //!
