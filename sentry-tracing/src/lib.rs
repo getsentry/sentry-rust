@@ -155,7 +155,8 @@
 //!         tracing::Level::TRACE => EventFilter::Ignore,
 //!         _ => EventFilter::Log,
 //!     })
-//!     .span_filter(|md| matches!(*md.level(), tracing::Level::ERROR | tracing::Level::WARN));
+//!     .span_filter(|md| matches!(*md.level(), tracing::Level::ERROR | tracing::Level::WARN))
+//!     .boxed();
 //! ```
 //!
 //! If you're using a custom event mapper instead of an event filter, use `EventMapping::Combined`.
