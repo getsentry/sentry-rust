@@ -22,7 +22,6 @@ fn test_log() {
 
     assert_eq!(event.tags["worker"], "worker1");
     assert_eq!(event.level, sentry::Level::Error);
-
     assert_eq!(event.breadcrumbs[0].level, sentry::Level::Info);
     assert_eq!(event.breadcrumbs[0].message, Some("Hello World!".into()));
 }
