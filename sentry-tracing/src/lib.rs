@@ -147,6 +147,8 @@
 //! using the bitwise or operator:
 //!
 //! ```
+//! use sentry::integrations::tracing::EventFilter;
+//!
 //! let sentry_layer = sentry::integrations::tracing::layer()
 //!     .event_filter(|md| match *md.level() {
 //!         tracing::Level::ERROR => EventFilter::Event | EventFilter::Log,
