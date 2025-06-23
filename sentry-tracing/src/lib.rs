@@ -147,6 +147,9 @@
 //! using the bitwise or operator:
 //!
 //! ```
+//! use sentry::integrations::tracing::EventFilter;
+//! use tracing_subscriber::prelude::*;
+//!
 //! let sentry_layer = sentry::integrations::tracing::layer()
 //!     .event_filter(|md| match *md.level() {
 //!         tracing::Level::ERROR => EventFilter::Event | EventFilter::Log,
@@ -154,6 +157,11 @@
 //!         _ => EventFilter::Log,
 //!     })
 //!     .span_filter(|md| matches!(*md.level(), tracing::Level::ERROR | tracing::Level::WARN));
+//!
+//! tracing_subscriber::registry()
+//!     .with(tracing_subscriber::fmt::layer())
+//!     .with(sentry_layer)
+//!     .init();
 //! ```
 //!
 //! If you're using a custom event mapper instead of an event filter, use `EventMapping::Combined`.
