@@ -148,6 +148,7 @@
 //!
 //! ```
 //! use sentry::integrations::tracing::EventFilter;
+//! use tracing_subscriber::layer::Layer;
 //!
 //! let sentry_layer = sentry::integrations::tracing::layer()
 //!     .event_filter(|md| match *md.level() {
