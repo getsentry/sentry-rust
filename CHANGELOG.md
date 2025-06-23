@@ -10,6 +10,10 @@
   - It's also possible to use `EventMapping::Combined` to map a `tracing` event to multiple items in Sentry.
   - `ctx` in the signatures of `event_from_event`, `breadcrumb_from_event` and `log_from_event` has been changed to take `impl Into<Option<&'context Context<'context, S>>>` to avoid cloning the `Context` when mapping to multiple items.
 
+### Features 
+
+- feat(core): emit debug log when calling capture_log but logs are disabled (#849) by @lcian
+
 ### Fixes
 
 - fix(logs): stringify u64 attributes greater than `i64::MAX` (#846) by @lcian
