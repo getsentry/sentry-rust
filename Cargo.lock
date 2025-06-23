@@ -3159,7 +3159,7 @@ dependencies = [
 
 [[package]]
 name = "sentry"
-version = "0.40.0"
+version = "0.41.0"
 dependencies = [
  "actix-web",
  "anyhow",
@@ -3195,7 +3195,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-actix"
-version = "0.40.0"
+version = "0.41.0"
 dependencies = [
  "actix-http",
  "actix-web",
@@ -3209,7 +3209,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-anyhow"
-version = "0.40.0"
+version = "0.41.0"
 dependencies = [
  "anyhow",
  "sentry",
@@ -3219,7 +3219,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-backtrace"
-version = "0.40.0"
+version = "0.41.0"
 dependencies = [
  "backtrace",
  "regex",
@@ -3228,7 +3228,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-contexts"
-version = "0.40.0"
+version = "0.41.0"
 dependencies = [
  "hostname",
  "libc",
@@ -3241,7 +3241,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-core"
-version = "0.40.0"
+version = "0.41.0"
 dependencies = [
  "anyhow",
  "criterion",
@@ -3260,7 +3260,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-debug-images"
-version = "0.40.0"
+version = "0.41.0"
 dependencies = [
  "findshlibs",
  "sentry-core",
@@ -3268,7 +3268,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-log"
-version = "0.40.0"
+version = "0.41.0"
 dependencies = [
  "log",
  "pretty_env_logger",
@@ -3278,7 +3278,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-opentelemetry"
-version = "0.40.0"
+version = "0.41.0"
 dependencies = [
  "opentelemetry",
  "opentelemetry_sdk",
@@ -3288,7 +3288,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-panic"
-version = "0.40.0"
+version = "0.41.0"
 dependencies = [
  "sentry",
  "sentry-backtrace",
@@ -3297,7 +3297,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-slog"
-version = "0.40.0"
+version = "0.41.0"
 dependencies = [
  "erased-serde",
  "sentry",
@@ -3309,7 +3309,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-tower"
-version = "0.40.0"
+version = "0.41.0"
 dependencies = [
  "anyhow",
  "axum 0.8.3",
@@ -3329,7 +3329,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-tracing"
-version = "0.40.0"
+version = "0.41.0"
 dependencies = [
  "bitflags 2.9.1",
  "log",
@@ -3345,7 +3345,7 @@ dependencies = [
 
 [[package]]
 name = "sentry-types"
-version = "0.40.0"
+version = "0.41.0"
 dependencies = [
  "debugid",
  "hex",
