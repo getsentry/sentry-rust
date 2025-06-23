@@ -146,9 +146,9 @@
 //! To map a `tracing` event to multiple items in Sentry, you can combine multiple event filters
 //! using the bitwise or operator:
 //!
-//! ```no_run
+//! ```
 //! use sentry::integrations::tracing::EventFilter;
-//! use tracing_subscriber::layer::Layer;
+//! use tracing_subscriber::prelude::*;
 //!
 //! let sentry_layer = sentry::integrations::tracing::layer()
 //!     .event_filter(|md| match *md.level() {
@@ -157,6 +157,11 @@
 //!         _ => EventFilter::Log,
 //!     })
 //!     .span_filter(|md| matches!(*md.level(), tracing::Level::ERROR | tracing::Level::WARN));
+//!
+//! tracing_subscriber::registry()
+//!     .with(tracing_subscriber::fmt::layer())
+//!     .with(sentry_layer)
+//!     .init();
 //! ```
 //!
 //! If you're using a custom event mapper instead of an event filter, use `EventMapping::Combined`.
