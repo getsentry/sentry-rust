@@ -464,7 +464,8 @@ impl Client {
     /// Captures a log and sends it to Sentry.
     #[cfg(feature = "logs")]
     pub fn capture_log(&self, log: Log, scope: &Scope) {
-        if !self.options().enable_logs {
+        if !self.options.enable_logs {
+            sentry_debug!("[Client] called capture_log, but options.enable_logs is set to false");
             return;
         }
         if let Some(log) = self.prepare_log(log, scope) {
