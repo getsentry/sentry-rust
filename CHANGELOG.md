@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- feat(log): support kv feature of log (#851) by @lcian
+  - Attributes added to a `log` record using the `kv` feature are now recorded as attributes on the log sent to Sentry.
+
 ## 0.41.0
 
 ### Breaking changes
