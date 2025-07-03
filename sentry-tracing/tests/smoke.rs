@@ -33,7 +33,7 @@ fn should_instrument_function_with_event() {
         unexpected => panic!("Expected transaction, but got {unexpected:#?}"),
     };
     assert_eq!(transaction.tags.len(), 1);
-    assert_eq!(trace.data.len(), 2);
+    assert_eq!(trace.data.len(), 3);
 
     let tag = transaction
         .tags
