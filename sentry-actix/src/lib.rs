@@ -322,6 +322,7 @@ where
 
             let transaction = hub.start_transaction(ctx);
             transaction.set_request(sentry_req.clone());
+            transaction.set_data("origin", "auto.http.actix".into());
             Some(transaction)
         } else {
             None

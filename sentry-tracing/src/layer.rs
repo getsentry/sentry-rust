@@ -313,7 +313,9 @@ where
             Some(parent) => parent.start_child(op, &description).into(),
             None => {
                 let ctx = sentry_core::TransactionContext::new(&description, op);
-                sentry_core::start_transaction(ctx).into()
+                let tx = sentry_core::start_transaction(ctx);
+                tx.set_data("origin", "auto.tracing".into());
+                tx.into()
             }
         };
         // Add the data from the original span to the sentry span.
