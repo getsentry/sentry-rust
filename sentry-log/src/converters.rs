@@ -57,7 +57,7 @@ impl log::kv::VisitSource<'_> for AttributeVisitor {
         } else if let Some(value) = value.to_bool() {
             self.record(key, value);
         } else {
-            self.record(key, format!("{:?}", value));
+            self.record(key, format!("{value:?}"));
         };
 
         Ok(())
