@@ -99,8 +99,7 @@ pub struct ClientOptions {
     /// Enables debug mode.
     ///
     /// In debug mode debug information is printed to stderr to help you understand what
-    /// sentry is doing.  When the `log` feature is enabled, Sentry will instead
-    /// log to the `sentry` logger independently of this flag with the `Debug` level.
+    /// sentry is doing.
     pub debug: bool,
     /// The release to be sent with events.
     pub release: Option<Cow<'static, str>>,
