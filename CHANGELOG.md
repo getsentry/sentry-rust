@@ -5,7 +5,7 @@
 - feat(log): support kv feature of log (#851) by @lcian
   - Attributes added to a `log` record using the `kv` feature are now recorded as attributes on the log sent to Sentry.
 
-## Fixes
+### Fixes
 
 - docs: match description of `debug` option with behavior since PR #820 ([#860](https://github.com/getsentry/sentry-rust/pull/860)) by @AlexTMjugador
 
