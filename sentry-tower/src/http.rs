@@ -5,7 +5,7 @@ use std::task::{Context, Poll};
 
 use http::{header, uri, Request, Response, StatusCode};
 use pin_project::pinned_drop;
-use sentry_core::utils::is_sensitive_header;
+use sentry_core::utils::{is_sensitive_header, scrub_pii_from_url};
 use sentry_core::{protocol, Hub};
 use tower_layer::Layer;
 use tower_service::Service;
@@ -187,7 +187,10 @@ where
     fn call(&mut self, request: Request<ReqBody>) -> Self::Future {
         let sentry_req = sentry_core::protocol::Request {
             method: Some(request.method().to_string()),
-            url: get_url_from_request(&request),
+            url: get_url_from_request(&request).map(|mut url| {
+                scrub_pii_from_url(&mut url);
+                url
+            }),
             headers: request
                 .headers()
                 .into_iter()
