@@ -1,7 +1,5 @@
 //! Utilities reused across dependant crates and integrations.
 
-use url::Url;
-
 const SENSITIVE_HEADERS_UPPERCASE: &[&str] = &[
     "AUTHORIZATION",
     "PROXY_AUTHORIZATION",
@@ -21,7 +19,7 @@ pub fn is_sensitive_header(name: &str) -> bool {
 }
 
 /// Scrub PII (username and password) from the given URL.
-pub fn scrub_pii_from_url(url: &mut Url) {
+pub fn scrub_pii_from_url(url: &mut url::Url) {
     if !url.username().is_empty() {
         let _ = url.set_username(PII_REPLACEMENT);
     }
