@@ -11,7 +11,7 @@
 
 - feat: filter username and password in URLs ([#864](https://github.com/getsentry/sentry-rust/pull/864)) by @lcian
   - Usernames and passwords that could be contained in URLs captured when using the Actix Web or axum integration are now always filtered out.
-  - If the `Request` is created manually by the user, these fields are not filtered out.
+  - If the `Request` is created manually by the user, then these fields are not filtered out.
   - This information was already filtered by Relay, but should also be filtered by the SDK itself as a first line of defense.
 
 ### Fixes
