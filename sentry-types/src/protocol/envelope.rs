@@ -7,11 +7,11 @@ use uuid::Uuid;
 use crate::utils::ts_rfc3339_opt;
 use crate::Dsn;
 
-use super::v7::{self as protocol, ClientSdkInfo, DynamicSamplingContext};
+use super::v7::{self as protocol};
 
 use protocol::{
-    Attachment, AttachmentType, Event, Log, MonitorCheckIn, SessionAggregates, SessionUpdate,
-    Transaction,
+    Attachment, AttachmentType, ClientSdkInfo, DynamicSamplingContext, Event, Log, MonitorCheckIn,
+    SessionAggregates, SessionUpdate, Transaction,
 };
 
 /// Raised if a envelope cannot be parsed from a given input.
