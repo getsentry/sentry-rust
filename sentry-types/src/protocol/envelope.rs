@@ -42,7 +42,7 @@ pub enum EnvelopeError {
 
 /// The supported [Sentry Envelope Headers](https://develop.sentry.dev/sdk/data-model/envelopes/#headers).
 #[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq)]
-pub struct EnvelopeHeaders {
+struct EnvelopeHeaders {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     event_id: Option<Uuid>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -57,63 +57,6 @@ pub struct EnvelopeHeaders {
     sent_at: Option<SystemTime>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     trace: Option<DynamicSamplingContext>,
-}
-
-impl EnvelopeHeaders {
-    /// Returns the Envelope's Event ID, matching the Event ID of the contained event/transaction,
-    /// if any.
-    pub fn event_id(&self) -> Option<&Uuid> {
-        self.event_id.as_ref()
-    }
-
-    /// Sets the Event ID.
-    pub fn set_event_id(&mut self, event_id: Option<Uuid>) {
-        self.event_id = event_id;
-    }
-
-    /// Returns the DSN.
-    pub fn dsn(&self) -> Option<&Dsn> {
-        self.dsn.as_ref()
-    }
-
-    /// Sets the DSN.
-    pub fn set_dsn(&mut self, dsn: Option<Dsn>) {
-        self.dsn = dsn;
-    }
-
-    /// Returns the SDK information.
-    pub fn sdk(&self) -> Option<&ClientSdkInfo> {
-        self.sdk.as_ref()
-    }
-
-    /// Sets the SDK information.
-    pub fn set_sdk(&mut self, sdk: Option<ClientSdkInfo>) {
-        self.sdk = sdk;
-    }
-
-    /// Returns the time this envelope was sent.
-    pub fn sent_at(&self) -> Option<&SystemTime> {
-        self.sent_at.as_ref()
-    }
-
-    /// Sets the time this envelope was sent.
-    /// The value of this timestamp should be generated as close as possible to the transmission of
-    /// the event.
-    /// If offline caching is implemented, the SDK should avoid writing this value when envelopes
-    /// are saved to disk.
-    pub fn set_sent_at(&mut self, sent_at: Option<SystemTime>) {
-        self.sent_at = sent_at;
-    }
-
-    /// Returns the Dynamic Sampling Context.
-    pub fn trace(&self) -> Option<&DynamicSamplingContext> {
-        self.trace.as_ref()
-    }
-
-    /// Sets the Dynamic Sampling Context.
-    pub fn set_trace(&mut self, trace: Option<DynamicSamplingContext>) {
-        self.trace = trace;
-    }
 }
 
 /// An Envelope Item Type.
@@ -389,16 +332,6 @@ impl Envelope {
         };
 
         EnvelopeItemIter { inner }
-    }
-
-    /// Returns a reference to the Envelope's headers.
-    pub fn headers(&self) -> &EnvelopeHeaders {
-        &self.headers
-    }
-
-    /// Sets the Envelope's headers.
-    pub fn set_headers(&mut self, headers: EnvelopeHeaders) {
-        self.headers = headers;
     }
 
     /// Returns the Envelopes Uuid, if any.
