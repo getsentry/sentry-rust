@@ -7,6 +7,7 @@ use std::time::Duration;
 use super::ratelimit::{RateLimiter, RateLimitingCategory};
 use crate::{sentry_debug, Envelope};
 
+#[expect(clippy::large_enum_variant)]
 enum Task {
     SendEnvelope(Envelope),
     Flush(SyncSender<()>),

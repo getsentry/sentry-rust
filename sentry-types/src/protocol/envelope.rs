@@ -1,10 +1,13 @@
-use std::{io::Write, path::Path};
+use std::{io::Write, path::Path, time::SystemTime};
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
 
-use super::v7 as protocol;
+use crate::utils::ts_rfc3339_opt;
+use crate::Dsn;
+
+use super::v7::{self as protocol, ClientSdkInfo, DynamicSamplingContext};
 
 use protocol::{
     Attachment, AttachmentType, Event, Log, MonitorCheckIn, SessionAggregates, SessionUpdate,
@@ -37,9 +40,80 @@ pub enum EnvelopeError {
     InvalidItemPayload(#[source] serde_json::Error),
 }
 
-#[derive(Deserialize)]
-struct EnvelopeHeader {
+/// The supported [Sentry Envelope Headers](https://develop.sentry.dev/sdk/data-model/envelopes/#headers).
+#[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq)]
+pub struct EnvelopeHeaders {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     event_id: Option<Uuid>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    dsn: Option<Dsn>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    sdk: Option<ClientSdkInfo>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "ts_rfc3339_opt"
+    )]
+    sent_at: Option<SystemTime>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    trace: Option<DynamicSamplingContext>,
+}
+
+impl EnvelopeHeaders {
+    /// Returns the Envelope's Event ID, matching the Event ID of the contained event/transaction,
+    /// if any.
+    pub fn event_id(&self) -> Option<&Uuid> {
+        self.event_id.as_ref()
+    }
+
+    /// Sets the Event ID.
+    pub fn set_event_id(&mut self, event_id: Option<Uuid>) {
+        self.event_id = event_id;
+    }
+
+    /// Returns the DSN.
+    pub fn dsn(&self) -> Option<&Dsn> {
+        self.dsn.as_ref()
+    }
+
+    /// Sets the DSN.
+    pub fn set_dsn(&mut self, dsn: Option<Dsn>) {
+        self.dsn = dsn;
+    }
+
+    /// Returns the SDK information.
+    pub fn sdk(&self) -> Option<&ClientSdkInfo> {
+        self.sdk.as_ref()
+    }
+
+    /// Sets the SDK information.
+    pub fn set_sdk(&mut self, sdk: Option<ClientSdkInfo>) {
+        self.sdk = sdk;
+    }
+
+    /// Returns the time this envelope was sent.
+    pub fn sent_at(&self) -> Option<&SystemTime> {
+        self.sent_at.as_ref()
+    }
+
+    /// Sets the time this envelope was sent.
+    /// The value of this timestamp should be generated as close as possible to the transmission of
+    /// the event.
+    /// If offline caching is implemented, the SDK should avoid writing this value when envelopes
+    /// are saved to disk.
+    pub fn set_sent_at(&mut self, sent_at: Option<SystemTime>) {
+        self.sent_at = sent_at;
+    }
+
+    /// Returns the Dynamic Sampling Context.
+    pub fn trace(&self) -> Option<&DynamicSamplingContext> {
+        self.trace.as_ref()
+    }
+
+    /// Sets the Dynamic Sampling Context.
+    pub fn set_trace(&mut self, trace: Option<DynamicSamplingContext>) {
+        self.trace = trace;
+    }
 }
 
 /// An Envelope Item Type.
@@ -271,7 +345,7 @@ impl Items {
 /// for more details.
 #[derive(Clone, Default, Debug, PartialEq)]
 pub struct Envelope {
-    event_id: Option<Uuid>,
+    headers: EnvelopeHeaders,
     items: Items,
 }
 
@@ -297,11 +371,11 @@ impl Envelope {
             return;
         };
 
-        if self.event_id.is_none() {
+        if self.headers.event_id.is_none() {
             if let EnvelopeItem::Event(ref event) = item {
-                self.event_id = Some(event.event_id);
+                self.headers.event_id = Some(event.event_id);
             } else if let EnvelopeItem::Transaction(ref transaction) = item {
-                self.event_id = Some(transaction.event_id);
+                self.headers.event_id = Some(transaction.event_id);
             }
         }
         items.push(item);
@@ -317,9 +391,19 @@ impl Envelope {
         EnvelopeItemIter { inner }
     }
 
+    /// Returns a reference to the Envelope's headers.
+    pub fn headers(&self) -> &EnvelopeHeaders {
+        &self.headers
+    }
+
+    /// Sets the Envelope's headers.
+    pub fn set_headers(&mut self, headers: EnvelopeHeaders) {
+        self.headers = headers;
+    }
+
     /// Returns the Envelopes Uuid, if any.
     pub fn uuid(&self) -> Option<&Uuid> {
-        self.event_id.as_ref()
+        self.headers.event_id.as_ref()
     }
 
     /// Returns the [`Event`] contained in this Envelope, if any.
@@ -391,11 +475,8 @@ impl Envelope {
         };
 
         // write the headers:
-        let event_id = self.uuid();
-        match event_id {
-            Some(uuid) => writeln!(writer, r#"{{"event_id":"{uuid}"}}"#)?,
-            _ => writeln!(writer, "{{}}")?,
-        }
+        serde_json::to_writer(&mut writer, &self.headers)?;
+        writer.write_all(b"\n")?;
 
         let mut item_buf = Vec::new();
         // write each item:
@@ -466,11 +547,11 @@ impl Envelope {
 
     /// Creates a new Envelope from slice.
     pub fn from_slice(slice: &[u8]) -> Result<Envelope, EnvelopeError> {
-        let (header, offset) = Self::parse_header(slice)?;
+        let (headers, offset) = Self::parse_headers(slice)?;
         let items = Self::parse_items(slice, offset)?;
 
         let mut envelope = Envelope {
-            event_id: header.event_id,
+            headers,
             ..Default::default()
         };
 
@@ -484,8 +565,8 @@ impl Envelope {
     /// Creates a new raw Envelope from the given buffer.
     pub fn from_bytes_raw(bytes: Vec<u8>) -> Result<Self, EnvelopeError> {
         Ok(Self {
-            event_id: None,
             items: Items::Raw(bytes),
+            ..Default::default()
         })
     }
 
@@ -504,19 +585,16 @@ impl Envelope {
         Self::from_bytes_raw(bytes)
     }
 
-    fn parse_header(slice: &[u8]) -> Result<(EnvelopeHeader, usize), EnvelopeError> {
-        let mut stream = serde_json::Deserializer::from_slice(slice).into_iter();
+    fn parse_headers(slice: &[u8]) -> Result<(EnvelopeHeaders, usize), EnvelopeError> {
+        let first_line = slice
+            .splitn(2, |b| *b == b'\n')
+            .next()
+            .ok_or(EnvelopeError::MissingNewline)?;
 
-        let header: EnvelopeHeader = match stream.next() {
-            None => return Err(EnvelopeError::MissingHeader),
-            Some(Err(error)) => return Err(EnvelopeError::InvalidHeader(error)),
-            Some(Ok(header)) => header,
-        };
+        let headers: EnvelopeHeaders =
+            serde_json::from_slice(first_line).map_err(EnvelopeError::InvalidHeader)?;
 
-        // Each header is terminated by a UNIX newline.
-        Self::require_termination(slice, stream.byte_offset())?;
-
-        Ok((header, stream.byte_offset() + 1))
+        Ok((headers, first_line.len() + 1))
     }
 
     fn parse_items(slice: &[u8], mut offset: usize) -> Result<Vec<EnvelopeItem>, EnvelopeError> {
@@ -848,7 +926,7 @@ some content
         let envelope = Envelope::from_slice(bytes).unwrap();
 
         let event_id = Uuid::from_str("9ec79c33ec9942ab8353589fcb2e04dc").unwrap();
-        assert_eq!(envelope.event_id, Some(event_id));
+        assert_eq!(envelope.headers.event_id, Some(event_id));
         assert_eq!(envelope.items().count(), 0);
     }
 
@@ -1009,6 +1087,20 @@ some content
         } else {
             panic!("invalid item type");
         }
+    }
+
+    #[test]
+    fn test_all_envelope_headers_roundtrip() {
+        let bytes = br#"{"event_id":"22d00b3f-d1b1-4b5d-8d20-49d138cd8a9c","sdk":{"name":"3e934135-3f2b-49bc-8756-9f025b55143e","version":"3e31738e-4106-42d0-8be2-4a3a1bc648d3","integrations":["daec50ae-8729-49b5-82f7-991446745cd5","8fc94968-3499-4a2c-b4d7-ecc058d9c1b0"],"packages":[{"name":"b59a1949-9950-4203-b394-ddd8d02c9633","version":"3d7790f3-7f32-43f7-b82f-9f5bc85205a8"}]},"sent_at":"2020-02-07T14:16:00Z","trace":{"trace_id":"65bcd18546c942069ed957b15b4ace7c","public_key":"5d593cac-f833-4845-bb23-4eabdf720da2","sample_rate":"0.00000021","sampled":"true","sample_rand":"0.00000012","environment":"0666ab02-6364-4135-aa59-02e8128ce052","transaction":"0252ec25-cd0a-4230-bd2f-936a4585637e"}}
+{"type":"event","length":74}
+{"event_id":"22d00b3fd1b14b5d8d2049d138cd8a9c","timestamp":1595256674.296}
+"#;
+
+        let envelope = Envelope::from_slice(bytes);
+        assert!(envelope.is_ok());
+        let envelope = envelope.unwrap();
+        let serialized = to_str(envelope);
+        assert_eq!(bytes, serialized.as_bytes());
     }
 
     // Test all possible item types in a single envelope
