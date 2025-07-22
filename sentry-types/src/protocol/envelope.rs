@@ -409,7 +409,7 @@ impl Envelope {
 
         // write the headers:
         serde_json::to_writer(&mut writer, &self.headers)?;
-        writer.write_all(b"\n")?;
+        writeln!(writer)?;
 
         let mut item_buf = Vec::new();
         // write each item:
