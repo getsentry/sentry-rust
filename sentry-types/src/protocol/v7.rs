@@ -2339,7 +2339,7 @@ impl<'de> Deserialize<'de> for LogAttribute {
 
 /// An ID that identifies an organization in the Sentry backend.
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
-pub struct OrganizationId(u64);
+struct OrganizationId(u64);
 
 impl std::str::FromStr for OrganizationId {
     type Err = std::num::ParseIntError;
@@ -2363,7 +2363,7 @@ impl std::fmt::Display for OrganizationId {
 /// The backend needs additional information from the SDK to support these features, contained in
 /// the Dynamic Sampling Context.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub struct DynamicSamplingContext {
+pub(crate) struct DynamicSamplingContext {
     // Strictly required fields
     // Still typed as optional, as when deserializing an envelope created by an older SDK they might still be missing
     #[serde(default, skip_serializing_if = "Option::is_none")]
