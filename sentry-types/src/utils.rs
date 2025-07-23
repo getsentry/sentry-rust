@@ -190,7 +190,7 @@ pub mod ts_rfc3339_opt {
 }
 
 // Serialize and deserialize the inner value into/from a string using the `ToString`/`FromStr` implementation.
-pub mod display_from_str_opt {
+pub(crate) mod display_from_str_opt {
     use serde::{de, ser, Deserialize};
 
     pub fn serialize<T, S>(value: &Option<T>, serializer: S) -> Result<S::Ok, S::Error>

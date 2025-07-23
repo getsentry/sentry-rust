@@ -2341,6 +2341,12 @@ impl<'de> Deserialize<'de> for LogAttribute {
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 struct OrganizationId(u64);
 
+impl From<u64> for OrganizationId {
+    fn from(value: u64) -> Self {
+        Self(value)
+    }
+}
+
 impl std::str::FromStr for OrganizationId {
     type Err = std::num::ParseIntError;
 
@@ -2352,6 +2358,30 @@ impl std::str::FromStr for OrganizationId {
 impl std::fmt::Display for OrganizationId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+
+/// A random number generated at the start of a trace by the head of trace SDK.
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
+struct SampleRand(f64);
+
+impl From<f64> for SampleRand {
+    fn from(value: f64) -> Self {
+        Self(value)
+    }
+}
+
+impl std::str::FromStr for SampleRand {
+    type Err = std::num::ParseFloatError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        s.parse().map(Self)
+    }
+}
+
+impl std::fmt::Display for SampleRand {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:.6}", self.0)
     }
 }
 
@@ -2376,19 +2406,21 @@ pub(crate) struct DynamicSamplingContext {
         with = "display_from_str_opt"
     )]
     sample_rate: Option<f32>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        with = "display_from_str_opt"
-    )]
-    sampled: Option<bool>,
     // Required fields
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         with = "display_from_str_opt"
     )]
-    sample_rand: Option<f32>,
+    sample_rand: Option<SampleRand>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "display_from_str_opt"
+    )]
+    sampled: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    release: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     environment: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

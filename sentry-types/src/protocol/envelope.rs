@@ -1,4 +1,8 @@
-use std::{io::Write, path::Path, time::SystemTime};
+use std::{
+    io::{BufRead, Write},
+    path::Path,
+    time::SystemTime,
+};
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -519,13 +523,17 @@ impl Envelope {
     }
 
     fn parse_headers(slice: &[u8]) -> Result<(EnvelopeHeaders, usize), EnvelopeError> {
-        let first_line = slice
-            .splitn(2, |b| *b == b'\n')
+        let mut lines = slice.lines();
+        let first_line = lines
             .next()
-            .ok_or(EnvelopeError::MissingNewline)?;
+            .ok_or(EnvelopeError::MissingHeader)?
+            .map_err(|_| EnvelopeError::MissingHeader)?;
+        if lines.next().is_none() {
+            return Err(EnvelopeError::MissingNewline);
+        }
 
         let headers: EnvelopeHeaders =
-            serde_json::from_slice(first_line).map_err(EnvelopeError::InvalidHeader)?;
+            serde_json::from_str(first_line.as_str()).map_err(EnvelopeError::InvalidHeader)?;
 
         Ok((headers, first_line.len() + 1))
     }
