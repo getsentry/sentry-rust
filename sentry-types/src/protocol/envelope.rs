@@ -35,7 +35,7 @@ pub enum EnvelopeError {
     MissingNewline,
     /// Invalid envelope header
     #[error("invalid envelope header")]
-    InvalidHeader(#[source] serde_json::Error),
+    InvalidHeader(#[source] Box<dyn std::error::Error>),
     /// Invalid item header
     #[error("invalid item header")]
     InvalidItemHeader(#[source] serde_json::Error),
@@ -527,13 +527,10 @@ impl Envelope {
         let first_line = lines
             .next()
             .ok_or(EnvelopeError::MissingHeader)?
-            .map_err(|_| EnvelopeError::MissingHeader)?;
-        if lines.next().is_none() {
-            return Err(EnvelopeError::MissingNewline);
-        }
+            .map_err(|err| EnvelopeError::InvalidHeader(Box::new(err)))?;
 
-        let headers: EnvelopeHeaders =
-            serde_json::from_str(first_line.as_str()).map_err(EnvelopeError::InvalidHeader)?;
+        let headers: EnvelopeHeaders = serde_json::from_str(first_line.as_str())
+            .map_err(|err| EnvelopeError::InvalidHeader(Box::new(err)))?;
 
         Ok((headers, first_line.len() + 1))
     }
@@ -1032,7 +1029,7 @@ some content
 
     #[test]
     fn test_all_envelope_headers_roundtrip() {
-        let bytes = br#"{"event_id":"22d00b3f-d1b1-4b5d-8d20-49d138cd8a9c","sdk":{"name":"3e934135-3f2b-49bc-8756-9f025b55143e","version":"3e31738e-4106-42d0-8be2-4a3a1bc648d3","integrations":["daec50ae-8729-49b5-82f7-991446745cd5","8fc94968-3499-4a2c-b4d7-ecc058d9c1b0"],"packages":[{"name":"b59a1949-9950-4203-b394-ddd8d02c9633","version":"3d7790f3-7f32-43f7-b82f-9f5bc85205a8"}]},"sent_at":"2020-02-07T14:16:00Z","trace":{"trace_id":"65bcd18546c942069ed957b15b4ace7c","public_key":"5d593cac-f833-4845-bb23-4eabdf720da2","sample_rate":"0.00000021","sampled":"true","sample_rand":"0.00000012","environment":"0666ab02-6364-4135-aa59-02e8128ce052","transaction":"0252ec25-cd0a-4230-bd2f-936a4585637e"}}
+        let bytes = br#"{"event_id":"22d00b3f-d1b1-4b5d-8d20-49d138cd8a9c","sdk":{"name":"3e934135-3f2b-49bc-8756-9f025b55143e","version":"3e31738e-4106-42d0-8be2-4a3a1bc648d3","integrations":["daec50ae-8729-49b5-82f7-991446745cd5","8fc94968-3499-4a2c-b4d7-ecc058d9c1b0"],"packages":[{"name":"b59a1949-9950-4203-b394-ddd8d02c9633","version":"3d7790f3-7f32-43f7-b82f-9f5bc85205a8"}]},"sent_at":"2020-02-07T14:16:00Z","trace":{"trace_id":"65bcd18546c942069ed957b15b4ace7c","public_key":"5d593cac-f833-4845-bb23-4eabdf720da2","sample_rate":"0.00000021","sample_rand":"0.123456","sampled":"true","environment":"0666ab02-6364-4135-aa59-02e8128ce052","transaction":"0252ec25-cd0a-4230-bd2f-936a4585637e"}}
 {"type":"event","length":74}
 {"event_id":"22d00b3fd1b14b5d8d2049d138cd8a9c","timestamp":1595256674.296}
 "#;
