@@ -189,7 +189,34 @@ pub mod ts_rfc3339_opt {
     }
 }
 
-// Serialize and deserialize the inner value into/from a string using the `ToString`/`FromStr` implementation.
+/// Serialize and deserialize the inner value into/from a string using the `ToString`/`FromStr` implementation.
+///
+/// # Example
+///
+/// ```rust
+/// use serde::{Deserialize, Serialize};
+///
+/// #[derive(Debug, PartialEq, Serialize, Deserialize)]
+/// struct Config {
+///     #[serde(with = "sentry_types::utils::display_from_str_opt")]
+///     host: Option<String>,
+///     #[serde(with = "sentry_types::utils::display_from_str_opt")]
+///     port: Option<u16>,
+///     #[serde(with = "sentry_types::utils::display_from_str_opt")]
+///     enabled: Option<bool>,
+/// }
+///
+/// let config = Config {
+///     host: Some("localhost".to_string()),
+///     port: Some(8080),
+///     enabled: Some(true),
+/// };
+/// let json = serde_json::to_string(&config).unwrap();
+/// assert_eq!(json, r#"{"host":"localhost","port":"8080","enabled":"true"}"#);
+///
+/// let deserialized: Config = serde_json::from_str(&json).unwrap();
+/// assert_eq!(deserialized, config);
+/// ```
 pub(crate) mod display_from_str_opt {
     use serde::{de, ser, Deserialize};
 

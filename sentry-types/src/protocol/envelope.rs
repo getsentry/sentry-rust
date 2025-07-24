@@ -1,8 +1,4 @@
-use std::{
-    io::{BufRead, Write},
-    path::Path,
-    time::SystemTime,
-};
+use std::{io::Write, path::Path, time::SystemTime};
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -35,7 +31,7 @@ pub enum EnvelopeError {
     MissingNewline,
     /// Invalid envelope header
     #[error("invalid envelope header")]
-    InvalidHeader(#[source] Box<dyn std::error::Error>),
+    InvalidHeader(#[source] serde_json::Error),
     /// Invalid item header
     #[error("invalid item header")]
     InvalidItemHeader(#[source] serde_json::Error),
@@ -523,16 +519,18 @@ impl Envelope {
     }
 
     fn parse_headers(slice: &[u8]) -> Result<(EnvelopeHeaders, usize), EnvelopeError> {
-        let mut lines = slice.lines();
-        let first_line = lines
+        let first_line = slice
+            .split(|b| *b == b'\n')
             .next()
-            .ok_or(EnvelopeError::MissingHeader)?
-            .map_err(|err| EnvelopeError::InvalidHeader(Box::new(err)))?;
+            .ok_or(EnvelopeError::MissingHeader)?;
 
-        let headers: EnvelopeHeaders = serde_json::from_str(first_line.as_str())
-            .map_err(|err| EnvelopeError::InvalidHeader(Box::new(err)))?;
+        let headers: EnvelopeHeaders =
+            serde_json::from_slice(first_line).map_err(EnvelopeError::InvalidHeader)?;
 
-        Ok((headers, first_line.len() + 1))
+        let offset = first_line.len();
+        Self::require_termination(slice, offset)?;
+
+        Ok((headers, offset + 1))
     }
 
     fn parse_items(slice: &[u8], mut offset: usize) -> Result<Vec<EnvelopeItem>, EnvelopeError> {
