@@ -1159,7 +1159,6 @@ some content
         .into();
 
         let mut envelope: Envelope = Envelope::new();
-
         envelope.add_item(event);
         envelope.add_item(transaction);
         envelope.add_item(session);
