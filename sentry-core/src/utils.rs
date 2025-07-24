@@ -19,11 +19,12 @@ pub fn is_sensitive_header(name: &str) -> bool {
 }
 
 /// Scrub PII (username and password) from the given URL.
-pub fn scrub_pii_from_url(url: &mut url::Url) {
+pub fn scrub_pii_from_url(mut url: url::Url) -> url::Url {
     if !url.username().is_empty() {
         let _ = url.set_username(PII_REPLACEMENT);
     }
     if url.password().is_some() {
         let _ = url.set_password(Some(PII_REPLACEMENT));
     }
+    url
 }

@@ -429,10 +429,7 @@ fn sentry_request_from_http(request: &ServiceRequest, with_pii: bool) -> Request
         )
         .parse()
         .ok()
-        .map(|mut url| {
-            scrub_pii_from_url(&mut url);
-            url
-        }),
+        .map(scrub_pii_from_url),
         method: Some(request.method().to_string()),
         headers: request
             .headers()

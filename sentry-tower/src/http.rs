@@ -187,10 +187,7 @@ where
     fn call(&mut self, request: Request<ReqBody>) -> Self::Future {
         let sentry_req = sentry_core::protocol::Request {
             method: Some(request.method().to_string()),
-            url: get_url_from_request(&request).map(|mut url| {
-                scrub_pii_from_url(&mut url);
-                url
-            }),
+            url: get_url_from_request(&request).map(scrub_pii_from_url),
             headers: request
                 .headers()
                 .into_iter()
