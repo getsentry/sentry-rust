@@ -7,7 +7,7 @@ use uuid::Uuid;
 use crate::utils::ts_rfc3339_opt;
 use crate::Dsn;
 
-use super::v7::{self as protocol};
+use super::v7 as protocol;
 
 use protocol::{
     Attachment, AttachmentType, ClientSdkInfo, DynamicSamplingContext, Event, Log, MonitorCheckIn,
