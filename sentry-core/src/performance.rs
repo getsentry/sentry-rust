@@ -861,10 +861,11 @@ impl Transaction {
                     transaction.sdk = Some(std::borrow::Cow::Owned(client.sdk_info.clone()));
                     transaction.server_name.clone_from(&opts.server_name);
 
-                    let dsc = protocol::DynamicSamplingContext::new().with_trace_id(Some(inner.context.trace_id))
-                    .with_sample_rate(Some(self.metadata.sample_rate))
-                    .with_public_key(opts.dsn.as_ref().map(|dsn| dsn.public_key().to_owned()))
-                    .with_sampled(Some(inner.sampled));
+                    let dsc = protocol::DynamicSamplingContext::new()
+                        .with_trace_id(Some(inner.context.trace_id))
+                        .with_sample_rate(Some(self.metadata.sample_rate))
+                        .with_public_key(opts.dsn.as_ref().map(|dsn| dsn.public_key().to_owned()))
+                        .with_sampled(Some(inner.sampled));
 
                     drop(inner);
 
