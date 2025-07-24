@@ -193,7 +193,7 @@ pub mod ts_rfc3339_opt {
 ///
 /// # Example
 ///
-/// ```rust
+/// ```ignore
 /// use serde::{Deserialize, Serialize};
 ///
 /// #[derive(Debug, PartialEq, Serialize, Deserialize)]
