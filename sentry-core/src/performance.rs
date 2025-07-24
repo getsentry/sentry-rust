@@ -717,10 +717,11 @@ impl Transaction {
             op: Some(ctx.op),
             ..Default::default()
         };
+        let sampled = ctx.sampled.unwrap_or(false);
 
         Self {
             inner: Arc::new(Mutex::new(TransactionInner {
-                sampled: ctx.sampled.unwrap_or(false),
+                sampled,
                 context,
                 transaction: None,
             })),
