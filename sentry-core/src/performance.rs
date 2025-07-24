@@ -601,29 +601,10 @@ fn transaction_sample_rate(
     }
 }
 
-/// Represents a sampling decision made for a certain transaction.
-struct SamplingDecision {
-    /// Whether the transaction should be sampled.
-    sampled: bool,
-    /// The sample rate that this sampling decision is based on.
-    sample_rate: f32,
-}
-
-impl From<&TransactionContext> for SamplingDecision {
-    fn from(ctx: &TransactionContext) -> Self {
-        Self {
-            sample_rate: ctx
-                .sampled
-                .map_or(0.0, |sampled| if sampled { 1.0 } else { 0.0 }),
-            sampled: ctx.sampled.unwrap_or(false),
-        }
-    }
-}
-
 /// Determine whether the new transaction should be sampled.
 #[cfg(feature = "client")]
 impl Client {
-    fn determine_sampling_decision(&self, ctx: &TransactionContext) -> SamplingDecision {
+    fn determine_sampling_decision(&self, ctx: &TransactionContext) -> (bool, f32) {
         let client_options = self.options();
         let sample_rate = transaction_sample_rate(
             client_options.traces_sampler.as_deref(),
@@ -631,14 +612,12 @@ impl Client {
             client_options.traces_sample_rate,
         );
         let sampled = self.sample_should_send(sample_rate);
-        SamplingDecision {
-            sampled,
-            sample_rate,
-        }
+        (sampled, sample_rate)
     }
 }
 
 /// Some metadata associated with a transaction.
+#[cfg(feature = "client")]
 #[derive(Clone, Debug)]
 struct TransactionMetadata {
     /// The sample rate used when making the sampling decision for the associated transaction.
@@ -653,6 +632,7 @@ struct TransactionMetadata {
 #[derive(Clone, Debug)]
 pub struct Transaction {
     pub(crate) inner: TransactionArc,
+    #[cfg(feature = "client")]
     metadata: TransactionMetadata,
 }
 
@@ -692,7 +672,7 @@ impl<'a> TransactionData<'a> {
 impl Transaction {
     #[cfg(feature = "client")]
     fn new(client: Option<Arc<Client>>, ctx: TransactionContext) -> Self {
-        let (sampling_decision, transaction) = match client.as_ref() {
+        let ((sampled, sample_rate), transaction) = match client.as_ref() {
             Some(client) => (
                 client.determine_sampling_decision(&ctx),
                 Some(protocol::Transaction {
@@ -700,7 +680,14 @@ impl Transaction {
                     ..Default::default()
                 }),
             ),
-            None => (SamplingDecision::from(&ctx), None),
+            None => (
+                (
+                    ctx.sampled.unwrap_or(false),
+                    ctx.sampled
+                        .map_or(0.0, |sampled| if sampled { 1.0 } else { 0.0 }),
+                ),
+                None,
+            ),
         };
 
         let context = protocol::TraceContext {
@@ -714,19 +701,16 @@ impl Transaction {
         Self {
             inner: Arc::new(Mutex::new(TransactionInner {
                 client,
-                sampled: sampling_decision.sampled,
+                sampled,
                 context,
                 transaction,
             })),
-            metadata: TransactionMetadata {
-                sample_rate: sampling_decision.sample_rate,
-            },
+            metadata: TransactionMetadata { sample_rate },
         }
     }
 
     #[cfg(not(feature = "client"))]
     fn new_noop(ctx: TransactionContext) -> Self {
-        let sampling_decision = SamplingDecision::from(&ctx);
         let context = protocol::TraceContext {
             trace_id: ctx.trace_id,
             parent_span_id: ctx.parent_span_id,
@@ -734,19 +718,13 @@ impl Transaction {
             ..Default::default()
         };
 
-        let slf = Self {
+        Self {
             inner: Arc::new(Mutex::new(TransactionInner {
-                sampled: sampling_decision.sampled,
+                sampled: ctx.sampled.unwrap_or(false),
                 context,
                 transaction: None,
             })),
-            metadata: TransactionMetadata {
-                sample_rate: sampling_decision.sample_rate,
-            },
-        };
-        // use the field on cfg(not(feature = "client"))
-        let _ = slf.metadata.sample_rate;
-        slf
+        }
     }
 
     /// Set a data attribute to be sent with this Transaction.
