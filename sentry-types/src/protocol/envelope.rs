@@ -42,7 +42,7 @@ pub enum EnvelopeError {
 
 /// The supported [Sentry Envelope Headers](https://develop.sentry.dev/sdk/data-model/envelopes/#headers).
 #[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq)]
-struct EnvelopeHeaders {
+pub struct EnvelopeHeaders {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     event_id: Option<Uuid>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -57,6 +57,49 @@ struct EnvelopeHeaders {
     sent_at: Option<SystemTime>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     trace: Option<DynamicSamplingContext>,
+}
+
+impl EnvelopeHeaders {
+    /// Creates empty Envelope headers.
+    pub fn new() -> EnvelopeHeaders {
+        Default::default()
+    }
+
+    /// Sets the Event ID.
+    #[must_use]
+    pub fn with_event_id(mut self, event_id: Option<Uuid>) -> Self {
+        self.event_id = event_id;
+        self
+    }
+
+    /// Sets the DSN.
+    #[must_use]
+    pub fn with_dsn(mut self, dsn: Option<Dsn>) -> Self {
+        self.dsn = dsn;
+        self
+    }
+
+    /// Sets the SDK information.
+    #[must_use]
+    pub fn with_sdk(mut self, sdk: Option<ClientSdkInfo>) -> Self {
+        self.sdk = sdk;
+        self
+    }
+
+    /// Sets the time this envelope was sent at.
+    /// This timestamp should be generated as close as possible to the transmission of the event.
+    #[must_use]
+    pub fn with_sent_at(mut self, sent_at: Option<SystemTime>) -> Self {
+        self.sent_at = sent_at;
+        self
+    }
+
+    /// Sets the Dynamic Sampling Context.
+    #[must_use]
+    pub fn with_trace(mut self, trace: Option<DynamicSamplingContext>) -> Self {
+        self.trace = trace;
+        self
+    }
 }
 
 /// An Envelope Item Type.
@@ -332,6 +375,16 @@ impl Envelope {
         };
 
         EnvelopeItemIter { inner }
+    }
+
+    /// Returns the Envelope headers.
+    pub fn headers(&self) -> &EnvelopeHeaders {
+        &self.headers
+    }
+
+    /// Sets the Envelope headers.
+    pub fn set_headers(&mut self, headers: EnvelopeHeaders) {
+        self.headers = headers
     }
 
     /// Returns the Envelopes Uuid, if any.
@@ -1116,7 +1169,6 @@ some content
         .into();
 
         let mut envelope: Envelope = Envelope::new();
-
         envelope.add_item(event);
         envelope.add_item(transaction);
         envelope.add_item(session);
