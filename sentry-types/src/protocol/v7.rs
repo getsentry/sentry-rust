@@ -22,7 +22,7 @@ use thiserror::Error;
 pub use url::Url;
 pub use uuid::Uuid;
 
-use crate::utils::{ts_rfc3339_opt, ts_seconds_float};
+use crate::utils::{display_from_str_opt, ts_rfc3339_opt, ts_seconds_float};
 
 pub use super::attachment::*;
 pub use super::envelope::*;
@@ -2335,4 +2335,100 @@ impl<'de> Deserialize<'de> for LogAttribute {
 
         deserializer.deserialize_map(LogAttributeVisitor)
     }
+}
+
+/// An ID that identifies an organization in the Sentry backend.
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
+struct OrganizationId(u64);
+
+impl From<u64> for OrganizationId {
+    fn from(value: u64) -> Self {
+        Self(value)
+    }
+}
+
+impl std::str::FromStr for OrganizationId {
+    type Err = std::num::ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        s.parse().map(Self)
+    }
+}
+
+impl std::fmt::Display for OrganizationId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+/// A random number generated at the start of a trace by the head of trace SDK.
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
+struct SampleRand(f64);
+
+impl From<f64> for SampleRand {
+    fn from(value: f64) -> Self {
+        Self(value)
+    }
+}
+
+impl std::str::FromStr for SampleRand {
+    type Err = std::num::ParseFloatError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        s.parse().map(Self)
+    }
+}
+
+impl std::fmt::Display for SampleRand {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:.6}", self.0)
+    }
+}
+
+/// The [Dynamic Sampling
+/// Context](https://develop.sentry.dev/sdk/telemetry/traces/dynamic-sampling-context/).
+///
+/// Sentry supports sampling at the server level through [Dynamic Sampling](https://docs.sentry.io/organization/dynamic-sampling/).
+/// This feature allows users to specify target sample rates for each project via the frontend instead of requiring an application redeployment.
+/// The backend needs additional information from the SDK to support these features, contained in
+/// the Dynamic Sampling Context.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub(crate) struct DynamicSamplingContext {
+    // Strictly required fields
+    // Still typed as optional, as when deserializing an envelope created by an older SDK they might still be missing
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    trace_id: Option<TraceId>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    public_key: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "display_from_str_opt"
+    )]
+    sample_rate: Option<f32>,
+    // Required fields
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "display_from_str_opt"
+    )]
+    sample_rand: Option<SampleRand>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "display_from_str_opt"
+    )]
+    sampled: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    release: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    environment: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    transaction: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "display_from_str_opt"
+    )]
+    org_id: Option<OrganizationId>,
 }
