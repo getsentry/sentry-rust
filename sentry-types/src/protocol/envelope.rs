@@ -66,29 +66,39 @@ impl EnvelopeHeaders {
     }
 
     /// Sets the Event ID.
-    pub fn with_event_id(self, event_id: Option<Uuid>) -> Self {
-        Self { event_id, ..self }
+    #[must_use]
+    pub fn with_event_id(mut self, event_id: Option<Uuid>) -> Self {
+        self.event_id = event_id;
+        self
     }
 
     /// Sets the DSN.
-    pub fn with_dsn(self, dsn: Option<Dsn>) -> Self {
-        Self { dsn, ..self }
+    #[must_use]
+    pub fn with_dsn(mut self, dsn: Option<Dsn>) -> Self {
+        self.dsn = dsn;
+        self
     }
 
     /// Sets the SDK information.
-    pub fn with_sdk(self, sdk: Option<ClientSdkInfo>) -> Self {
-        Self { sdk, ..self }
+    #[must_use]
+    pub fn with_sdk(mut self, sdk: Option<ClientSdkInfo>) -> Self {
+        self.sdk = sdk;
+        self
     }
 
     /// Sets the time this envelope was sent at.
-    /// This timestamp should be generated as close as possible to the transmision of the event.
-    pub fn with_sent_at(self, sent_at: Option<SystemTime>) -> Self {
-        Self { sent_at, ..self }
+    /// This timestamp should be generated as close as possible to the transmission of the event.
+    #[must_use]
+    pub fn with_sent_at(mut self, sent_at: Option<SystemTime>) -> Self {
+        self.sent_at = sent_at;
+        self
     }
 
     /// Sets the Dynamic Sampling Context.
-    pub fn with_trace(self, trace: Option<DynamicSamplingContext>) -> Self {
-        Self { trace, ..self }
+    #[must_use]
+    pub fn with_trace(mut self, trace: Option<DynamicSamplingContext>) -> Self {
+        self.trace = trace;
+        self
     }
 }
 
