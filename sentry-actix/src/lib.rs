@@ -88,7 +88,7 @@ use futures_util::future::{ok, Future, Ready};
 use futures_util::{FutureExt as _, TryStreamExt as _};
 
 use sentry_core::protocol::{self, ClientSdkPackage, Event, Request};
-use sentry_core::utils::is_sensitive_header;
+use sentry_core::utils::{is_sensitive_header, scrub_pii_from_url};
 use sentry_core::MaxRequestBodySize;
 use sentry_core::{Hub, SentryFutureExt};
 
@@ -428,7 +428,8 @@ fn sentry_request_from_http(request: &ServiceRequest, with_pii: bool) -> Request
             request.uri()
         )
         .parse()
-        .ok(),
+        .ok()
+        .map(scrub_pii_from_url),
         method: Some(request.method().to_string()),
         headers: request
             .headers()
