@@ -6,6 +6,9 @@
 
 - feat(log): support kv feature of log (#851) by @lcian
   - Attributes added to a `log` record using the `kv` feature are now recorded as attributes on the log sent to Sentry.
+- feat(types): add all the missing supported envelope headers ([#867](https://github.com/getsentry/sentry-rust/pull/867)) by @lcian
+- feat(types): add setters for envelope headers ([#868](https://github.com/getsentry/sentry-rust/pull/868)) by @lcian
+  - It's now possible to set all of the [envelope headers](https://develop.sentry.dev/sdk/data-model/envelopes/#headers) supported by the protocol when constructing envelopes.
 
 ### Behavioral changes
 
