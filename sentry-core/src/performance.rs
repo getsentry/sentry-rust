@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::SystemTime;
 
 use sentry_types::protocol::v7::SpanId;
+use sentry_types::Dsn;
 
 use crate::{protocol, Hub};
 
@@ -594,10 +595,7 @@ fn transaction_sample_rate(
 ) -> f32 {
     match (traces_sampler, traces_sample_rate) {
         (Some(traces_sampler), _) => traces_sampler(ctx),
-        (None, traces_sample_rate) => ctx
-            .sampled
-            .map(|sampled| if sampled { 1.0 } else { 0.0 })
-            .unwrap_or(traces_sample_rate),
+        (None, traces_sample_rate) => ctx.sampled.map(f32::from).unwrap_or(traces_sample_rate),
     }
 }
 
@@ -683,8 +681,7 @@ impl Transaction {
             None => (
                 (
                     ctx.sampled.unwrap_or(false),
-                    ctx.sampled
-                        .map_or(0.0, |sampled| if sampled { 1.0 } else { 0.0 }),
+                    ctx.sampled.map_or(0.0, f32::from),
                 ),
                 None,
             ),
@@ -840,17 +837,19 @@ impl Transaction {
                     transaction.sdk = Some(std::borrow::Cow::Owned(client.sdk_info.clone()));
                     transaction.server_name.clone_from(&opts.server_name);
 
-                    let dsc = protocol::DynamicSamplingContext::new()
-                        .with_trace_id(Some(inner.context.trace_id))
-                        .with_sample_rate(Some(self.metadata.sample_rate))
-                        .with_public_key(opts.dsn.as_ref().map(|dsn| dsn.public_key().to_owned()))
-                        .with_sampled(Some(inner.sampled));
+                    let mut dsc = protocol::DynamicSamplingContext::new()
+                        .with_trace_id(inner.context.trace_id)
+                        .with_sample_rate(self.metadata.sample_rate)
+                        .with_sampled(inner.sampled);
+                    if let Some(public_key) = client.dsn().map(Dsn::public_key) {
+                        dsc = dsc.with_public_key(public_key.to_owned());
+                    }
 
                     drop(inner);
 
-                    let mut envelope = protocol::Envelope::new();
-                    let headers = protocol::EnvelopeHeaders::new().with_trace(Some(dsc));
-                    envelope.set_headers(headers);
+                    let mut envelope = protocol::Envelope::new().with_headers(
+                        protocol::EnvelopeHeaders::new().with_trace(dsc)
+                    );
                     envelope.add_item(transaction);
 
                     client.send_envelope(envelope)
