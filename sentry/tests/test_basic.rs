@@ -601,17 +601,18 @@ fn test_transaction_envelope_dsc_headers() {
     );
 
     assert!(trace_id.is_some());
+    let trace_id = trace_id.unwrap();
     assert_eq!(envelopes.len(), 1);
     let envelope = envelopes.into_iter().next().unwrap();
+    assert!(envelope.uuid().is_some());
+    let uuid = envelope.uuid().copied().unwrap();
 
-    let expected = EnvelopeHeaders::new()
-        .with_event_id(envelope.uuid().copied())
-        .with_trace(Some(
-            DynamicSamplingContext::new()
-                .with_trace_id(trace_id)
-                .with_public_key(Some(dsn.unwrap().public_key().to_owned()))
-                .with_sample_rate(Some(1.0))
-                .with_sampled(Some(true)),
-        ));
+    let expected = EnvelopeHeaders::new().with_event_id(uuid).with_trace(
+        DynamicSamplingContext::new()
+            .with_trace_id(trace_id)
+            .with_public_key(dsn.unwrap().public_key().to_owned())
+            .with_sample_rate(1.0)
+            .with_sampled(true),
+    );
     assert_eq!(envelope.headers(), &expected);
 }
