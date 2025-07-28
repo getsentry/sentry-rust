@@ -67,37 +67,37 @@ impl EnvelopeHeaders {
 
     /// Sets the Event ID.
     #[must_use]
-    pub fn with_event_id(mut self, event_id: Option<Uuid>) -> Self {
-        self.event_id = event_id;
+    pub fn with_event_id(mut self, event_id: Uuid) -> Self {
+        self.event_id = Some(event_id);
         self
     }
 
     /// Sets the DSN.
     #[must_use]
-    pub fn with_dsn(mut self, dsn: Option<Dsn>) -> Self {
-        self.dsn = dsn;
+    pub fn with_dsn(mut self, dsn: Dsn) -> Self {
+        self.dsn = Some(dsn);
         self
     }
 
     /// Sets the SDK information.
     #[must_use]
-    pub fn with_sdk(mut self, sdk: Option<ClientSdkInfo>) -> Self {
-        self.sdk = sdk;
+    pub fn with_sdk(mut self, sdk: ClientSdkInfo) -> Self {
+        self.sdk = Some(sdk);
         self
     }
 
     /// Sets the time this envelope was sent at.
     /// This timestamp should be generated as close as possible to the transmission of the event.
     #[must_use]
-    pub fn with_sent_at(mut self, sent_at: Option<SystemTime>) -> Self {
-        self.sent_at = sent_at;
+    pub fn with_sent_at(mut self, sent_at: SystemTime) -> Self {
+        self.sent_at = Some(sent_at);
         self
     }
 
     /// Sets the Dynamic Sampling Context.
     #[must_use]
-    pub fn with_trace(mut self, trace: Option<DynamicSamplingContext>) -> Self {
-        self.trace = trace;
+    pub fn with_trace(mut self, trace: DynamicSamplingContext) -> Self {
+        self.trace = Some(trace);
         self
     }
 }
@@ -383,8 +383,10 @@ impl Envelope {
     }
 
     /// Sets the Envelope headers.
-    pub fn set_headers(&mut self, headers: EnvelopeHeaders) {
-        self.headers = headers
+    #[must_use]
+    pub fn with_headers(mut self, headers: EnvelopeHeaders) -> Self {
+        self.headers = headers;
+        self
     }
 
     /// Returns the Envelopes Uuid, if any.
@@ -699,7 +701,7 @@ mod test {
 
     use super::*;
     use crate::protocol::v7::{
-        Level, MonitorCheckInStatus, MonitorConfig, MonitorSchedule, SessionAttributes,
+        Level, MonitorCheckInStatus, MonitorConfig, MonitorSchedule, SampleRand, SessionAttributes,
         SessionStatus, Span,
     };
 
@@ -1090,6 +1092,22 @@ some content
         let envelope = envelope.unwrap();
         let serialized = to_str(envelope);
         assert_eq!(bytes, serialized.as_bytes());
+    }
+
+    #[test]
+    fn test_sample_rand_rounding() {
+        let envelope = Envelope::new().with_headers(
+            EnvelopeHeaders::new().with_trace(
+                DynamicSamplingContext::new()
+                    .with_sample_rand(SampleRand::try_from(0.9999999).unwrap()), // 7 nines
+            ),
+        );
+        let expected = br#"{"trace":{"sample_rand":"0.999999"}}
+"#;
+
+        let serialized = to_str(envelope);
+        println!("{}", serialized.clone());
+        assert_eq!(expected, serialized.as_bytes());
     }
 
     // Test all possible item types in a single envelope
