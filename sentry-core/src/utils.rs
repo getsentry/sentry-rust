@@ -20,6 +20,8 @@ pub fn is_sensitive_header(name: &str) -> bool {
 
 /// Scrub PII (username and password) from the given URL.
 pub fn scrub_pii_from_url(mut url: url::Url) -> url::Url {
+    // the set calls will fail and return an error if the URL is relative
+    // in those cases, just ignore the errors
     if !url.username().is_empty() {
         let _ = url.set_username(PII_REPLACEMENT);
     }
