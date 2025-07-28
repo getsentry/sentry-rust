@@ -1106,7 +1106,6 @@ some content
 "#;
 
         let serialized = to_str(envelope);
-        println!("{}", serialized.clone());
         assert_eq!(expected, serialized.as_bytes());
     }
 
