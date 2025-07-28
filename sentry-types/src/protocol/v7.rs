@@ -2341,7 +2341,6 @@ impl<'de> Deserialize<'de> for LogAttribute {
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub struct OrganizationId(u64);
 
-
 impl From<u64> for OrganizationId {
     fn from(value: u64) -> Self {
         Self(value)
