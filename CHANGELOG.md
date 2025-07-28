@@ -12,6 +12,13 @@
 - feat(core): add some DSC fields to transaction envelope headers ([#869](https://github.com/getsentry/sentry-rust/pull/869)) by @lcian
   - The SDK now sends additional envelope headers with transactions. This should solve some extrapolation issues for span metrics.
 
+### Behavioral changes
+
+- feat: filter username and password in URLs ([#864](https://github.com/getsentry/sentry-rust/pull/864)) by @lcian
+  - Usernames and passwords that could be contained in URLs captured when using the Actix Web or axum integration are now always filtered out.
+  - If the `Request` is created manually by the user, then these fields are not filtered out.
+  - This information was already filtered by Relay, but should also be filtered by the SDK itself as a first line of defense.
+
 ### Fixes
 
 - docs: match description of `debug` option with behavior since PR #820 ([#860](https://github.com/getsentry/sentry-rust/pull/860)) by @AlexTMjugador

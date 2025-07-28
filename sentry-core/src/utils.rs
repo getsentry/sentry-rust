@@ -10,8 +10,23 @@ const SENSITIVE_HEADERS_UPPERCASE: &[&str] = &[
     "X_API_KEY",
 ];
 
+const PII_REPLACEMENT: &str = "[Filtered]";
+
 /// Determines if the HTTP header with the given name shall be considered as potentially carrying
 /// sensitive data.
 pub fn is_sensitive_header(name: &str) -> bool {
     SENSITIVE_HEADERS_UPPERCASE.contains(&name.to_ascii_uppercase().replace("-", "_").as_str())
+}
+
+/// Scrub PII (username and password) from the given URL.
+pub fn scrub_pii_from_url(mut url: url::Url) -> url::Url {
+    // the set calls will fail and return an error if the URL is relative
+    // in those cases, just ignore the errors
+    if !url.username().is_empty() {
+        let _ = url.set_username(PII_REPLACEMENT);
+    }
+    if url.password().is_some() {
+        let _ = url.set_password(Some(PII_REPLACEMENT));
+    }
+    url
 }
