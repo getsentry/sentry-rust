@@ -1099,7 +1099,7 @@ some content
         let envelope = Envelope::new().with_headers(
             EnvelopeHeaders::new().with_trace(
                 DynamicSamplingContext::new()
-                    .with_sample_rand(SampleRand::try_from(0.9999999).unwrap()), // 7 nines
+                    .with_sample_rand(SampleRand::try_from(0.999_999_9).unwrap()),
             ),
         );
         let expected = br#"{"trace":{"sample_rand":"0.999999"}}
