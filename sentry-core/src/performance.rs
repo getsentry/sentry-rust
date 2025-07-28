@@ -5,7 +5,6 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::SystemTime;
 
 use sentry_types::protocol::v7::SpanId;
-use sentry_types::Dsn;
 
 use crate::{protocol, Hub};
 
@@ -841,7 +840,7 @@ impl Transaction {
                         .with_trace_id(inner.context.trace_id)
                         .with_sample_rate(self.metadata.sample_rate)
                         .with_sampled(inner.sampled);
-                    if let Some(public_key) = client.dsn().map(Dsn::public_key) {
+                    if let Some(public_key) = client.dsn().map(|dsn| dsn.public_key()) {
                         dsc = dsc.with_public_key(public_key.to_owned());
                     }
 
