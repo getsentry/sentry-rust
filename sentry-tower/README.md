@@ -103,7 +103,7 @@ feature of the `sentry` crate instead of the `tower` feature.
 The created transaction will automatically use the request URI as its name.
 This is sometimes not desirable in case the request URI contains unique IDs
 or similar. In this case, users should manually override the transaction name
-in the request handler using the [`Scope::set_transaction`](https://docs.rs/sentry-tower/0.41.0/sentry_tower/sentry_core::Scope::set_transaction)
+in the request handler using the [`Scope::set_transaction`](https://docs.rs/sentry-tower/0.42.0/sentry_tower/sentry_core::Scope::set_transaction)
 method.
 
 When combining both layers, take care of the ordering of both. For example
