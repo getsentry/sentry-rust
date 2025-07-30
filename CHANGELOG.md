@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+## Features
+
+- feat(core): add Response context ([#874](https://github.com/getsentry/sentry-rust/pull/874)) by @lcian
+  - The `Response` context can be attached to events, to include information about HTTP responses such as headers, cookies and status code.
+
 ## 0.42.0
 
 ### Features
