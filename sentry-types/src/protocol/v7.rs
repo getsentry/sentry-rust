@@ -1530,7 +1530,7 @@ into_context!(Otel, OtelContext);
 into_context!(Response, ResponseContext);
 
 const INFERABLE_CONTEXTS: &[&str] = &[
-    "device", "os", "runtime", "app", "browser", "trace", "gpu", "otel",
+    "device", "os", "runtime", "app", "browser", "trace", "gpu", "otel", "response",
 ];
 
 struct ContextsVisitor;
