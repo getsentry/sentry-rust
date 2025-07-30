@@ -1100,6 +1100,8 @@ pub enum Context {
     Gpu(Box<GpuContext>),
     /// OpenTelemetry data.
     Otel(Box<OtelContext>),
+    /// HTTP response data.
+    Response(Box<ResponseContext>),
     /// Generic other context data.
     #[serde(rename = "unknown")]
     Other(Map<String, Value>),
@@ -1117,6 +1119,7 @@ impl Context {
             Context::Trace(..) => "trace",
             Context::Gpu(..) => "gpu",
             Context::Otel(..) => "otel",
+            Context::Response(..) => "response",
             Context::Other(..) => "unknown",
         }
     }
@@ -1351,6 +1354,29 @@ pub struct OtelContext {
     pub other: Map<String, Value>,
 }
 
+/// Holds information about an HTTP response.
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
+pub struct ResponseContext {
+    /// The unparsed cookie values.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cookies: Option<String>,
+    /// A map of submitted headers.
+    ///
+    /// If a header appears multiple times, it needs to be merged according to the HTTP standard
+    /// for header merging. Header names are treated case-insensitively by Sentry.
+    #[serde(default, skip_serializing_if = "Map::is_empty")]
+    pub headers: Map<String, String>,
+    /// The HTTP response status code.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub status_code: Option<u64>,
+    /// The response body size in bytes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub body_size: Option<u64>,
+    /// Response data in any format that makes sense.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data: Option<Value>,
+}
+
 /// Holds the identifier for a Span
 #[derive(Serialize, Deserialize, Copy, Clone, Eq, PartialEq, Hash)]
 #[serde(try_from = "String", into = "String")]
@@ -1501,6 +1527,7 @@ into_context!(Browser, BrowserContext);
 into_context!(Trace, TraceContext);
 into_context!(Gpu, GpuContext);
 into_context!(Otel, OtelContext);
+into_context!(Response, ResponseContext);
 
 const INFERABLE_CONTEXTS: &[&str] = &[
     "device", "os", "runtime", "app", "browser", "trace", "gpu", "otel",
