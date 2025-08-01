@@ -42,7 +42,7 @@ pub enum EnvelopeError {
 
 /// The supported [Sentry Envelope Headers](https://develop.sentry.dev/sdk/data-model/envelopes/#headers).
 #[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq)]
-struct EnvelopeHeaders {
+pub struct EnvelopeHeaders {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     event_id: Option<Uuid>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -57,6 +57,49 @@ struct EnvelopeHeaders {
     sent_at: Option<SystemTime>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     trace: Option<DynamicSamplingContext>,
+}
+
+impl EnvelopeHeaders {
+    /// Creates empty Envelope headers.
+    pub fn new() -> EnvelopeHeaders {
+        Default::default()
+    }
+
+    /// Sets the Event ID.
+    #[must_use]
+    pub fn with_event_id(mut self, event_id: Uuid) -> Self {
+        self.event_id = Some(event_id);
+        self
+    }
+
+    /// Sets the DSN.
+    #[must_use]
+    pub fn with_dsn(mut self, dsn: Dsn) -> Self {
+        self.dsn = Some(dsn);
+        self
+    }
+
+    /// Sets the SDK information.
+    #[must_use]
+    pub fn with_sdk(mut self, sdk: ClientSdkInfo) -> Self {
+        self.sdk = Some(sdk);
+        self
+    }
+
+    /// Sets the time this envelope was sent at.
+    /// This timestamp should be generated as close as possible to the transmission of the event.
+    #[must_use]
+    pub fn with_sent_at(mut self, sent_at: SystemTime) -> Self {
+        self.sent_at = Some(sent_at);
+        self
+    }
+
+    /// Sets the Dynamic Sampling Context.
+    #[must_use]
+    pub fn with_trace(mut self, trace: DynamicSamplingContext) -> Self {
+        self.trace = Some(trace);
+        self
+    }
 }
 
 /// An Envelope Item Type.
@@ -332,6 +375,18 @@ impl Envelope {
         };
 
         EnvelopeItemIter { inner }
+    }
+
+    /// Returns the Envelope headers.
+    pub fn headers(&self) -> &EnvelopeHeaders {
+        &self.headers
+    }
+
+    /// Sets the Envelope headers.
+    #[must_use]
+    pub fn with_headers(mut self, headers: EnvelopeHeaders) -> Self {
+        self.headers = headers;
+        self
     }
 
     /// Returns the Envelopes Uuid, if any.
@@ -646,7 +701,7 @@ mod test {
 
     use super::*;
     use crate::protocol::v7::{
-        Level, MonitorCheckInStatus, MonitorConfig, MonitorSchedule, SessionAttributes,
+        Level, MonitorCheckInStatus, MonitorConfig, MonitorSchedule, SampleRand, SessionAttributes,
         SessionStatus, Span,
     };
 
@@ -1039,6 +1094,21 @@ some content
         assert_eq!(bytes, serialized.as_bytes());
     }
 
+    #[test]
+    fn test_sample_rand_rounding() {
+        let envelope = Envelope::new().with_headers(
+            EnvelopeHeaders::new().with_trace(
+                DynamicSamplingContext::new()
+                    .with_sample_rand(SampleRand::try_from(0.999_999_9).unwrap()),
+            ),
+        );
+        let expected = br#"{"trace":{"sample_rand":"0.999999"}}
+"#;
+
+        let serialized = to_str(envelope);
+        assert_eq!(expected, serialized.as_bytes());
+    }
+
     // Test all possible item types in a single envelope
     #[test]
     fn test_deserialize_serialized() {
@@ -1116,7 +1186,6 @@ some content
         .into();
 
         let mut envelope: Envelope = Envelope::new();
-
         envelope.add_item(event);
         envelope.add_item(transaction);
         envelope.add_item(session);

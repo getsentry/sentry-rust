@@ -1,11 +1,23 @@
 # Changelog
 
-## Unreleased
+## 0.42.0
 
 ### Features
 
 - feat(log): support kv feature of log (#851) by @lcian
   - Attributes added to a `log` record using the `kv` feature are now recorded as attributes on the log sent to Sentry.
+- feat(types): add all the missing supported envelope headers ([#867](https://github.com/getsentry/sentry-rust/pull/867)) by @lcian
+- feat(types): add setters for envelope headers ([#868](https://github.com/getsentry/sentry-rust/pull/868)) by @lcian
+  - It's now possible to set all of the [envelope headers](https://develop.sentry.dev/sdk/data-model/envelopes/#headers) supported by the protocol when constructing envelopes.
+- feat(core): add some DSC fields to transaction envelope headers ([#869](https://github.com/getsentry/sentry-rust/pull/869)) by @lcian
+  - The SDK now sends additional envelope headers with transactions. This should solve some extrapolation issues for span metrics.
+
+### Behavioral changes
+
+- feat: filter username and password in URLs ([#864](https://github.com/getsentry/sentry-rust/pull/864)) by @lcian
+  - Usernames and passwords that could be contained in URLs captured when using the Actix Web or axum integration are now always filtered out.
+  - If the `Request` is created manually by the user, then these fields are not filtered out.
+  - This information was already filtered by Relay, but should also be filtered by the SDK itself as a first line of defense.
 
 ### Fixes
 

@@ -7,7 +7,11 @@ use std::time::Duration;
 use super::ratelimit::{RateLimiter, RateLimitingCategory};
 use crate::{sentry_debug, Envelope};
 
-#[expect(clippy::large_enum_variant)]
+#[expect(
+    clippy::large_enum_variant,
+    reason = "In normal usage this is usually SendEnvelope, the other variants are only used when \
+    the user manually calls transport.flush() or when the transport is shut down."
+)]
 enum Task {
     SendEnvelope(Envelope),
     Flush(SyncSender<()>),

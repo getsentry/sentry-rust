@@ -3,8 +3,10 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
-use sentry::protocol::{Attachment, Context, EnvelopeItem};
-use sentry::types::Uuid;
+use sentry::protocol::{
+    Attachment, Context, DynamicSamplingContext, EnvelopeHeaders, EnvelopeItem,
+};
+use sentry::types::{Dsn, Uuid};
 
 #[test]
 fn test_basic_capture_message() {
@@ -577,4 +579,40 @@ fn test_basic_capture_log_macro_message_formatted_with_attributes() {
         },
         _ => panic!("expected item container"),
     }
+}
+
+#[test]
+fn test_transaction_envelope_dsc_headers() {
+    let mut trace_id: Option<sentry::protocol::TraceId> = None;
+    let dsn: Option<Dsn> = "http://foo@example.com/42".parse().ok();
+    let envelopes = sentry::test::with_captured_envelopes_options(
+        || {
+            let transaction_ctx = sentry::TransactionContext::new("name transaction", "op");
+            trace_id = Some(transaction_ctx.trace_id());
+            let transaction = sentry::start_transaction(transaction_ctx);
+            sentry::configure_scope(|scope| scope.set_span(Some(transaction.clone().into())));
+            transaction.finish();
+        },
+        sentry::ClientOptions {
+            dsn: dsn.clone(),
+            traces_sample_rate: 1.0,
+            ..Default::default()
+        },
+    );
+
+    assert!(trace_id.is_some());
+    let trace_id = trace_id.unwrap();
+    assert_eq!(envelopes.len(), 1);
+    let envelope = envelopes.into_iter().next().unwrap();
+    assert!(envelope.uuid().is_some());
+    let uuid = envelope.uuid().copied().unwrap();
+
+    let expected = EnvelopeHeaders::new().with_event_id(uuid).with_trace(
+        DynamicSamplingContext::new()
+            .with_trace_id(trace_id)
+            .with_public_key(dsn.unwrap().public_key().to_owned())
+            .with_sample_rate(1.0)
+            .with_sampled(true),
+    );
+    assert_eq!(envelope.headers(), &expected);
 }

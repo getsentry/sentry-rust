@@ -594,24 +594,31 @@ fn transaction_sample_rate(
 ) -> f32 {
     match (traces_sampler, traces_sample_rate) {
         (Some(traces_sampler), _) => traces_sampler(ctx),
-        (None, traces_sample_rate) => ctx
-            .sampled
-            .map(|sampled| if sampled { 1.0 } else { 0.0 })
-            .unwrap_or(traces_sample_rate),
+        (None, traces_sample_rate) => ctx.sampled.map(f32::from).unwrap_or(traces_sample_rate),
     }
 }
 
 /// Determine whether the new transaction should be sampled.
 #[cfg(feature = "client")]
 impl Client {
-    fn is_transaction_sampled(&self, ctx: &TransactionContext) -> bool {
+    fn determine_sampling_decision(&self, ctx: &TransactionContext) -> (bool, f32) {
         let client_options = self.options();
-        self.sample_should_send(transaction_sample_rate(
+        let sample_rate = transaction_sample_rate(
             client_options.traces_sampler.as_deref(),
             ctx,
             client_options.traces_sample_rate,
-        ))
+        );
+        let sampled = self.sample_should_send(sample_rate);
+        (sampled, sample_rate)
     }
+}
+
+/// Some metadata associated with a transaction.
+#[cfg(feature = "client")]
+#[derive(Clone, Debug)]
+struct TransactionMetadata {
+    /// The sample rate used when making the sampling decision for the associated transaction.
+    sample_rate: f32,
 }
 
 /// A running Performance Monitoring Transaction.
@@ -622,6 +629,8 @@ impl Client {
 #[derive(Clone, Debug)]
 pub struct Transaction {
     pub(crate) inner: TransactionArc,
+    #[cfg(feature = "client")]
+    metadata: TransactionMetadata,
 }
 
 /// Iterable for a transaction's [data attributes](protocol::TraceContext::data).
@@ -660,15 +669,21 @@ impl<'a> TransactionData<'a> {
 impl Transaction {
     #[cfg(feature = "client")]
     fn new(client: Option<Arc<Client>>, ctx: TransactionContext) -> Self {
-        let (sampled, transaction) = match client.as_ref() {
+        let ((sampled, sample_rate), transaction) = match client.as_ref() {
             Some(client) => (
-                client.is_transaction_sampled(&ctx),
+                client.determine_sampling_decision(&ctx),
                 Some(protocol::Transaction {
                     name: Some(ctx.name),
                     ..Default::default()
                 }),
             ),
-            None => (ctx.sampled.unwrap_or(false), None),
+            None => (
+                (
+                    ctx.sampled.unwrap_or(false),
+                    ctx.sampled.map_or(0.0, f32::from),
+                ),
+                None,
+            ),
         };
 
         let context = protocol::TraceContext {
@@ -686,6 +701,7 @@ impl Transaction {
                 context,
                 transaction,
             })),
+            metadata: TransactionMetadata { sample_rate },
         }
     }
 
@@ -820,9 +836,19 @@ impl Transaction {
                     transaction.sdk = Some(std::borrow::Cow::Owned(client.sdk_info.clone()));
                     transaction.server_name.clone_from(&opts.server_name);
 
+                    let mut dsc = protocol::DynamicSamplingContext::new()
+                        .with_trace_id(inner.context.trace_id)
+                        .with_sample_rate(self.metadata.sample_rate)
+                        .with_sampled(inner.sampled);
+                    if let Some(public_key) = client.dsn().map(|dsn| dsn.public_key()) {
+                        dsc = dsc.with_public_key(public_key.to_owned());
+                    }
+
                     drop(inner);
 
-                    let mut envelope = protocol::Envelope::new();
+                    let mut envelope = protocol::Envelope::new().with_headers(
+                        protocol::EnvelopeHeaders::new().with_trace(dsc)
+                    );
                     envelope.add_item(transaction);
 
                     client.send_envelope(envelope)
