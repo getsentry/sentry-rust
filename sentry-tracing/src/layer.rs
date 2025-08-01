@@ -78,6 +78,19 @@ pub fn default_event_filter(metadata: &Metadata) -> EventFilter {
     }
 }
 
+/// The default event filter, with logs.
+///
+/// By default, an exception event is captured for `error`, a breadcrumb for
+/// `warning` and `info`, and `debug` and `trace` logs are ignored.
+/// Additionally, a log is captured for `info`, `warning` and `error`.
+pub fn default_event_filter_with_logs(metadata: &Metadata) -> EventFilter {
+    match metadata.level() {
+        &Level::ERROR => EventFilter::Event | EventFilter::Log,
+        &Level::WARN | &Level::INFO => EventFilter::Breadcrumb | EventFilter::Log,
+        &Level::DEBUG | &Level::TRACE => EventFilter::Ignore,
+    }
+}
+
 /// The default span filter.
 ///
 /// By default, spans at the `error`, `warning`, and `info`
@@ -162,8 +175,20 @@ where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
     fn default() -> Self {
+        let enable_logs = {
+            #[cfg(feature = "logs")]
+            if let Some(client) = sentry_core::Hub::current().client() {
+                return client.options().enable_logs;
+            }
+            false
+        };
+
         Self {
-            event_filter: Box::new(default_event_filter),
+            event_filter: Box::new(if enable_logs {
+                default_event_filter
+            } else {
+                default_event_filter_with_logs
+            }),
             event_mapper: None,
 
             span_filter: Box::new(default_span_filter),
