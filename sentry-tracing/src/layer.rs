@@ -177,10 +177,16 @@ where
     fn default() -> Self {
         let enable_logs = {
             #[cfg(feature = "logs")]
-            if let Some(client) = sentry_core::Hub::current().client() {
-                return client.options().enable_logs;
+            {
+                sentry_core::Hub::current()
+                    .client()
+                    .map(|client| client.options().enable_logs)
+                    .unwrap_or(false)
             }
-            false
+            #[cfg(not(feature = "logs"))]
+            {
+                false
+            }
         };
 
         Self {
