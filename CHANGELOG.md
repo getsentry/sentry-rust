@@ -6,6 +6,20 @@
 
 - feat(core): add Response context ([#874](https://github.com/getsentry/sentry-rust/pull/874)) by @lcian
   - The `Response` context can now be attached to events, to include information about HTTP responses such as headers, cookies and status code.
+  - Example:
+    ```rust
+    let mut event = Event::new();
+    let response = ResponseContext {
+        cookies: Some(r#""csrftoken": "1234567""#.to_owned()),
+        headers: Some(headers_map),
+        status_code: Some(500),
+        body_size: Some(15),
+        data: Some("Invalid request"),
+    };
+    event
+        .contexts
+        .insert("response".to_owned(), response.into());
+    ```
 
 ## 0.42.0
 
