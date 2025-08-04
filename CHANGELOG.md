@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- feat(tracing): send both breadcrumbs and logs by default ([#878](https://github.com/getsentry/sentry-rust/pull/878))
+  - If the `logs` feature flag is enabled, and `enable_logs: true` is set on your client options, the default Sentry `tracing` layer now sends logs for all events at or above INFO.
+
 ## 0.42.0
 
 ### Features
