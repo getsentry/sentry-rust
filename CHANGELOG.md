@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- fix(actix): capture only server errors ([#877](https://github.com/getsentry/sentry-rust/pull/877))
+  - The Actix integration now properly honors the `capture_server_errors` option (enabled by default), capturing errors returned by middleware only if they are server errors (HTTP status code 5xx).
+  - Previously, if a middleware were to process the request after the Sentry middleware and return an error, our middleware would always capture it and send it to Sentry, regardless if it was a client, server or some other kind of error.
+  - With this change, we capture errors returned by middleware only if those errors can be classified as server errors.
+  - There is no change in behavior when it comes to errors returned by services, in which case the Sentry middleware only captures server errors exclusively.
+
 ### Features
 
 - feat(core): add Response context ([#874](https://github.com/getsentry/sentry-rust/pull/874)) by @lcian
