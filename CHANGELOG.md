@@ -10,7 +10,7 @@
   - With this change, we capture errors returned by middleware only if those errors can be classified as server errors.
   - There is no change in behavior when it comes to errors returned by services, in which case the Sentry middleware only captures server errors exclusively.
 
-## Features
+### Features
 
 - feat(core): add Response context ([#874](https://github.com/getsentry/sentry-rust/pull/874)) by @lcian
   - The `Response` context can now be attached to events, to include information about HTTP responses such as headers, cookies and status code.
@@ -28,6 +28,11 @@
         .contexts
         .insert("response".to_owned(), response.into());
     ```
+
+### Fixes
+
+- build(panic): Fix build without other dependencies ([#883](https://github.com/getsentry/sentry-rust/pull/883)) by @liskin
+  - The `sentry-panic` crate now builds successfully when used as a standalone dependency.
 
 ## 0.42.0
 
