@@ -21,6 +21,11 @@
         .insert("response".to_owned(), response.into());
     ```
 
+## Fixes
+
+- build(panic): Fix build without other dependencies ([#883](https://github.com/getsentry/sentry-rust/pull/883)) by @liskin
+  - The `sentry-panic` crate now builds correctly when used as a standalone dependency.
+
 ## 0.42.0
 
 ### Features
