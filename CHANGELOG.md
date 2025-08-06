@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-## Features
+### Features
 
 - feat(core): add Response context ([#874](https://github.com/getsentry/sentry-rust/pull/874)) by @lcian
   - The `Response` context can now be attached to events, to include information about HTTP responses such as headers, cookies and status code.
@@ -21,7 +21,7 @@
         .insert("response".to_owned(), response.into());
     ```
 
-## Fixes
+### Fixes
 
 - build(panic): Fix build without other dependencies ([#883](https://github.com/getsentry/sentry-rust/pull/883)) by @liskin
   - The `sentry-panic` crate now builds correctly when used as a standalone dependency.
