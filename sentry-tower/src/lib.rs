@@ -133,10 +133,10 @@
 //! When using `axum`, either use [`tower::ServiceBuilder`] as shown above, or make sure you
 //! reorder the layers, like so:
 //!
-//! ```rust
+//! ```ignore
 //! let app = Router::new()
 //!     .route("/", get(handler))
-//!     .layer(sentry_tower::SentryHttpLayer::with_transaction())
+//!     .layer(sentry_tower::SentryHttpLayer::new().enable_transaction())
 //!     .layer(sentry_tower::NewSentryLayer::<Request>::new_from_top())
 //! ```
 //!
