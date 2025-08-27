@@ -221,19 +221,19 @@
 //!   requires the span it's applied to to be a root span, i.e. no span should active upon its
 //!   creation.
 //!
+//!
 //! Example:
 //!
-//! ```no_run
+//! ```
 //! #[tracing::instrument(skip_all, fields(
 //!     sentry.name = "GET /payments",
 //!     sentry.op = "http.server",
-//!     sentry.trace = req.headers.get("sentry-trace").unwrap_or(""),
+//!     sentry.trace = headers.get("sentry-trace").unwrap_or(&"".to_owned()),
 //! ))]
-//! async fn handle_request(amount: u64) {
+//! async fn handle_request(headers: std::collections::HashMap<String, String>) {
 //!     // ...
 //! }
 //! ```
-//!
 
 #![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
 #![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
@@ -246,3 +246,6 @@ pub use converters::*;
 pub use layer::*;
 
 const TAGS_PREFIX: &str = "tags.";
+const SENTRY_OP_FIELD: &str = "sentry.op";
+const SENTRY_NAME_FIELD: &str = "sentry.name";
+const SENTRY_TRACE_FIELD: &str = "sentry.trace";

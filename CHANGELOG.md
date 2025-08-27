@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- ref(tracing): rework tracing to Sentry span name/op conversion () by @lcian
+  - The `tracing` integration now uses the tracing span name as the Sentry span name by default.
+  - Before this change, the span name would be set based on the `tracing` span target (<module>::<function> when using the `tracing::instrument` macro).
+  - The `tracing` integration now uses `default` as the default Sentry span op.
+  - Before this change, the span op would be set based on the `tracing` span name.
+  - When upgrading, please ensure to adapt any queries, metrics or dashboards to use the new span names/ops.
+  - Additional special fields have been added that allow overriding certain data on the Sentry span:
+    - `sentry.op`: override the Sentry span op
+    - `sentry.name`: override the Sentry span name
+    - `sentry.trace`: given a 
+  - Example usage:
+    ```rust
+    #[tracing::instrument(skip_all, fields(
+        sentry.op = "http.server",
+        sentry.name = "GET /payments",
+        sentry.trace = headers.get("sentry-trace").unwrap_or(&"".to_owned()),
+    ))]
+    async fn handle_request(headers: std::collections::HashMap<String, String>) {
+        // ...
+    }
+    ```
+
 ### Features
 
 - feat(core): add Response context ([#874](https://github.com/getsentry/sentry-rust/pull/874)) by @lcian
@@ -19,24 +43,6 @@
     event
         .contexts
         .insert("response".to_owned(), response.into());
-    ```
-- feat(tracing): enhance span control with special attributes and distributed tracing support
-  - The tracing integration now uses the tracing span name as the Sentry span name by default
-  - Span operation defaults to "default" instead of using the span name
-  - Added support for special span attributes:
-    - `sentry.name`: Override the span name in Sentry
-    - `sentry.op`: Override the span operation in Sentry
-    - `sentry.trace`: Enable distributed tracing by continuing from upstream trace headers
-  - Example:
-    ```rust
-    #[tracing::instrument(fields(
-        sentry.name = "payment_processing",
-        sentry.op = "payment.process",
-        sentry.trace = %incoming_trace_header
-    ))]
-    async fn process_payment(amount: u64) {
-        // Custom span name, operation, and distributed tracing
-    }
     ```
 
 ### Fixes

@@ -12,11 +12,10 @@ use tracing_subscriber::layer::{Context, Layer};
 use tracing_subscriber::registry::LookupSpan;
 
 use crate::converters::*;
+use crate::SENTRY_NAME_FIELD;
+use crate::SENTRY_OP_FIELD;
+use crate::SENTRY_TRACE_FIELD;
 use crate::TAGS_PREFIX;
-
-const SENTRY_NAME_ATTR: &str = "sentry.name";
-const SENTRY_OP_ATTR: &str = "sentry.op";
-const SENTRY_TRACE_ATTR: &str = "sentry.trace";
 
 bitflags! {
     /// The action that Sentry should perform for a given [`Event`]
@@ -310,7 +309,7 @@ where
                     sentry_core::TransactionContext::continue_from_headers(
                         sentry_name,
                         sentry_op,
-                        [("sentry-trace", trace_header.as_str())].into_iter(),
+                        [("sentry-trace", trace_header.as_str())],
                     )
                 } else {
                     sentry_core::TransactionContext::new(sentry_name, sentry_op)
@@ -402,7 +401,7 @@ where
 
         let sentry_name = data
             .json_values
-            .remove(SENTRY_NAME_ATTR)
+            .remove(SENTRY_NAME_FIELD)
             .and_then(|v| match v {
                 Value::String(s) => Some(s),
                 _ => None,
@@ -410,14 +409,14 @@ where
 
         let sentry_op = data
             .json_values
-            .remove(SENTRY_OP_ATTR)
+            .remove(SENTRY_OP_FIELD)
             .and_then(|v| match v {
                 Value::String(s) => Some(s),
                 _ => None,
             });
 
         // `sentry.trace` cannot be applied retroactively
-        data.json_values.remove(SENTRY_TRACE_ATTR);
+        data.json_values.remove(SENTRY_TRACE_FIELD);
 
         if let Some(name) = sentry_name {
             span.set_name(&name);
@@ -456,20 +455,22 @@ fn extract_span_data(
         visitor.json_values
     });
 
-    let name = json_values.remove(SENTRY_NAME_ATTR).and_then(|v| match v {
+    let name = json_values.remove(SENTRY_NAME_FIELD).and_then(|v| match v {
         Value::String(s) => Some(s),
         _ => None,
     });
 
-    let op = json_values.remove(SENTRY_OP_ATTR).and_then(|v| match v {
+    let op = json_values.remove(SENTRY_OP_FIELD).and_then(|v| match v {
         Value::String(s) => Some(s),
         _ => None,
     });
 
-    let sentry_trace = json_values.remove(SENTRY_TRACE_ATTR).and_then(|v| match v {
-        Value::String(s) => Some(s),
-        _ => None,
-    });
+    let sentry_trace = json_values
+        .remove(SENTRY_TRACE_FIELD)
+        .and_then(|v| match v {
+            Value::String(s) => Some(s),
+            _ => None,
+        });
 
     (json_values, name, op, sentry_trace)
 }
