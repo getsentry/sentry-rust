@@ -20,6 +20,24 @@
         .contexts
         .insert("response".to_owned(), response.into());
     ```
+- feat(tracing): enhance span control with special attributes and distributed tracing support
+  - The tracing integration now uses the tracing span name as the Sentry span name by default
+  - Span operation defaults to "default" instead of using the span name
+  - Added support for special span attributes:
+    - `sentry.name`: Override the span name in Sentry
+    - `sentry.op`: Override the span operation in Sentry
+    - `sentry.trace`: Enable distributed tracing by continuing from upstream trace headers
+  - Example:
+    ```rust
+    #[tracing::instrument(fields(
+        sentry.name = "payment_processing",
+        sentry.op = "payment.process",
+        sentry.trace = %incoming_trace_header
+    ))]
+    async fn process_payment(amount: u64) {
+        // Custom span name, operation, and distributed tracing
+    }
+    ```
 
 ### Fixes
 

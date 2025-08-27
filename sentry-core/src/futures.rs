@@ -3,6 +3,8 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
+use futures_core::stream::Stream;
+
 use crate::Hub;
 
 /// A future that binds a `Hub` to its execution.
@@ -65,6 +67,8 @@ pub trait SentryFutureExt: Sized {
 }
 
 impl<F> SentryFutureExt for F where F: Future {}
+
+impl<F> SentryFutureExt for F where F: Stream {}
 
 #[cfg(all(test, feature = "test"))]
 mod tests {

@@ -465,6 +465,22 @@ impl TransactionOrSpan {
         }
     }
 
+    /// Set the operation for this Transaction/Span.
+    pub fn set_op(&self, op: &str) {
+        match self {
+            TransactionOrSpan::Transaction(transaction) => transaction.set_op(op),
+            TransactionOrSpan::Span(span) => span.set_op(op),
+        }
+    }
+
+    /// Set the name (description) for this Transaction/Span.
+    pub fn set_name(&self, name: &str) {
+        match self {
+            TransactionOrSpan::Transaction(transaction) => transaction.set_name(name),
+            TransactionOrSpan::Span(span) => span.set_name(name),
+        }
+    }
+
     /// Set the HTTP request information for this Transaction/Span.
     pub fn set_request(&self, request: protocol::Request) {
         match self {
@@ -781,6 +797,20 @@ impl Transaction {
         inner.context.status = Some(status);
     }
 
+    /// Set the operation of the Transaction.
+    pub fn set_op(&self, op: &str) {
+        let mut inner = self.inner.lock().unwrap();
+        inner.context.op = Some(op.to_string());
+    }
+
+    /// Set the name of the Transaction.
+    pub fn set_name(&self, name: &str) {
+        let mut inner = self.inner.lock().unwrap();
+        if let Some(transaction) = inner.transaction.as_mut() {
+            transaction.name = Some(name.to_string());
+        }
+    }
+
     /// Set the HTTP request information for this Transaction.
     pub fn set_request(&self, request: protocol::Request) {
         let mut inner = self.inner.lock().unwrap();
@@ -1016,6 +1046,18 @@ impl Span {
     pub fn set_status(&self, status: protocol::SpanStatus) {
         let mut span = self.span.lock().unwrap();
         span.status = Some(status);
+    }
+
+    /// Set the operation of the Span.
+    pub fn set_op(&self, op: &str) {
+        let mut span = self.span.lock().unwrap();
+        span.op = Some(op.to_string());
+    }
+
+    /// Set the name (description) of the Span.
+    pub fn set_name(&self, name: &str) {
+        let mut span = self.span.lock().unwrap();
+        span.description = Some(name.to_string());
     }
 
     /// Set the HTTP request information for this Span.
