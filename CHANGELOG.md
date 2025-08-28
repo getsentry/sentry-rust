@@ -11,8 +11,8 @@
   - Before this change, the span op would be set based on the `tracing` span name.
   - When upgrading, please ensure to adapt any queries, metrics or dashboards to use the new span names/ops.
   - Additional special fields have been added that allow overriding certain data on the Sentry span:
-    - `sentry.op`: override the Sentry span op
-    - `sentry.name`: override the Sentry span name
+    - `sentry.op`: override the Sentry span op.
+    - `sentry.name`: override the Sentry span name.
     - `sentry.trace`: given a string matching a valid `sentry-trace` header (sent automatically by client SDKs), continues the distributed trace instead of starting a new one. If the value is not a valid `sentry-trace` header or a trace is already started, this value is ignored.
   - `sentry.op` and `sentry.name` can also be applied retroactively by declaring fields with value `tracing::field::Empty` and then recorded using `tracing::Span::record`.
   - Example usage:
