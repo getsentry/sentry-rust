@@ -351,7 +351,9 @@ where
             let mut res: Self::Response = match fut.await {
                 Ok(res) => res,
                 Err(e) => {
-                    if inner.capture_server_errors {
+                    // Errors returned by middleware, and possibly other lower level errors
+                    if inner.capture_server_errors && e.error_response().status().is_server_error()
+                    {
                         hub.capture_error(&e);
                     }
 
@@ -474,6 +476,7 @@ fn process_event(mut event: Event<'static>, request: &Request) -> Event<'static>
 mod tests {
     use std::io;
 
+    use actix_web::body::BoxBody;
     use actix_web::test::{call_service, init_service, TestRequest};
     use actix_web::{get, web, App, HttpRequest, HttpResponse};
     use futures::executor::block_on;
@@ -622,9 +625,9 @@ mod tests {
         }
     }
 
-    /// Ensures client errors (4xx) are not captured.
+    /// Ensures client errors (4xx) returned by service are not captured.
     #[actix_web::test]
-    async fn test_client_errors_discarded() {
+    async fn test_service_client_errors_discarded() {
         let events = sentry::test::with_captured_events(|| {
             block_on(async {
                 let service = HttpResponse::NotFound;
@@ -643,6 +646,66 @@ mod tests {
         });
 
         assert!(events.is_empty());
+    }
+
+    /// Ensures client errors (4xx) returned by middleware are not captured.
+    #[actix_web::test]
+    async fn test_middleware_client_errors_discarded() {
+        let events = sentry::test::with_captured_events(|| {
+            block_on(async {
+                async fn hello_world() -> HttpResponse {
+                    HttpResponse::Ok().body("Hello, world!")
+                }
+
+                let app = init_service(
+                    App::new()
+                        .wrap_fn(|_, _| async {
+                            Err(actix_web::error::ErrorNotFound("Not found"))
+                                as Result<ServiceResponse<BoxBody>, _>
+                        })
+                        .wrap(Sentry::builder().with_hub(Hub::current()).finish())
+                        .service(web::resource("/test").to(hello_world)),
+                )
+                .await;
+
+                let req = TestRequest::get().uri("/test").to_request();
+                let res = app.call(req).await;
+                assert!(res.is_err());
+                assert!(res.unwrap_err().error_response().status().is_client_error());
+            })
+        });
+
+        assert!(events.is_empty());
+    }
+
+    /// Ensures server errors (5xx) returned by middleware are captured.
+    #[actix_web::test]
+    async fn test_middleware_server_errors_captured() {
+        let events = sentry::test::with_captured_events(|| {
+            block_on(async {
+                async fn hello_world() -> HttpResponse {
+                    HttpResponse::Ok().body("Hello, world!")
+                }
+
+                let app = init_service(
+                    App::new()
+                        .wrap_fn(|_, _| async {
+                            Err(actix_web::error::ErrorInternalServerError("Server error"))
+                                as Result<ServiceResponse<BoxBody>, _>
+                        })
+                        .wrap(Sentry::builder().with_hub(Hub::current()).finish())
+                        .service(web::resource("/test").to(hello_world)),
+                )
+                .await;
+
+                let req = TestRequest::get().uri("/test").to_request();
+                let res = app.call(req).await;
+                assert!(res.is_err());
+                assert!(res.unwrap_err().error_response().status().is_server_error());
+            })
+        });
+
+        assert_eq!(events.len(), 1);
     }
 
     /// Ensures transaction name can be overridden in handler scope.
