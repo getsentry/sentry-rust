@@ -57,7 +57,7 @@ pub fn filename(s: &str) -> &str {
     s.rsplit(&['/', '\\'][..]).next().unwrap()
 }
 
-pub fn strip_symbol(s: &str) -> Cow<str> {
+pub fn strip_symbol(s: &str) -> Cow<'_, str> {
     let stripped_trailing_hash = HASH_FUNC_RE
         .captures(s)
         .map(|c| c.get(1).unwrap().as_str())
