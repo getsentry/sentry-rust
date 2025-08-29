@@ -25,7 +25,7 @@ sentry-core = { version = "0.42.0", path = "../sentry-core", features = [
     "client",
 ] }
 tracing-core = "0.1"
-tracing-subscriber = { version = "0.3.1", default-features = false, features = [
+tracing-subscriber = { version = "0.3.20", default-features = false, features = [
     "std",
 ] }
 sentry-backtrace = { version = "0.42.0", path = "../sentry-backtrace", optional = true }
@@ -36,5 +36,5 @@ log = "0.4"
 sentry = { path = "../sentry", default-features = false, features = ["test", "tracing"] }
 serde_json = "1"
 tracing = "0.1"
-tracing-subscriber = { version = "0.3.1", features = ["fmt", "registry"] }
+tracing-subscriber = { version = "0.3.20", features = ["fmt", "registry"] }
 tokio = { version = "1.44", features = ["rt-multi-thread", "macros", "time"] }
