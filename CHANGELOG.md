@@ -4,6 +4,28 @@
 
 ### Breaking changes
 
+- ref(tracing): rework tracing to Sentry span name/op conversion ([#887](https://github.com/getsentry/sentry-rust/pull/887)) by @lcian
+  - The `tracing` integration now uses the tracing span name as the Sentry span name by default.
+  - Before this change, the span name would be set based on the `tracing` span target (<module>::<function> when using the `tracing::instrument` macro).
+  - The `tracing` integration now uses `default` as the default Sentry span op.
+  - Before this change, the span op would be set based on the `tracing` span name.
+  - When upgrading, please ensure to adapt any queries, metrics or dashboards to use the new span names/ops.
+  - Additional special fields have been added that allow overriding certain data on the Sentry span:
+    - `sentry.op`: override the Sentry span op.
+    - `sentry.name`: override the Sentry span name.
+    - `sentry.trace`: given a string matching a valid `sentry-trace` header (sent automatically by client SDKs), continues the distributed trace instead of starting a new one. If the value is not a valid `sentry-trace` header or a trace is already started, this value is ignored.
+  - `sentry.op` and `sentry.name` can also be applied retroactively by declaring fields with value `tracing::field::Empty` and then recorded using `tracing::Span::record`.
+  - Example usage:
+    ```rust
+    #[tracing::instrument(skip_all, fields(
+        sentry.op = "http.server",
+        sentry.name = "GET /payments",
+        sentry.trace = headers.get("sentry-trace").unwrap_or(&"".to_owned()),
+    ))]
+    async fn handle_request(headers: std::collections::HashMap<String, String>) {
+        // ...
+    }
+    ```
 - fix(actix): capture only server errors ([#877](https://github.com/getsentry/sentry-rust/pull/877))
   - The Actix integration now properly honors the `capture_server_errors` option (enabled by default), capturing errors returned by middleware only if they are server errors (HTTP status code 5xx).
   - Previously, if a middleware were to process the request after the Sentry middleware and return an error, our middleware would always capture it and send it to Sentry, regardless if it was a client, server or some other kind of error.
