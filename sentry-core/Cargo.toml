@@ -34,6 +34,7 @@ serde = { version = "1.0.104", features = ["derive"] }
 serde_json = { version = "1.0.46" }
 url = { version = "2.1.1" }
 uuid = { version = "1.0.0", features = ["v4", "serde"], optional = true }
+futures = "0.3.24"
 
 [dev-dependencies]
 # Because we re-export all the public API in `sentry`, we actually run all the
@@ -45,7 +46,6 @@ sentry = { path = "../sentry", default-features = false, features = [
 ] }
 anyhow = "1.0.30"
 criterion = "0.5"
-futures = "0.3.24"
 rayon = "1.5.3"
 thiserror = "2.0.12"
 tokio = { version = "1.44", features = ["rt", "rt-multi-thread", "macros"] }

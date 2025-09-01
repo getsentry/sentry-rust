@@ -3,6 +3,8 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
+use futures::Stream;
+
 use crate::Hub;
 
 /// A future that binds a `Hub` to its execution.
@@ -65,6 +67,67 @@ pub trait SentryFutureExt: Sized {
 }
 
 impl<F> SentryFutureExt for F where F: Future {}
+
+/// A stream that binds a `Hub` to its execution.
+///
+/// This activates the given hub for the duration of the inner streams `poll_next`
+/// method. Users usually do not need to construct this type manually, but
+/// rather use the [`StreamExt::bind_hub`] method instead.
+///
+/// [`StreamExt::bind_hub`]: trait.StreamExt.html#method.bind_hub
+#[derive(Debug)]
+pub struct SentryStream<S> {
+    hub: Arc<Hub>,
+    stream: S,
+}
+
+impl<S> SentryStream<S> {
+    /// Creates a new bound stream with a `Hub`.
+    pub fn new(hub: Arc<Hub>, stream: S) -> Self {
+        Self { hub, stream }
+    }
+}
+
+impl<S> Stream for SentryStream<S>
+where
+    S: Stream,
+{
+    type Item = S::Item;
+
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let hub = self.hub.clone();
+        // https://doc.rust-lang.org/std/pin/index.html#pinning-is-structural-for-field
+        let stream = unsafe { self.map_unchecked_mut(|s| &mut s.stream) };
+        #[cfg(feature = "client")]
+        {
+            let _guard = crate::hub_impl::SwitchGuard::new(hub);
+            stream.poll_next(cx)
+        }
+        #[cfg(not(feature = "client"))]
+        {
+            let _ = hub;
+            stream.poll_next(cx)
+        }
+    }
+}
+
+/// Stream extensions for Sentry.
+pub trait SentryStreamExt: Sized {
+    /// Binds a hub to the execution of this stream.
+    ///
+    /// This ensures that the stream is polled within the given hub.
+    fn bind_hub<H>(self, hub: H) -> SentryStream<Self>
+    where
+        H: Into<Arc<Hub>>,
+    {
+        SentryStream {
+            stream: self,
+            hub: hub.into(),
+        }
+    }
+}
+
+impl<S> SentryStreamExt for S where S: Stream {}
 
 #[cfg(all(test, feature = "test"))]
 mod tests {

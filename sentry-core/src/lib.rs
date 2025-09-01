@@ -126,6 +126,7 @@ pub use crate::breadcrumbs::IntoBreadcrumbs;
 pub use crate::clientoptions::{BeforeCallback, ClientOptions, SessionMode};
 pub use crate::error::{capture_error, event_from_error, parse_type_from_debug};
 pub use crate::futures::{SentryFuture, SentryFutureExt};
+pub use crate::futures::{SentryStream, SentryStreamExt};
 pub use crate::hub::Hub;
 pub use crate::integration::Integration;
 pub use crate::intodsn::IntoDsn;
