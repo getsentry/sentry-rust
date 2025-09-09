@@ -773,7 +773,7 @@ impl Transaction {
     /// for as long as it lives. Therefore you must take care not to keep the returned
     /// `TransactionData` around too long or it will never relinquish the lock and you may run into
     /// a deadlock.
-    pub fn data(&self) -> TransactionData {
+    pub fn data(&self) -> TransactionData<'_> {
         TransactionData(self.inner.lock().unwrap())
     }
 
@@ -1018,7 +1018,7 @@ impl Span {
     /// for as long as it lives. Therefore you must take care not to keep the returned
     /// `Data` around too long or it will never relinquish the lock and you may run into
     /// a deadlock.
-    pub fn data(&self) -> Data {
+    pub fn data(&self) -> Data<'_> {
         Data(self.span.lock().unwrap())
     }
 
