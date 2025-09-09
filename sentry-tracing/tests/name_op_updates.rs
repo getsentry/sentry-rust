@@ -2,13 +2,10 @@ mod shared;
 
 #[tracing::instrument(fields(
     some = "value",
-    sentry.name = tracing::field::Empty,
-    sentry.op = tracing::field::Empty,
+    sentry.name = "updated name",
+    sentry.op = "updated op",
 ))]
-fn test_fun_record_on_creation() {
-    tracing::Span::current().record("sentry.name", "updated name");
-    tracing::Span::current().record("sentry.op", "updated op");
-}
+fn test_fun_record_on_creation() {}
 
 #[tracing::instrument(fields(
     some = "value",
