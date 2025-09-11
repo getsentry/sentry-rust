@@ -116,10 +116,9 @@ impl RateLimiter {
                 }
                 EnvelopeItem::Transaction(_) => RateLimitingCategory::Transaction,
                 EnvelopeItem::Attachment(_) => RateLimitingCategory::Attachment,
-                EnvelopeItem::ItemContainer(container) => match container {
-                    ItemContainer::Logs(_) => RateLimitingCategory::LogItem,
-                    _ => RateLimitingCategory::Any,
-                },
+                EnvelopeItem::ItemContainer(ItemContainer::Logs(_)) => {
+                    RateLimitingCategory::LogItem
+                }
                 _ => RateLimitingCategory::Any,
             })
         })
