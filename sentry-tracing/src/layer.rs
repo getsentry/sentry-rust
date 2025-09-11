@@ -181,7 +181,8 @@ where
                 sentry_core::Hub::current()
                     .client()
                     .map(|client| client.options().enable_logs)
-                    .unwrap_or(true)
+                    .unwrap_or(true) // default to true if we don't know, client will drop the
+                                     // logs later if it was actually `enable_logs: false`
             }
             #[cfg(not(feature = "logs"))]
             {
