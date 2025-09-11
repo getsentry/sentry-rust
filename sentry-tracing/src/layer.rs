@@ -191,9 +191,9 @@ where
 
         Self {
             event_filter: Box::new(if enable_logs {
-                default_event_filter
-            } else {
                 default_event_filter_with_logs
+            } else {
+                default_event_filter
             }),
             event_mapper: None,
 
