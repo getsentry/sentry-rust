@@ -2,6 +2,7 @@ use httpdate::parse_http_date;
 use std::time::{Duration, SystemTime};
 
 use crate::protocol::EnvelopeItem;
+use crate::protocol::ItemContainer;
 use crate::Envelope;
 
 /// A Utility that helps with rate limiting sentry requests.
@@ -12,6 +13,7 @@ pub struct RateLimiter {
     session: Option<SystemTime>,
     transaction: Option<SystemTime>,
     attachment: Option<SystemTime>,
+    log_item: Option<SystemTime>,
 }
 
 impl RateLimiter {
@@ -56,6 +58,7 @@ impl RateLimiter {
                     "session" => self.session = new_time,
                     "transaction" => self.transaction = new_time,
                     "attachment" => self.attachment = new_time,
+                    "log_item" => self.log_item = new_time,
                     _ => {}
                 }
             }
@@ -89,6 +92,7 @@ impl RateLimiter {
             RateLimitingCategory::Session => self.session,
             RateLimitingCategory::Transaction => self.transaction,
             RateLimitingCategory::Attachment => self.attachment,
+            RateLimitingCategory::LogItem => self.log_item,
         }?;
         time_left.duration_since(SystemTime::now()).ok()
     }
@@ -112,6 +116,10 @@ impl RateLimiter {
                 }
                 EnvelopeItem::Transaction(_) => RateLimitingCategory::Transaction,
                 EnvelopeItem::Attachment(_) => RateLimitingCategory::Attachment,
+                EnvelopeItem::ItemContainer(container) => match container {
+                    ItemContainer::Logs(_) => RateLimitingCategory::LogItem,
+                    _ => RateLimitingCategory::Any,
+                },
                 _ => RateLimitingCategory::Any,
             })
         })
@@ -131,6 +139,8 @@ pub enum RateLimitingCategory {
     Transaction,
     /// Rate Limit pertaining to Attachments.
     Attachment,
+    /// Rate Limit pertaining to Log Items.
+    LogItem,
 }
 
 #[cfg(test)]
@@ -145,6 +155,7 @@ mod tests {
         assert!(rl.is_disabled(RateLimitingCategory::Error).unwrap() <= Duration::from_secs(120));
         assert!(rl.is_disabled(RateLimitingCategory::Session).unwrap() <= Duration::from_secs(60));
         assert!(rl.is_disabled(RateLimitingCategory::Transaction).is_none());
+        assert!(rl.is_disabled(RateLimitingCategory::LogItem).is_none());
         assert!(rl.is_disabled(RateLimitingCategory::Any).is_none());
 
         rl.update_from_sentry_header(
