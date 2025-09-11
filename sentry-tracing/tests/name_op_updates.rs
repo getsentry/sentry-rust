@@ -26,7 +26,7 @@ fn should_update_sentry_op_and_name_based_on_fields() {
 
         let data = transport.fetch_and_clear_envelopes();
         assert_eq!(data.len(), 1);
-        // Confirm transaction has updated values
+
         let transaction = data.first().expect("should have 1 transaction");
         let transaction = match transaction.items().next().unwrap() {
             sentry::protocol::EnvelopeItem::Transaction(transaction) => transaction,
