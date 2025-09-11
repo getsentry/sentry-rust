@@ -178,9 +178,13 @@ mod tests {
 
         assert!(rl.is_disabled(RateLimitingCategory::Error).unwrap() <= Duration::from_secs(120));
         assert!(rl.is_disabled(RateLimitingCategory::Session).unwrap() <= Duration::from_secs(120));
-        assert!(rl.is_disabled(RateLimitingCategory::Transaction).unwrap() <= Duration::from_secs(120));
+        assert!(
+            rl.is_disabled(RateLimitingCategory::Transaction).unwrap() <= Duration::from_secs(120)
+        );
         assert!(rl.is_disabled(RateLimitingCategory::LogItem).unwrap() <= Duration::from_secs(120));
-        assert!(rl.is_disabled(RateLimitingCategory::Attachment).unwrap() <= Duration::from_secs(120));
+        assert!(
+            rl.is_disabled(RateLimitingCategory::Attachment).unwrap() <= Duration::from_secs(120)
+        );
         assert!(rl.is_disabled(RateLimitingCategory::Any).unwrap() <= Duration::from_secs(120));
     }
 
