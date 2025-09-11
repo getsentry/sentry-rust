@@ -72,21 +72,14 @@ impl From<Vec<EventMapping>> for CombinedEventMapping {
 /// `warning` and `info`, and `debug` and `trace` logs are ignored.
 pub fn default_event_filter(metadata: &Metadata) -> EventFilter {
     match metadata.level() {
-        &Level::ERROR => EventFilter::Event,
-        &Level::WARN | &Level::INFO => EventFilter::Breadcrumb,
-        &Level::DEBUG | &Level::TRACE => EventFilter::Ignore,
-    }
-}
-
-/// The default event filter, with logs.
-///
-/// By default, an exception event is captured for `error`, a breadcrumb for
-/// `warning` and `info`, and `debug` and `trace` logs are ignored.
-/// Additionally, a log is captured for `info`, `warning` and `error`.
-pub fn default_event_filter_with_logs(metadata: &Metadata) -> EventFilter {
-    match metadata.level() {
+        #[cfg(feature = "logs")]
         &Level::ERROR => EventFilter::Event | EventFilter::Log,
+        #[cfg(not(feature = "logs"))]
+        &Level::ERROR => EventFilter::Event,
+        #[cfg(feature = "logs")]
         &Level::WARN | &Level::INFO => EventFilter::Breadcrumb | EventFilter::Log,
+        #[cfg(not(feature = "logs"))]
+        &Level::WARN | &Level::INFO => EventFilter::Breadcrumb,
         &Level::DEBUG | &Level::TRACE => EventFilter::Ignore,
     }
 }
@@ -175,27 +168,8 @@ where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
     fn default() -> Self {
-        let enable_logs = {
-            #[cfg(feature = "logs")]
-            {
-                sentry_core::Hub::current()
-                    .client()
-                    .map(|client| client.options().enable_logs)
-                    .unwrap_or(true) // default to true if we don't know, client will drop the
-                                     // logs later if it was actually `enable_logs: false`
-            }
-            #[cfg(not(feature = "logs"))]
-            {
-                false
-            }
-        };
-
         Self {
-            event_filter: Box::new(if enable_logs {
-                default_event_filter_with_logs
-            } else {
-                default_event_filter
-            }),
+            event_filter: Box::new(default_event_filter),
             event_mapper: None,
 
             span_filter: Box::new(default_span_filter),
