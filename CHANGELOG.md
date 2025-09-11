@@ -10,6 +10,11 @@
   - With this change, we capture errors returned by middleware only if those errors can be classified as server errors.
   - There is no change in behavior when it comes to errors returned by services, in which case the Sentry middleware only captures server errors exclusively.
 
+### Behavioral changes
+
+- feat(tracing): send both breadcrumbs and logs by default ([#878](https://github.com/getsentry/sentry-rust/pull/878)) by @lcian
+  - If the `logs` feature flag is enabled, and `enable_logs: true` is set on your client options, the default Sentry `tracing` layer now sends logs for all events at or above INFO.
+
 ### Features
 
 - feat(core): add Response context ([#874](https://github.com/getsentry/sentry-rust/pull/874)) by @lcian
