@@ -32,6 +32,7 @@ fn should_instrument_function_with_event() {
         sentry::protocol::EnvelopeItem::Transaction(transaction) => transaction,
         unexpected => panic!("Expected transaction, but got {unexpected:#?}"),
     };
+    assert_eq!(transaction.name, Some("function_with_tags".into()));
     assert_eq!(transaction.tags.len(), 1);
     assert_eq!(trace.data.len(), 3);
 
