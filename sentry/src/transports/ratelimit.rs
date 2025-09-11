@@ -172,6 +172,19 @@ mod tests {
     }
 
     #[test]
+    fn test_sentry_header_no_categories() {
+        let mut rl = RateLimiter::new();
+        rl.update_from_sentry_header("120::bar");
+
+        assert!(rl.is_disabled(RateLimitingCategory::Error).unwrap() <= Duration::from_secs(120));
+        assert!(rl.is_disabled(RateLimitingCategory::Session).unwrap() <= Duration::from_secs(120));
+        assert!(rl.is_disabled(RateLimitingCategory::Transaction).unwrap() <= Duration::from_secs(120));
+        assert!(rl.is_disabled(RateLimitingCategory::LogItem).unwrap() <= Duration::from_secs(120));
+        assert!(rl.is_disabled(RateLimitingCategory::Attachment).unwrap() <= Duration::from_secs(120));
+        assert!(rl.is_disabled(RateLimitingCategory::Any).unwrap() <= Duration::from_secs(120));
+    }
+
+    #[test]
     fn test_retry_after() {
         let mut rl = RateLimiter::new();
         rl.update_from_retry_after("60");
