@@ -33,6 +33,7 @@
 
 - build(panic): Fix build without other dependencies ([#883](https://github.com/getsentry/sentry-rust/pull/883)) by @liskin
   - The `sentry-panic` crate now builds successfully when used as a standalone dependency.
+- fix(transport): add rate limits for logs ([#894](https://github.com/getsentry/sentry-rust/pull/894)) by @giortzisg
 
 ## 0.42.0
 
