@@ -2,8 +2,43 @@
 
 ## Unreleased
 
-- feat(tracing): send both breadcrumbs and logs by default ([#878](https://github.com/getsentry/sentry-rust/pull/878))
+### Breaking changes
+
+- fix(actix): capture only server errors ([#877](https://github.com/getsentry/sentry-rust/pull/877))
+  - The Actix integration now properly honors the `capture_server_errors` option (enabled by default), capturing errors returned by middleware only if they are server errors (HTTP status code 5xx).
+  - Previously, if a middleware were to process the request after the Sentry middleware and return an error, our middleware would always capture it and send it to Sentry, regardless if it was a client, server or some other kind of error.
+  - With this change, we capture errors returned by middleware only if those errors can be classified as server errors.
+  - There is no change in behavior when it comes to errors returned by services, in which case the Sentry middleware only captures server errors exclusively.
+
+### Behavioral changes
+
+- feat(tracing): send both breadcrumbs and logs by default ([#878](https://github.com/getsentry/sentry-rust/pull/878)) by @lcian
   - If the `logs` feature flag is enabled, and `enable_logs: true` is set on your client options, the default Sentry `tracing` layer now sends logs for all events at or above INFO.
+
+### Features
+
+- feat(core): add Response context ([#874](https://github.com/getsentry/sentry-rust/pull/874)) by @lcian
+  - The `Response` context can now be attached to events, to include information about HTTP responses such as headers, cookies and status code.
+  - Example:
+    ```rust
+    let mut event = Event::new();
+    let response = ResponseContext {
+        cookies: Some(r#""csrftoken": "1234567""#.to_owned()),
+        headers: Some(headers_map),
+        status_code: Some(500),
+        body_size: Some(15),
+        data: Some("Invalid request"),
+    };
+    event
+        .contexts
+        .insert("response".to_owned(), response.into());
+    ```
+
+### Fixes
+
+- build(panic): Fix build without other dependencies ([#883](https://github.com/getsentry/sentry-rust/pull/883)) by @liskin
+  - The `sentry-panic` crate now builds successfully when used as a standalone dependency.
+- fix(transport): add rate limits for logs ([#894](https://github.com/getsentry/sentry-rust/pull/894)) by @giortzisg
 
 ## 0.42.0
 

@@ -1314,6 +1314,43 @@ mod test_contexts {
     }
 
     #[test]
+    fn test_response_context() {
+        let event = v7::Event {
+            event_id: event_id(),
+            timestamp: event_time(),
+            contexts: {
+                let mut m = v7::Map::new();
+                m.insert(
+                    "response".into(),
+                    v7::ResponseContext {
+                        status_code: Some(400),
+                        cookies: Some("sessionId=abc123; Path=/; HttpOnly,authToken=xyz789; Secure; SameSite=Strict".into()),
+                        headers: {
+                            let mut hm = v7::Map::new();
+                            hm.insert("Content-Type".into(), "text/plain".into());
+                            hm
+                        },
+                        body_size: Some(1000),
+                        data: Some("lol".into()),
+                    }
+                    .into(),
+                );
+                m
+            },
+            ..Default::default()
+        };
+
+        assert_roundtrip(&event);
+        assert_eq!(
+            serde_json::to_string(&event).unwrap(),
+            "{\"event_id\":\"d43e86c96e424a93a4fbda156dd17341\",\"timestamp\":1514103120,\
+             \"contexts\":{\"response\":{\"type\":\"response\",\
+             \"cookies\":\"sessionId=abc123; Path=/; HttpOnly,authToken=xyz789; Secure; SameSite=Strict\",\
+             \"headers\":{\"Content-Type\":\"text/plain\"},\"status_code\":400,\"body_size\":1000,\"data\":\"lol\"}}}"
+        );
+    }
+
+    #[test]
     fn test_renamed_contexts() {
         let event = v7::Event {
             event_id: event_id(),

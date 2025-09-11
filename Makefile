@@ -33,6 +33,11 @@ lint:
 	cargo +stable clippy --all-features --tests --examples -- -D clippy::all
 .PHONY: lint
 
+fix:
+	@rustup component add clippy --toolchain stable 2> /dev/null
+	cargo +stable clippy --all-features --workspace --tests --examples --fix -- -D clippy::all
+.PHONY: fix
+
 # Tests
 
 test: checkall testall

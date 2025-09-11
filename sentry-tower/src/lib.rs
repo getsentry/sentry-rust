@@ -130,6 +130,19 @@
 //! # }
 //! ```
 //!
+//! When using `axum`, either use [`tower::ServiceBuilder`] as shown above, or make sure you
+//! reorder the layers, like so:
+//!
+//! ```ignore
+//! let app = Router::new()
+//!     .route("/", get(handler))
+//!     .layer(sentry_tower::SentryHttpLayer::new().enable_transaction())
+//!     .layer(sentry_tower::NewSentryLayer::<Request>::new_from_top())
+//! ```
+//!
+//! This is because `axum` applies middleware in the opposite order as [`tower::ServiceBuilder`].
+//! Applying the layers in the wrong order can result in memory leaks.
+//!
 //! [`tower::ServiceBuilder`]: https://docs.rs/tower/latest/tower/struct.ServiceBuilder.html
 
 #![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
