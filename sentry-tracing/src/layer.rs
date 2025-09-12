@@ -308,7 +308,7 @@ where
         let hub = sentry_core::Hub::current();
         let parent_sentry_span = hub.configure_scope(|scope| scope.get_span());
 
-        let sentry_span: sentry_core::TransactionOrSpan = match &parent_sentry_span {
+        let mut sentry_span: sentry_core::TransactionOrSpan = match &parent_sentry_span {
             Some(parent) => parent.start_child(sentry_op, sentry_name).into(),
             None => {
                 let ctx = if let Some(trace_header) = sentry_trace {
@@ -329,6 +329,8 @@ where
         // Add the data from the original span to the sentry span.
         // This comes from typically the `fields` in `tracing::instrument`.
         record_fields(&sentry_span, data);
+
+        set_default_attributes(&mut sentry_span, span.metadata());
 
         let mut extensions = span.extensions_mut();
         extensions.insert(SentrySpanData {
@@ -432,6 +434,22 @@ where
         }
 
         record_fields(span, data.json_values);
+    }
+}
+
+fn set_default_attributes(span: &mut TransactionOrSpan, metadata: &'static Metadata<'static>) {
+    span.set_data("sentry.tracing.target", metadata.target().into());
+
+    if let Some(module) = metadata.module_path() {
+        span.set_data("code.module.name", module.into());
+    }
+
+    if let Some(file) = metadata.file() {
+        span.set_data("code.file.path", file.into());
+    }
+
+    if let Some(line) = metadata.line() {
+        span.set_data("code.line.number", line.into());
     }
 }
 
