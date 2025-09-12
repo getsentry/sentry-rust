@@ -12,6 +12,9 @@ use tracing_subscriber::layer::{Context, Layer};
 use tracing_subscriber::registry::LookupSpan;
 
 use crate::converters::*;
+use crate::SENTRY_NAME_FIELD;
+use crate::SENTRY_OP_FIELD;
+use crate::SENTRY_TRACE_FIELD;
 use crate::TAGS_PREFIX;
 
 bitflags! {
@@ -298,27 +301,26 @@ where
             return;
         }
 
-        let (description, data) = extract_span_data(attrs);
-        let op = span.name();
-
-        // Spans don't always have a description, this ensures our data is not empty,
-        // therefore the Sentry UI will be a lot more valuable for navigating spans.
-        let description = description.unwrap_or_else(|| {
-            let target = span.metadata().target();
-            if target.is_empty() {
-                op.to_string()
-            } else {
-                format!("{target}::{op}")
-            }
-        });
+        let (data, sentry_name, sentry_op, sentry_trace) = extract_span_data(attrs);
+        let sentry_name = sentry_name.as_deref().unwrap_or_else(|| span.name());
+        let sentry_op = sentry_op.as_deref().unwrap_or("default");
 
         let hub = sentry_core::Hub::current();
         let parent_sentry_span = hub.configure_scope(|scope| scope.get_span());
 
-        let sentry_span: sentry_core::TransactionOrSpan = match &parent_sentry_span {
-            Some(parent) => parent.start_child(op, &description).into(),
+        let mut sentry_span: sentry_core::TransactionOrSpan = match &parent_sentry_span {
+            Some(parent) => parent.start_child(sentry_op, sentry_name).into(),
             None => {
-                let ctx = sentry_core::TransactionContext::new(&description, op);
+                let ctx = if let Some(trace_header) = sentry_trace {
+                    sentry_core::TransactionContext::continue_from_headers(
+                        sentry_name,
+                        sentry_op,
+                        [("sentry-trace", trace_header.as_str())],
+                    )
+                } else {
+                    sentry_core::TransactionContext::new(sentry_name, sentry_op)
+                };
+
                 let tx = sentry_core::start_transaction(ctx);
                 tx.set_data("origin", "auto.tracing".into());
                 tx.into()
@@ -327,6 +329,8 @@ where
         // Add the data from the original span to the sentry span.
         // This comes from typically the `fields` in `tracing::instrument`.
         record_fields(&sentry_span, data);
+
+        set_default_attributes(&mut sentry_span, span.metadata());
 
         let mut extensions = span.extensions_mut();
         extensions.insert(SentrySpanData {
@@ -403,7 +407,49 @@ where
         let mut data = FieldVisitor::default();
         values.record(&mut data);
 
+        let sentry_name = data
+            .json_values
+            .remove(SENTRY_NAME_FIELD)
+            .and_then(|v| match v {
+                Value::String(s) => Some(s),
+                _ => None,
+            });
+
+        let sentry_op = data
+            .json_values
+            .remove(SENTRY_OP_FIELD)
+            .and_then(|v| match v {
+                Value::String(s) => Some(s),
+                _ => None,
+            });
+
+        // `sentry.trace` cannot be applied retroactively
+        data.json_values.remove(SENTRY_TRACE_FIELD);
+
+        if let Some(name) = sentry_name {
+            span.set_name(&name);
+        }
+        if let Some(op) = sentry_op {
+            span.set_op(&op);
+        }
+
         record_fields(span, data.json_values);
+    }
+}
+
+fn set_default_attributes(span: &mut TransactionOrSpan, metadata: &Metadata<'_>) {
+    span.set_data("sentry.tracing.target", metadata.target().into());
+
+    if let Some(module) = metadata.module_path() {
+        span.set_data("code.module.name", module.into());
+    }
+
+    if let Some(file) = metadata.file() {
+        span.set_data("code.file.path", file.into());
+    }
+
+    if let Some(line) = metadata.line() {
+        span.set_data("code.line.number", line.into());
     }
 }
 
@@ -415,8 +461,16 @@ where
     Default::default()
 }
 
-/// Extracts the message and attributes from a span
-fn extract_span_data(attrs: &span::Attributes) -> (Option<String>, BTreeMap<&'static str, Value>) {
+/// Extracts the attributes from a span,
+/// returning the values of SENTRY_NAME_FIELD, SENTRY_OP_FIELD, SENTRY_TRACE_FIELD separately
+fn extract_span_data(
+    attrs: &span::Attributes,
+) -> (
+    BTreeMap<&'static str, Value>,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+) {
     let mut json_values = VISITOR_BUFFER.with_borrow_mut(|debug_buffer| {
         let mut visitor = SpanFieldVisitor {
             debug_buffer,
@@ -426,13 +480,24 @@ fn extract_span_data(attrs: &span::Attributes) -> (Option<String>, BTreeMap<&'st
         visitor.json_values
     });
 
-    // Find message of the span, if any
-    let message = json_values.remove("message").and_then(|v| match v {
+    let name = json_values.remove(SENTRY_NAME_FIELD).and_then(|v| match v {
         Value::String(s) => Some(s),
         _ => None,
     });
 
-    (message, json_values)
+    let op = json_values.remove(SENTRY_OP_FIELD).and_then(|v| match v {
+        Value::String(s) => Some(s),
+        _ => None,
+    });
+
+    let sentry_trace = json_values
+        .remove(SENTRY_TRACE_FIELD)
+        .and_then(|v| match v {
+            Value::String(s) => Some(s),
+            _ => None,
+        });
+
+    (json_values, name, op, sentry_trace)
 }
 
 thread_local! {
