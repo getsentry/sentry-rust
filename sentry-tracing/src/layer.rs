@@ -443,7 +443,8 @@ where
     Default::default()
 }
 
-/// Extracts the message and attributes from a span
+/// Extracts the attributes from a span,
+/// returning the values of SENTRY_NAME_FIELD, SENTRY_OP_FIELD, SENTRY_TRACE_FIELD separately
 fn extract_span_data(
     attrs: &span::Attributes,
 ) -> (
