@@ -437,7 +437,7 @@ where
     }
 }
 
-fn set_default_attributes(span: &mut TransactionOrSpan, metadata: &'static Metadata<'static>) {
+fn set_default_attributes(span: &mut TransactionOrSpan, metadata: &Metadata<'_>) {
     span.set_data("sentry.tracing.target", metadata.target().into());
 
     if let Some(module) = metadata.module_path() {
