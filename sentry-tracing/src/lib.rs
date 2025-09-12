@@ -210,15 +210,15 @@
 //! Some fields on spans are treated specially by the Sentry tracing integration:
 //! - `sentry.name`: overrides the span name sent to Sentry.
 //!   This is useful to customize the span name when using `#[tracing::instrument]`, or to update
-//!   it retroactively (using `span.record`) after the span has been created, as `tracing` doesn't allow doing it.
+//!   it retroactively (using `span.record`) after the span has been created.
 //! - `sentry.op`: overrides the span `op` sent to Sentry.
 //! - `sentry.trace`: in Sentry, the `sentry-trace` header is sent with HTTP requests to achieve distributed tracing.
 //!   If the value of this field is set to the value of a valid `sentry-trace` header, which
-//!   frontend SDKs send automatically with outgoing requests, then the SDK will continue the trace using the given distributed tracing information.
+//!   other Sentry SDKs send automatically with outgoing requests, then the SDK will continue the trace using the given distributed tracing information.
 //!   This is useful to achieve distributed tracing at service boundaries by using only the
 //!   `tracing` API.
-//!   Note that this will only be effective on span creation (cannot be applied retroactively) and
-//!   requires the span it's applied to to be a root span, i.e. no span should active upon its
+//!   Note that `sentry.trace` will only be effective on span creation (it cannot be applied retroactively)
+//!   and requires the span it's applied to to be a root span, i.e. no span should active upon its
 //!   creation.
 //!
 //!

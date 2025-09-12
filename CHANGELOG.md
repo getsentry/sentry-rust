@@ -10,6 +10,15 @@
   - The `tracing` integration now uses `default` as the default Sentry span op.
   - Before this change, the span op would be set based on the `tracing` span name.
   - When upgrading, please ensure to adapt any queries, metrics or dashboards to use the new span names/ops.
+- fix(actix): capture only server errors ([#877](https://github.com/getsentry/sentry-rust/pull/877)) by @lcian
+  - The Actix integration now properly honors the `capture_server_errors` option (enabled by default), capturing errors returned by middleware only if they are server errors (HTTP status code 5xx).
+  - Previously, if a middleware were to process the request after the Sentry middleware and return an error, our middleware would always capture it and send it to Sentry, regardless if it was a client, server or some other kind of error.
+  - With this change, we capture errors returned by middleware only if those errors can be classified as server errors.
+  - There is no change in behavior when it comes to errors returned by services, in which case the Sentry middleware only captures server errors exclusively.
+
+### Features
+
+- ref(tracing): rework tracing to Sentry span name/op conversion ([#887](https://github.com/getsentry/sentry-rust/pull/887)) by @lcian
   - Additional special fields have been added that allow overriding certain data on the Sentry span:
     - `sentry.op`: override the Sentry span op.
     - `sentry.name`: override the Sentry span name.
@@ -26,13 +35,6 @@
         // ...
     }
     ```
-- fix(actix): capture only server errors ([#877](https://github.com/getsentry/sentry-rust/pull/877))
-  - The Actix integration now properly honors the `capture_server_errors` option (enabled by default), capturing errors returned by middleware only if they are server errors (HTTP status code 5xx).
-  - Previously, if a middleware were to process the request after the Sentry middleware and return an error, our middleware would always capture it and send it to Sentry, regardless if it was a client, server or some other kind of error.
-  - With this change, we capture errors returned by middleware only if those errors can be classified as server errors.
-  - There is no change in behavior when it comes to errors returned by services, in which case the Sentry middleware only captures server errors exclusively.
-
-### Features
 
 - feat(core): add Response context ([#874](https://github.com/getsentry/sentry-rust/pull/874)) by @lcian
   - The `Response` context can now be attached to events, to include information about HTTP responses such as headers, cookies and status code.
