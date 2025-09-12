@@ -40,6 +40,9 @@
         // ...
     }
     ```
+  - Additional attributes are sent along with each span by default:
+    - `sentry.tracing.target`: corresponds to the `tracing` span's `metadata.target()`
+    - `code.module.name`, `code.file.path`, `code.line.number`
 
 - feat(core): add Response context ([#874](https://github.com/getsentry/sentry-rust/pull/874)) by @lcian
   - The `Response` context can now be attached to events, to include information about HTTP responses such as headers, cookies and status code.
