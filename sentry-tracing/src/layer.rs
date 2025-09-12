@@ -75,7 +75,13 @@ impl From<Vec<EventMapping>> for CombinedEventMapping {
 /// `warning` and `info`, and `debug` and `trace` logs are ignored.
 pub fn default_event_filter(metadata: &Metadata) -> EventFilter {
     match metadata.level() {
+        #[cfg(feature = "logs")]
+        &Level::ERROR => EventFilter::Event | EventFilter::Log,
+        #[cfg(not(feature = "logs"))]
         &Level::ERROR => EventFilter::Event,
+        #[cfg(feature = "logs")]
+        &Level::WARN | &Level::INFO => EventFilter::Breadcrumb | EventFilter::Log,
+        #[cfg(not(feature = "logs"))]
         &Level::WARN | &Level::INFO => EventFilter::Breadcrumb,
         &Level::DEBUG | &Level::TRACE => EventFilter::Ignore,
     }

@@ -16,6 +16,11 @@
   - With this change, we capture errors returned by middleware only if those errors can be classified as server errors.
   - There is no change in behavior when it comes to errors returned by services, in which case the Sentry middleware only captures server errors exclusively.
 
+### Behavioral changes
+
+- feat(tracing): send both breadcrumbs and logs by default ([#878](https://github.com/getsentry/sentry-rust/pull/878)) by @lcian
+  - If the `logs` feature flag is enabled, and `enable_logs: true` is set on your client options, the default Sentry `tracing` layer now sends logs for all events at or above INFO.
+
 ### Features
 
 - ref(tracing): rework tracing to Sentry span name/op conversion ([#887](https://github.com/getsentry/sentry-rust/pull/887)) by @lcian
@@ -57,6 +62,7 @@
 
 - build(panic): Fix build without other dependencies ([#883](https://github.com/getsentry/sentry-rust/pull/883)) by @liskin
   - The `sentry-panic` crate now builds successfully when used as a standalone dependency.
+- fix(transport): add rate limits for logs ([#894](https://github.com/getsentry/sentry-rust/pull/894)) by @giortzisg
 
 ## 0.42.0
 
