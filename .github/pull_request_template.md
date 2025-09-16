@@ -9,5 +9,6 @@
 
 #### Reminders
 - Add GH Issue ID _&_ Linear ID (if applicable)
-- PR title should use [conventional commit](https://develop.sentry.dev/engineering-practices/commit-messages/#type) style (`feat:`, `fix:`, `ref:`, `meta:`)
-- For external contributors: [CONTRIBUTING.md](../CONTRIBUTING.md), [Sentry SDK development docs](https://develop.sentry.dev/sdk/), [Discord community](https://discord.gg/Ww9hbqr)
+- Add an entry to CHANGELOG.md, following the format of existing entries
+- The PR title should use [Conventional Commits](https://develop.sentry.dev/engineering-practices/commit-messages/#type) style (`feat:`, `fix:`, `ref:`, `meta:`, etc.)
+- Useful links for external contributors: [Sentry SDK development docs](https://develop.sentry.dev/sdk/), [Discord community](https://discord.gg/sentry)
