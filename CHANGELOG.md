@@ -10,6 +10,8 @@
   - The `tracing` integration now uses `default` as the default Sentry span op.
   - Before this change, the span op would be set based on the `tracing` span name.
   - When upgrading, please ensure to adapt any queries, metrics or dashboards to use the new span names/ops.
+- ref(tracing): use standard code attributes ([#899](https://github.com/getsentry/sentry-rust/pull/899)) by @lcian
+  - Logs now carry the attributes `code.module.name`, `code.file.path` and `code.line.number` standardized in OTEL to surface the respective information, in contrast with the previously sent `tracing.module_path`, `tracing.file` and `tracing.line`.
 - fix(actix): capture only server errors ([#877](https://github.com/getsentry/sentry-rust/pull/877)) by @lcian
   - The Actix integration now properly honors the `capture_server_errors` option (enabled by default), capturing errors returned by middleware only if they are server errors (HTTP status code 5xx).
   - Previously, if a middleware were to process the request after the Sentry middleware and return an error, our middleware would always capture it and send it to Sentry, regardless if it was a client, server or some other kind of error.
@@ -20,8 +22,6 @@
 
 - feat(tracing): send both breadcrumbs and logs by default ([#878](https://github.com/getsentry/sentry-rust/pull/878)) by @lcian
   - If the `logs` feature flag is enabled, and `enable_logs: true` is set on your client options, the default Sentry `tracing` layer now sends logs for all events at or above INFO.
-- ref(tracing): use standard code attributes ([#899](https://github.com/getsentry/sentry-rust/pull/899)) by @lcian
-  - Logs now carry the attributes `code.module.name`, `code.file.path` and `code.line.number` standardized in OTEL to surface the respective information, in contrast with the previously sent `tracing.module_path`, `tracing.file` and `tracing.line`.
 
 ### Features
 
