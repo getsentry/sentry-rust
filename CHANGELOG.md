@@ -22,8 +22,6 @@
 
 - feat(tracing): send both breadcrumbs and logs by default ([#878](https://github.com/getsentry/sentry-rust/pull/878)) by @lcian
   - If the `logs` feature flag is enabled, and `enable_logs: true` is set on your client options, the default Sentry `tracing` layer now sends logs for all events at or above INFO.
-- ref(tracing): use standard code attributes ([#899](https://github.com/getsentry/sentry-rust/pull/899)) by @lcian
-  - Logs now carry the attributes `code.module.name`, `code.file.path` and `code.line.number` standardized in OTEL to surface the respective information, in contrast with the previously sent `tracing.module_path`, `tracing.file` and `tracing.line`.
 
 ### Features
 
