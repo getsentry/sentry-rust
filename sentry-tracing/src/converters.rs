@@ -344,13 +344,13 @@ where
 
     let event_meta = event.metadata();
     if let Some(module_path) = event_meta.module_path() {
-        attributes.insert("tracing.module_path".to_owned(), module_path.into());
+        attributes.insert("code.module.name".to_owned(), module_path.into());
     }
     if let Some(file) = event_meta.file() {
-        attributes.insert("tracing.file".to_owned(), file.into());
+        attributes.insert("code.file.path".to_owned(), file.into());
     }
     if let Some(line) = event_meta.line() {
-        attributes.insert("tracing.line".to_owned(), line.into());
+        attributes.insert("code.line.number".to_owned(), line.into());
     }
 
     attributes.insert("sentry.origin".to_owned(), "auto.tracing".into());
