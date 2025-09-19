@@ -322,7 +322,7 @@ where
                 };
 
                 let tx = sentry_core::start_transaction(ctx);
-                tx.set_data("origin", "auto.tracing".into());
+                tx.set_origin("auto.tracing");
                 tx.into()
             }
         };
