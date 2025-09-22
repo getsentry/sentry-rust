@@ -6,9 +6,10 @@
 
 - ref(tracing): rework tracing to Sentry span name/op conversion ([#887](https://github.com/getsentry/sentry-rust/pull/887)) by @lcian
   - The `tracing` integration now uses the tracing span name as the Sentry span name by default.
-  - Before this change, the span name would be set based on the `tracing` span target (<module>::<function> when using the `tracing::instrument` macro).
-  - The `tracing` integration now uses `default` as the default Sentry span op.
+  - Before this change, the span name would be set based on the `tracing` span target (`<module>::<function>` when using the `tracing::instrument` macro).
+  - The `tracing` integration now uses `<span target>::<span name>` as the default Sentry span op (i.e. `<module>::<function>` when using `tracing::instrument`).
   - Before this change, the span op would be set based on the `tracing` span name.
+  - Read below to learn how to customize the span name and op.
   - When upgrading, please ensure to adapt any queries, metrics or dashboards to use the new span names/ops.
 - ref(tracing): use standard code attributes ([#899](https://github.com/getsentry/sentry-rust/pull/899)) by @lcian
   - Logs now carry the attributes `code.module.name`, `code.file.path` and `code.line.number` standardized in OTEL to surface the respective information, in contrast with the previously sent `tracing.module_path`, `tracing.file` and `tracing.line`.
