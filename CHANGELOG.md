@@ -17,6 +17,8 @@
   - Previously, if a middleware were to process the request after the Sentry middleware and return an error, our middleware would always capture it and send it to Sentry, regardless if it was a client, server or some other kind of error.
   - With this change, we capture errors returned by middleware only if those errors can be classified as server errors.
   - There is no change in behavior when it comes to errors returned by services, in which case the Sentry middleware only captures server errors exclusively.
+- fix: send trace origin correctly ([#906](https://github.com/getsentry/sentry-rust/pull/906)) by @lcian
+  - `TraceContext` now has an additional field `origin`, used to report which integration created a transaction.
 
 ### Behavioral changes
 
