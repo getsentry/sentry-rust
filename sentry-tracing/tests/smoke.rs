@@ -34,7 +34,7 @@ fn should_instrument_function_with_event() {
     };
     assert_eq!(transaction.name, Some("function_with_tags".into()));
     assert_eq!(transaction.tags.len(), 1);
-    assert_eq!(trace.data.len(), 7);
+    assert_eq!(trace.data.len(), 6);
 
     let tag = transaction
         .tags

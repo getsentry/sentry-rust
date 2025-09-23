@@ -819,6 +819,12 @@ impl Transaction {
         }
     }
 
+    /// Sets the origin for this transaction, indicating what created it.
+    pub fn set_origin(&self, origin: &str) {
+        let mut inner = self.inner.lock().unwrap();
+        inner.context.origin = Some(origin.to_owned());
+    }
+
     /// Returns the headers needed for distributed tracing.
     /// Use [`crate::Scope::iter_trace_propagation_headers`] to obtain the active
     /// trace's distributed tracing headers.
