@@ -101,6 +101,9 @@ where
                 match &span_data.sentry_span {
                     TransactionOrSpan::Span(span) => {
                         for (key, value) in span.data().iter() {
+                            if is_sentry_span_attribute(key) {
+                                continue;
+                            }
                             if key != "message" {
                                 let key = format!("{name}:{key}");
                                 visitor.json_values.insert(key, value.clone());
@@ -109,6 +112,9 @@ where
                     }
                     TransactionOrSpan::Transaction(transaction) => {
                         for (key, value) in transaction.data().iter() {
+                            if is_sentry_span_attribute(key) {
+                                continue;
+                            }
                             if key != "message" {
                                 let key = format!("{name}:{key}");
                                 visitor.json_values.insert(key, value.clone());
@@ -121,6 +127,15 @@ where
     }
 
     (message, visitor)
+}
+
+/// Checks whether the given attribute name is one of those set on a span by the Sentry layer.
+/// In that case, we want to skip materializing it when propagating attributes, as it would mostly create noise.
+fn is_sentry_span_attribute(name: &str) -> bool {
+    matches!(
+        name,
+        "sentry.tracing.target" | "code.module.name" | "code.file.path" | "code.line.number"
+    )
 }
 
 /// Records the fields of a [`tracing_core::Event`].
