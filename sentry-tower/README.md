@@ -103,7 +103,7 @@ feature of the `sentry` crate instead of the `tower` feature.
 The created transaction will automatically use the request URI as its name.
 This is sometimes not desirable in case the request URI contains unique IDs
 or similar. In this case, users should manually override the transaction name
-in the request handler using the [`Scope::set_transaction`](https://docs.rs/sentry-tower/0.42.0/sentry_tower/sentry_core::Scope::set_transaction)
+in the request handler using the [`Scope::set_transaction`](https://docs.rs/sentry-tower/0.43.0/sentry_tower/sentry_core::Scope::set_transaction)
 method.
 
 When combining both layers, take care of the ordering of both. For example
@@ -115,6 +115,19 @@ let layer = tower::ServiceBuilder::new()
     .layer(sentry_tower::NewSentryLayer::<Request>::new_from_top())
     .layer(sentry_tower::SentryHttpLayer::new().enable_transaction());
 ```
+
+When using `axum`, either use [`tower::ServiceBuilder`] as shown above, or make sure you
+reorder the layers, like so:
+
+```rust
+let app = Router::new()
+    .route("/", get(handler))
+    .layer(sentry_tower::SentryHttpLayer::new().enable_transaction())
+    .layer(sentry_tower::NewSentryLayer::<Request>::new_from_top())
+```
+
+This is because `axum` applies middleware in the opposite order as [`tower::ServiceBuilder`].
+Applying the layers in the wrong order can result in memory leaks.
 
 [`tower::ServiceBuilder`]: https://docs.rs/tower/latest/tower/struct.ServiceBuilder.html
 
