@@ -60,7 +60,7 @@ jobs:
       - uses: taiki-e/install-action@nextest
 
       - name: Run nextest
-        run: cargo nextest --profile ci --all-features --all-targets
+        run: cargo nextest run --profile ci --all-features --all-targets
       
       - name: Upload test results to Sentry Prevent
         if: ${{ !cancelled() }}
