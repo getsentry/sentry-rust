@@ -57,8 +57,16 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: Run cargo test
-        run: cargo test --workspace --all-features --all-targets
+      - uses: taiki-e/install-action@nextest
+
+      - name: Run nextest
+        run: cargo nextest --profile ci --workspace --all-features --all-targets
+      
+      - name: Upload test results to Sentry Prevent
+        if: ${{ !cancelled() }}
+        uses: getsentry/prevent-action@v0
+        with:
+          token: ${{ secrets.SENTRY_PREVENT_TOKEN }}
 
   MSRV:
     strategy:
