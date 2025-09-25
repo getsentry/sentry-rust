@@ -303,26 +303,27 @@ where
 
         let (data, sentry_name, sentry_op, sentry_trace) = extract_span_data(attrs);
         let sentry_name = sentry_name.as_deref().unwrap_or_else(|| span.name());
-        let sentry_op = sentry_op.as_deref().unwrap_or("default");
+        let sentry_op =
+            sentry_op.unwrap_or_else(|| format!("{}::{}", span.metadata().target(), span.name()));
 
         let hub = sentry_core::Hub::current();
         let parent_sentry_span = hub.configure_scope(|scope| scope.get_span());
 
         let mut sentry_span: sentry_core::TransactionOrSpan = match &parent_sentry_span {
-            Some(parent) => parent.start_child(sentry_op, sentry_name).into(),
+            Some(parent) => parent.start_child(&sentry_op, sentry_name).into(),
             None => {
                 let ctx = if let Some(trace_header) = sentry_trace {
                     sentry_core::TransactionContext::continue_from_headers(
                         sentry_name,
-                        sentry_op,
+                        &sentry_op,
                         [("sentry-trace", trace_header.as_str())],
                     )
                 } else {
-                    sentry_core::TransactionContext::new(sentry_name, sentry_op)
+                    sentry_core::TransactionContext::new(sentry_name, &sentry_op)
                 };
 
                 let tx = sentry_core::start_transaction(ctx);
-                tx.set_data("origin", "auto.tracing".into());
+                tx.set_origin("auto.tracing");
                 tx.into()
             }
         };

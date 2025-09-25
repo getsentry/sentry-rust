@@ -24,7 +24,7 @@ fn should_instrument_function_with_event() {
         sentry::protocol::Context::Trace(trace) => trace,
         unexpected => panic!("Expected trace context but got {unexpected:?}"),
     };
-    assert_eq!(trace.op.as_deref().unwrap(), "default");
+    assert_eq!(trace.op.as_deref().unwrap(), "smoke::function_with_tags");
 
     //Confirm transaction values
     let transaction = data.get(1).expect("should have 1 transaction");
@@ -34,7 +34,7 @@ fn should_instrument_function_with_event() {
     };
     assert_eq!(transaction.name, Some("function_with_tags".into()));
     assert_eq!(transaction.tags.len(), 1);
-    assert_eq!(trace.data.len(), 7);
+    assert_eq!(trace.data.len(), 6);
 
     let tag = transaction
         .tags

@@ -174,8 +174,8 @@ impl SpanProcessor for SentrySpanProcessor {
         // TODO: read OTEL semantic convention span attributes and map them to the appropriate
         // Sentry span attributes/context values
 
-        if matches!(sentry_span, TransactionOrSpan::Transaction(_)) {
-            sentry_span.set_data("origin", "auto.otel".into())
+        if let TransactionOrSpan::Transaction(transaction) = &sentry_span {
+            transaction.set_origin("auto.otel");
         }
         sentry_span.set_status(convert_span_status(&data.status));
         sentry_span.finish_with_timestamp(data.end_time);
