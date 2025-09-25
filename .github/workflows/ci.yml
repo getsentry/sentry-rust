@@ -59,7 +59,7 @@ jobs:
 
       - uses: taiki-e/install-action@nextest
 
-      - name: Run nextest
+      - name: Run tests with nextest
         run: cargo nextest run --profile ci --all-features --all-targets
       
       - name: Upload test results to Sentry Prevent
