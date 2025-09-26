@@ -1504,6 +1504,10 @@ pub struct TraceContext {
     /// Describes the status of the span (e.g. `ok`, `cancelled`, etc.)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status: Option<SpanStatus>,
+    /// Describes what created the transaction. See the [develop
+    /// docs](https://develop.sentry.dev/sdk/telemetry/traces/trace-origin/) for more information.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub origin: Option<String>,
     /// Optional data attributes to be associated with the transaction.
     #[serde(default, skip_serializing_if = "Map::is_empty")]
     pub data: Map<String, Value>,

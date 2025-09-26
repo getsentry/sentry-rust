@@ -1,14 +1,15 @@
 # Changelog
 
-## Unreleased
+## 0.43.0
 
 ### Breaking changes
 
 - ref(tracing): rework tracing to Sentry span name/op conversion ([#887](https://github.com/getsentry/sentry-rust/pull/887)) by @lcian
   - The `tracing` integration now uses the tracing span name as the Sentry span name by default.
-  - Before this change, the span name would be set based on the `tracing` span target (<module>::<function> when using the `tracing::instrument` macro).
-  - The `tracing` integration now uses `default` as the default Sentry span op.
+  - Before this change, the span name would be set based on the `tracing` span target (`<module>::<function>` when using the `tracing::instrument` macro).
+  - The `tracing` integration now uses `<span target>::<span name>` as the default Sentry span op (i.e. `<module>::<function>` when using `tracing::instrument`).
   - Before this change, the span op would be set based on the `tracing` span name.
+  - Read below to learn how to customize the span name and op.
   - When upgrading, please ensure to adapt any queries, metrics or dashboards to use the new span names/ops.
 - ref(tracing): use standard code attributes ([#899](https://github.com/getsentry/sentry-rust/pull/899)) by @lcian
   - Logs now carry the attributes `code.module.name`, `code.file.path` and `code.line.number` standardized in OTEL to surface the respective information, in contrast with the previously sent `tracing.module_path`, `tracing.file` and `tracing.line`.
@@ -17,6 +18,8 @@
   - Previously, if a middleware were to process the request after the Sentry middleware and return an error, our middleware would always capture it and send it to Sentry, regardless if it was a client, server or some other kind of error.
   - With this change, we capture errors returned by middleware only if those errors can be classified as server errors.
   - There is no change in behavior when it comes to errors returned by services, in which case the Sentry middleware only captures server errors exclusively.
+- fix: send trace origin correctly ([#906](https://github.com/getsentry/sentry-rust/pull/906)) by @lcian
+  - `TraceContext` now has an additional field `origin`, used to report which integration created a transaction.
 
 ### Behavioral changes
 
