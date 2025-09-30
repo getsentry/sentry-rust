@@ -1,6 +1,6 @@
 #![cfg(feature = "test")]
 
-// Test `log` integration with combined filters.
+// Test `log` integration with combined `LogFilter`s.
 // This must be in a separate file because `log::set_boxed_logger` can only be called once.
 
 #[test]
