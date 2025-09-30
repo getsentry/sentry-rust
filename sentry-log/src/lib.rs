@@ -46,6 +46,23 @@
 //!     _ => LogFilter::Ignore,
 //! });
 //! ```
+//!
+//! # Sending multiple items to Sentry
+//!
+//! To map a log record to multiple items in Sentry, you can combine multiple log filters
+//! using the bitwise or operator:
+//!
+//! ```
+//! use sentry_log::LogFilter;
+//!
+//! let logger = sentry_log::SentryLogger::new().filter(|md| match md.level() {
+//!     log::Level::Error => LogFilter::Event | LogFilter::Log,
+//!     log::Level::Warn => LogFilter::Breadcrumb | LogFilter::Log,
+//!     _ => LogFilter::Ignore,
+//! });
+//! ```
+//!
+//! If you're using a custom record mapper instead of a filter, use `RecordMapping::Combined`.
 
 #![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
 #![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]

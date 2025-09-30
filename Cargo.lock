@@ -3264,6 +3264,7 @@ dependencies = [
 name = "sentry-log"
 version = "0.43.0"
 dependencies = [
+ "bitflags 2.9.1",
  "log",
  "pretty_env_logger",
  "sentry",
