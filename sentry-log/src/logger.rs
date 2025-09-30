@@ -9,7 +9,7 @@ use crate::converters::{breadcrumb_from_record, event_from_record, exception_fro
 
 bitflags! {
     /// The action that Sentry should perform for a [`log::Metadata`].
-    #[derive(Debug, Clone, Copy)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct LogFilter: u32 {
         /// Ignore the [`Record`].
         const Ignore = 0b0000;
@@ -38,7 +38,8 @@ pub enum RecordMapping {
     #[cfg(feature = "logs")]
     Log(sentry_core::protocol::Log),
     /// Captures multiple items to Sentry.
-    /// Nesting multiple `RecordMapping::Combined` inside each other will cause the inner mappings to be ignored.
+    /// Nesting multiple `RecordMapping::Combined` is not supported and will cause the mappings to
+    /// be ignored.
     Combined(CombinedRecordMapping),
 }
 
@@ -157,11 +158,11 @@ impl<L: log::Log> SentryLogger<L> {
 
 impl<L: log::Log> log::Log for SentryLogger<L> {
     fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
-        self.dest.enabled(metadata) || !((self.filter)(metadata).is_empty())
+        self.dest.enabled(metadata) || !(self.filter)(metadata) == LogFilter::Ignore
     }
 
     fn log(&self, record: &log::Record<'_>) {
-        let items = match &self.mapper {
+        let items: RecordMapping = match &self.mapper {
             Some(mapper) => mapper(record),
             None => {
                 let filter = (self.filter)(record.metadata());
