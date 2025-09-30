@@ -9,6 +9,11 @@
   - It's now possible to map a `log` record to multiple items in Sentry by combining multiple log filters in the filter, e.g. `log::Level::ERROR => LogFilter::Event | LogFilter::Log`.
   - It's also possible to use `sentry::integrations::log::RecordMapping::Combined` to map a `log` record to multiple items in Sentry.
 
+### Behavioral changes
+
+- ref(log): send logs by default when logs feature flag is enabled ([#915](https://github.com/getsentry/sentry-rust/pull/915))
+  - If the `logs` feature flag is enabled, the default Sentry `log` logger now sends logs for all events at or above INFO.
+
 ## 0.43.0
 
 ### Breaking changes
