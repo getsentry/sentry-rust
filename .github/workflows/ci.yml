@@ -7,6 +7,9 @@ on:
       - "release/**"
   pull_request:
 
+permissions:
+  id-token: write
+
 jobs:
   lints:
     name: Lints
