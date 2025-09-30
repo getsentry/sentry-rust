@@ -1,16 +1,53 @@
 # Changelog
 
-## Unreleased
+## 0.43.0
 
 ### Breaking changes
 
-- fix(actix): capture only server errors ([#877](https://github.com/getsentry/sentry-rust/pull/877))
+- ref(tracing): rework tracing to Sentry span name/op conversion ([#887](https://github.com/getsentry/sentry-rust/pull/887)) by @lcian
+  - The `tracing` integration now uses the tracing span name as the Sentry span name by default.
+  - Before this change, the span name would be set based on the `tracing` span target (`<module>::<function>` when using the `tracing::instrument` macro).
+  - The `tracing` integration now uses `<span target>::<span name>` as the default Sentry span op (i.e. `<module>::<function>` when using `tracing::instrument`).
+  - Before this change, the span op would be set based on the `tracing` span name.
+  - Read below to learn how to customize the span name and op.
+  - When upgrading, please ensure to adapt any queries, metrics or dashboards to use the new span names/ops.
+- ref(tracing): use standard code attributes ([#899](https://github.com/getsentry/sentry-rust/pull/899)) by @lcian
+  - Logs now carry the attributes `code.module.name`, `code.file.path` and `code.line.number` standardized in OTEL to surface the respective information, in contrast with the previously sent `tracing.module_path`, `tracing.file` and `tracing.line`.
+- fix(actix): capture only server errors ([#877](https://github.com/getsentry/sentry-rust/pull/877)) by @lcian
   - The Actix integration now properly honors the `capture_server_errors` option (enabled by default), capturing errors returned by middleware only if they are server errors (HTTP status code 5xx).
   - Previously, if a middleware were to process the request after the Sentry middleware and return an error, our middleware would always capture it and send it to Sentry, regardless if it was a client, server or some other kind of error.
   - With this change, we capture errors returned by middleware only if those errors can be classified as server errors.
   - There is no change in behavior when it comes to errors returned by services, in which case the Sentry middleware only captures server errors exclusively.
+- fix: send trace origin correctly ([#906](https://github.com/getsentry/sentry-rust/pull/906)) by @lcian
+  - `TraceContext` now has an additional field `origin`, used to report which integration created a transaction.
+
+### Behavioral changes
+
+- feat(tracing): send both breadcrumbs and logs by default ([#878](https://github.com/getsentry/sentry-rust/pull/878)) by @lcian
+  - If the `logs` feature flag is enabled, and `enable_logs: true` is set on your client options, the default Sentry `tracing` layer now sends logs for all events at or above INFO.
 
 ### Features
+
+- ref(tracing): rework tracing to Sentry span name/op conversion ([#887](https://github.com/getsentry/sentry-rust/pull/887)) by @lcian
+  - Additional special fields have been added that allow overriding certain data on the Sentry span:
+    - `sentry.op`: override the Sentry span op.
+    - `sentry.name`: override the Sentry span name.
+    - `sentry.trace`: given a string matching a valid `sentry-trace` header (sent automatically by client SDKs), continues the distributed trace instead of starting a new one. If the value is not a valid `sentry-trace` header or a trace is already started, this value is ignored.
+  - `sentry.op` and `sentry.name` can also be applied retroactively by declaring fields with value `tracing::field::Empty` and then recorded using `tracing::Span::record`.
+  - Example usage:
+    ```rust
+    #[tracing::instrument(skip_all, fields(
+        sentry.op = "http.server",
+        sentry.name = "GET /payments",
+        sentry.trace = headers.get("sentry-trace").unwrap_or(&"".to_owned()),
+    ))]
+    async fn handle_request(headers: std::collections::HashMap<String, String>) {
+        // ...
+    }
+    ```
+  - Additional attributes are sent along with each span by default:
+    - `sentry.tracing.target`: corresponds to the `tracing` span's `metadata.target()`
+    - `code.module.name`, `code.file.path`, `code.line.number`
 
 - feat(core): add Response context ([#874](https://github.com/getsentry/sentry-rust/pull/874)) by @lcian
   - The `Response` context can now be attached to events, to include information about HTTP responses such as headers, cookies and status code.
@@ -33,6 +70,7 @@
 
 - build(panic): Fix build without other dependencies ([#883](https://github.com/getsentry/sentry-rust/pull/883)) by @liskin
   - The `sentry-panic` crate now builds successfully when used as a standalone dependency.
+- fix(transport): add rate limits for logs ([#894](https://github.com/getsentry/sentry-rust/pull/894)) by @giortzisg
 
 ## 0.42.0
 

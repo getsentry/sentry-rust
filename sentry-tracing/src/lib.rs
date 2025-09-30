@@ -169,7 +169,7 @@
 //! # Tracing Spans
 //!
 //! The integration automatically tracks `tracing` spans as spans in Sentry. A convenient way to do
-//! this is with the `#[instrument]` attribute macro, which creates a transaction for the function
+//! this is with the `#[instrument]` attribute macro, which creates a span/transaction for the function
 //! in Sentry.
 //!
 //! Function arguments are added as context fields automatically, which can be configured through
@@ -180,8 +180,8 @@
 //!
 //! use tracing_subscriber::prelude::*;
 //!
-//! // Functions instrumented by tracing automatically report
-//! // their span as transactions.
+//! // Functions instrumented by tracing automatically
+//! // create spans/transactions around their execution.
 //! #[tracing::instrument]
 //! async fn outer() {
 //!     for i in 0..10 {
@@ -198,6 +198,42 @@
 //!     tokio::time::sleep(Duration::from_millis(100)).await;
 //! }
 //! ```
+//!
+//! By default, the name of the span sent to Sentry matches the name of the `tracing` span, which
+//! is the name of the function when using `tracing::instrument`, or the name passed to the
+//! `tracing::<level>_span` macros.
+//!
+//! By default, the `op` of the span sent to Sentry is `default`.
+//!
+//! ## Special Span Fields
+//!
+//! Some fields on spans are treated specially by the Sentry tracing integration:
+//! - `sentry.name`: overrides the span name sent to Sentry.
+//!   This is useful to customize the span name when using `#[tracing::instrument]`, or to update
+//!   it retroactively (using `span.record`) after the span has been created.
+//! - `sentry.op`: overrides the span `op` sent to Sentry.
+//! - `sentry.trace`: in Sentry, the `sentry-trace` header is sent with HTTP requests to achieve distributed tracing.
+//!   If the value of this field is set to the value of a valid `sentry-trace` header, which
+//!   other Sentry SDKs send automatically with outgoing requests, then the SDK will continue the trace using the given distributed tracing information.
+//!   This is useful to achieve distributed tracing at service boundaries by using only the
+//!   `tracing` API.
+//!   Note that `sentry.trace` will only be effective on span creation (it cannot be applied retroactively)
+//!   and requires the span it's applied to to be a root span, i.e. no span should active upon its
+//!   creation.
+//!
+//!
+//! Example:
+//!
+//! ```
+//! #[tracing::instrument(skip_all, fields(
+//!     sentry.name = "GET /payments",
+//!     sentry.op = "http.server",
+//!     sentry.trace = headers.get("sentry-trace").unwrap_or(&"".to_owned()),
+//! ))]
+//! async fn handle_request(headers: std::collections::HashMap<String, String>) {
+//!     // ...
+//! }
+//! ```
 
 #![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
 #![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
@@ -210,3 +246,6 @@ pub use converters::*;
 pub use layer::*;
 
 const TAGS_PREFIX: &str = "tags.";
+const SENTRY_OP_FIELD: &str = "sentry.op";
+const SENTRY_NAME_FIELD: &str = "sentry.name";
+const SENTRY_TRACE_FIELD: &str = "sentry.trace";

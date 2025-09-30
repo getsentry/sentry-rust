@@ -24,7 +24,7 @@ fn should_instrument_function_with_event() {
         sentry::protocol::Context::Trace(trace) => trace,
         unexpected => panic!("Expected trace context but got {unexpected:?}"),
     };
-    assert_eq!(trace.op.as_deref().unwrap(), "function_with_tags");
+    assert_eq!(trace.op.as_deref().unwrap(), "smoke::function_with_tags");
 
     //Confirm transaction values
     let transaction = data.get(1).expect("should have 1 transaction");
@@ -32,8 +32,9 @@ fn should_instrument_function_with_event() {
         sentry::protocol::EnvelopeItem::Transaction(transaction) => transaction,
         unexpected => panic!("Expected transaction, but got {unexpected:#?}"),
     };
+    assert_eq!(transaction.name, Some("function_with_tags".into()));
     assert_eq!(transaction.tags.len(), 1);
-    assert_eq!(trace.data.len(), 3);
+    assert_eq!(trace.data.len(), 6);
 
     let tag = transaction
         .tags
@@ -50,4 +51,15 @@ fn should_instrument_function_with_event() {
         .get("value")
         .expect("to have data attribute with name 'value'");
     assert_eq!(value, 1);
+
+    assert_eq!(
+        trace.data.get("sentry.tracing.target"),
+        Some("smoke".into()).as_ref()
+    );
+    assert_eq!(
+        trace.data.get("code.module.name"),
+        Some("smoke".into()).as_ref()
+    );
+    assert!(trace.data.contains_key("code.file.path"));
+    assert!(trace.data.contains_key("code.line.number"));
 }
