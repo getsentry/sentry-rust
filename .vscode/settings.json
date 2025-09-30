@@ -1,6 +1,4 @@
 {
     "editor.formatOnSave": true,
-    "rust-analyzer.cargo.features": [
-        "logs"
-    ]
+    "rust-analyzer.cargo.features": "all"
 }
