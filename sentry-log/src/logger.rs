@@ -20,6 +20,7 @@ bitflags! {
         /// Create an exception [`Event`] from this [`Record`].
         const Exception = 0b0100;
         /// Create a [`sentry_core::protocol::Log`] from this [`Record`].
+        #[cfg(feature = "logs")]
         const Log = 0b1000;
     }
 }
