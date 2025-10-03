@@ -38,10 +38,12 @@ pub enum RecordMapping {
     /// Captures the [`sentry_core::protocol::Log`] to Sentry.
     #[cfg(feature = "logs")]
     Log(sentry_core::protocol::Log),
-    /// Captures multiple items to Sentry.
-    /// Nesting multiple `RecordMapping::Combined` is not supported and will cause the mappings to
-    /// be ignored.
-    Combined(Vec<RecordMapping>),
+}
+
+impl From<RecordMapping> for Vec<RecordMapping> {
+    fn from(mapping: RecordMapping) -> Self {
+        vec![mapping]
+    }
 }
 
 /// The default log filter.
@@ -81,7 +83,7 @@ pub struct SentryLogger<L: log::Log> {
     dest: L,
     filter: Box<dyn Fn(&log::Metadata<'_>) -> LogFilter + Send + Sync>,
     #[allow(clippy::type_complexity)]
-    mapper: Option<Box<dyn Fn(&Record<'_>) -> RecordMapping + Send + Sync>>,
+    mapper: Option<Box<dyn Fn(&Record<'_>) -> Vec<RecordMapping> + Send + Sync>>,
 }
 
 impl Default for SentryLogger<NoopLogger> {
@@ -127,13 +129,15 @@ impl<L: log::Log> SentryLogger<L> {
     /// Sets a custom mapper function.
     ///
     /// The mapper is responsible for creating either breadcrumbs or events
-    /// from [`Record`]s.
+    /// from [`Record`]s. It can return either a single [`RecordMapping`] or
+    /// a `Vec<RecordMapping>` to send multiple items to Sentry from one log record.
     #[must_use]
-    pub fn mapper<M>(mut self, mapper: M) -> Self
+    pub fn mapper<M, T>(mut self, mapper: M) -> Self
     where
-        M: Fn(&Record<'_>) -> RecordMapping + Send + Sync + 'static,
+        M: Fn(&Record<'_>) -> T + Send + Sync + 'static,
+        T: Into<Vec<RecordMapping>>,
     {
-        self.mapper = Some(Box::new(mapper));
+        self.mapper = Some(Box::new(move |record| mapper(record).into()));
         self
     }
 }
@@ -162,11 +166,11 @@ impl<L: log::Log> log::Log for SentryLogger<L> {
                 if filter.contains(LogFilter::Log) {
                     items.push(RecordMapping::Log(log_from_record(record)));
                 }
-                RecordMapping::Combined(items)
+                items
             }
         };
 
-        fn handle_single_mapping(mapping: RecordMapping) {
+        for mapping in items {
             match mapping {
                 RecordMapping::Ignore => {}
                 RecordMapping::Breadcrumb(breadcrumb) => sentry_core::add_breadcrumb(breadcrumb),
@@ -177,20 +181,7 @@ impl<L: log::Log> log::Log for SentryLogger<L> {
                 RecordMapping::Log(log) => {
                     sentry_core::Hub::with_active(|hub| hub.capture_log(log))
                 }
-                RecordMapping::Combined(_) => {
-                    sentry_core::sentry_debug!(
-                        "[SentryLogger] found nested RecordMapping::Combined, ignoring"
-                    )
-                }
             }
-        }
-
-        if let RecordMapping::Combined(items) = items {
-            for item in items {
-                handle_single_mapping(item);
-            }
-        } else {
-            handle_single_mapping(items);
         }
 
         self.dest.log(record)
