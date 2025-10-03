@@ -52,7 +52,13 @@ impl From<RecordMapping> for Vec<RecordMapping> {
 /// `warning` and `info`, and `debug` and `trace` logs are ignored.
 pub fn default_filter(metadata: &log::Metadata) -> LogFilter {
     match metadata.level() {
+        #[cfg(feature = "logs")]
+        log::Level::Error => LogFilter::Exception | LogFilter::Log,
+        #[cfg(not(feature = "logs"))]
         log::Level::Error => LogFilter::Exception,
+        #[cfg(feature = "logs")]
+        log::Level::Warn | log::Level::Info => LogFilter::Breadcrumb | LogFilter::Log,
+        #[cfg(not(feature = "logs"))]
         log::Level::Warn | log::Level::Info => LogFilter::Breadcrumb,
         log::Level::Debug | log::Level::Trace => LogFilter::Ignore,
     }
