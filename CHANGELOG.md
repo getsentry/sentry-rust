@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Breaking changes
+
+- feat(log): support combined LogFilters and RecordMappings ([#914](https://github.com/getsentry/sentry-rust/pull/914)) by @lcian
+  - `sentry::integrations::log::LogFilter` has been changed to a `bitflags` struct.
+  - It's now possible to map a `log` record to multiple items in Sentry by combining multiple log filters in the filter, e.g. `log::Level::ERROR => LogFilter::Event | LogFilter::Log`.
+  - If using a custom `mapper` instead, it's possible to return a `Vec<sentry::integrations::log::RecordMapping>` to map a `log` record to multiple items in Sentry. 
+
 ## 0.43.0
 
 ### Breaking changes

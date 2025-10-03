@@ -29,7 +29,7 @@ tracing-subscriber = { version = "0.3.20", default-features = false, features = 
     "std",
 ] }
 sentry-backtrace = { version = "0.43.0", path = "../sentry-backtrace", optional = true }
-bitflags = "2.0.0"
+bitflags = "2.9.4"
 
 [dev-dependencies]
 log = "0.4"
