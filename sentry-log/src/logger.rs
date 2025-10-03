@@ -41,26 +41,7 @@ pub enum RecordMapping {
     /// Captures multiple items to Sentry.
     /// Nesting multiple `RecordMapping::Combined` is not supported and will cause the mappings to
     /// be ignored.
-    Combined(CombinedRecordMapping),
-}
-
-/// A list of record mappings.
-#[derive(Debug)]
-pub struct CombinedRecordMapping(Vec<RecordMapping>);
-
-impl From<RecordMapping> for CombinedRecordMapping {
-    fn from(value: RecordMapping) -> Self {
-        match value {
-            RecordMapping::Combined(combined) => combined,
-            _ => CombinedRecordMapping(vec![value]),
-        }
-    }
-}
-
-impl From<Vec<RecordMapping>> for CombinedRecordMapping {
-    fn from(value: Vec<RecordMapping>) -> Self {
-        Self(value)
-    }
+    Combined(Vec<RecordMapping>),
 }
 
 /// The default log filter.
@@ -163,7 +144,7 @@ impl<L: log::Log> log::Log for SentryLogger<L> {
     }
 
     fn log(&self, record: &log::Record<'_>) {
-        let items: RecordMapping = match &self.mapper {
+        let items = match &self.mapper {
             Some(mapper) => mapper(record),
             None => {
                 let filter = (self.filter)(record.metadata());
@@ -181,13 +162,12 @@ impl<L: log::Log> log::Log for SentryLogger<L> {
                 if filter.contains(LogFilter::Log) {
                     items.push(RecordMapping::Log(log_from_record(record)));
                 }
-                RecordMapping::Combined(CombinedRecordMapping(items))
+                RecordMapping::Combined(items)
             }
         };
-        let items = CombinedRecordMapping::from(items);
 
-        for item in items.0 {
-            match item {
+        fn handle_single_mapping(mapping: RecordMapping) {
+            match mapping {
                 RecordMapping::Ignore => {}
                 RecordMapping::Breadcrumb(breadcrumb) => sentry_core::add_breadcrumb(breadcrumb),
                 RecordMapping::Event(event) => {
@@ -199,10 +179,18 @@ impl<L: log::Log> log::Log for SentryLogger<L> {
                 }
                 RecordMapping::Combined(_) => {
                     sentry_core::sentry_debug!(
-                        "[SentryLogger] found nested CombinedEventMapping, ignoring"
+                        "[SentryLogger] found nested RecordMapping::Combined, ignoring"
                     )
                 }
             }
+        }
+
+        if let RecordMapping::Combined(items) = items {
+            for item in items {
+                handle_single_mapping(item);
+            }
+        } else {
+            handle_single_mapping(items);
         }
 
         self.dest.log(record)
