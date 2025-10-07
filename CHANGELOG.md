@@ -11,6 +11,8 @@
 
 ### Behavioral changes
 
+- ref(log): send logs by default when logs feature flag is enabled ([#915](https://github.com/getsentry/sentry-rust/pull/915)) by @lcian
+  - If the `logs` feature flag is enabled, the default Sentry `log` logger now sends logs for all events at or above INFO.
 - ref(logs): enable logs by default if logs feature flag is used ([#910](https://github.com/getsentry/sentry-rust/pull/910)) by @lcian
   - This changes the default value of `sentry::ClientOptions::enable_logs` to `true`.
   - This simplifies the setup of Sentry structured logs by requiring users to just add the `log` feature flag to the `sentry` dependency to opt-in to sending logs.
