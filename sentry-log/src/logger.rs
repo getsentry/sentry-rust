@@ -38,29 +38,6 @@ pub enum RecordMapping {
     /// Captures the [`sentry_core::protocol::Log`] to Sentry.
     #[cfg(feature = "logs")]
     Log(sentry_core::protocol::Log),
-    /// Captures multiple items to Sentry.
-    /// Nesting multiple `RecordMapping::Combined` is not supported and will cause the mappings to
-    /// be ignored.
-    Combined(CombinedRecordMapping),
-}
-
-/// A list of record mappings.
-#[derive(Debug)]
-pub struct CombinedRecordMapping(Vec<RecordMapping>);
-
-impl From<RecordMapping> for CombinedRecordMapping {
-    fn from(value: RecordMapping) -> Self {
-        match value {
-            RecordMapping::Combined(combined) => combined,
-            _ => CombinedRecordMapping(vec![value]),
-        }
-    }
-}
-
-impl From<Vec<RecordMapping>> for CombinedRecordMapping {
-    fn from(value: Vec<RecordMapping>) -> Self {
-        Self(value)
-    }
 }
 
 impl From<RecordMapping> for Vec<RecordMapping> {
