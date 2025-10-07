@@ -5,14 +5,18 @@
 ### Breaking changes
 
 - feat(log): support combined LogFilters and RecordMappings ([#914](https://github.com/getsentry/sentry-rust/pull/914)) by @lcian
-  - `sentry::integrations::log::LogFilter` has been changed to a `bitflags` struct.
+  - Breaking change: `sentry::integrations::log::LogFilter` has been changed to a `bitflags` struct.
   - It's now possible to map a `log` record to multiple items in Sentry by combining multiple log filters in the filter, e.g. `log::Level::ERROR => LogFilter::Event | LogFilter::Log`.
   - If using a custom `mapper` instead, it's possible to return a `Vec<sentry::integrations::log::RecordMapping>` to map a `log` record to multiple items in Sentry. 
 
 ### Behavioral changes
 
-- ref(log): send logs by default when logs feature flag is enabled ([#915](https://github.com/getsentry/sentry-rust/pull/915))
+- ref(log): send logs by default when logs feature flag is enabled ([#915](https://github.com/getsentry/sentry-rust/pull/915)) by @lcian
   - If the `logs` feature flag is enabled, the default Sentry `log` logger now sends logs for all events at or above INFO.
+- ref(logs): enable logs by default if logs feature flag is used ([#910](https://github.com/getsentry/sentry-rust/pull/910)) by @lcian
+  - This changes the default value of `sentry::ClientOptions::enable_logs` to `true`.
+  - This simplifies the setup of Sentry structured logs by requiring users to just add the `log` feature flag to the `sentry` dependency to opt-in to sending logs.
+  - When the `log` feature flag is enabled, the `tracing` and `log` integrations will send structured logs to Sentry for all logs/events at or above INFO level by default.
 
 ## 0.43.0
 

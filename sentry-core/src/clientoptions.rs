@@ -325,7 +325,7 @@ impl Default for ClientOptions {
             user_agent: Cow::Borrowed(USER_AGENT),
             max_request_body_size: MaxRequestBodySize::Medium,
             #[cfg(feature = "logs")]
-            enable_logs: false,
+            enable_logs: true,
             #[cfg(feature = "logs")]
             before_send_log: None,
         }
