@@ -19,13 +19,10 @@ The `log` crate is supported in three ways:
 - Records can be captured as traditional [logs](https://docs.sentry.io/product/explore/logs/)
   Logs can be viewed and queried in the Logs explorer.
 
-By default anything above `Info` is recorded as a breadcrumb and
-anything above `Error` is captured as error event.
-
-To capture records as Sentry logs:
-1. Enable the `logs` feature of the `sentry` crate.
-2. Initialize the SDK with `enable_logs: true` in your client options.
-3. Set up a custom filter (see below) to map records to logs (`LogFilter::Log`) based on criteria such as severity.
+By default anything at or above `Info` is recorded as a breadcrumb and
+anything at or above `Error` is captured as error event.
+Additionally, if the `sentry` crate is used with the `logs` feature flag, anything at or above `Info`
+is captured as a [Structured Log](https://docs.sentry.io/product/explore/logs/).
 
 ## Examples
 
@@ -52,6 +49,42 @@ use sentry_log::LogFilter;
 let logger = sentry_log::SentryLogger::new().filter(|md| match md.level() {
     log::Level::Error => LogFilter::Event,
     _ => LogFilter::Ignore,
+});
+```
+
+## Sending multiple items to Sentry
+
+To map a log record to multiple items in Sentry, you can combine multiple log filters
+using the bitwise or operator:
+
+```rust
+use sentry_log::LogFilter;
+
+let logger = sentry_log::SentryLogger::new().filter(|md| match md.level() {
+    log::Level::Error => LogFilter::Event,
+    log::Level::Warn => LogFilter::Breadcrumb | LogFilter::Log,
+    _ => LogFilter::Ignore,
+});
+```
+
+If you're using a custom record mapper instead of a filter, you can return a `Vec<RecordMapping>`
+from your mapper function to send multiple items to Sentry from a single log record:
+
+```rust
+use sentry_log::{RecordMapping, SentryLogger, event_from_record, breadcrumb_from_record};
+
+let logger = SentryLogger::new().mapper(|record| {
+    match record.level() {
+        log::Level::Error => {
+            // Send both an event and a breadcrumb for errors
+            vec![
+                RecordMapping::Event(event_from_record(record)),
+                RecordMapping::Breadcrumb(breadcrumb_from_record(record)),
+            ]
+        }
+        log::Level::Warn => RecordMapping::Breadcrumb(breadcrumb_from_record(record)).into(),
+        _ => RecordMapping::Ignore.into(),
+    }
 });
 ```
 

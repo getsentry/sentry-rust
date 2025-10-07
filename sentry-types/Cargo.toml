@@ -1,6 +1,6 @@
 [package]
 name = "sentry-types"
-version = "0.43.0"
+version = "0.44.0"
 authors = ["Sentry <hello@sentry.io>"]
 license = "MIT"
 readme = "README.md"

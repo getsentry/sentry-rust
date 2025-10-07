@@ -1,6 +1,6 @@
 [package]
 name = "sentry"
-version = "0.43.0"
+version = "0.44.0"
 authors = ["Sentry <hello@sentry.io>"]
 license = "MIT"
 readme = "README.md"
@@ -60,20 +60,20 @@ rustls = ["dep:rustls", "reqwest?/rustls-tls", "ureq?/rustls"]
 embedded-svc-http = ["dep:embedded-svc", "dep:esp-idf-svc"]
 
 [dependencies]
-sentry-core = { version = "0.43.0", path = "../sentry-core", features = [
+sentry-core = { version = "0.44.0", path = "../sentry-core", features = [
     "client",
 ] }
-sentry-anyhow = { version = "0.43.0", path = "../sentry-anyhow", optional = true }
-sentry-actix = { version = "0.43.0", path = "../sentry-actix", optional = true, default-features = false }
-sentry-backtrace = { version = "0.43.0", path = "../sentry-backtrace", optional = true }
-sentry-contexts = { version = "0.43.0", path = "../sentry-contexts", optional = true }
-sentry-debug-images = { version = "0.43.0", path = "../sentry-debug-images", optional = true }
-sentry-log = { version = "0.43.0", path = "../sentry-log", optional = true }
-sentry-panic = { version = "0.43.0", path = "../sentry-panic", optional = true }
-sentry-slog = { version = "0.43.0", path = "../sentry-slog", optional = true }
-sentry-tower = { version = "0.43.0", path = "../sentry-tower", optional = true }
-sentry-tracing = { version = "0.43.0", path = "../sentry-tracing", optional = true }
-sentry-opentelemetry = { version = "0.43.0", path = "../sentry-opentelemetry", optional = true }
+sentry-anyhow = { version = "0.44.0", path = "../sentry-anyhow", optional = true }
+sentry-actix = { version = "0.44.0", path = "../sentry-actix", optional = true, default-features = false }
+sentry-backtrace = { version = "0.44.0", path = "../sentry-backtrace", optional = true }
+sentry-contexts = { version = "0.44.0", path = "../sentry-contexts", optional = true }
+sentry-debug-images = { version = "0.44.0", path = "../sentry-debug-images", optional = true }
+sentry-log = { version = "0.44.0", path = "../sentry-log", optional = true }
+sentry-panic = { version = "0.44.0", path = "../sentry-panic", optional = true }
+sentry-slog = { version = "0.44.0", path = "../sentry-slog", optional = true }
+sentry-tower = { version = "0.44.0", path = "../sentry-tower", optional = true }
+sentry-tracing = { version = "0.44.0", path = "../sentry-tracing", optional = true }
+sentry-opentelemetry = { version = "0.44.0", path = "../sentry-opentelemetry", optional = true }
 reqwest = { version = "0.12", optional = true, features = [
     "blocking",
     "json",
