@@ -50,6 +50,8 @@ jobs:
 
     name: Test using Rust stable on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    permissions:
+      id-token: write # required by `getsentry/prevent-action`
 
     steps:
       - name: Checkout sources
@@ -57,8 +59,17 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: Run cargo test
-        run: cargo test --workspace --all-features --all-targets
+      - uses: taiki-e/install-action@nextest
+
+      - name: Run tests with nextest
+        run: cargo nextest run --profile ci --all-features --all-targets
+      
+      - name: Upload test results to Sentry Prevent
+        if: ${{ !cancelled() }}
+        uses: getsentry/prevent-action@v0
+        with:
+          files: target/nextest/ci/junit.xml
+          disable_search: true
 
   MSRV:
     strategy:
