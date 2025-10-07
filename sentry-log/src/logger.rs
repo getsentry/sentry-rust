@@ -1,24 +1,28 @@
 use log::Record;
 use sentry_core::protocol::{Breadcrumb, Event};
 
+use bitflags::bitflags;
+
 #[cfg(feature = "logs")]
 use crate::converters::log_from_record;
 use crate::converters::{breadcrumb_from_record, event_from_record, exception_from_record};
 
-/// The action that Sentry should perform for a [`log::Metadata`].
-#[derive(Debug)]
-pub enum LogFilter {
-    /// Ignore the [`Record`].
-    Ignore,
-    /// Create a [`Breadcrumb`] from this [`Record`].
-    Breadcrumb,
-    /// Create a message [`Event`] from this [`Record`].
-    Event,
-    /// Create an exception [`Event`] from this [`Record`].
-    Exception,
-    /// Create a [`sentry_core::protocol::Log`] from this [`Record`].
-    #[cfg(feature = "logs")]
-    Log,
+bitflags! {
+    /// The action that Sentry should perform for a [`log::Metadata`].
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct LogFilter: u32 {
+        /// Ignore the [`Record`].
+        const Ignore = 0b0000;
+        /// Create a [`Breadcrumb`] from this [`Record`].
+        const Breadcrumb = 0b0001;
+        /// Create a message [`Event`] from this [`Record`].
+        const Event = 0b0010;
+        /// Create an exception [`Event`] from this [`Record`].
+        const Exception = 0b0100;
+        /// Create a [`sentry_core::protocol::Log`] from this [`Record`].
+        #[cfg(feature = "logs")]
+        const Log = 0b1000;
+    }
 }
 
 /// The type of Data Sentry should ingest for a [`log::Record`].
@@ -34,6 +38,12 @@ pub enum RecordMapping {
     /// Captures the [`sentry_core::protocol::Log`] to Sentry.
     #[cfg(feature = "logs")]
     Log(sentry_core::protocol::Log),
+}
+
+impl From<RecordMapping> for Vec<RecordMapping> {
+    fn from(mapping: RecordMapping) -> Self {
+        vec![mapping]
+    }
 }
 
 /// The default log filter.
@@ -73,7 +83,7 @@ pub struct SentryLogger<L: log::Log> {
     dest: L,
     filter: Box<dyn Fn(&log::Metadata<'_>) -> LogFilter + Send + Sync>,
     #[allow(clippy::type_complexity)]
-    mapper: Option<Box<dyn Fn(&Record<'_>) -> RecordMapping + Send + Sync>>,
+    mapper: Option<Box<dyn Fn(&Record<'_>) -> Vec<RecordMapping> + Send + Sync>>,
 }
 
 impl Default for SentryLogger<NoopLogger> {
@@ -119,43 +129,59 @@ impl<L: log::Log> SentryLogger<L> {
     /// Sets a custom mapper function.
     ///
     /// The mapper is responsible for creating either breadcrumbs or events
-    /// from [`Record`]s.
+    /// from [`Record`]s. It can return either a single [`RecordMapping`] or
+    /// a `Vec<RecordMapping>` to send multiple items to Sentry from one log record.
     #[must_use]
-    pub fn mapper<M>(mut self, mapper: M) -> Self
+    pub fn mapper<M, T>(mut self, mapper: M) -> Self
     where
-        M: Fn(&Record<'_>) -> RecordMapping + Send + Sync + 'static,
+        M: Fn(&Record<'_>) -> T + Send + Sync + 'static,
+        T: Into<Vec<RecordMapping>>,
     {
-        self.mapper = Some(Box::new(mapper));
+        self.mapper = Some(Box::new(move |record| mapper(record).into()));
         self
     }
 }
 
 impl<L: log::Log> log::Log for SentryLogger<L> {
     fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
-        self.dest.enabled(metadata) || !matches!((self.filter)(metadata), LogFilter::Ignore)
+        self.dest.enabled(metadata) || !((self.filter)(metadata) == LogFilter::Ignore)
     }
 
     fn log(&self, record: &log::Record<'_>) {
-        let item: RecordMapping = match &self.mapper {
+        let items = match &self.mapper {
             Some(mapper) => mapper(record),
-            None => match (self.filter)(record.metadata()) {
-                LogFilter::Ignore => RecordMapping::Ignore,
-                LogFilter::Breadcrumb => RecordMapping::Breadcrumb(breadcrumb_from_record(record)),
-                LogFilter::Event => RecordMapping::Event(event_from_record(record)),
-                LogFilter::Exception => RecordMapping::Event(exception_from_record(record)),
+            None => {
+                let filter = (self.filter)(record.metadata());
+                let mut items = vec![];
+                if filter.contains(LogFilter::Breadcrumb) {
+                    items.push(RecordMapping::Breadcrumb(breadcrumb_from_record(record)));
+                }
+                if filter.contains(LogFilter::Event) {
+                    items.push(RecordMapping::Event(event_from_record(record)));
+                }
+                if filter.contains(LogFilter::Exception) {
+                    items.push(RecordMapping::Event(exception_from_record(record)));
+                }
                 #[cfg(feature = "logs")]
-                LogFilter::Log => RecordMapping::Log(log_from_record(record)),
-            },
+                if filter.contains(LogFilter::Log) {
+                    items.push(RecordMapping::Log(log_from_record(record)));
+                }
+                items
+            }
         };
 
-        match item {
-            RecordMapping::Ignore => {}
-            RecordMapping::Breadcrumb(b) => sentry_core::add_breadcrumb(b),
-            RecordMapping::Event(e) => {
-                sentry_core::capture_event(e);
+        for mapping in items {
+            match mapping {
+                RecordMapping::Ignore => {}
+                RecordMapping::Breadcrumb(breadcrumb) => sentry_core::add_breadcrumb(breadcrumb),
+                RecordMapping::Event(event) => {
+                    sentry_core::capture_event(event);
+                }
+                #[cfg(feature = "logs")]
+                RecordMapping::Log(log) => {
+                    sentry_core::Hub::with_active(|hub| hub.capture_log(log))
+                }
             }
-            #[cfg(feature = "logs")]
-            RecordMapping::Log(log) => sentry_core::Hub::with_active(|hub| hub.capture_log(log)),
         }
 
         self.dest.log(record)
