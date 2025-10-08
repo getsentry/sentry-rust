@@ -72,7 +72,11 @@ impl Attachment {
             r#"{{"type":"attachment","length":{length},"filename":"{filename}","attachment_type":"{at}","content_type":"{ct}"}}"#,
             filename = self.filename,
             length = self.buffer.len(),
-            at = self.ty.clone().unwrap_or_default().as_str(),
+            at = self
+                .ty
+                .as_ref()
+                .unwrap_or(&AttachmentType::default())
+                .as_str(),
             ct = self
                 .content_type
                 .as_ref()
