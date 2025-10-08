@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Breaking changes
+
+- Add custom variant to `AttachmentType` that holds an arbitrary String. ([#916](https://github.com/getsentry/sentry-rust/pull/916))
+
 ## 0.44.0
 
 ### Breaking changes

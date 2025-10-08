@@ -3,7 +3,7 @@ use std::fmt;
 use serde::Deserialize;
 
 /// The different types an attachment can have.
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Deserialize)]
 pub enum AttachmentType {
     #[serde(rename = "event.attachment")]
     /// (default) A standard attachment without special meaning.
@@ -23,6 +23,9 @@ pub enum AttachmentType {
     /// the last logs are extracted into event breadcrumbs.
     #[serde(rename = "unreal.logs")]
     UnrealLogs,
+    /// A custom attachment type with an arbitrary string value.
+    #[serde(untagged)]
+    Custom(String),
 }
 
 impl Default for AttachmentType {
@@ -33,13 +36,14 @@ impl Default for AttachmentType {
 
 impl AttachmentType {
     /// Gets the string value Sentry expects for the attachment type.
-    pub fn as_str(self) -> &'static str {
+    pub fn as_str(&self) -> &str {
         match self {
             Self::Attachment => "event.attachment",
             Self::Minidump => "event.minidump",
             Self::AppleCrashReport => "event.applecrashreport",
             Self::UnrealContext => "unreal.context",
             Self::UnrealLogs => "unreal.logs",
+            Self::Custom(s) => s,
         }
     }
 }
@@ -68,7 +72,11 @@ impl Attachment {
             r#"{{"type":"attachment","length":{length},"filename":"{filename}","attachment_type":"{at}","content_type":"{ct}"}}"#,
             filename = self.filename,
             length = self.buffer.len(),
-            at = self.ty.unwrap_or_default().as_str(),
+            at = self
+                .ty
+                .as_ref()
+                .unwrap_or(&AttachmentType::default())
+                .as_str(),
             ct = self
                 .content_type
                 .as_ref()
@@ -90,5 +98,20 @@ impl fmt::Debug for Attachment {
             .field("content_type", &self.content_type)
             .field("type", &self.ty)
             .finish()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json;
+
+    #[test]
+    fn test_attachment_type_deserialize() {
+        let result: AttachmentType = serde_json::from_str(r#""event.minidump""#).unwrap();
+        assert_eq!(result, AttachmentType::Minidump);
+
+        let result: AttachmentType = serde_json::from_str(r#""my.custom.type""#).unwrap();
+        assert_eq!(result, AttachmentType::Custom("my.custom.type".to_string()));
     }
 }
