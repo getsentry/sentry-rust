@@ -51,7 +51,7 @@ fn test_log_logs() {
                 );
                 assert_eq!(
                     info_log.attributes.get("sentry.origin").unwrap().clone(),
-                    "auto.logger.log".into()
+                    "auto.log.log".into()
                 );
             }
             _ => panic!("expected logs"),
