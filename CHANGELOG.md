@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixes
+
+- fix: adjust sentry.origin for log integration ([#919](https://github.com/getsentry/sentry-rust/pull/919)) by @lcian
+
 ## 0.45.0
 
 ### Breaking changes
