@@ -38,7 +38,7 @@ impl CurlHttpTransport {
         let accept_invalid_certs = options.accept_invalid_certs;
 
         let mut handle = client;
-        let thread = TransportThread::new(move |envelope, rl| {
+        let thread = TransportThread::new(options, move |envelope, rl| {
             handle.reset();
             handle.url(&url).unwrap();
             handle.custom_request("POST").unwrap();
