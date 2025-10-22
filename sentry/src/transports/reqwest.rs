@@ -62,48 +62,51 @@ impl ReqwestHttpTransport {
         let auth = dsn.to_auth(Some(&user_agent)).to_string();
         let url = dsn.envelope_api_url().to_string();
 
-        let thread = TransportThread::new(move |envelope, mut rl| {
-            let mut body = Vec::new();
-            envelope.to_writer(&mut body).unwrap();
-            let request = client.post(&url).header("X-Sentry-Auth", &auth).body(body);
+        let thread = TransportThread::new(
+            move |envelope, mut rl| {
+                let mut body = Vec::new();
+                envelope.to_writer(&mut body).unwrap();
+                let request = client.post(&url).header("X-Sentry-Auth", &auth).body(body);
 
-            // NOTE: because of lifetime issues, building the request using the
-            // `client` has to happen outside of this async block.
-            async move {
-                match request.send().await {
-                    Ok(response) => {
-                        let headers = response.headers();
+                // NOTE: because of lifetime issues, building the request using the
+                // `client` has to happen outside of this async block.
+                async move {
+                    match request.send().await {
+                        Ok(response) => {
+                            let headers = response.headers();
 
-                        if let Some(sentry_header) = headers
-                            .get("x-sentry-rate-limits")
-                            .and_then(|x| x.to_str().ok())
-                        {
-                            rl.update_from_sentry_header(sentry_header);
-                        } else if let Some(retry_after) = headers
-                            .get(ReqwestHeaders::RETRY_AFTER)
-                            .and_then(|x| x.to_str().ok())
-                        {
-                            rl.update_from_retry_after(retry_after);
-                        } else if response.status() == StatusCode::TOO_MANY_REQUESTS {
-                            rl.update_from_429();
+                            if let Some(sentry_header) = headers
+                                .get("x-sentry-rate-limits")
+                                .and_then(|x| x.to_str().ok())
+                            {
+                                rl.update_from_sentry_header(sentry_header);
+                            } else if let Some(retry_after) = headers
+                                .get(ReqwestHeaders::RETRY_AFTER)
+                                .and_then(|x| x.to_str().ok())
+                            {
+                                rl.update_from_retry_after(retry_after);
+                            } else if response.status() == StatusCode::TOO_MANY_REQUESTS {
+                                rl.update_from_429();
+                            }
+
+                            match response.text().await {
+                                Err(err) => {
+                                    sentry_debug!("Failed to read sentry response: {}", err);
+                                }
+                                Ok(text) => {
+                                    sentry_debug!("Get response: `{}`", text);
+                                }
+                            }
                         }
-
-                        match response.text().await {
-                            Err(err) => {
-                                sentry_debug!("Failed to read sentry response: {}", err);
-                            }
-                            Ok(text) => {
-                                sentry_debug!("Get response: `{}`", text);
-                            }
+                        Err(err) => {
+                            sentry_debug!("Failed to send envelope: {}", err);
                         }
                     }
-                    Err(err) => {
-                        sentry_debug!("Failed to send envelope: {}", err);
-                    }
+                    rl
                 }
-                rl
-            }
-        });
+            },
+            options,
+        );
         Self { thread }
     }
 }

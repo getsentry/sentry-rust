@@ -4,6 +4,8 @@ use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
+use sentry_core::ClientOptions;
+
 use super::ratelimit::{RateLimiter, RateLimitingCategory};
 use crate::{sentry_debug, Envelope};
 
@@ -25,13 +27,12 @@ pub struct TransportThread {
 }
 
 impl TransportThread {
-    pub fn new<SendFn, SendFuture>(mut send: SendFn) -> Self
+    pub fn new<SendFn, SendFuture>(mut send: SendFn, options: &ClientOptions) -> Self
     where
         SendFn: FnMut(Envelope, RateLimiter) -> SendFuture + Send + 'static,
-        // NOTE: returning RateLimiter here, otherwise we are in borrow hell
         SendFuture: std::future::Future<Output = RateLimiter>,
     {
-        let (sender, receiver) = sync_channel(30);
+        let (sender, receiver) = sync_channel(options.max_transport_channel_size);
         let shutdown = Arc::new(AtomicBool::new(false));
         let shutdown_worker = shutdown.clone();
         let handle = thread::Builder::new()
