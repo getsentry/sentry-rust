@@ -197,7 +197,7 @@ pub struct ClientOptions {
     /// The user agent that should be reported.
     pub user_agent: Cow<'static, str>,
     /// The maximum number of envelopes that can be enqueued for sending in the transport channel (defaults to 30).
-    pub max_transport_channel_size: usize,
+    pub transport_channel_capacity: usize,
 }
 
 impl ClientOptions {
@@ -290,8 +290,8 @@ impl fmt::Debug for ClientOptions {
             .field("trim_backtraces", &self.trim_backtraces)
             .field("user_agent", &self.user_agent)
             .field(
-                "max_transport_channel_size",
-                &self.max_transport_channel_size,
+                "transport_channel_capacity",
+                &self.transport_channel_capacity,
             )
             .finish()
     }
@@ -334,7 +334,7 @@ impl Default for ClientOptions {
             enable_logs: true,
             #[cfg(feature = "logs")]
             before_send_log: None,
-            max_transport_channel_size: 30,
+            transport_channel_capacity: 30,
         }
     }
 }
