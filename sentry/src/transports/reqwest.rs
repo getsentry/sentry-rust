@@ -63,6 +63,7 @@ impl ReqwestHttpTransport {
         let url = dsn.envelope_api_url().to_string();
 
         let thread = TransportThread::new(
+            options,
             move |envelope, mut rl| {
                 let mut body = Vec::new();
                 envelope.to_writer(&mut body).unwrap();
@@ -105,7 +106,6 @@ impl ReqwestHttpTransport {
                     rl
                 }
             },
-            options,
         );
         Self { thread }
     }

@@ -39,6 +39,7 @@ impl CurlHttpTransport {
 
         let mut handle = client;
         let thread = TransportThread::new(
+            options,
             move |envelope, rl| {
                 handle.reset();
                 handle.url(&url).unwrap();
@@ -130,7 +131,6 @@ impl CurlHttpTransport {
                     }
                 }
             },
-            options,
         );
         Self { thread }
     }

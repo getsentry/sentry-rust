@@ -27,7 +27,7 @@ pub struct TransportThread {
 }
 
 impl TransportThread {
-    pub fn new<SendFn>(mut send: SendFn, options: &ClientOptions) -> Self
+    pub fn new<SendFn>(options: &ClientOptions, mut send: SendFn) -> Self
     where
         SendFn: FnMut(Envelope, &mut RateLimiter) + Send + 'static,
     {
