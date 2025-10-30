@@ -11,8 +11,7 @@ use crate::{Frame, Stacktrace};
 
 /// Processes a `Stacktrace`.
 ///
-/// Trims a `Stacktrace` and marks frames as in-app based on the provided
-/// `ClientOptions`.
+/// Marks frames as in-app based on the provided `ClientOptions`.
 pub fn process_event_stacktrace(stacktrace: &mut Stacktrace, options: &ClientOptions) {
     // automatically prime in_app and set package
     let mut any_in_app = false;
