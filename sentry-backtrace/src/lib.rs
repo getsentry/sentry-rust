@@ -18,7 +18,6 @@ pub use crate::integration::{
 };
 pub use crate::parse::parse_stacktrace;
 pub use crate::process::{backtrace_to_stacktrace, process_event_stacktrace};
-pub use crate::trim::trim_stacktrace;
 pub use sentry_core::protocol::{Frame, Stacktrace};
 
 /// Returns the current backtrace as sentry stacktrace.

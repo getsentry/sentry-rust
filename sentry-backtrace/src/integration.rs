@@ -8,9 +8,7 @@ use crate::process::process_event_stacktrace;
 
 /// Integration to process Event stacktraces.
 ///
-/// This integration will trim backtraces, depending on the `trim_backtraces`
-/// and `extra_border_frames` options.
-/// It will then classify each frame according to the `in_app_include` and
+/// This integration will classify each frame according to the `in_app_include` and
 /// `in_app_exclude` options.
 #[derive(Debug, Default)]
 pub struct ProcessStacktraceIntegration;
