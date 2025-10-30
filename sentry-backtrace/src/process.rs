@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use backtrace::Backtrace;
 use sentry_core::ClientOptions;
 
-use crate::trim::{is_well_known_not_in_app, trim_stacktrace};
+use crate::trim::is_well_known_not_in_app;
 use crate::utils::{
     demangle_symbol, filename, function_starts_with, parse_crate_name, strip_symbol,
 };
@@ -14,17 +14,6 @@ use crate::{Frame, Stacktrace};
 /// Trims a `Stacktrace` and marks frames as in-app based on the provided
 /// `ClientOptions`.
 pub fn process_event_stacktrace(stacktrace: &mut Stacktrace, options: &ClientOptions) {
-    // automatically trim backtraces
-    if options.trim_backtraces {
-        trim_stacktrace(stacktrace, |frame, _| {
-            if let Some(ref func) = frame.function {
-                options.extra_border_frames.contains(&func.as_str())
-            } else {
-                false
-            }
-        })
-    }
-
     // automatically prime in_app and set package
     let mut any_in_app = false;
     for frame in &mut stacktrace.frames {
