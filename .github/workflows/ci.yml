@@ -63,13 +63,14 @@ jobs:
 
       - name: Run tests with nextest
         run: cargo nextest run --profile ci --all-features --all-targets
-      
-      - name: Upload test results to Sentry Prevent
-        if: ${{ !cancelled() }}
-        uses: getsentry/prevent-action@v0
-        with:
-          files: target/nextest/ci/junit.xml
-          disable_search: true
+
+      # Temporarily disabled due to CCMRG-1820
+      # - name: Upload test results to Sentry Prevent
+      #   if: ${{ !cancelled() }}
+      #   uses: getsentry/prevent-action@v0
+      #   with:
+      #     files: target/nextest/ci/junit.xml
+      #     disable_search: true
 
   MSRV:
     strategy:
