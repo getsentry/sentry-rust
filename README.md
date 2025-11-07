@@ -106,4 +106,4 @@ and the MSRV will be increased in accordance with its dependencies.
 ## Resources
 
 - [Discord](https://discord.gg/ez5KZN7) server for project discussions.
-- Follow [@sentry](https://x.com/sentry) on X for updates
+- Follow [@sentry](https://x.com/sentry) on X for updates.
