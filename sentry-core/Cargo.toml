@@ -7,7 +7,7 @@ readme = "README.md"
 repository = "https://github.com/getsentry/sentry-rust"
 homepage = "https://sentry.io/welcome/"
 description = """
-Core sentry library used for instrumentation and integration development.
+Core Sentry library used for instrumentation and integration development.
 """
 edition = "2021"
 rust-version = "1.81"
