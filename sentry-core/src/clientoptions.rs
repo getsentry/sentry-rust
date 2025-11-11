@@ -192,8 +192,6 @@ pub struct ClientOptions {
     /// Border frames which indicate a border from a backtrace to
     /// useless internals. Some are automatically included.
     pub extra_border_frames: Vec<&'static str>,
-    /// Automatically trim backtraces of junk before sending. (defaults to true)
-    pub trim_backtraces: bool,
     /// The user agent that should be reported.
     pub user_agent: Cow<'static, str>,
 }
@@ -285,7 +283,6 @@ impl fmt::Debug for ClientOptions {
 
         debug_struct
             .field("extra_border_frames", &self.extra_border_frames)
-            .field("trim_backtraces", &self.trim_backtraces)
             .field("user_agent", &self.user_agent)
             .finish()
     }
@@ -321,7 +318,6 @@ impl Default for ClientOptions {
             #[cfg(feature = "release-health")]
             session_mode: SessionMode::Application,
             extra_border_frames: vec![],
-            trim_backtraces: true,
             user_agent: Cow::Borrowed(USER_AGENT),
             max_request_body_size: MaxRequestBodySize::Medium,
             #[cfg(feature = "logs")]

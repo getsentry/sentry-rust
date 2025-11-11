@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- feat(backtrace): Stop truncating backtraces ([#925](https://github.com/getsentry/sentry-rust/pull/925)) by @lcian
+  - TODO
+
 ### Fixes
 
 - fix: adjust sentry.origin for log integration ([#919](https://github.com/getsentry/sentry-rust/pull/919)) by @lcian
