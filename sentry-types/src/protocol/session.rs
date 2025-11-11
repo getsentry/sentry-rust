@@ -13,10 +13,12 @@ use crate::utils::{ts_rfc3339, ts_rfc3339_opt};
 /// The Status of a Release Health Session.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum SessionStatus {
     /// The session is healthy.
     ///
     /// This does not necessarily indicate that the session is still active.
+    #[default]
     Ok,
     /// The session terminated normally.
     Exited,
@@ -24,12 +26,6 @@ pub enum SessionStatus {
     Crashed,
     /// The session had an unexpected abrupt termination (not crashing).
     Abnormal,
-}
-
-impl Default for SessionStatus {
-    fn default() -> Self {
-        Self::Ok
-    }
 }
 
 /// An error used when parsing `SessionStatus`.
