@@ -318,6 +318,7 @@ impl Scope {
             event = match processor(event) {
                 Some(event) => event,
                 None => {
+                    #[cfg(feature = "debug_logs")]
                     sentry_debug!("event processor dropped event {}", id);
                     return None;
                 }

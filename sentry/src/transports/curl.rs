@@ -51,11 +51,13 @@ impl CurlHttpTransport {
             match (scheme, &http_proxy, &https_proxy) {
                 (Scheme::Https, _, Some(proxy)) => {
                     if let Err(err) = handle.proxy(proxy) {
+                        #[cfg(feature = "debug_logs")]
                         sentry_debug!("invalid proxy: {:?}", err);
                     }
                 }
                 (_, Some(proxy), _) => {
                     if let Err(err) = handle.proxy(proxy) {
+                        #[cfg(feature = "debug_logs")]
                         sentry_debug!("invalid proxy: {:?}", err);
                     }
                 }
@@ -86,6 +88,7 @@ impl CurlHttpTransport {
                         curl::easy::InfoType::DataOut => "",
                         _ => return,
                     };
+                    #[cfg(feature = "debug_logs")]
                     sentry_debug!("curl: {}{}", prefix, String::from_utf8_lossy(data).trim());
                 })
                 .unwrap();
@@ -124,6 +127,7 @@ impl CurlHttpTransport {
                     }
                 }
                 Err(err) => {
+                    #[cfg(feature = "debug_logs")]
                     sentry_debug!("Failed to send envelope: {}", err);
                 }
             }

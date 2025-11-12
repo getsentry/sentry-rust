@@ -39,6 +39,7 @@ impl ReqwestHttpTransport {
                         builder = builder.proxy(proxy);
                     }
                     Err(err) => {
+                        #[cfg(feature = "debug_logs")]
                         sentry_debug!("invalid proxy: {:?}", err);
                     }
                 }
@@ -49,6 +50,7 @@ impl ReqwestHttpTransport {
                         builder = builder.proxy(proxy);
                     }
                     Err(err) => {
+                        #[cfg(feature = "debug_logs")]
                         sentry_debug!("invalid proxy: {:?}", err);
                     }
                 }
@@ -90,14 +92,17 @@ impl ReqwestHttpTransport {
 
                         match response.text().await {
                             Err(err) => {
+                                #[cfg(feature = "debug_logs")]
                                 sentry_debug!("Failed to read sentry response: {}", err);
                             }
                             Ok(text) => {
+                                #[cfg(feature = "debug_logs")]
                                 sentry_debug!("Get response: `{}`", text);
                             }
                         }
                     }
                     Err(err) => {
+                        #[cfg(feature = "debug_logs")]
                         sentry_debug!("Failed to send envelope: {}", err);
                     }
                 }

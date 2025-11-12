@@ -31,8 +31,10 @@ impl ClientInitGuard {
 impl Drop for ClientInitGuard {
     fn drop(&mut self) {
         if self.is_enabled() {
+            #[cfg(feature = "debug_logs")]
             sentry_debug!("dropping client guard -> disposing client");
         } else {
+            #[cfg(feature = "debug_logs")]
             sentry_debug!("dropping client guard (no client to dispose)");
         }
         // end any session that might be open before closing the client
@@ -106,8 +108,10 @@ where
 
     Hub::with(|hub| hub.bind_client(Some(client.clone())));
     if let Some(dsn) = client.dsn() {
+        #[cfg(feature = "debug_logs")]
         sentry_debug!("enabled sentry client for DSN {}", dsn);
     } else {
+        #[cfg(feature = "debug_logs")]
         sentry_debug!("initialized disabled sentry client due to disabled or invalid DSN");
     }
     #[cfg(feature = "release-health")]
