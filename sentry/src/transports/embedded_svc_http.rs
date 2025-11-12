@@ -58,7 +58,6 @@ impl EmbeddedSVCHttpTransport {
 impl Transport for EmbeddedSVCHttpTransport {
     fn send_envelope(&self, envelope: sentry_core::Envelope) {
         if let Err(err) = self.send_envelope(envelope) {
-            #[cfg(feature = "debug_logs")]
             sentry_debug!("Failed to send envelope: {}", err);
         }
     }

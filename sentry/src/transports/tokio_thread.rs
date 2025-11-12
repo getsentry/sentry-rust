@@ -63,7 +63,6 @@ impl TransportThread {
                         };
 
                         if let Some(time_left) =  rl.is_disabled(RateLimitingCategory::Any) {
-                            #[cfg(feature = "debug_logs")]
                             sentry_debug!(
                                 "Skipping event send because we're disabled due to rate limits for {}s",
                                 time_left.as_secs()
@@ -75,7 +74,6 @@ impl TransportThread {
                                 rl = send(envelope, rl).await;
                             },
                             None => {
-                                #[cfg(feature = "debug_logs")]
                                 sentry_debug!("Envelope was discarded due to per-item rate limits");
                             },
                         };
@@ -96,7 +94,6 @@ impl TransportThread {
         // reason, trying to send an envelope would block everything. We'd rather
         // drop the envelope in that case.
         if let Err(e) = self.sender.try_send(Task::SendEnvelope(envelope)) {
-            #[cfg(feature = "debug_logs")]
             sentry_debug!("envelope dropped: {e}");
         }
     }

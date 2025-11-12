@@ -53,6 +53,7 @@ macro_rules! with_client_impl {
 // TODO: temporarily exported for use in `sentry` crate
 #[macro_export]
 #[doc(hidden)]
+#[cfg(feature = "debug_logs")]
 macro_rules! sentry_debug {
     ($($arg:tt)*) => {
         $crate::Hub::with(|hub| {
@@ -62,6 +63,16 @@ macro_rules! sentry_debug {
             }
         });
     }
+}
+
+/// Replace the exported macro with a no-op macro when debug_logs is disabled.
+#[macro_export]
+#[doc(hidden)]
+#[cfg(not(feature = "debug_logs"))]
+macro_rules! sentry_debug {
+    ($($arg:tt)*) => {
+        ();
+    };
 }
 
 #[allow(unused_macros)]

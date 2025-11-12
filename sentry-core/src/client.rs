@@ -282,7 +282,6 @@ impl Client {
             event = match integration.process_event(event, &self.options) {
                 Some(event) => event,
                 None => {
-                    #[cfg(feature = "debug_logs")]
                     sentry_debug!("integration dropped event {:?}", id);
                     return None;
                 }
@@ -303,13 +302,11 @@ impl Client {
         }
 
         if let Some(ref func) = self.options.before_send {
-            #[cfg(feature = "debug_logs")]
             sentry_debug!("invoking before_send callback");
             let id = event.event_id;
             if let Some(processed_event) = func(event) {
                 event = processed_event;
             } else {
-                #[cfg(feature = "debug_logs")]
                 sentry_debug!("before_send dropped event {:?}", id);
                 return None;
             }
@@ -444,11 +441,9 @@ impl Client {
         drop(self.logs_batcher.write().unwrap().take());
         let transport_opt = self.transport.write().unwrap().take();
         if let Some(transport) = transport_opt {
-            #[cfg(feature = "debug_logs")]
             sentry_debug!("client close; request transport to shut down");
             transport.shutdown(timeout.unwrap_or(self.options.shutdown_timeout))
         } else {
-            #[cfg(feature = "debug_logs")]
             sentry_debug!("client close; no transport to shut down");
             true
         }
@@ -470,7 +465,6 @@ impl Client {
     #[cfg(feature = "logs")]
     pub fn capture_log(&self, log: Log, scope: &Scope) {
         if !self.options.enable_logs {
-            #[cfg(feature = "debug_logs")]
             sentry_debug!("[Client] called capture_log, but options.enable_logs is set to false");
             return;
         }

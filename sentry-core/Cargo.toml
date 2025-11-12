@@ -20,7 +20,7 @@ name = "scope_benchmark"
 harness = false
 
 [features]
-default = ["debug_logs"]
+default = []
 client = ["rand"]
 test = ["client", "release-health"]
 debug_logs = []

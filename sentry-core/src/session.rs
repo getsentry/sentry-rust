@@ -294,7 +294,6 @@ mod session_impl {
                     bucket.abnormal += 1;
                 }
                 SessionStatus::Ok => {
-                    #[cfg(feature = "debug_logs")]
                     sentry_debug!("unreachable: only closed sessions will be enqueued");
                 }
             }
