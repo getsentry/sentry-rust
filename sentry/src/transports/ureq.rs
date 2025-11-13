@@ -83,7 +83,7 @@ impl UreqHttpTransport {
         let auth = dsn.to_auth(Some(&user_agent)).to_string();
         let url = dsn.envelope_api_url().to_string();
 
-        let thread = TransportThread::new(move |envelope, rl| {
+        let thread = TransportThread::new(options, move |envelope, rl| {
             let mut body = Vec::new();
             envelope.to_writer(&mut body).unwrap();
             let request = agent.post(&url).header("X-Sentry-Auth", &auth).send(&body);
