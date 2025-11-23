@@ -10,6 +10,7 @@ const WELL_KNOWN_NOT_IN_APP: &[&str] = &[
     "sentry_core::",
     "sentry_types::",
     "sentry_backtrace::",
+    "sentry_tracing::",
     // these are not modules but things like __rust_maybe_catch_panic
     "__rust_",
     "___rust_",
