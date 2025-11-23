@@ -5,7 +5,9 @@
 ### Breaking changes
 
 - feat(backtrace): Stop truncating backtraces ([#925](https://github.com/getsentry/sentry-rust/pull/925)) by @lcian
-  - TODO
+  - Backtrace trimming functionality has been removed from the SDK.
+  - Backtrace trimming behavior was previously governed by `ClientOptions::trim_backtraces` (previously set to `true` by default), which has now been removed.
+  - Moving forward, the SDK will behave as if `trim_backtraces` was set to `false`. 
 
 ### Fixes
 
