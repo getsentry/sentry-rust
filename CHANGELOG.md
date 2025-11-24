@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- Removed the `ClientOptions` struct's `trim_backtraces` and `extra_border_frames` fields ([#925](https://github.com/getsentry/sentry-rust/pull/925)).
+  - These fields configured backtrace trimming, which is being removed in this release.
+
+### Improvements
+
+- Removed backtrace trimming to align the Rust SDK with the general principle that Sentry SDKs should only truncate telemetry data when needed to comply with [documented size limits](https://develop.sentry.dev/sdk/data-model/envelopes/#size-limits) ([#925](https://github.com/getsentry/sentry-rust/pull/925)). This change ensures that as much data as possible remains available for debugging.
+  - If you notice any new issues being created for existing errors after this change, please open an issue on [GitHub](https://github.com/getsentry/sentry-rust/issues/new/choose).
+
 ### Fixes
 
 - fix: adjust sentry.origin for log integration ([#919](https://github.com/getsentry/sentry-rust/pull/919)) by @lcian
