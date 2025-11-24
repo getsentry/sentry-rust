@@ -136,4 +136,4 @@ Applying the layers in the wrong order can result in memory leaks.
 License: MIT
 
 - [Discord](https://discord.gg/ez5KZN7) server for project discussions.
-- Follow [@getsentry](https://twitter.com/getsentry) on Twitter for updates
+- Follow [@sentry](https://x.com/sentry) on X for updates.

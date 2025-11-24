@@ -3,10 +3,11 @@ use std::fmt;
 use serde::Deserialize;
 
 /// The different types an attachment can have.
-#[derive(Debug, Clone, Eq, PartialEq, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Default)]
 pub enum AttachmentType {
     #[serde(rename = "event.attachment")]
     /// (default) A standard attachment without special meaning.
+    #[default]
     Attachment,
     /// A minidump file that creates an error event and is symbolicated. The
     /// file should start with the `MDMP` magic bytes.
@@ -26,12 +27,6 @@ pub enum AttachmentType {
     /// A custom attachment type with an arbitrary string value.
     #[serde(untagged)]
     Custom(String),
-}
-
-impl Default for AttachmentType {
-    fn default() -> Self {
-        Self::Attachment
-    }
 }
 
 impl AttachmentType {

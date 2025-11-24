@@ -28,4 +28,4 @@ let _sentry = sentry::init(sentry::ClientOptions::new().add_integration(integrat
 License: MIT
 
 - [Discord](https://discord.gg/ez5KZN7) server for project discussions.
-- Follow [@getsentry](https://twitter.com/getsentry) on Twitter for updates
+- Follow [@sentry](https://x.com/sentry) on X for updates.
