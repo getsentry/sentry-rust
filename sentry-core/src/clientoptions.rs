@@ -189,9 +189,6 @@ pub struct ClientOptions {
     /// Determine how Sessions are being tracked.
     #[cfg(feature = "release-health")]
     pub session_mode: SessionMode,
-    /// Border frames which indicate a border from a backtrace to
-    /// useless internals. Some are automatically included.
-    pub extra_border_frames: Vec<&'static str>,
     /// The user agent that should be reported.
     pub user_agent: Cow<'static, str>,
 }
@@ -281,10 +278,7 @@ impl fmt::Debug for ClientOptions {
             .field("enable_logs", &self.enable_logs)
             .field("before_send_log", &before_send_log);
 
-        debug_struct
-            .field("extra_border_frames", &self.extra_border_frames)
-            .field("user_agent", &self.user_agent)
-            .finish()
+        debug_struct.field("user_agent", &self.user_agent).finish()
     }
 }
 
@@ -317,7 +311,6 @@ impl Default for ClientOptions {
             auto_session_tracking: false,
             #[cfg(feature = "release-health")]
             session_mode: SessionMode::Application,
-            extra_border_frames: vec![],
             user_agent: Cow::Borrowed(USER_AGENT),
             max_request_body_size: MaxRequestBodySize::Medium,
             #[cfg(feature = "logs")]
