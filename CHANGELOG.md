@@ -4,11 +4,13 @@
 
 ### Breaking changes
 
-- feat(backtrace): Stop truncating backtraces ([#925](https://github.com/getsentry/sentry-rust/pull/925)) by @lcian
-  - Backtrace trimming functionality has been removed from the SDK.
-  - Backtrace trimming behavior was previously governed by `ClientOptions::trim_backtraces` (previously set to `true` by default), which has now been removed.
-  - Moving forward, the SDK will behave as if `trim_backtraces` was set to `false`. 
-  - If this results in grouping problems (new issues being created for existing errors), please open an issue on [GitHub](https://github.com/getsentry/sentry-rust/issues/new/choose).
+- Removed the `ClientOptions` struct's `trim_backtraces` and `extra_border_frames` fields ([#925](https://github.com/getsentry/sentry-rust/pull/925)).
+  - These fields configured backtrace trimming, which is being removed in this release.
+
+### Improvements
+
+- Removed backtrace trimming to align the Rust SDK with the general principle that Sentry SDKs should only truncate telemetry data when needed to comply with [documented size limits](https://develop.sentry.dev/sdk/data-model/envelopes/#size-limits) ([#925](https://github.com/getsentry/sentry-rust/pull/925)). This change ensures that as much data as possible remains available for debugging.
+  - If you notice any new issues being created for existing errors after this change, please open an issue on [GitHub](https://github.com/getsentry/sentry-rust/issues/new/choose).
 
 ### Fixes
 
