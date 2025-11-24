@@ -8,6 +8,7 @@
   - Backtrace trimming functionality has been removed from the SDK.
   - Backtrace trimming behavior was previously governed by `ClientOptions::trim_backtraces` (previously set to `true` by default), which has now been removed.
   - Moving forward, the SDK will behave as if `trim_backtraces` was set to `false`. 
+  - If this results in grouping problems (new issues being created for existing errors), please open an issue on [GitHub](https://github.com/getsentry/sentry-rust/issues/new/choose).
 
 ### Fixes
 
