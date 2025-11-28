@@ -402,7 +402,7 @@ pub type TracesSampler = dyn Fn(&TransactionContext) -> f32 + Send + Sync;
 // global API types:
 
 /// A wrapper that groups a [`Transaction`] and a [`Span`] together.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum TransactionOrSpan {
     /// A [`Transaction`].
     Transaction(Transaction),
@@ -958,6 +958,12 @@ impl Transaction {
     }
 }
 
+impl PartialEq for Transaction {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.inner, &other.inner)
+    }
+}
+
 /// A smart pointer to a span's [`data` field](protocol::Span::data).
 pub struct Data<'a>(MutexGuard<'a, protocol::Span>);
 
@@ -1200,6 +1206,12 @@ impl Span {
             sampled: self.sampled,
             span: Arc::new(Mutex::new(span)),
         }
+    }
+}
+
+impl PartialEq for Span {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.span, &other.span)
     }
 }
 
