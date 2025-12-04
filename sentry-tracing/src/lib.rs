@@ -107,8 +107,8 @@
 //!
 //! ```
 //! tracing::error!(
-//!     field = "value",                  // will become a context field
-//!     tags.custom = "value",            // will become a tag in Sentry
+//!     field = "value",       // will become a context field
+//!     tags.custom = "value", // will become a tag in Sentry
 //!     "this is an error with a custom tag",
 //! );
 //! ```
@@ -249,3 +249,4 @@ const TAGS_PREFIX: &str = "tags.";
 const SENTRY_OP_FIELD: &str = "sentry.op";
 const SENTRY_NAME_FIELD: &str = "sentry.name";
 const SENTRY_TRACE_FIELD: &str = "sentry.trace";
+const SENTRY_SAMPLE_FIELD: &str = "sentry.sample";

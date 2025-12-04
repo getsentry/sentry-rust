@@ -12,10 +12,9 @@ use tracing_subscriber::layer::{Context, Layer};
 use tracing_subscriber::registry::LookupSpan;
 
 use crate::converters::*;
-use crate::SENTRY_NAME_FIELD;
-use crate::SENTRY_OP_FIELD;
-use crate::SENTRY_TRACE_FIELD;
-use crate::TAGS_PREFIX;
+use crate::{
+    SENTRY_NAME_FIELD, SENTRY_OP_FIELD, SENTRY_SAMPLE_FIELD, SENTRY_TRACE_FIELD, TAGS_PREFIX,
+};
 
 bitflags! {
     /// The action that Sentry should perform for a given [`Event`]
@@ -301,7 +300,13 @@ where
             return;
         }
 
-        let (data, sentry_name, sentry_op, sentry_trace) = extract_span_data(attrs);
+        let SpanData {
+            json_values: data,
+            name: sentry_name,
+            op: sentry_op,
+            trace: sentry_trace,
+            sample: force_sample_value,
+        } = extract_span_data(attrs);
         let sentry_name = sentry_name.as_deref().unwrap_or_else(|| span.name());
         let sentry_op =
             sentry_op.unwrap_or_else(|| format!("{}::{}", span.metadata().target(), span.name()));
@@ -312,7 +317,7 @@ where
         let mut sentry_span: sentry_core::TransactionOrSpan = match &parent_sentry_span {
             Some(parent) => parent.start_child(&sentry_op, sentry_name).into(),
             None => {
-                let ctx = if let Some(trace_header) = sentry_trace {
+                let mut ctx = if let Some(trace_header) = sentry_trace {
                     sentry_core::TransactionContext::continue_from_headers(
                         sentry_name,
                         &sentry_op,
@@ -321,6 +326,10 @@ where
                 } else {
                     sentry_core::TransactionContext::new(sentry_name, &sentry_op)
                 };
+
+                if let Some(force_sample) = force_sample_value {
+                    ctx.set_sampled(force_sample);
+                }
 
                 let tx = sentry_core::start_transaction(ctx);
                 tx.set_origin("auto.tracing");
@@ -462,16 +471,16 @@ where
     Default::default()
 }
 
+struct SpanData {
+    json_values: BTreeMap<&'static str, Value>,
+    name: Option<String>,
+    op: Option<String>,
+    trace: Option<String>,
+    sample: Option<bool>,
+}
 /// Extracts the attributes from a span,
 /// returning the values of SENTRY_NAME_FIELD, SENTRY_OP_FIELD, SENTRY_TRACE_FIELD separately
-fn extract_span_data(
-    attrs: &span::Attributes,
-) -> (
-    BTreeMap<&'static str, Value>,
-    Option<String>,
-    Option<String>,
-    Option<String>,
-) {
+fn extract_span_data(attrs: &span::Attributes) -> SpanData {
     let mut json_values = VISITOR_BUFFER.with_borrow_mut(|debug_buffer| {
         let mut visitor = SpanFieldVisitor {
             debug_buffer,
@@ -491,14 +500,27 @@ fn extract_span_data(
         _ => None,
     });
 
-    let sentry_trace = json_values
+    let trace = json_values
         .remove(SENTRY_TRACE_FIELD)
         .and_then(|v| match v {
             Value::String(s) => Some(s),
             _ => None,
         });
 
-    (json_values, name, op, sentry_trace)
+    let sample = json_values
+        .remove(SENTRY_SAMPLE_FIELD)
+        .and_then(|v: Value| match v {
+            Value::Bool(b) => Some(b),
+            _ => None,
+        });
+
+    SpanData {
+        json_values,
+        name,
+        op,
+        trace,
+        sample,
+    }
 }
 
 thread_local! {

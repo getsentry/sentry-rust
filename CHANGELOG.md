@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+- ref(tracing): Add data option in tracing integration to force sampling of transaction ([#945](https://github.com/getsentry/sentry-rust/pull/945)) by @Ten0
+  - Additional special fields have been added that allow overriding certain data on the Sentry span:
+    - `sentry.sample`: If the span initiates a transaction, this can be used to force whether the transaction will be sampled.
+
 ## 0.46.0
 
 ### Breaking changes
@@ -29,7 +37,7 @@
 - feat(log): support combined LogFilters and RecordMappings ([#914](https://github.com/getsentry/sentry-rust/pull/914)) by @lcian
   - Breaking change: `sentry::integrations::log::LogFilter` has been changed to a `bitflags` struct.
   - It's now possible to map a `log` record to multiple items in Sentry by combining multiple log filters in the filter, e.g. `log::Level::ERROR => LogFilter::Event | LogFilter::Log`.
-  - If using a custom `mapper` instead, it's possible to return a `Vec<sentry::integrations::log::RecordMapping>` to map a `log` record to multiple items in Sentry. 
+  - If using a custom `mapper` instead, it's possible to return a `Vec<sentry::integrations::log::RecordMapping>` to map a `log` record to multiple items in Sentry.
 
 ### Behavioral changes
 
@@ -69,6 +77,7 @@
 ### Features
 
 - ref(tracing): rework tracing to Sentry span name/op conversion ([#887](https://github.com/getsentry/sentry-rust/pull/887)) by @lcian
+
   - Additional special fields have been added that allow overriding certain data on the Sentry span:
     - `sentry.op`: override the Sentry span op.
     - `sentry.name`: override the Sentry span name.
@@ -210,10 +219,11 @@
 ### Features
 
 Support for [Sentry structured logs](https://docs.sentry.io/product/explore/logs/) has been added to the SDK.
+
 - To set up logs, enable the `logs` feature of the `sentry` crate and set `enable_logs` to `true` in your client options.
 - Then, use the `logger_trace!`, `logger_debug!`, `logger_info!`, `logger_warn!`, `logger_error!` and `logger_fatal!` macros to capture logs.
 - To filter or update logs before they are sent, you can use the `before_send_log` client option.
-- Please note that breaking changes could occur until the API is finalized. 
+- Please note that breaking changes could occur until the API is finalized.
 
 - feat(logs): add log protocol types (#821) by @lcian
 - feat(logs): add ability to capture and send logs (#823) by @lcian & @Swatinem
@@ -318,7 +328,7 @@ An OpenTelemetry integration has been released. Please refer to the changelog en
   - The metrics feature and the code related to it has been removed from the crate, as the Sentry backend stopped ingesting metrics a while ago.
 - Switch to MIT license (#724) by @cleptric
   - The license for the crates has been changed to MIT.
- 
+
 ### Features
 
 - feat(actix): capture HTTP request body (#731) by @pacifistes
