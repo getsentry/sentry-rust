@@ -9,6 +9,7 @@
 Support for automatic breadcrumb, event, and trace capturing from `tracing` events and spans.
 
 The `tracing` crate is supported in four ways:
+
 - `tracing` events can be captured as Sentry events. These are grouped and show up in the Sentry
   [issues](https://docs.sentry.io/product/issues/) page, representing high severity issues to be
   acted upon.
@@ -216,6 +217,7 @@ By default, the `op` of the span sent to Sentry is `default`.
 ### Special Span Fields
 
 Some fields on spans are treated specially by the Sentry tracing integration:
+
 - `sentry.name`: overrides the span name sent to Sentry.
   This is useful to customize the span name when using `#[tracing::instrument]`, or to update
   it retroactively (using `span.record`) after the span has been created.
@@ -228,7 +230,7 @@ Some fields on spans are treated specially by the Sentry tracing integration:
   Note that `sentry.trace` will only be effective on span creation (it cannot be applied retroactively)
   and requires the span it's applied to to be a root span, i.e. no span should active upon its
   creation.
-
+- `sentry.sample`: If the span initiates a transaction, this can be used to force whether the transaction will be sampled.
 
 Example:
 
