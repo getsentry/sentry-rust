@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+- Expose transport utilities ([#949](https://github.com/getsentry/sentry-rust/pull/949))
+
 ## 0.46.0
 
 ### Breaking changes

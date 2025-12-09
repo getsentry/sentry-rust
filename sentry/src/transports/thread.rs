@@ -18,6 +18,7 @@ enum Task {
     Shutdown,
 }
 
+/// A background-thread dedicated to sending [`Envelope`]s whilst respecting the rate limits imposed in the responses.
 pub struct TransportThread {
     sender: SyncSender<Task>,
     shutdown: Arc<AtomicBool>,
@@ -25,6 +26,7 @@ pub struct TransportThread {
 }
 
 impl TransportThread {
+    /// Spawn a new background thread.
     pub fn new<SendFn>(mut send: SendFn) -> Self
     where
         SendFn: FnMut(Envelope, &mut RateLimiter) + Send + 'static,
@@ -78,6 +80,9 @@ impl TransportThread {
         }
     }
 
+    /// Send an [`Envelope`].
+    ///
+    /// In case the background thread cannot keep up, the [`Envelope`] is dropped.
     pub fn send(&self, envelope: Envelope) {
         // Using send here would mean that when the channel fills up for whatever
         // reason, trying to send an envelope would block everything. We'd rather
@@ -87,6 +92,9 @@ impl TransportThread {
         }
     }
 
+    /// Flush all pending [`Envelope`]s.
+    ///
+    /// Returns true if successful within given timeout.
     pub fn flush(&self, timeout: Duration) -> bool {
         let (sender, receiver) = sync_channel(1);
         let _ = self.sender.send(Task::Flush(sender));
