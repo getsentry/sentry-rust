@@ -62,7 +62,7 @@ impl ReqwestHttpTransport {
         let auth = dsn.to_auth(Some(&user_agent)).to_string();
         let url = dsn.envelope_api_url().to_string();
 
-        let thread = TransportThread::new(move |envelope, mut rl| {
+        let thread = TransportThread::new((), move |(), envelope, mut rl| {
             let mut body = Vec::new();
             envelope.to_writer(&mut body).unwrap();
             let request = client.post(&url).header("X-Sentry-Auth", &auth).body(body);
@@ -101,7 +101,8 @@ impl ReqwestHttpTransport {
                         sentry_debug!("Failed to send envelope: {}", err);
                     }
                 }
-                rl
+
+                ((), rl)
             }
         });
         Self { thread }
