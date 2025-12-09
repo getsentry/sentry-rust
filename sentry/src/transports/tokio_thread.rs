@@ -25,11 +25,12 @@ pub struct TransportThread {
 }
 
 impl TransportThread {
-    pub fn new<SendFn, SendFuture>(mut send: SendFn) -> Self
+    pub fn new<State, SendFn, SendFuture>(mut state: State, mut send: SendFn) -> Self
     where
-        SendFn: FnMut(Envelope, RateLimiter) -> SendFuture + Send + 'static,
+        SendFn: FnMut(State, Envelope, RateLimiter) -> SendFuture + Send + 'static,
         // NOTE: returning RateLimiter here, otherwise we are in borrow hell
-        SendFuture: std::future::Future<Output = RateLimiter>,
+        SendFuture: std::future::Future<Output = (State, RateLimiter)>,
+        State: Send + 'static,
     {
         let (sender, receiver) = sync_channel(30);
         let shutdown = Arc::new(AtomicBool::new(false));
@@ -62,7 +63,7 @@ impl TransportThread {
                             }
                         };
 
-                        if let Some(time_left) =  rl.is_disabled(RateLimitingCategory::Any) {
+                        if let Some(time_left) = rl.is_disabled(RateLimitingCategory::Any) {
                             sentry_debug!(
                                 "Skipping event send because we're disabled due to rate limits for {}s",
                                 time_left.as_secs()
@@ -71,7 +72,10 @@ impl TransportThread {
                         }
                         match rl.filter_envelope(envelope) {
                             Some(envelope) => {
-                                rl = send(envelope, rl).await;
+                                let (new_state, new_rl) = send(state, envelope, rl).await;
+
+                                state = new_state;
+                                rl = new_rl;
                             },
                             None => {
                                 sentry_debug!("Envelope was discarded due to per-item rate limits");
