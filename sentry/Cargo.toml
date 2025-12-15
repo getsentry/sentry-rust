@@ -74,7 +74,7 @@ sentry-slog = { version = "0.46.0", path = "../sentry-slog", optional = true }
 sentry-tower = { version = "0.46.0", path = "../sentry-tower", optional = true }
 sentry-tracing = { version = "0.46.0", path = "../sentry-tracing", optional = true }
 sentry-opentelemetry = { version = "0.46.0", path = "../sentry-opentelemetry", optional = true }
-reqwest = { version = "0.12", optional = true, features = [
+reqwest = { version = "0.12.25", optional = true, features = [
     "blocking",
     "json",
 ], default-features = false }
