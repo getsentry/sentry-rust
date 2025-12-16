@@ -50,8 +50,6 @@ jobs:
 
     name: Test using Rust stable on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    permissions:
-      id-token: write # required by `getsentry/prevent-action`
 
     steps:
       - name: Checkout sources
@@ -65,7 +63,7 @@ jobs:
         run: cargo nextest run --profile ci --all-features --all-targets
       
       - name: Upload test results to Sentry Prevent
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && github.event.pull_request.head.repo.full_name == github.repository }}
         uses: getsentry/prevent-action@v0
         with:
           files: target/nextest/ci/junit.xml
