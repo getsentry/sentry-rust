@@ -50,6 +50,8 @@ jobs:
 
     name: Test using Rust stable on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    permissions:
+      id-token: write # required by `getsentry/prevent-action`
 
     steps:
       - name: Checkout sources
