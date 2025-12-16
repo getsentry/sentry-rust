@@ -5,9 +5,9 @@ on:
     types: [opened, synchronize, reopened, edited, ready_for_review, labeled, unlabeled]
 
 permissions:
-  contents: read       # To read repository files
-  pull-requests: write # To post comments on pull requests
-  statuses: write      # To post commit status checks
+  contents: read
+  pull-requests: write
+  statuses: write
 
 jobs:
   danger:
