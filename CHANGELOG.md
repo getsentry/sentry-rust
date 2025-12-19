@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Improvements
+
+- Make it possible to == Transaction/Span/TransactionOrSpan ([#942](https://github.com/getsentry/sentry-rust/pull/942)).
+
 ## 0.46.0
 
 ### Breaking changes
