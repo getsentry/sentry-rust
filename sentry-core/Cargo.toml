@@ -23,6 +23,7 @@ harness = false
 default = []
 client = ["rand"]
 test = ["client", "release-health"]
+debug_logs = []
 release-health = []
 logs = []
 
