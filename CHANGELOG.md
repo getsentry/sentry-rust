@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Dependencies
+
+- Update reqwest from 0.12.15 to 0.12.25 ([#951](https://github.com/getsentry/sentry-rust/pull/951))
+
 ## 0.46.0
 
 ### Breaking changes
