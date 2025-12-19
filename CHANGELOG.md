@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Improvements
+
+- Make it possible to == Transaction/Span/TransactionOrSpan ([#942](https://github.com/getsentry/sentry-rust/pull/942))
+
 ### Dependencies
 
 - Update reqwest from 0.12.15 to 0.12.25 ([#951](https://github.com/getsentry/sentry-rust/pull/951))
