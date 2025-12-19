@@ -65,7 +65,7 @@ jobs:
         run: cargo nextest run --profile ci --all-features --all-targets
       
       - name: Upload test results to Sentry Prevent
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
         uses: getsentry/prevent-action@v0
         with:
           files: target/nextest/ci/junit.xml
