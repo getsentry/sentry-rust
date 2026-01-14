@@ -1,5 +1,6 @@
 use std::cell::{Cell, UnsafeCell};
-use std::sync::{Arc, LazyLock, PoisonError, RwLock};
+use std::marker::PhantomData;
+use std::sync::{Arc, LazyLock, MutexGuard, PoisonError, RwLock};
 use std::thread;
 
 use crate::Scope;
@@ -19,10 +20,14 @@ thread_local! {
     );
 }
 
-/// A Hub switch guard used to temporarily swap
-/// active hub in thread local storage.
+/// A guard that temporarily swaps the active hub in thread-local storage.
+///
+/// This type is `!Send` because it manages thread-local state and must be
+/// dropped on the same thread where it was created.
 pub struct SwitchGuard {
     inner: Option<(Arc<Hub>, bool)>,
+    /// Makes this type `!Send` while keeping it `Sync`.
+    _not_send: PhantomData<MutexGuard<'static, ()>>,
 }
 
 impl SwitchGuard {
@@ -41,7 +46,10 @@ impl SwitchGuard {
             let was_process_hub = is_process_hub.replace(false);
             Some((hub, was_process_hub))
         });
-        SwitchGuard { inner }
+        SwitchGuard {
+            inner,
+            _not_send: PhantomData,
+        }
     }
 
     fn swap(&mut self) -> Option<Arc<Hub>> {
