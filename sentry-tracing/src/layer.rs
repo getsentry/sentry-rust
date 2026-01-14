@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 use std::cell::RefCell;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
 use bitflags::bitflags;
@@ -236,7 +236,6 @@ pub(super) struct SentrySpanData {
     pub(super) sentry_span: TransactionOrSpan,
     parent_sentry_span: Option<TransactionOrSpan>,
     hub: Arc<sentry_core::Hub>,
-    hub_switch_guard: Option<sentry_core::HubSwitchGuard>,
 }
 
 impl<S> Layer<S> for SentryLayer<S>
@@ -338,7 +337,6 @@ where
             sentry_span,
             parent_sentry_span,
             hub,
-            hub_switch_guard: None,
         });
     }
 
@@ -350,12 +348,15 @@ where
             None => return,
         };
 
-        let mut extensions = span.extensions_mut();
-        if let Some(data) = extensions.get_mut::<SentrySpanData>() {
-            data.hub_switch_guard = Some(sentry_core::HubSwitchGuard::new(data.hub.clone()));
+        let extensions = span.extensions();
+        if let Some(data) = extensions.get::<SentrySpanData>() {
+            let guard = sentry_core::HubSwitchGuard::new(data.hub.clone());
+            SPAN_GUARDS.with(|guards| {
+                guards.borrow_mut().insert(id.clone(), guard);
+            });
             data.hub.configure_scope(|scope| {
                 scope.set_span(Some(data.sentry_span.clone()));
-            })
+            });
         }
     }
 
@@ -366,18 +367,24 @@ where
             None => return,
         };
 
-        let mut extensions = span.extensions_mut();
-        if let Some(data) = extensions.get_mut::<SentrySpanData>() {
+        let extensions = span.extensions();
+        if let Some(data) = extensions.get::<SentrySpanData>() {
             data.hub.configure_scope(|scope| {
                 scope.set_span(data.parent_sentry_span.clone());
             });
-            data.hub_switch_guard.take();
         }
+        SPAN_GUARDS.with(|guards| {
+            guards.borrow_mut().remove(id);
+        });
     }
 
     /// When a span gets closed, finish the underlying sentry span, and set back
     /// its parent as the *current* sentry span.
     fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
+        SPAN_GUARDS.with(|guards| {
+            guards.borrow_mut().remove(&id);
+        });
+
         let span = match ctx.span(&id) {
             Some(span) => span,
             None => return,
@@ -503,6 +510,10 @@ fn extract_span_data(
 
 thread_local! {
     static VISITOR_BUFFER: RefCell<String> = const { RefCell::new(String::new()) };
+    /// Hub switch guards keyed by span ID. Stored in thread-local so guards are
+    /// always dropped on the same thread where they were created.
+    static SPAN_GUARDS: RefCell<HashMap<span::Id, sentry_core::HubSwitchGuard>> =
+        RefCell::new(HashMap::new());
 }
 
 /// Records all span fields into a `BTreeMap`, reusing a mutable `String` as buffer.
