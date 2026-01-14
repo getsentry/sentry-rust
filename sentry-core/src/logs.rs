@@ -105,7 +105,6 @@ impl LogsBatcher {
         }
 
         sentry_debug!("[LogsBatcher] Flushing {} logs", logs.len());
-
         if let Some(ref transport) = *transport.read().unwrap() {
             let mut envelope = Envelope::new();
             let logs_item: EnvelopeItem = logs.into();
