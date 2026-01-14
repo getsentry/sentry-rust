@@ -55,8 +55,8 @@ reqwest = ["dep:reqwest", "httpdate", "tokio"]
 curl = ["dep:curl", "httpdate"]
 ureq = ["dep:ureq", "httpdate"]
 # transport settings
-native-tls = ["dep:native-tls", "reqwest?/default-tls", "ureq?/native-tls"]
-rustls = ["dep:rustls", "reqwest?/rustls-tls", "ureq?/rustls"]
+native-tls = ["dep:native-tls", "reqwest?/native-tls", "ureq?/native-tls"]
+rustls = ["dep:rustls", "reqwest?/rustls", "ureq?/rustls"]
 embedded-svc-http = ["dep:embedded-svc", "dep:esp-idf-svc"]
 
 [dependencies]
@@ -74,7 +74,7 @@ sentry-slog = { version = "0.46.1", path = "../sentry-slog", optional = true }
 sentry-tower = { version = "0.46.1", path = "../sentry-tower", optional = true }
 sentry-tracing = { version = "0.46.1", path = "../sentry-tracing", optional = true }
 sentry-opentelemetry = { version = "0.46.1", path = "../sentry-opentelemetry", optional = true }
-reqwest = { version = "0.12.25", optional = true, features = [
+reqwest = { version = "0.13.1", optional = true, features = [
     "blocking",
     "json",
 ], default-features = false }
