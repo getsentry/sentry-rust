@@ -1,2 +1,3 @@
 target
 venv
+.claude/settings.local.json
