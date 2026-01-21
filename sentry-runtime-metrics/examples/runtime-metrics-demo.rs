@@ -70,14 +70,14 @@ fn main() {
     println!("\nWaiting 2 seconds...\n");
     std::thread::sleep(Duration::from_secs(2));
 
-    // Second snapshot - uptime should now be ~2 seconds
+    // Second snapshot - uptime should now be ~2 seconds higher
     let snapshot2 = integration.collect_snapshot();
     println!("Second snapshot (uptime should increase):");
     print_metrics(&snapshot2);
 
     println!("\n✓ Runtime metrics collection working!");
-    println!("  Note: process.uptime increased between snapshots because");
-    println!("  collectors are created once and reused, not recreated.");
+    println!("  Note: process.uptime reflects actual process lifetime,");
+    println!("  measured from when the OS started the process.");
     println!("\nTo use with Sentry, add this integration to your ClientOptions:");
     println!("  sentry::init(ClientOptions::new().add_integration(integration))");
 }

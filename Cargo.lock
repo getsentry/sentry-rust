@@ -3314,7 +3314,6 @@ version = "0.46.1"
 dependencies = [
  "libc",
  "sentry-core",
- "sentry-types",
  "serde",
  "serde_json",
  "tikv-jemalloc-ctl",

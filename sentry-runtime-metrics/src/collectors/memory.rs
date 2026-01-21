@@ -37,8 +37,8 @@ impl MetricCollector for MemoryCollector {
             );
         }
 
-        // Collect jemalloc stats if available
-        #[cfg(feature = "jemalloc")]
+        // Collect jemalloc stats if available (Unix only)
+        #[cfg(all(unix, feature = "jemalloc"))]
         {
             if let Some((allocated, resident)) = get_jemalloc_stats() {
                 metrics.push(
@@ -172,8 +172,8 @@ fn get_rss_bytes() -> Option<i64> {
     None
 }
 
-/// Gets jemalloc memory statistics.
-#[cfg(feature = "jemalloc")]
+/// Gets jemalloc memory statistics (Unix only).
+#[cfg(all(unix, feature = "jemalloc"))]
 fn get_jemalloc_stats() -> Option<(i64, i64)> {
     use tikv_jemalloc_ctl::{epoch, stats};
 

@@ -43,6 +43,7 @@ fn main() {
 
 | Metric | Type | Description |
 |--------|------|-------------|
+| `process.uptime` | Gauge | Process uptime in seconds |
 | `process.threads.count` | Gauge | Number of threads |
 | `process.cpu.user_time` | Counter | User CPU time in ms |
 | `process.cpu.system_time` | Counter | System CPU time in ms |
@@ -60,7 +61,7 @@ fn main() {
 
 ```rust
 RuntimeMetricsConfig {
-    /// How often to collect metrics (default: 10 seconds)
+    /// Reserved for future background collection (not currently used)
     collection_interval: Duration::from_secs(10),
     
     /// Enable memory metrics collection
@@ -76,6 +77,9 @@ RuntimeMetricsConfig {
     custom_collectors: vec![],
 }
 ```
+
+**Note:** Currently, metrics are collected when events are sent to Sentry, not on a 
+background interval. The `collection_interval` field is reserved for future use.
 
 ## Custom Collectors
 
@@ -110,7 +114,7 @@ impl MetricCollector for MyCustomCollector {
 | `memory` | ✅ | Memory metrics collection |
 | `process` | ✅ | Process/CPU metrics collection |
 | `tokio-runtime` | ❌ | Tokio async runtime metrics |
-| `jemalloc` | ❌ | Detailed jemalloc memory stats |
+| `jemalloc` | ❌ | Detailed jemalloc memory stats (Unix only) |
 
 ## License
 

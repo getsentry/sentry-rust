@@ -40,7 +40,3 @@ pub trait MetricCollector: Send + Sync + 'static {
     /// Name of this collector for debugging and logging.
     fn name(&self) -> &'static str;
 }
-
-/// A boxed metric collector for type erasure.
-#[allow(dead_code)]
-pub type BoxedCollector = Box<dyn MetricCollector>;

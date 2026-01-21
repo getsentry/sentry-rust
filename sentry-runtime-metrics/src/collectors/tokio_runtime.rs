@@ -12,7 +12,10 @@ use crate::protocol::RuntimeMetric;
 /// - `async.workers.count` - Number of worker threads
 /// - `async.blocking.threads` - Number of blocking threads
 /// - `async.polls.total` - Total number of task polls
-/// - `async.tasks.spawned` - Total tasks spawned
+/// - `async.injection_queue.depth` - Tasks waiting to be assigned
+/// - `async.local_queue.depth` - Total local queue depth
+///
+/// Without `tokio_unstable`, only `async.runtime.available` is reported.
 ///
 /// Note: Most Tokio metrics require the `tokio_unstable` cfg flag:
 /// `RUSTFLAGS="--cfg tokio_unstable" cargo build`
@@ -76,17 +79,6 @@ impl MetricCollector for TokioCollector {
                 RuntimeMetric::counter("async.polls.total", total_polls as i64)
                     .with_tag("runtime", "tokio"),
             );
-
-            // Total tasks spawned (if available)
-            // Note: This requires even more unstable features
-            #[cfg(feature = "tokio-runtime-metrics-full")]
-            {
-                let spawned = rt_metrics.spawned_tasks_count();
-                metrics.push(
-                    RuntimeMetric::counter("async.tasks.spawned", spawned as i64)
-                        .with_tag("runtime", "tokio"),
-                );
-            }
 
             // Injection queue depth (tasks waiting to be assigned to workers)
             let injection_queue_depth = rt_metrics.injection_queue_depth();

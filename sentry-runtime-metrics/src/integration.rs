@@ -31,8 +31,7 @@ use crate::MetricCollector;
 /// ```
 pub struct RuntimeMetricsIntegration {
     config: RuntimeMetricsConfig,
-    /// Built-in collectors, created once at initialization to preserve state
-    /// (e.g., ProcessCollector's start_time for uptime calculation).
+    /// Built-in collectors, created once at initialization.
     builtin_collectors: Vec<Box<dyn MetricCollector>>,
 }
 
