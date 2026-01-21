@@ -31,12 +31,19 @@ use crate::MetricCollector;
 /// ```
 pub struct RuntimeMetricsIntegration {
     config: RuntimeMetricsConfig,
+    /// Built-in collectors, created once at initialization to preserve state
+    /// (e.g., ProcessCollector's start_time for uptime calculation).
+    builtin_collectors: Vec<Box<dyn MetricCollector>>,
 }
 
 impl RuntimeMetricsIntegration {
     /// Creates a new runtime metrics integration with the given configuration.
     pub fn new(config: RuntimeMetricsConfig) -> Self {
-        Self { config }
+        let builtin_collectors = Self::create_builtin_collectors(&config);
+        Self {
+            config,
+            builtin_collectors,
+        }
     }
 
     /// Creates a new runtime metrics integration with default configuration.
@@ -48,9 +55,8 @@ impl RuntimeMetricsIntegration {
     pub fn collect_snapshot(&self) -> RuntimeMetrics {
         let mut runtime_metrics = RuntimeMetrics::new("rust");
 
-        // Collect from built-in collectors
-        let built_in_collectors = self.build_collectors();
-        for collector in &built_in_collectors {
+        // Collect from built-in collectors (stored, not recreated)
+        for collector in &self.builtin_collectors {
             runtime_metrics.extend_metrics(collector.collect());
         }
 
@@ -62,21 +68,23 @@ impl RuntimeMetricsIntegration {
         runtime_metrics
     }
 
-    fn build_collectors(&self) -> Vec<Box<dyn MetricCollector>> {
+    /// Creates the built-in collectors based on configuration.
+    /// Called once at initialization to preserve collector state.
+    fn create_builtin_collectors(config: &RuntimeMetricsConfig) -> Vec<Box<dyn MetricCollector>> {
         let mut collectors: Vec<Box<dyn MetricCollector>> = Vec::new();
 
         #[cfg(feature = "memory")]
-        if self.config.collect_memory {
+        if config.collect_memory {
             collectors.push(Box::new(collectors::MemoryCollector::new()));
         }
 
         #[cfg(feature = "process")]
-        if self.config.collect_process {
+        if config.collect_process {
             collectors.push(Box::new(collectors::ProcessCollector::new()));
         }
 
         #[cfg(feature = "tokio-runtime")]
-        if self.config.collect_async_runtime {
+        if config.collect_async_runtime {
             if let Some(collector) = collectors::TokioCollector::try_new() {
                 collectors.push(Box::new(collector));
             }
@@ -100,8 +108,9 @@ impl Integration for RuntimeMetricsIntegration {
     }
 
     fn setup(&self, _options: &mut ClientOptions) {
-        // Future: Start background collection task if needed
-        // For now, metrics are attached to events via process_event
+        // Currently, metrics are collected on-demand when events are processed.
+        // Future enhancement: implement background collection using config.collection_interval
+        // to periodically send standalone metric envelopes to Sentry.
     }
 
     fn process_event(

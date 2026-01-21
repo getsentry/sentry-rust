@@ -8,9 +8,16 @@ use crate::collector::MetricCollector;
 /// Configuration for the runtime metrics integration.
 #[derive(Clone)]
 pub struct RuntimeMetricsConfig {
-    /// How often to collect and send metrics.
+    /// Reserved for future background collection support.
+    ///
+    /// Currently, metrics are collected and attached to events when they are
+    /// sent (via `process_event`), not on a background interval.
+    ///
+    /// This field is retained for API compatibility and future implementation
+    /// of background metric collection and reporting.
     ///
     /// Default: 10 seconds
+    #[allow(dead_code)]
     pub collection_interval: Duration,
 
     /// Enable memory metrics collection.
@@ -59,7 +66,10 @@ impl RuntimeMetricsConfig {
         Self::default()
     }
 
-    /// Sets the collection interval.
+    /// Sets the collection interval for future background collection support.
+    ///
+    /// Note: Currently metrics are collected when events are sent, not on a
+    /// background interval. This setting is reserved for future use.
     #[must_use]
     pub fn with_interval(mut self, interval: Duration) -> Self {
         self.collection_interval = interval;

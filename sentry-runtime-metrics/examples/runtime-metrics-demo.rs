@@ -55,16 +55,34 @@ fn main() {
         .with_process_metrics(true)
         .add_collector(ConnectionPoolCollector::new());
 
-    // Create the integration
+    // Create the integration - collectors are initialized once here
     let integration = RuntimeMetricsIntegration::new(config);
 
     println!("Runtime Metrics Integration Demo");
     println!("================================\n");
 
-    // Collect and display a snapshot
-    let snapshot = integration.collect_snapshot();
-    println!("Collected {} metrics at {:?}:\n", snapshot.metrics.len(), snapshot.timestamp);
+    // First snapshot - uptime should be ~0
+    let snapshot1 = integration.collect_snapshot();
+    println!("First snapshot ({} metrics):", snapshot1.metrics.len());
+    print_metrics(&snapshot1);
 
+    // Wait a bit to demonstrate uptime tracking works correctly
+    println!("\nWaiting 2 seconds...\n");
+    std::thread::sleep(Duration::from_secs(2));
+
+    // Second snapshot - uptime should now be ~2 seconds
+    let snapshot2 = integration.collect_snapshot();
+    println!("Second snapshot (uptime should increase):");
+    print_metrics(&snapshot2);
+
+    println!("\n✓ Runtime metrics collection working!");
+    println!("  Note: process.uptime increased between snapshots because");
+    println!("  collectors are created once and reused, not recreated.");
+    println!("\nTo use with Sentry, add this integration to your ClientOptions:");
+    println!("  sentry::init(ClientOptions::new().add_integration(integration))");
+}
+
+fn print_metrics(snapshot: &sentry_runtime_metrics::RuntimeMetrics) {
     for metric in &snapshot.metrics {
         println!(
             "  {:<40} {:?} = {:?} {}",
@@ -77,8 +95,4 @@ fn main() {
             println!("    tags: {:?}", metric.tags);
         }
     }
-
-    println!("\n✓ Runtime metrics collection working!");
-    println!("\nTo use with Sentry, add this integration to your ClientOptions:");
-    println!("  sentry::init(ClientOptions::new().add_integration(integration))");
 }
