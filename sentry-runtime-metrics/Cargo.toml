@@ -1,0 +1,49 @@
+[package]
+name = "sentry-runtime-metrics"
+version = "0.46.1"
+authors = ["Sentry <hello@sentry.io>"]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/getsentry/sentry-rust"
+homepage = "https://sentry.io/welcome/"
+description = """
+Lightweight runtime metrics collection for Sentry.
+"""
+edition = "2021"
+rust-version = "1.81"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tokio_unstable)'] }
+
+[features]
+default = ["memory", "process"]
+memory = []
+process = []
+tokio-runtime = ["dep:tokio"]
+jemalloc = ["dep:tikv-jemalloc-ctl"]
+
+[dependencies]
+sentry-core = { version = "0.46.1", path = "../sentry-core" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Optional async runtime support
+tokio = { version = "1", optional = true, features = ["rt", "sync", "time"] }
+
+# Platform-specific dependencies
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+# Optional jemalloc support for detailed memory metrics (Unix only)
+# jemalloc does not support Windows
+tikv-jemalloc-ctl = { version = "0.5", optional = true }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.52", features = [
+    "Win32_System_ProcessStatus",
+    "Win32_System_Threading",
+    "Win32_System_SystemInformation",
+    "Win32_Foundation"
+] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt", "macros"] }
