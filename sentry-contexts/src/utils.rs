@@ -178,21 +178,259 @@ pub fn rust_context() -> Context {
             if let Some(channel) = RUSTC_CHANNEL {
                 map.insert("channel".to_string(), channel.into());
             }
+            if let Some(uptime) = process_uptime_secs() {
+                map.insert("process_uptime".to_string(), uptime.into());
+            }
             map
         },
     }
     .into()
 }
 
+#[cfg(target_os = "linux")]
+fn process_uptime_secs() -> Option<f64> {
+    use std::fs;
+
+    let stat = fs::read_to_string("/proc/self/stat").ok()?;
+    let parts: Vec<&str> = stat.split_whitespace().collect();
+    let starttime_ticks: u64 = parts.get(21)?.parse().ok()?;
+
+    let uptime_str = fs::read_to_string("/proc/uptime").ok()?;
+    let system_uptime: f64 = uptime_str.split_whitespace().next()?.parse().ok()?;
+
+    let ticks_per_sec = unsafe { libc::sysconf(libc::_SC_CLK_TCK) } as f64;
+    let process_start_secs = starttime_ticks as f64 / ticks_per_sec;
+
+    Some((system_uptime - process_start_secs).max(0.0))
+}
+
+#[cfg(target_os = "macos")]
+fn process_uptime_secs() -> Option<f64> {
+    use std::mem::MaybeUninit;
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+    unsafe {
+        let pid = libc::getpid();
+        let mut info = MaybeUninit::<libc::proc_bsdinfo>::uninit();
+        let size = libc::proc_pidinfo(
+            pid,
+            libc::PROC_PIDTBSDINFO,
+            0,
+            info.as_mut_ptr() as *mut libc::c_void,
+            std::mem::size_of::<libc::proc_bsdinfo>() as i32,
+        );
+        if size <= 0 {
+            return None;
+        }
+        let info = info.assume_init();
+        let start_time = Duration::new(
+            info.pbi_start_tvsec as u64,
+            (info.pbi_start_tvusec * 1000) as u32,
+        );
+        let uptime = SystemTime::now()
+            .duration_since(UNIX_EPOCH + start_time)
+            .ok()?;
+        Some(uptime.as_secs_f64())
+    }
+}
+
+#[cfg(windows)]
+fn process_uptime_secs() -> Option<f64> {
+    use std::mem::MaybeUninit;
+
+    #[repr(C)]
+    struct FileTime {
+        low: u32,
+        high: u32,
+    }
+
+    extern "system" {
+        fn GetProcessTimes(
+            process: *mut std::ffi::c_void,
+            creation: *mut FileTime,
+            exit: *mut FileTime,
+            kernel: *mut FileTime,
+            user: *mut FileTime,
+        ) -> i32;
+        fn GetCurrentProcess() -> *mut std::ffi::c_void;
+        fn GetSystemTimeAsFileTime(time: *mut FileTime);
+    }
+
+    unsafe {
+        let mut creation = MaybeUninit::<FileTime>::uninit();
+        let mut exit = MaybeUninit::<FileTime>::uninit();
+        let mut kernel = MaybeUninit::<FileTime>::uninit();
+        let mut user = MaybeUninit::<FileTime>::uninit();
+
+        if GetProcessTimes(
+            GetCurrentProcess(),
+            creation.as_mut_ptr(),
+            exit.as_mut_ptr(),
+            kernel.as_mut_ptr(),
+            user.as_mut_ptr(),
+        ) == 0
+        {
+            return None;
+        }
+
+        let creation = creation.assume_init();
+        let creation_time = ((creation.high as u64) << 32) | (creation.low as u64);
+
+        let mut now = MaybeUninit::<FileTime>::uninit();
+        GetSystemTimeAsFileTime(now.as_mut_ptr());
+        let now = now.assume_init();
+        let now_time = ((now.high as u64) << 32) | (now.low as u64);
+
+        Some(now_time.saturating_sub(creation_time) as f64 / 10_000_000.0)
+    }
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
+fn process_uptime_secs() -> Option<f64> {
+    None
+}
+
 /// Returns the device context.
 pub fn device_context() -> Context {
-    DeviceContext {
+    let mut ctx = DeviceContext {
         model: model_support::get_model(),
         family: model_support::get_family(),
         arch: Some(ARCH.into()),
         ..Default::default()
+    };
+
+    if let Some(mem) = memory_info() {
+        ctx.memory_size = Some(mem.total);
+        ctx.free_memory = Some(mem.free);
+        ctx.usable_memory = Some(mem.available);
     }
-    .into()
+
+    ctx.into()
+}
+
+struct MemoryInfo {
+    total: u64,
+    free: u64,
+    available: u64,
+}
+
+#[cfg(target_os = "linux")]
+fn memory_info() -> Option<MemoryInfo> {
+    use std::fs;
+
+    let content = fs::read_to_string("/proc/meminfo").ok()?;
+    let mut total = None;
+    let mut free = None;
+    let mut available = None;
+
+    for line in content.lines() {
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.len() < 2 {
+            continue;
+        }
+        let value: u64 = parts[1].parse().ok()?;
+        let bytes = value * 1024;
+        match parts[0] {
+            "MemTotal:" => total = Some(bytes),
+            "MemFree:" => free = Some(bytes),
+            "MemAvailable:" => available = Some(bytes),
+            _ => {}
+        }
+    }
+
+    Some(MemoryInfo {
+        total: total?,
+        free: free?,
+        available: available.unwrap_or(free?),
+    })
+}
+
+#[cfg(target_os = "macos")]
+fn memory_info() -> Option<MemoryInfo> {
+    use std::mem::MaybeUninit;
+
+    unsafe {
+        let mut mib = [libc::CTL_HW, libc::HW_MEMSIZE];
+        let mut total: u64 = 0;
+        let mut size = std::mem::size_of::<u64>();
+        if libc::sysctl(
+            mib.as_mut_ptr(),
+            2,
+            &mut total as *mut u64 as *mut libc::c_void,
+            &mut size,
+            std::ptr::null_mut(),
+            0,
+        ) != 0
+        {
+            return None;
+        }
+
+        let mut vm_stats = MaybeUninit::<libc::vm_statistics64>::uninit();
+        let mut count = std::mem::size_of::<libc::vm_statistics64>() as u32
+            / std::mem::size_of::<libc::natural_t>() as u32;
+        let host = libc::mach_host_self();
+        if libc::host_statistics64(
+            host,
+            libc::HOST_VM_INFO64,
+            vm_stats.as_mut_ptr() as *mut _,
+            &mut count,
+        ) != libc::KERN_SUCCESS
+        {
+            return None;
+        }
+        let vm_stats = vm_stats.assume_init();
+
+        let page_size = libc::sysconf(libc::_SC_PAGESIZE) as u64;
+        let free = vm_stats.free_count as u64 * page_size;
+        let available = (vm_stats.free_count as u64 + vm_stats.inactive_count as u64) * page_size;
+
+        Some(MemoryInfo {
+            total,
+            free,
+            available,
+        })
+    }
+}
+
+#[cfg(windows)]
+fn memory_info() -> Option<MemoryInfo> {
+    use std::mem::{size_of, MaybeUninit};
+
+    #[repr(C)]
+    struct MemoryStatusEx {
+        length: u32,
+        memory_load: u32,
+        total_phys: u64,
+        avail_phys: u64,
+        total_page_file: u64,
+        avail_page_file: u64,
+        total_virtual: u64,
+        avail_virtual: u64,
+        avail_extended_virtual: u64,
+    }
+
+    extern "system" {
+        fn GlobalMemoryStatusEx(buffer: *mut MemoryStatusEx) -> i32;
+    }
+
+    unsafe {
+        let mut status = MaybeUninit::<MemoryStatusEx>::uninit();
+        (*status.as_mut_ptr()).length = size_of::<MemoryStatusEx>() as u32;
+        if GlobalMemoryStatusEx(status.as_mut_ptr()) == 0 {
+            return None;
+        }
+        let status = status.assume_init();
+        Some(MemoryInfo {
+            total: status.total_phys,
+            free: status.avail_phys,
+            available: status.avail_phys,
+        })
+    }
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
+fn memory_info() -> Option<MemoryInfo> {
+    None
 }
 
 #[cfg(test)]
