@@ -83,15 +83,57 @@ fn get_rss_bytes() -> Option<i64> {
 }
 
 /// Gets the RSS (Resident Set Size) in bytes.
+/// Uses Mach task_info to get current resident memory, not peak.
 #[cfg(target_os = "macos")]
 fn get_rss_bytes() -> Option<i64> {
     use std::mem;
 
+    // Mach kernel types for task_info
+    type MachPort = libc::c_uint;
+    type TaskFlavorT = libc::c_int;
+    type MachMsgTypeNumberT = libc::c_uint;
+    type KernReturnT = libc::c_int;
+
+    const MACH_TASK_BASIC_INFO: TaskFlavorT = 20;
+    const KERN_SUCCESS: KernReturnT = 0;
+
+    #[repr(C)]
+    struct MachTaskBasicInfo {
+        virtual_size: u64,
+        resident_size: u64,
+        resident_size_max: u64,
+        user_time: libc::time_value_t,
+        system_time: libc::time_value_t,
+        policy: libc::c_int,
+        suspend_count: libc::c_int,
+    }
+
+    const MACH_TASK_BASIC_INFO_COUNT: MachMsgTypeNumberT =
+        (mem::size_of::<MachTaskBasicInfo>() / mem::size_of::<libc::c_int>()) as MachMsgTypeNumberT;
+
+    extern "C" {
+        fn mach_task_self() -> MachPort;
+        fn task_info(
+            target_task: MachPort,
+            flavor: TaskFlavorT,
+            task_info_out: *mut MachTaskBasicInfo,
+            task_info_out_cnt: *mut MachMsgTypeNumberT,
+        ) -> KernReturnT;
+    }
+
     unsafe {
-        let mut info: libc::rusage = mem::zeroed();
-        if libc::getrusage(libc::RUSAGE_SELF, &mut info) == 0 {
-            // On macOS, ru_maxrss is in bytes
-            Some(info.ru_maxrss)
+        let mut info: MachTaskBasicInfo = mem::zeroed();
+        let mut count = MACH_TASK_BASIC_INFO_COUNT;
+
+        let result = task_info(
+            mach_task_self(),
+            MACH_TASK_BASIC_INFO,
+            &mut info,
+            &mut count,
+        );
+
+        if result == KERN_SUCCESS {
+            Some(info.resident_size as i64)
         } else {
             None
         }
