@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use bitflags::bitflags;
 use sentry_core::protocol::Value;
-use sentry_core::{Breadcrumb, TransactionOrSpan};
+use sentry_core::{Breadcrumb, HubSwitchGuard, TransactionOrSpan};
 use tracing_core::field::Visit;
 use tracing_core::{span, Event, Field, Level, Metadata, Subscriber};
 use tracing_subscriber::layer::{Context, Layer};
@@ -350,7 +350,7 @@ where
 
         let extensions = span.extensions();
         if let Some(data) = extensions.get::<SentrySpanData>() {
-            let guard = sentry_core::HubSwitchGuard::new(data.hub.clone());
+            let guard = HubSwitchGuard::new(data.hub.clone());
             SPAN_GUARDS.with(|guards| {
                 guards.borrow_mut().insert(id.clone(), guard);
             });
@@ -512,7 +512,7 @@ thread_local! {
     static VISITOR_BUFFER: RefCell<String> = const { RefCell::new(String::new()) };
     /// Hub switch guards keyed by span ID. Stored in thread-local so guards are
     /// always dropped on the same thread where they were created.
-    static SPAN_GUARDS: RefCell<HashMap<span::Id, sentry_core::HubSwitchGuard>> =
+    static SPAN_GUARDS: RefCell<HashMap<span::Id, HubSwitchGuard>> =
         RefCell::new(HashMap::new());
 }
 
