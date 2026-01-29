@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Improvements
+
+### Dependencies
+
+- Update reqwest from 0.12.25 to 0.13.1 ([#958](https://github.com/getsentry/sentry-rust/pull/958))
+
 ## 0.46.1
 
 ### Improvements
