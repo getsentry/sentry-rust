@@ -33,6 +33,10 @@ mod ureq;
 #[cfg(feature = "ureq")]
 pub use self::ureq::UreqHttpTransport;
 
+pub(crate) const HTTP_PAYLOAD_TOO_LARGE: u16 = 413;
+pub(crate) const HTTP_PAYLOAD_TOO_LARGE_MESSAGE: &str =
+    "Envelope was discarded due to size limits (HTTP 413).";
+
 #[cfg(feature = "reqwest")]
 type DefaultTransport = ReqwestHttpTransport;
 
