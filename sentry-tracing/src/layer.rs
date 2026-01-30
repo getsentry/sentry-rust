@@ -362,6 +362,8 @@ where
 
     /// Set exited span's parent as *current* sentry span.
     fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
+        let _guard = SPAN_GUARDS.with(|guards| guards.borrow_mut().remove(id));
+
         let span = match ctx.span(id) {
             Some(span) => span,
             None => return,
@@ -373,9 +375,6 @@ where
                 scope.set_span(data.parent_sentry_span.clone());
             });
         }
-        SPAN_GUARDS.with(|guards| {
-            guards.borrow_mut().remove(id);
-        });
     }
 
     /// When a span gets closed, finish the underlying sentry span, and set back
