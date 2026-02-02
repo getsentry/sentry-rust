@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### New Features
+
+- Log HTTP 413 responses as oversized envelope discards in HTTP transports ([#966](https://github.com/getsentry/sentry-rust/pull/966))
+
 ## 0.46.1
 
 ### Improvements

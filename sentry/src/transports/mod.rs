@@ -33,6 +33,23 @@ mod ureq;
 #[cfg(feature = "ureq")]
 pub use self::ureq::UreqHttpTransport;
 
+#[cfg(any(
+    feature = "reqwest",
+    feature = "curl",
+    feature = "ureq",
+    all(target_os = "espidf", feature = "embedded-svc-http")
+))]
+pub(crate) const HTTP_PAYLOAD_TOO_LARGE: u16 = 413;
+
+#[cfg(any(
+    feature = "reqwest",
+    feature = "curl",
+    feature = "ureq",
+    all(target_os = "espidf", feature = "embedded-svc-http")
+))]
+pub(crate) const HTTP_PAYLOAD_TOO_LARGE_MESSAGE: &str =
+    "Envelope was discarded due to size limits (HTTP 413).";
+
 #[cfg(feature = "reqwest")]
 type DefaultTransport = ReqwestHttpTransport;
 
