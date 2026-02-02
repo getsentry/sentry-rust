@@ -107,3 +107,6 @@ tracing-subscriber = { version = "0.3", features = ["fmt", "tracing-log"] }
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(doc_cfg)'] }
+
+[build-dependencies]
+cfg_aliases = "0.2.1"

@@ -3168,6 +3168,7 @@ version = "0.46.1"
 dependencies = [
  "actix-web",
  "anyhow",
+ "cfg_aliases",
  "curl",
  "embedded-svc",
  "esp-idf-svc",
