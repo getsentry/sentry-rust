@@ -2,15 +2,13 @@
 
 ## Unreleased
 
+### Breaking Changes
+
+- Update reqwest from 0.12.25 to 0.13.1 ([#958](https://github.com/getsentry/sentry-rust/pull/958))
+
 ### New Features
 
 - Log HTTP 413 responses as oversized envelope discards in HTTP transports ([#966](https://github.com/getsentry/sentry-rust/pull/966))
-
-### Improvements
-
-### Dependencies
-
-- Update reqwest from 0.12.25 to 0.13.1 ([#958](https://github.com/getsentry/sentry-rust/pull/958))
 
 ## 0.46.1
 
