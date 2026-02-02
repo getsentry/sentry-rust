@@ -122,7 +122,7 @@ impl CurlHttpTransport {
                     } else if response_code == 429 {
                         rl.update_from_429();
                     }
-                    if response_code == HTTP_PAYLOAD_TOO_LARGE {
+                    if response_code == HTTP_PAYLOAD_TOO_LARGE as u32 {
                         sentry_debug!("{HTTP_PAYLOAD_TOO_LARGE_MESSAGE}");
                     }
                 }
