@@ -1,3 +1,4 @@
+use super::{HTTP_PAYLOAD_TOO_LARGE, HTTP_PAYLOAD_TOO_LARGE_MESSAGE};
 use crate::{sentry_debug, ClientOptions, Transport};
 use embedded_svc::http::client::Client as HttpClient;
 use esp_idf_svc::{http::client::EspHttpConnection, io::Write};
@@ -46,10 +47,14 @@ impl EmbeddedSVCHttpTransport {
         request.write_all(&body)?;
         request.flush()?;
         let mut response = request.submit()?;
+        let status = response.status();
 
         // read the whole response
         let mut buf = [0u8; 1024];
         while response.read(&mut buf)? > 0 {}
+        if status == HTTP_PAYLOAD_TOO_LARGE {
+            sentry_debug!("{HTTP_PAYLOAD_TOO_LARGE_MESSAGE}");
+        }
 
         Ok(())
     }

@@ -18,9 +18,9 @@ mod reqwest;
 #[cfg(feature = "reqwest")]
 pub use self::reqwest::ReqwestHttpTransport;
 
-#[cfg(all(target_os = "espidf", feature = "embedded-svc-http"))]
+#[cfg(sentry_embedded_svc_http)]
 mod embedded_svc_http;
-#[cfg(all(target_os = "espidf", feature = "embedded-svc-http"))]
+#[cfg(sentry_embedded_svc_http)]
 pub use self::embedded_svc_http::EmbeddedSVCHttpTransport;
 
 #[cfg(feature = "curl")]
@@ -33,12 +33,19 @@ mod ureq;
 #[cfg(feature = "ureq")]
 pub use self::ureq::UreqHttpTransport;
 
+#[cfg(sentry_any_http_transport)]
+pub(crate) const HTTP_PAYLOAD_TOO_LARGE: u16 = 413;
+
+#[cfg(sentry_any_http_transport)]
+pub(crate) const HTTP_PAYLOAD_TOO_LARGE_MESSAGE: &str =
+    "Envelope was discarded due to size limits (HTTP 413).";
+
 #[cfg(feature = "reqwest")]
 type DefaultTransport = ReqwestHttpTransport;
 
 #[cfg(all(
     feature = "curl",
-    not(all(target_os = "espidf", feature = "embedded-svc-http")),
+    not(sentry_embedded_svc_http),
     not(feature = "reqwest"),
     not(feature = "ureq")
 ))]
@@ -46,15 +53,14 @@ type DefaultTransport = CurlHttpTransport;
 
 #[cfg(all(
     feature = "ureq",
-    not(all(target_os = "espidf", feature = "embedded-svc-http")),
+    not(sentry_embedded_svc_http),
     not(feature = "reqwest"),
     not(feature = "curl"),
 ))]
 type DefaultTransport = UreqHttpTransport;
 
 #[cfg(all(
-    target_os = "espidf",
-    feature = "embedded-svc-http",
+    sentry_embedded_svc_http,
     not(feature = "reqwest"),
     not(feature = "curl"),
     not(feature = "ureq")
@@ -62,12 +68,7 @@ type DefaultTransport = UreqHttpTransport;
 type DefaultTransport = EmbeddedSVCHttpTransport;
 
 /// The default http transport.
-#[cfg(any(
-    all(target_os = "espidf", feature = "embedded-svc-http"),
-    feature = "reqwest",
-    feature = "curl",
-    feature = "ureq"
-))]
+#[cfg(sentry_any_http_transport)]
 pub type HttpTransport = DefaultTransport;
 
 /// Creates the default HTTP transport.
@@ -80,21 +81,11 @@ pub struct DefaultTransportFactory;
 
 impl TransportFactory for DefaultTransportFactory {
     fn create_transport(&self, options: &ClientOptions) -> Arc<dyn Transport> {
-        #[cfg(any(
-            all(target_os = "espidf", feature = "embedded-svc-http"),
-            feature = "reqwest",
-            feature = "curl",
-            feature = "ureq"
-        ))]
+        #[cfg(sentry_any_http_transport)]
         {
             Arc::new(HttpTransport::new(options))
         }
-        #[cfg(not(any(
-            all(target_os = "espidf", feature = "embedded-svc-http"),
-            feature = "reqwest",
-            feature = "curl",
-            feature = "ureq"
-        )))]
+        #[cfg(not(sentry_any_http_transport))]
         {
             let _ = options;
             panic!("sentry crate was compiled without transport")
