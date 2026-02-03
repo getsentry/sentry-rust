@@ -1,17 +1,17 @@
 [package]
 name = "sentry-contexts"
 version = "0.46.1"
-authors = ["Sentry <hello@sentry.io>"]
-license = "MIT"
+authors = { workspace = true }
+license = { workspace = true }
 readme = "README.md"
-repository = "https://github.com/getsentry/sentry-rust"
-homepage = "https://sentry.io/welcome/"
+repository = { workspace = true }
+homepage = { workspace = true }
 description = """
 Sentry integration for os, device, and rust contexts.
 """
 build = "build.rs"
-edition = "2021"
-rust-version = "1.81"
+edition = { workspace = true }
+rust-version = { workspace = true }
 
 [dependencies]
 sentry-core = { version = "0.46.1", path = "../sentry-core" }
