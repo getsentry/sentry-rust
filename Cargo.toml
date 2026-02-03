@@ -16,3 +16,11 @@ members = [
     "sentry-tracing",
     "sentry-types",
 ]
+
+[workspace.package]
+authors = ["Sentry <hello@sentry.io>"]
+license = "MIT"
+repository = "https://github.com/getsentry/sentry-rust"
+homepage = "https://sentry.io/welcome/"
+edition = "2021"
+rust-version = "1.81"
