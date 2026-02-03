@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Breaking Changes
+
+- Update reqwest from 0.12.25 to 0.13.1 ([#958](https://github.com/getsentry/sentry-rust/pull/958)). This change is breaking for users who use the [`RequestHttpTransport::with_client`](https://docs.rs/sentry/latest/sentry/transports/struct.ReqwestHttpTransport.html#method.with_client) method.
+
 ### New Features
 
 - Log HTTP 413 responses as oversized envelope discards in HTTP transports ([#966](https://github.com/getsentry/sentry-rust/pull/966))
