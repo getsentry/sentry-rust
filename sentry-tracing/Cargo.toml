@@ -1,16 +1,16 @@
 [package]
 name = "sentry-tracing"
 version = "0.46.2"
-authors = ["Sentry <hello@sentry.io>"]
+authors = { workspace = true }
 license = "MIT"
 readme = "README.md"
-repository = "https://github.com/getsentry/sentry-rust"
-homepage = "https://sentry.io/welcome/"
+repository = { workspace = true }
+homepage = { workspace = true }
 description = """
 Sentry integration for the tracing and tracing-subscriber crates.
 """
-edition = "2021"
-rust-version = "1.81"
+edition = { workspace = true }
+rust-version = { workspace = true }
 
 [package.metadata.docs.rs]
 all-features = true
