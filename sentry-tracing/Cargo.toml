@@ -1,6 +1,6 @@
 [package]
 name = "sentry-tracing"
-version = "0.46.1"
+version = "0.46.2"
 authors = ["Sentry <hello@sentry.io>"]
 license = "MIT"
 readme = "README.md"
@@ -21,14 +21,14 @@ backtrace = ["dep:sentry-backtrace"]
 logs = ["sentry-core/logs"]
 
 [dependencies]
-sentry-core = { version = "0.46.1", path = "../sentry-core", features = [
+sentry-core = { version = "0.46.2", path = "../sentry-core", features = [
     "client",
 ] }
 tracing-core = "0.1"
 tracing-subscriber = { version = "0.3.20", default-features = false, features = [
     "std",
 ] }
-sentry-backtrace = { version = "0.46.1", path = "../sentry-backtrace", optional = true }
+sentry-backtrace = { version = "0.46.2", path = "../sentry-backtrace", optional = true }
 bitflags = "2.9.4"
 
 [dev-dependencies]
