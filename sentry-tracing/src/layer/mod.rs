@@ -1,11 +1,11 @@
 use std::borrow::Cow;
 use std::cell::RefCell;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use bitflags::bitflags;
 use sentry_core::protocol::Value;
-use sentry_core::{Breadcrumb, HubSwitchGuard, TransactionOrSpan};
+use sentry_core::{Breadcrumb, Hub, HubSwitchGuard, TransactionOrSpan};
 use tracing_core::field::Visit;
 use tracing_core::{span, Event, Field, Level, Metadata, Subscriber};
 use tracing_subscriber::layer::{Context, Layer};
@@ -16,6 +16,9 @@ use crate::SENTRY_NAME_FIELD;
 use crate::SENTRY_OP_FIELD;
 use crate::SENTRY_TRACE_FIELD;
 use crate::TAGS_PREFIX;
+use span_guard_stack::SpanGuardStack;
+
+mod span_guard_stack;
 
 bitflags! {
     /// The action that Sentry should perform for a given [`Event`]
@@ -350,11 +353,12 @@ where
 
         let extensions = span.extensions();
         if let Some(data) = extensions.get::<SentrySpanData>() {
-            let guard = HubSwitchGuard::new(data.hub.clone());
+            let hub = Arc::new(Hub::new_from_top(data.hub.clone()));
+            let guard = HubSwitchGuard::new(hub.clone());
             SPAN_GUARDS.with(|guards| {
-                guards.borrow_mut().insert(id.clone(), guard);
+                guards.borrow_mut().push(id.clone(), guard);
             });
-            data.hub.configure_scope(|scope| {
+            hub.configure_scope(|scope| {
                 scope.set_span(Some(data.sentry_span.clone()));
             });
         }
@@ -362,7 +366,7 @@ where
 
     /// Set exited span's parent as *current* sentry span.
     fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
-        let _guard = SPAN_GUARDS.with(|guards| guards.borrow_mut().remove(id));
+        let _guard = SPAN_GUARDS.with(|guards| guards.borrow_mut().pop(id.clone()));
 
         let span = match ctx.span(id) {
             Some(span) => span,
@@ -511,8 +515,7 @@ thread_local! {
     static VISITOR_BUFFER: RefCell<String> = const { RefCell::new(String::new()) };
     /// Hub switch guards keyed by span ID. Stored in thread-local so guards are
     /// always dropped on the same thread where they were created.
-    static SPAN_GUARDS: RefCell<HashMap<span::Id, HubSwitchGuard>> =
-        RefCell::new(HashMap::new());
+    static SPAN_GUARDS: RefCell<SpanGuardStack> = RefCell::new(SpanGuardStack::new());
 }
 
 /// Records all span fields into a `BTreeMap`, reusing a mutable `String` as buffer.
