@@ -353,13 +353,16 @@ where
 
         let extensions = span.extensions();
         if let Some(data) = extensions.get::<SentrySpanData>() {
-            let hub = Arc::new(Hub::new_from_top(data.hub.clone()));
-            let guard = HubSwitchGuard::new(hub.clone());
-            SPAN_GUARDS.with(|guards| {
-                guards.borrow_mut().push(id.clone(), guard);
-            });
+            let hub = Arc::new(Hub::new_from_top(&data.hub));
+
             hub.configure_scope(|scope| {
                 scope.set_span(Some(data.sentry_span.clone()));
+            });
+
+            let guard = HubSwitchGuard::new(hub);
+
+            SPAN_GUARDS.with(|guards| {
+                guards.borrow_mut().push(id.clone(), guard);
             });
         }
     }
