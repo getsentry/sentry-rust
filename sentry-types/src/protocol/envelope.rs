@@ -377,6 +377,17 @@ impl Envelope {
         EnvelopeItemIter { inner }
     }
 
+    /// Consume the Envelope and create an [`Iterator`] over all
+    /// owned [`EnvelopeItem`]s.
+    ///
+    /// Raw envelopes yield an empty iterator.
+    pub fn into_items(self) -> impl Iterator<Item = EnvelopeItem> {
+        match self.items {
+            Items::EnvelopeItems(items) => items.into_iter(),
+            Items::Raw(_) => Default::default(),
+        }
+    }
+
     /// Returns the Envelope headers.
     pub fn headers(&self) -> &EnvelopeHeaders {
         &self.headers
