@@ -353,6 +353,14 @@ where
 
         let extensions = span.extensions();
         if let Some(data) = extensions.get::<SentrySpanData>() {
+            // We fork the hub (based on the hub associated with the span)
+            // upon entering the span. This prevents data leakage if the span
+            // is entered and exited multiple times.
+            //
+            // Further, Hubs are meant to manage thread-local state, even
+            // though they can be shared across threads. As the span may being
+            // entered on a different thread than where it was created, we need
+            // to use a new hub to avoid altering state on the original thread.
             let hub = Arc::new(Hub::new_from_top(&data.hub));
 
             hub.configure_scope(|scope| {
@@ -369,8 +377,6 @@ where
 
     /// Set exited span's parent as *current* sentry span.
     fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
-        let _guard = SPAN_GUARDS.with(|guards| guards.borrow_mut().pop(id.clone()));
-
         let span = match ctx.span(id) {
             Some(span) => span,
             None => return,
@@ -382,11 +388,19 @@ where
                 scope.set_span(data.parent_sentry_span.clone());
             });
         }
+
+        // Drop the guard to switch back to previous hub
+        SPAN_GUARDS.with(|guards| guards.borrow_mut().pop(id.clone()));
     }
 
     /// When a span gets closed, finish the underlying sentry span, and set back
     /// its parent as the *current* sentry span.
     fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
+        // Ensure all remaining Hub guards are dropped, to restore the original
+        // Hub.
+        //
+        // By this point, the span probably should be fully executed, but we should
+        // still ensure the guard is dropped in case this expectation is violated.
         SPAN_GUARDS.with(|guards| {
             guards.borrow_mut().remove(&id);
         });
