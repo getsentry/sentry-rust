@@ -22,4 +22,4 @@ authors = ["Sentry <hello@sentry.io>"]
 repository = "https://github.com/getsentry/sentry-rust"
 homepage = "https://sentry.io/welcome/"
 edition = "2021"
-rust-version = "1.81"
+rust-version = "1.88"

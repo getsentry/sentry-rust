@@ -6,6 +6,10 @@
 
 - Log HTTP 413 responses as oversized envelope discards in HTTP transports ([#966](https://github.com/getsentry/sentry-rust/pull/966))
 
+### Minimum Supported Rust Version
+
+- Bump minimum supported Rust version to 1.88 ([#970](https://github.com/getsentry/sentry-rust/pull/970)).
+
 ## 0.46.1
 
 ### Improvements
