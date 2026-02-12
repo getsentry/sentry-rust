@@ -40,7 +40,45 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - run: make checkall
+      - name: Check all features
+        run: cargo check --all-features
+        env:
+          RUSTFLAGS: -Dwarnings
+
+      - name: Check sentry-core without default features
+        run: cargo check --no-default-features
+        working-directory: sentry-core
+        env:
+          RUSTFLAGS: -Dwarnings
+
+      - name: Check default features
+        run: cargo check
+        env:
+          RUSTFLAGS: -Dwarnings
+
+      - name: Check sentry panic feature without defaults
+        run: cargo check --no-default-features --features panic
+        working-directory: sentry
+        env:
+          RUSTFLAGS: -Dwarnings
+
+      - name: Check sentry curl feature
+        run: cargo check --features curl
+        working-directory: sentry
+        env:
+          RUSTFLAGS: -Dwarnings
+
+      - name: Check sentry curl+panic without defaults
+        run: cargo check --no-default-features --features curl,panic
+        working-directory: sentry
+        env:
+          RUSTFLAGS: -Dwarnings
+
+      - name: Check sentry-actix
+        run: cargo check
+        working-directory: sentry-actix
+        env:
+          RUSTFLAGS: -Dwarnings
 
   test:
     strategy:
@@ -81,9 +119,20 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - run: make checkfast
+      - name: Check sentry-core without default features
+        run: cargo check --no-default-features
+        working-directory: sentry-core
+        env:
+          RUSTFLAGS: -Dwarnings
 
-      - run: make testfast
+      - name: Check default features
+        run: cargo check
+        env:
+          RUSTFLAGS: -Dwarnings
+
+      - name: Test sentry test feature
+        run: cargo test --features=test
+        working-directory: sentry
 
   codecov:
     name: Code Coverage
