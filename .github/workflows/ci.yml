@@ -170,3 +170,21 @@ jobs:
 
       - name: Run cargo doc
         run: cargo doc --workspace --all-features --document-private-items --no-deps
+
+  required:
+    name: Check required jobs
+    runs-on: ubuntu-latest
+    if: ${{ always() }}
+    # Keep this list in sync with all CI jobs that should be required.
+    # `codecov` is intentionally excluded from this aggregator.
+    needs: [lints, check, test, MSRV, doc]
+
+    steps:
+      - name: Fail if any required job did not succeed
+        if: >-
+          ${{
+            contains(needs.*.result, 'failure') ||
+            contains(needs.*.result, 'cancelled') ||
+            contains(needs.*.result, 'skipped')
+          }}
+        run: exit 1
