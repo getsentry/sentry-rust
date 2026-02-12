@@ -33,13 +33,19 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+        rust: [stable, 1.88.0]
 
-    name: Check feature permutations using Rust stable on ${{ matrix.os }}
+    name: Check feature permutations using Rust ${{ matrix.rust }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
+
+      - name: Install rust ${{ matrix.rust }} toolchain
+        run: |
+          rustup toolchain install ${{ matrix.rust }} --profile minimal --no-self-update
+          rustup default ${{ matrix.rust }}
 
       - uses: Swatinem/rust-cache@v2
 
@@ -74,27 +80,9 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+        rust: [stable, 1.88.0]
 
-    name: Test using Rust stable on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v4
-
-      - uses: Swatinem/rust-cache@v2
-
-      - name: Run cargo test
-        run: cargo test --workspace --all-features --all-targets
-
-  MSRV:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        rust: [1.88.0]
-
-    name: Check / Test MSRV on ${{ matrix.os }}
+    name: Test using Rust ${{ matrix.rust }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -108,16 +96,16 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: Check sentry-core without default features
-        run: cargo check --no-default-features
-        working-directory: sentry-core
+      - name: Run cargo test
+        run: cargo test --workspace --all-features --all-targets
 
-      - name: Check default features
-        run: cargo check
+      - name: Run cargo doc tests
+        run: cargo test --workspace --all-features --doc
 
-      - name: Test sentry test feature
-        run: cargo test --features=test
-        working-directory: sentry
+      # Keep this separate so we continue asserting the default+test feature
+      # combination for sentry explicitly, even with broader all-features coverage.
+      - name: Test sentry default+test feature combination
+        run: cargo test -p sentry --features test
 
   codecov:
     name: Code Coverage
@@ -162,7 +150,7 @@ jobs:
     if: ${{ always() }}
     # Keep this list in sync with all CI jobs that should be required.
     # `codecov` is intentionally excluded from this aggregator.
-    needs: [lints, check, test, MSRV, doc]
+    needs: [lints, check, test, doc]
 
     steps:
       - name: Fail if any required job did not succeed
