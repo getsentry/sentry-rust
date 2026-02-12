@@ -26,7 +26,7 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Run cargo clippy
-        run: cargo clippy --all-features --workspace --tests --examples -- -D clippy::all
+        run: cargo clippy --all-features --workspace --tests --examples --locked -- -D clippy::all
 
   check:
     strategy:
@@ -50,29 +50,29 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Check all features
-        run: cargo check --all-features
+        run: cargo check --all-features --locked
 
       - name: Check sentry-core without default features
-        run: cargo check --no-default-features
+        run: cargo check --no-default-features --locked
         working-directory: sentry-core
 
       - name: Check default features
-        run: cargo check
+        run: cargo check --locked
 
       - name: Check sentry panic feature without defaults
-        run: cargo check --no-default-features --features panic
+        run: cargo check --no-default-features --features panic --locked
         working-directory: sentry
 
       - name: Check sentry curl feature
-        run: cargo check --features curl
+        run: cargo check --features curl --locked
         working-directory: sentry
 
       - name: Check sentry curl+panic without defaults
-        run: cargo check --no-default-features --features curl,panic
+        run: cargo check --no-default-features --features curl,panic --locked
         working-directory: sentry
 
       - name: Check sentry-actix
-        run: cargo check
+        run: cargo check --locked
         working-directory: sentry-actix
 
   test:
@@ -97,15 +97,15 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Run cargo test
-        run: cargo test --workspace --all-features --all-targets
+        run: cargo test --workspace --all-features --all-targets --locked
 
       - name: Run cargo doc tests
-        run: cargo test --workspace --all-features --doc
+        run: cargo test --workspace --all-features --doc --locked
 
       # Keep this separate so we continue asserting the default+test feature
       # combination for sentry explicitly, even with broader all-features coverage.
       - name: Test sentry default+test feature combination
-        run: cargo test -p sentry --features test
+        run: cargo test -p sentry --features test --locked
 
   codecov:
     name: Code Coverage
@@ -120,7 +120,7 @@ jobs:
 
       - uses: taiki-e/install-action@cargo-llvm-cov
 
-      - run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+      - run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info --locked
 
       - uses: codecov/codecov-action@v5
         with:
@@ -142,7 +142,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Run cargo doc
-        run: cargo doc --workspace --all-features --document-private-items --no-deps
+        run: cargo doc --workspace --all-features --document-private-items --no-deps --locked
 
   required:
     name: Check required jobs
