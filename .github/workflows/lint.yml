@@ -1,0 +1,25 @@
+name: Run lint checks
+
+on:
+  workflow_call:
+
+env:
+  RUSTFLAGS: -Dwarnings
+
+jobs:
+  lint:
+    name: Run lint checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - run: rustup component add rustfmt clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Run cargo fmt
+        run: cargo fmt --all -- --check
+
+      - name: Run cargo clippy
+        run: cargo clippy --all-features --workspace --tests --examples --locked -- -D clippy::all
