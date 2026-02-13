@@ -1,0 +1,55 @@
+name: Check compile errors
+
+on:
+  workflow_call:
+
+env:
+  RUSTFLAGS: -Dwarnings
+
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        rust: [stable, 1.88.0]
+
+    name: Check compile errors using Rust ${{ matrix.rust }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Install rust ${{ matrix.rust }} toolchain
+        run: |
+          rustup toolchain install ${{ matrix.rust }} --profile minimal --no-self-update
+          rustup default ${{ matrix.rust }}
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Check all features
+        run: cargo check --all-features --locked
+
+      - name: Check sentry-core without default features
+        run: cargo check --no-default-features --locked
+        working-directory: sentry-core
+
+      - name: Check default features
+        run: cargo check --locked
+
+      - name: Check sentry panic feature without defaults
+        run: cargo check --no-default-features --features panic --locked
+        working-directory: sentry
+
+      - name: Check sentry curl feature
+        run: cargo check --features curl --locked
+        working-directory: sentry
+
+      - name: Check sentry curl+panic without defaults
+        run: cargo check --no-default-features --features curl,panic --locked
+        working-directory: sentry
+
+      - name: Check sentry-actix
+        run: cargo check --locked
+        working-directory: sentry-actix

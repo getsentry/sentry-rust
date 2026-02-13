@@ -1,0 +1,25 @@
+name: Build documentation
+
+on:
+  workflow_call:
+
+env:
+  RUSTFLAGS: -Dwarnings
+
+jobs:
+  doc:
+    name: Build documentation
+    runs-on: ubuntu-latest
+    env:
+      RUSTDOCFLAGS: -Dwarnings
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - run: rustup component add rust-docs
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Run cargo doc
+        run: cargo doc --workspace --all-features --document-private-items --no-deps --locked

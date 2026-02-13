@@ -16,100 +16,16 @@ env:
 
 jobs:
   lints:
-    name: Lints
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v4
-
-      - run: rustup component add rustfmt clippy
-
-      - uses: Swatinem/rust-cache@v2
-
-      - name: Run cargo fmt
-        run: cargo fmt --all -- --check
-
-      - name: Run cargo clippy
-        run: cargo clippy --all-features --workspace --tests --examples --locked -- -D clippy::all
+    name: Run lint checks
+    uses: ./.github/workflows/lint.yml
 
   check:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        rust: [stable, 1.88.0]
-
-    name: Check feature permutations using Rust ${{ matrix.rust }} on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v4
-
-      - name: Install rust ${{ matrix.rust }} toolchain
-        run: |
-          rustup toolchain install ${{ matrix.rust }} --profile minimal --no-self-update
-          rustup default ${{ matrix.rust }}
-
-      - uses: Swatinem/rust-cache@v2
-
-      - name: Check all features
-        run: cargo check --all-features --locked
-
-      - name: Check sentry-core without default features
-        run: cargo check --no-default-features --locked
-        working-directory: sentry-core
-
-      - name: Check default features
-        run: cargo check --locked
-
-      - name: Check sentry panic feature without defaults
-        run: cargo check --no-default-features --features panic --locked
-        working-directory: sentry
-
-      - name: Check sentry curl feature
-        run: cargo check --features curl --locked
-        working-directory: sentry
-
-      - name: Check sentry curl+panic without defaults
-        run: cargo check --no-default-features --features curl,panic --locked
-        working-directory: sentry
-
-      - name: Check sentry-actix
-        run: cargo check --locked
-        working-directory: sentry-actix
+    name: Check compile errors
+    uses: ./.github/workflows/check.yml
 
   test:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        rust: [stable, 1.88.0]
-
-    name: Test using Rust ${{ matrix.rust }} on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v4
-
-      - name: Install rust ${{ matrix.rust }} toolchain
-        run: |
-          rustup toolchain install ${{ matrix.rust }} --profile minimal --no-self-update
-          rustup default ${{ matrix.rust }}
-
-      - uses: Swatinem/rust-cache@v2
-
-      - name: Run cargo test
-        run: cargo test --workspace --all-features --all-targets --locked
-
-      - name: Run cargo doc tests
-        run: cargo test --workspace --all-features --doc --locked
-
-      # Keep this separate so we continue asserting the default+test feature
-      # combination for sentry explicitly, even with broader all-features coverage.
-      - name: Test sentry default+test feature combination
-        run: cargo test -p sentry --features test --locked
+    name: Run tests
+    uses: ./.github/workflows/test.yml
 
   codecov:
     name: Code Coverage
@@ -132,21 +48,8 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
 
   doc:
-    name: Build-test documentation
-    runs-on: ubuntu-latest
-    env:
-      RUSTDOCFLAGS: -Dwarnings
-
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v4
-
-      - run: rustup component add rust-docs
-
-      - uses: Swatinem/rust-cache@v2
-
-      - name: Run cargo doc
-        run: cargo doc --workspace --all-features --document-private-items --no-deps --locked
+    name: Build documentation
+    uses: ./.github/workflows/doc.yml
 
   required:
     name: Check required jobs
