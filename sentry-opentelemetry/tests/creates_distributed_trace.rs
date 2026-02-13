@@ -60,9 +60,9 @@ fn test_creates_distributed_trace() {
     let mut first_tx = None;
     let mut second_tx = None;
 
-    for envelope in &envelopes {
-        let tx = match envelope.items().next().unwrap() {
-            sentry::protocol::EnvelopeItem::Transaction(tx) => tx.clone(),
+    for envelope in envelopes {
+        let tx = match envelope.into_items().next().unwrap() {
+            sentry::protocol::EnvelopeItem::Transaction(tx) => tx,
             unexpected => panic!("Expected transaction, but got {unexpected:#?}"),
         };
 
