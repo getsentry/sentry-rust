@@ -2,9 +2,30 @@
 
 ## Unreleased
 
-### Features
+### New Features
 
+- Added a `Envelope::into_items` method, which returns an iterator over owned [`EnvelopeItem`s](https://docs.rs/sentry/0.46.2/sentry/protocol/enum.EnvelopeItem.html) in the [`Envelope`](https://docs.rs/sentry/0.46.2/sentry/struct.Envelope.html) ([#983](https://github.com/getsentry/sentry-rust/pull/983)).
 - Expose transport utilities ([#949](https://github.com/getsentry/sentry-rust/pull/949))
+
+## 0.46.2
+
+### New Features
+
+- Log HTTP 413 responses as oversized envelope discards in HTTP transports ([#966](https://github.com/getsentry/sentry-rust/pull/966))
+
+### Minimum Supported Rust Version
+
+- Bump minimum supported Rust version to 1.88 ([#970](https://github.com/getsentry/sentry-rust/pull/970)).
+
+## 0.46.1
+
+### Improvements
+
+- Make it possible to == Transaction/Span/TransactionOrSpan ([#942](https://github.com/getsentry/sentry-rust/pull/942))
+
+### Dependencies
+
+- Update reqwest from 0.12.15 to 0.12.25 ([#951](https://github.com/getsentry/sentry-rust/pull/951))
 
 ## 0.46.0
 
