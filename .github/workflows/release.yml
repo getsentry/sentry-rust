@@ -4,11 +4,15 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Version to release
-        required: true
+        description: Version to release (or "auto")
+        required: false
       force:
         description: Force a release even when there are release-blockers (optional)
         required: false
+
+permissions:
+  contents: write
+  pull-requests: write
 
 jobs:
   release:
@@ -30,7 +34,7 @@ jobs:
       - run: cargo install cargo-readme
 
       - name: Prepare release
-        uses: getsentry/action-prepare-release@v1
+        uses: getsentry/craft@906009a1b771956757e521555b561379307eb667 # v2.21.4
         env:
           GITHUB_TOKEN: ${{ steps.token.outputs.token }}
         with:
