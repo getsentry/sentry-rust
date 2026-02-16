@@ -7,94 +7,25 @@ on:
       - "release/**"
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+env:
+  RUSTFLAGS: -Dwarnings
+
 jobs:
   lints:
-    name: Lints
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v4
-
-      - run: rustup component add rustfmt clippy
-
-      - uses: Swatinem/rust-cache@v2
-
-      - name: Run cargo fmt
-        run: cargo fmt --all -- --check
-
-      - name: Run cargo clippy
-        run: cargo clippy --all-features --workspace --tests --examples -- -D clippy::all
+    name: Run lint checks
+    uses: ./.github/workflows/lint.yml
 
   check:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-
-    name: Check feature permutations using Rust stable on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v4
-
-      - uses: Swatinem/rust-cache@v2
-
-      - run: make checkall
+    name: Check compile errors
+    uses: ./.github/workflows/check.yml
 
   test:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-
-    name: Test using Rust stable on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    permissions:
-      id-token: write # required by `getsentry/prevent-action`
-
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v4
-
-      - uses: Swatinem/rust-cache@v2
-
-      - uses: taiki-e/install-action@nextest
-
-      - name: Run tests with nextest
-        run: cargo nextest run --profile ci --all-features --all-targets
-      
-      - name: Upload test results to Sentry Prevent
-        if: ${{ !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
-        uses: getsentry/prevent-action@v0
-        with:
-          files: target/nextest/ci/junit.xml
-          disable_search: true
-
-  MSRV:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        rust: [1.81.0]
-
-    name: Check / Test MSRV on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v4
-
-      - name: Install rust ${{ matrix.rust }} toolchain
-        run: |
-          rustup toolchain install ${{ matrix.rust }} --profile minimal --no-self-update
-          rustup default ${{ matrix.rust }}
-
-      - uses: Swatinem/rust-cache@v2
-
-      - run: make checkfast
-
-      - run: make testfast
+    name: Run tests
+    uses: ./.github/workflows/test.yml
 
   codecov:
     name: Code Coverage
@@ -109,7 +40,7 @@ jobs:
 
       - uses: taiki-e/install-action@cargo-llvm-cov
 
-      - run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+      - run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info --locked
 
       - uses: codecov/codecov-action@v5
         with:
@@ -117,18 +48,23 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
 
   doc:
-    name: Build-test documentation
+    name: Build documentation
+    uses: ./.github/workflows/doc.yml
+
+  required:
+    name: Check required jobs
     runs-on: ubuntu-latest
-    env:
-      RUSTDOCFLAGS: -Dwarnings
+    if: ${{ always() }}
+    # Keep this list in sync with all CI jobs that should be required.
+    # `codecov` is intentionally excluded from this aggregator.
+    needs: [lints, check, test, doc]
 
     steps:
-      - name: Checkout sources
-        uses: actions/checkout@v4
-
-      - run: rustup component add rust-docs
-
-      - uses: Swatinem/rust-cache@v2
-
-      - name: Run cargo doc
-        run: cargo doc --workspace --all-features --document-private-items --no-deps
+      - name: Fail if any required job did not succeed
+        if: >-
+          ${{
+            contains(needs.*.result, 'failure') ||
+            contains(needs.*.result, 'cancelled') ||
+            contains(needs.*.result, 'skipped')
+          }}
+        run: exit 1

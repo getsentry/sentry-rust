@@ -270,8 +270,8 @@ impl Scope {
     /// Applies the contained scoped data to fill an event.
     pub fn apply_to_event(&self, mut event: Event<'static>) -> Option<Event<'static>> {
         // TODO: event really should have an optional level
-        if self.level.is_some() {
-            event.level = self.level.unwrap();
+        if let Some(level) = self.level {
+            event.level = level;
         }
 
         if event.user.is_none() {

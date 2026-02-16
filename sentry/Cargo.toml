@@ -1,16 +1,16 @@
 [package]
 name = "sentry"
-version = "0.46.1"
-authors = ["Sentry <hello@sentry.io>"]
+version = "0.46.2"
+authors = { workspace = true }
 license = "MIT"
 readme = "README.md"
-repository = "https://github.com/getsentry/sentry-rust"
-homepage = "https://sentry.io/welcome/"
+repository = { workspace = true }
+homepage = { workspace = true }
 description = """
 Sentry (sentry.io) client for Rust.
 """
-edition = "2021"
-rust-version = "1.81"
+edition = { workspace = true }
+rust-version = { workspace = true }
 autoexamples = true
 
 # To build locally:
@@ -60,20 +60,20 @@ rustls = ["dep:rustls", "reqwest?/rustls-tls", "ureq?/rustls"]
 embedded-svc-http = ["dep:embedded-svc", "dep:esp-idf-svc"]
 
 [dependencies]
-sentry-core = { version = "0.46.1", path = "../sentry-core", features = [
+sentry-core = { version = "0.46.2", path = "../sentry-core", features = [
     "client",
 ] }
-sentry-anyhow = { version = "0.46.1", path = "../sentry-anyhow", optional = true }
-sentry-actix = { version = "0.46.1", path = "../sentry-actix", optional = true, default-features = false }
-sentry-backtrace = { version = "0.46.1", path = "../sentry-backtrace", optional = true }
-sentry-contexts = { version = "0.46.1", path = "../sentry-contexts", optional = true }
-sentry-debug-images = { version = "0.46.1", path = "../sentry-debug-images", optional = true }
-sentry-log = { version = "0.46.1", path = "../sentry-log", optional = true }
-sentry-panic = { version = "0.46.1", path = "../sentry-panic", optional = true }
-sentry-slog = { version = "0.46.1", path = "../sentry-slog", optional = true }
-sentry-tower = { version = "0.46.1", path = "../sentry-tower", optional = true }
-sentry-tracing = { version = "0.46.1", path = "../sentry-tracing", optional = true }
-sentry-opentelemetry = { version = "0.46.1", path = "../sentry-opentelemetry", optional = true }
+sentry-anyhow = { version = "0.46.2", path = "../sentry-anyhow", optional = true }
+sentry-actix = { version = "0.46.2", path = "../sentry-actix", optional = true, default-features = false }
+sentry-backtrace = { version = "0.46.2", path = "../sentry-backtrace", optional = true }
+sentry-contexts = { version = "0.46.2", path = "../sentry-contexts", optional = true }
+sentry-debug-images = { version = "0.46.2", path = "../sentry-debug-images", optional = true }
+sentry-log = { version = "0.46.2", path = "../sentry-log", optional = true }
+sentry-panic = { version = "0.46.2", path = "../sentry-panic", optional = true }
+sentry-slog = { version = "0.46.2", path = "../sentry-slog", optional = true }
+sentry-tower = { version = "0.46.2", path = "../sentry-tower", optional = true }
+sentry-tracing = { version = "0.46.2", path = "../sentry-tracing", optional = true }
+sentry-opentelemetry = { version = "0.46.2", path = "../sentry-opentelemetry", optional = true }
 reqwest = { version = "0.12.25", optional = true, features = [
     "blocking",
     "json",
@@ -107,3 +107,6 @@ tracing-subscriber = { version = "0.3", features = ["fmt", "tracing-log"] }
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(doc_cfg)'] }
+
+[build-dependencies]
+cfg_aliases = "0.2.1"
