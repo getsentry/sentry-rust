@@ -1,24 +1,24 @@
 [package]
 name = "sentry-anyhow"
-version = "0.46.1"
-authors = ["Sentry <hello@sentry.io>"]
+version = "0.46.2"
+authors = { workspace = true }
 license = "MIT"
 readme = "README.md"
-repository = "https://github.com/getsentry/sentry-rust"
-homepage = "https://sentry.io/welcome/"
+repository = { workspace = true }
+homepage = { workspace = true }
 description = """
 Sentry integration for anyhow.
 """
-edition = "2021"
-rust-version = "1.81"
+edition = { workspace = true }
+rust-version = { workspace = true }
 
 [features]
 default = ["backtrace"]
 backtrace = []
 
 [dependencies]
-sentry-backtrace = { version = "0.46.1", path = "../sentry-backtrace" }
-sentry-core = { version = "0.46.1", path = "../sentry-core" }
+sentry-backtrace = { version = "0.46.2", path = "../sentry-backtrace" }
+sentry-core = { version = "0.46.2", path = "../sentry-core" }
 anyhow = "1.0.77"
 
 [dev-dependencies]

@@ -5,7 +5,7 @@ use ureq::http::Response;
 use ureq::tls::{TlsConfig, TlsProvider};
 use ureq::{Agent, Proxy};
 
-use super::thread::TransportThread;
+use super::{thread::TransportThread, HTTP_PAYLOAD_TOO_LARGE, HTTP_PAYLOAD_TOO_LARGE_MESSAGE};
 
 use crate::{sentry_debug, types::Scheme, ClientOptions, Envelope, Transport};
 
@@ -109,6 +109,9 @@ impl UreqHttpTransport {
                         Ok(text) => {
                             sentry_debug!("Get response: `{}`", text);
                         }
+                    }
+                    if response.status() == HTTP_PAYLOAD_TOO_LARGE {
+                        sentry_debug!("{HTTP_PAYLOAD_TOO_LARGE_MESSAGE}");
                     }
                 }
                 Err(err) => {
