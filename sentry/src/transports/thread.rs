@@ -18,7 +18,7 @@ enum Task {
     Shutdown,
 }
 
-/// A background-thread dedicated to sending [`Envelope`]s whilst respecting the rate limits imposed in the responses.
+/// A background-thread dedicated to sending [`Envelope`]s while respecting the rate limits imposed in the responses.
 pub struct TransportThread {
     sender: SyncSender<Task>,
     shutdown: Arc<AtomicBool>,
