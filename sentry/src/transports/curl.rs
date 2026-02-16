@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use curl::easy::Easy as CurlClient;
 
-use super::thread::TransportThread;
+use super::{thread::TransportThread, HTTP_PAYLOAD_TOO_LARGE, HTTP_PAYLOAD_TOO_LARGE_MESSAGE};
 
 use crate::{sentry_debug, types::Scheme, ClientOptions, Envelope, Transport};
 
@@ -121,6 +121,9 @@ impl CurlHttpTransport {
                         rl.update_from_retry_after(&retry_after);
                     } else if response_code == 429 {
                         rl.update_from_429();
+                    }
+                    if response_code == HTTP_PAYLOAD_TOO_LARGE as u32 {
+                        sentry_debug!("{HTTP_PAYLOAD_TOO_LARGE_MESSAGE}");
                     }
                 }
                 Err(err) => {

@@ -2,7 +2,9 @@ use std::time::Duration;
 
 use reqwest::{header as ReqwestHeaders, Client as ReqwestClient, Proxy, StatusCode};
 
-use super::tokio_thread::TransportThread;
+use super::{
+    tokio_thread::TransportThread, HTTP_PAYLOAD_TOO_LARGE, HTTP_PAYLOAD_TOO_LARGE_MESSAGE,
+};
 
 use crate::{sentry_debug, ClientOptions, Envelope, Transport};
 
@@ -88,6 +90,8 @@ impl ReqwestHttpTransport {
                             rl.update_from_429();
                         }
 
+                        let is_payload_too_large =
+                            response.status().as_u16() == HTTP_PAYLOAD_TOO_LARGE;
                         match response.text().await {
                             Err(err) => {
                                 sentry_debug!("Failed to read sentry response: {}", err);
@@ -95,6 +99,9 @@ impl ReqwestHttpTransport {
                             Ok(text) => {
                                 sentry_debug!("Get response: `{}`", text);
                             }
+                        }
+                        if is_payload_too_large {
+                            sentry_debug!("{HTTP_PAYLOAD_TOO_LARGE_MESSAGE}");
                         }
                     }
                     Err(err) => {
