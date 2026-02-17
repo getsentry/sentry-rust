@@ -142,10 +142,8 @@ mod metrics_api;
 mod client;
 #[cfg(feature = "client")]
 mod hub_impl;
-#[cfg(all(feature = "client", feature = "logs"))]
-mod logs;
-#[cfg(all(feature = "client", feature = "metrics"))]
-mod metrics;
+#[cfg(all(feature = "client", any(feature = "logs", feature = "metrics")))]
+mod batcher;
 #[cfg(feature = "client")]
 mod session;
 

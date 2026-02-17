@@ -13,10 +13,8 @@ use rand::random;
 use sentry_types::random_uuid;
 
 use crate::constants::SDK_INFO;
-#[cfg(feature = "logs")]
-use crate::logs::LogsBatcher;
-#[cfg(feature = "metrics")]
-use crate::metrics::MetricsBatcher;
+#[cfg(any(feature = "logs", feature = "metrics"))]
+use crate::batcher::Batcher;
 use crate::protocol::{ClientSdkInfo, Event};
 #[cfg(feature = "release-health")]
 use crate::session::SessionFlusher;
@@ -64,11 +62,11 @@ pub struct Client {
     #[cfg(feature = "release-health")]
     session_flusher: RwLock<Option<SessionFlusher>>,
     #[cfg(feature = "logs")]
-    logs_batcher: RwLock<Option<LogsBatcher>>,
+    logs_batcher: RwLock<Option<Batcher<Log>>>,
     #[cfg(feature = "logs")]
     default_log_attributes: Option<BTreeMap<String, LogAttribute>>,
     #[cfg(feature = "metrics")]
-    metrics_batcher: RwLock<Option<MetricsBatcher>>,
+    metrics_batcher: RwLock<Option<Batcher<TraceMetric>>>,
     #[cfg(feature = "metrics")]
     default_metric_attributes: Option<BTreeMap<String, LogAttribute>>,
     integrations: Vec<(TypeId, Arc<dyn Integration>)>,
@@ -96,14 +94,14 @@ impl Clone for Client {
 
         #[cfg(feature = "logs")]
         let logs_batcher = RwLock::new(if self.options.enable_logs {
-            Some(LogsBatcher::new(transport.clone()))
+            Some(Batcher::new(transport.clone(), "logs", Into::into))
         } else {
             None
         });
 
         #[cfg(feature = "metrics")]
         let metrics_batcher = RwLock::new(if self.options.enable_metrics {
-            Some(MetricsBatcher::new(transport.clone()))
+            Some(Batcher::new(transport.clone(), "metrics", Into::into))
         } else {
             None
         });
@@ -192,14 +190,14 @@ impl Client {
 
         #[cfg(feature = "logs")]
         let logs_batcher = RwLock::new(if options.enable_logs {
-            Some(LogsBatcher::new(transport.clone()))
+            Some(Batcher::new(transport.clone(), "logs", Into::into))
         } else {
             None
         });
 
         #[cfg(feature = "metrics")]
         let metrics_batcher = RwLock::new(if options.enable_metrics {
-            Some(MetricsBatcher::new(transport.clone()))
+            Some(Batcher::new(transport.clone(), "metrics", Into::into))
         } else {
             None
         });
