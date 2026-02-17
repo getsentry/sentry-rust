@@ -12,9 +12,9 @@ use crate::protocol::SessionUpdate;
 use rand::random;
 use sentry_types::random_uuid;
 
-use crate::constants::SDK_INFO;
 #[cfg(any(feature = "logs", feature = "metrics"))]
 use crate::batcher::Batcher;
+use crate::constants::SDK_INFO;
 use crate::protocol::{ClientSdkInfo, Event};
 #[cfg(feature = "release-health")]
 use crate::session::SessionFlusher;
@@ -24,12 +24,12 @@ use crate::SessionMode;
 use crate::{ClientOptions, Envelope, Hub, Integration, Scope, Transport};
 #[cfg(feature = "logs")]
 use sentry_types::protocol::v7::Context;
-#[cfg(feature = "logs")]
-use sentry_types::protocol::v7::{Log, LogAttribute};
-#[cfg(feature = "metrics")]
-use sentry_types::protocol::v7::TraceMetric;
 #[cfg(all(feature = "metrics", not(feature = "logs")))]
 use sentry_types::protocol::v7::LogAttribute;
+#[cfg(feature = "metrics")]
+use sentry_types::protocol::v7::TraceMetric;
+#[cfg(feature = "logs")]
+use sentry_types::protocol::v7::{Log, LogAttribute};
 
 impl<T: Into<ClientOptions>> From<T> for Client {
     fn from(o: T) -> Client {

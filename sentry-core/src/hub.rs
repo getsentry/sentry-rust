@@ -4,9 +4,7 @@
 
 use std::sync::{Arc, RwLock};
 
-use crate::protocol::{
-    Event, Level, Log, LogAttribute, LogLevel, Map, SessionStatus, TraceMetric,
-};
+use crate::protocol::{Event, Level, Log, LogAttribute, LogLevel, Map, SessionStatus, TraceMetric};
 use crate::types::Uuid;
 use crate::{Integration, IntoBreadcrumbs, Scope, ScopeGuard};
 

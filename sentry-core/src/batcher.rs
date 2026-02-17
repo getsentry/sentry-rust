@@ -89,12 +89,7 @@ impl<T: Send + 'static> Batcher<T> {
         let mut queue = self.queue.lock().unwrap();
         queue.push(item);
         if queue.len() >= MAX_ITEMS {
-            Self::flush_queue_internal(
-                queue,
-                &self.transport,
-                self.into_envelope_item,
-                self.name,
-            );
+            Self::flush_queue_internal(queue, &self.transport, self.into_envelope_item, self.name);
         }
     }
 
@@ -247,8 +242,7 @@ mod tests {
             let envelopes = test::with_captured_envelopes_options(
                 || {
                     for i in 0..150 {
-                        crate::Hub::current()
-                            .capture_metric(test_metric(&format!("metric.{i}")));
+                        crate::Hub::current().capture_metric(test_metric(&format!("metric.{i}")));
                     }
                 },
                 crate::ClientOptions {
@@ -279,8 +273,7 @@ mod tests {
             let envelopes = test::with_captured_envelopes_options(
                 || {
                     for i in 0..10 {
-                        crate::Hub::current()
-                            .capture_metric(test_metric(&format!("metric.{i}")));
+                        crate::Hub::current().capture_metric(test_metric(&format!("metric.{i}")));
                     }
                 },
                 crate::ClientOptions {
@@ -328,8 +321,7 @@ mod tests {
             let envelopes = test::with_captured_envelopes_options(
                 || {
                     for i in 0..12 {
-                        crate::Hub::current()
-                            .capture_metric(test_metric(&format!("metric.{i}")));
+                        crate::Hub::current().capture_metric(test_metric(&format!("metric.{i}")));
                     }
                 },
                 crate::ClientOptions {

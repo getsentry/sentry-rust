@@ -138,12 +138,12 @@ mod logger; // structured logging macros exported with `#[macro_export]`
 mod metrics_api;
 
 // client feature
+#[cfg(all(feature = "client", any(feature = "logs", feature = "metrics")))]
+mod batcher;
 #[cfg(feature = "client")]
 mod client;
 #[cfg(feature = "client")]
 mod hub_impl;
-#[cfg(all(feature = "client", any(feature = "logs", feature = "metrics")))]
-mod batcher;
 #[cfg(feature = "client")]
 mod session;
 
