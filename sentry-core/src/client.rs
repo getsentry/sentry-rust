@@ -100,7 +100,7 @@ impl Clone for Client {
         });
 
         #[cfg(feature = "metrics")]
-        let metrics_batcher = RwLock::new(if self.options.enable_metrics {
+        let metrics_batcher = RwLock::new(if self.options.metrics_sample_rate > 0.0 {
             Some(Batcher::new(transport.clone(), "metrics", Into::into))
         } else {
             None
@@ -196,7 +196,7 @@ impl Client {
         });
 
         #[cfg(feature = "metrics")]
-        let metrics_batcher = RwLock::new(if options.enable_metrics {
+        let metrics_batcher = RwLock::new(if options.metrics_sample_rate > 0.0 {
             Some(Batcher::new(transport.clone(), "metrics", Into::into))
         } else {
             None
@@ -565,12 +565,6 @@ impl Client {
     /// Captures a trace metric and sends it to Sentry.
     #[cfg(feature = "metrics")]
     pub fn capture_metric(&self, metric: TraceMetric, scope: &Scope) {
-        if !self.options.enable_metrics {
-            sentry_debug!(
-                "[Client] called capture_metric, but options.enable_metrics is set to false"
-            );
-            return;
-        }
         if let Some(metric) = self.prepare_metric(metric, scope) {
             if let Some(ref batcher) = *self.metrics_batcher.read().unwrap() {
                 batcher.enqueue(metric);
