@@ -275,6 +275,55 @@ mod tests {
         }
 
         #[test]
+        fn test_metrics_sample_rate_zero() {
+            let envelopes = test::with_captured_envelopes_options(
+                || {
+                    for i in 0..10 {
+                        crate::Hub::current()
+                            .capture_metric(test_metric(&format!("metric.{i}")));
+                    }
+                },
+                crate::ClientOptions {
+                    enable_metrics: true,
+                    metrics_sample_rate: 0.0,
+                    ..Default::default()
+                },
+            );
+
+            assert_eq!(0, envelopes.len());
+        }
+
+        #[test]
+        fn test_metrics_sample_rate_annotates() {
+            use sentry_types::protocol::v7::LogAttribute;
+
+            let envelopes = test::with_captured_envelopes_options(
+                || {
+                    crate::Hub::current().capture_metric(test_metric("metric.test"));
+                },
+                crate::ClientOptions {
+                    enable_metrics: true,
+                    metrics_sample_rate: 1.0,
+                    ..Default::default()
+                },
+            );
+
+            assert_eq!(1, envelopes.len());
+            for item in envelopes[0].items() {
+                if let crate::protocol::EnvelopeItem::ItemContainer(
+                    crate::protocol::ItemContainer::TraceMetrics(metrics),
+                ) = item
+                {
+                    assert_eq!(1, metrics.len());
+                    assert_eq!(
+                        metrics[0].attributes.get("sentry.client_sample_rate"),
+                        Some(&LogAttribute::from(1.0_f64))
+                    );
+                }
+            }
+        }
+
+        #[test]
         fn test_metrics_batcher_flush() {
             let envelopes = test::with_captured_envelopes_options(
                 || {

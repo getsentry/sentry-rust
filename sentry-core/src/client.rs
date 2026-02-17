@@ -593,6 +593,15 @@ impl Client {
             }
         }
 
+        let sample_rate = self.options.metrics_sample_rate;
+        if !self.sample_should_send(sample_rate) {
+            return None;
+        }
+        metric
+            .attributes
+            .entry("sentry.client_sample_rate".to_owned())
+            .or_insert(LogAttribute::from(sample_rate as f64));
+
         if let Some(ref func) = self.options.before_send_metric {
             metric = func(metric)?;
         }
