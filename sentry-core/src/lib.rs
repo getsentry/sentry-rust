@@ -134,6 +134,8 @@ pub use crate::scope::{Scope, ScopeGuard};
 pub use crate::transport::{Transport, TransportFactory};
 #[cfg(feature = "logs")]
 mod logger; // structured logging macros exported with `#[macro_export]`
+#[cfg(feature = "metrics")]
+mod metrics_api;
 
 // client feature
 #[cfg(feature = "client")]
@@ -142,6 +144,8 @@ mod client;
 mod hub_impl;
 #[cfg(all(feature = "client", feature = "logs"))]
 mod logs;
+#[cfg(all(feature = "client", feature = "metrics"))]
+mod metrics;
 #[cfg(feature = "client")]
 mod session;
 
@@ -150,6 +154,9 @@ pub use crate::clientoptions::MaxRequestBodySize;
 
 #[cfg(feature = "client")]
 pub use crate::{client::Client, hub_impl::SwitchGuard as HubSwitchGuard};
+
+#[cfg(feature = "metrics")]
+pub use crate::metrics_api::*;
 
 // test utilities
 #[cfg(feature = "test")]

@@ -25,6 +25,7 @@ client = ["rand"]
 test = ["client", "release-health"]
 release-health = []
 logs = []
+metrics = []
 
 [dependencies]
 log = { version = "0.4.8", optional = true, features = ["std"] }
