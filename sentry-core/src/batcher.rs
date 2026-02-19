@@ -244,7 +244,10 @@ mod tests {
                         crate::Hub::current().capture_metric(test_metric(&format!("metric.{i}")));
                     }
                 },
-                crate::ClientOptions::default(),
+                crate::ClientOptions {
+                    metrics_sample_rate: 1.0,
+                    ..Default::default()
+                },
             );
 
             assert_eq!(2, envelopes.len());
@@ -289,7 +292,10 @@ mod tests {
                 || {
                     crate::Hub::current().capture_metric(test_metric("metric.test"));
                 },
-                crate::ClientOptions::default(),
+                crate::ClientOptions {
+                    metrics_sample_rate: 1.0,
+                    ..Default::default()
+                },
             );
 
             assert_eq!(1, envelopes.len());
@@ -315,7 +321,10 @@ mod tests {
                         crate::Hub::current().capture_metric(test_metric(&format!("metric.{i}")));
                     }
                 },
-                crate::ClientOptions::default(),
+                crate::ClientOptions {
+                    metrics_sample_rate: 1.0,
+                    ..Default::default()
+                },
             );
 
             assert_eq!(1, envelopes.len());
