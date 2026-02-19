@@ -15,25 +15,28 @@ const FLUSH_INTERVAL: Duration = Duration::from_secs(5);
 
 /// Accumulates items in a queue and submits them through the transport when one of the flushing
 /// conditions is met: either the queue reaches [`MAX_ITEMS`] or [`FLUSH_INTERVAL`] has elapsed.
-pub(crate) struct Batcher<T: Send + 'static> {
+pub(crate) struct Batcher<T>
+where
+    EnvelopeItem: From<Vec<T>>,
+    T: Send + 'static,
+{
     transport: TransportArc,
     queue: Arc<Mutex<Vec<T>>>,
     shutdown: Arc<(Mutex<bool>, Condvar)>,
     worker: Option<JoinHandle<()>>,
-    into_envelope_item: fn(Vec<T>) -> EnvelopeItem,
     name: &'static str,
 }
 
-impl<T: Send + 'static> Batcher<T> {
+impl<T> Batcher<T>
+where
+    EnvelopeItem: From<Vec<T>>,
+    T: Send + 'static,
+{
     /// Creates a new Batcher that will submit envelopes to the given `transport`.
     ///
     /// `name` is used for the background thread name and debug logging.
     /// `into_envelope_item` converts a batch of items into an [`EnvelopeItem`].
-    pub(crate) fn new(
-        transport: TransportArc,
-        name: &'static str,
-        into_envelope_item: fn(Vec<T>) -> EnvelopeItem,
-    ) -> Self {
+    pub(crate) fn new(transport: TransportArc, name: &'static str) -> Self {
         let queue: Arc<Mutex<Vec<T>>> = Arc::new(Mutex::new(Vec::new()));
         #[allow(clippy::mutex_atomic)]
         let shutdown = Arc::new((Mutex::new(false), Condvar::new()));
@@ -63,7 +66,6 @@ impl<T: Send + 'static> Batcher<T> {
                         Self::flush_queue_internal(
                             worker_queue.lock().unwrap(),
                             &worker_transport,
-                            into_envelope_item,
                             name,
                         );
                         last_flush = Instant::now();
@@ -77,7 +79,6 @@ impl<T: Send + 'static> Batcher<T> {
             queue,
             shutdown,
             worker: Some(worker),
-            into_envelope_item,
             name,
         }
     }
@@ -89,14 +90,14 @@ impl<T: Send + 'static> Batcher<T> {
         let mut queue = self.queue.lock().unwrap();
         queue.push(item);
         if queue.len() >= MAX_ITEMS {
-            Self::flush_queue_internal(queue, &self.transport, self.into_envelope_item, self.name);
+            Self::flush_queue_internal(queue, &self.transport, self.name);
         }
     }
 
     /// Flushes the queue to the transport.
     pub(crate) fn flush(&self) {
         let queue = self.queue.lock().unwrap();
-        Self::flush_queue_internal(queue, &self.transport, self.into_envelope_item, self.name);
+        Self::flush_queue_internal(queue, &self.transport, self.name);
     }
 
     /// Flushes the queue to the transport.
@@ -106,7 +107,6 @@ impl<T: Send + 'static> Batcher<T> {
     fn flush_queue_internal(
         mut queue_lock: MutexGuard<Vec<T>>,
         transport: &TransportArc,
-        into_envelope_item: fn(Vec<T>) -> EnvelopeItem,
         name: &str,
     ) {
         let items = std::mem::take(&mut *queue_lock);
@@ -120,13 +120,17 @@ impl<T: Send + 'static> Batcher<T> {
 
         if let Some(ref transport) = *transport.read().unwrap() {
             let mut envelope = Envelope::new();
-            envelope.add_item(into_envelope_item(items));
+            envelope.add_item(items);
             transport.send_envelope(envelope);
         }
     }
 }
 
-impl<T: Send + 'static> Drop for Batcher<T> {
+impl<T> Drop for Batcher<T>
+where
+    EnvelopeItem: From<Vec<T>>,
+    T: Send + 'static,
+{
     fn drop(&mut self) {
         let (lock, cvar) = self.shutdown.as_ref();
         *lock.lock().unwrap() = true;
@@ -135,12 +139,7 @@ impl<T: Send + 'static> Drop for Batcher<T> {
         if let Some(worker) = self.worker.take() {
             worker.join().ok();
         }
-        Self::flush_queue_internal(
-            self.queue.lock().unwrap(),
-            &self.transport,
-            self.into_envelope_item,
-            self.name,
-        );
+        Self::flush_queue_internal(self.queue.lock().unwrap(), &self.transport, self.name);
     }
 }
 

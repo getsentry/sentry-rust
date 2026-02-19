@@ -94,14 +94,14 @@ impl Clone for Client {
 
         #[cfg(feature = "logs")]
         let logs_batcher = RwLock::new(if self.options.enable_logs {
-            Some(Batcher::new(transport.clone(), "logs", Into::into))
+            Some(Batcher::new(transport.clone(), "logs"))
         } else {
             None
         });
 
         #[cfg(feature = "metrics")]
         let metrics_batcher = RwLock::new(if self.options.metrics_sample_rate > 0.0 {
-            Some(Batcher::new(transport.clone(), "metrics", Into::into))
+            Some(Batcher::new(transport.clone(), "metrics"))
         } else {
             None
         });
@@ -190,14 +190,14 @@ impl Client {
 
         #[cfg(feature = "logs")]
         let logs_batcher = RwLock::new(if options.enable_logs {
-            Some(Batcher::new(transport.clone(), "logs", Into::into))
+            Some(Batcher::new(transport.clone(), "logs"))
         } else {
             None
         });
 
         #[cfg(feature = "metrics")]
         let metrics_batcher = RwLock::new(if options.metrics_sample_rate > 0.0 {
-            Some(Batcher::new(transport.clone(), "metrics", Into::into))
+            Some(Batcher::new(transport.clone(), "metrics"))
         } else {
             None
         });

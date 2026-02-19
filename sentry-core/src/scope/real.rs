@@ -6,15 +6,16 @@ use std::sync::Mutex;
 use std::sync::{Arc, PoisonError, RwLock};
 
 use crate::performance::TransactionOrSpan;
-#[cfg(all(feature = "metrics", not(feature = "logs")))]
+#[cfg(feature = "logs")]
+use crate::protocol::Log;
+#[cfg(any(feature = "logs", feature = "metrics"))]
 use crate::protocol::LogAttribute;
 #[cfg(feature = "metrics")]
 use crate::protocol::TraceMetric;
 use crate::protocol::{
     Attachment, Breadcrumb, Context, Event, Level, TraceContext, Transaction, User, Value,
 };
-#[cfg(feature = "logs")]
-use crate::protocol::{Log, LogAttribute};
+
 #[cfg(feature = "release-health")]
 use crate::session::Session;
 use crate::{Client, SentryTrace, TraceHeader, TraceHeadersIter};
