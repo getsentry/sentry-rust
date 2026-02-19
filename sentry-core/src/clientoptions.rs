@@ -174,12 +174,9 @@ pub struct ClientOptions {
     /// Determines whether captured structured logs should be sent to Sentry (defaults to false).
     #[cfg(feature = "logs")]
     pub enable_logs: bool,
-    /// The sample rate for trace metrics. (0.0 - 1.0, defaults to 0.0)
-    ///
-    /// Metrics are disabled by default. Sampled metrics are annotated with a
-    /// `sentry.client_sample_rate` attribute so the server can extrapolate.
+    /// Determines whether captured trace metrics should be sent to Sentry (defaults to false).
     #[cfg(feature = "metrics")]
-    pub metrics_sample_rate: f32,
+    pub enable_metrics: bool,
     /// Callback that is executed for each TraceMetric being added.
     #[cfg(feature = "metrics")]
     pub before_send_metric: Option<BeforeCallback<TraceMetric>>,
@@ -297,7 +294,7 @@ impl fmt::Debug for ClientOptions {
 
         #[cfg(feature = "metrics")]
         debug_struct
-            .field("metrics_sample_rate", &self.metrics_sample_rate)
+            .field("enable_metrics", &self.enable_metrics)
             .field("before_send_metric", &before_send_metric);
 
         debug_struct.field("user_agent", &self.user_agent).finish()
@@ -340,7 +337,7 @@ impl Default for ClientOptions {
             #[cfg(feature = "logs")]
             before_send_log: None,
             #[cfg(feature = "metrics")]
-            metrics_sample_rate: 0.0,
+            enable_metrics: false,
             #[cfg(feature = "metrics")]
             before_send_metric: None,
         }
