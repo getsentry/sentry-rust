@@ -1,70 +1,106 @@
 //! Public API for Sentry [trace metrics](https://develop.sentry.dev/sdk/telemetry/metrics/).
+//!
+//! # Examples
+//!
+//! ```
+//! sentry::metrics::count("api.requests").emit(1);
+//!
+//! sentry::metrics::distribution("response.time")
+//!     .with_attribute("route", "my_route")
+//!     .with_unit("millisecond")
+//!     .emit(0.123);
+//!
+//! sentry::metrics::gauge("memory.usage").emit(1024.0);
+//! ```
 
 use std::time::SystemTime;
 
 use crate::protocol::{LogAttribute, Map, TraceId, TraceMetric, TraceMetricType};
 use crate::Hub;
 
-/// Options for recording a trace metric.
-#[derive(Default)]
-pub struct MetricOptions {
-    /// The measurement unit (e.g. "millisecond", "byte").
-    pub unit: Option<String>,
-    /// Additional key-value attributes.
-    pub attributes: Map<String, LogAttribute>,
+/// Creates a counter metric builder.
+///
+/// # Examples
+///
+/// ```
+/// sentry::metrics::count("api.requests").emit(1);
+/// ```
+pub fn count(name: impl Into<String>) -> MetricBuilder {
+    MetricBuilder::new(name, TraceMetricType::Counter)
 }
 
-fn capture_metric(
+/// Creates a gauge metric builder.
+///
+/// # Examples
+///
+/// ```
+/// sentry::metrics::gauge("memory.usage").emit(1024.0);
+/// ```
+pub fn gauge(name: impl Into<String>) -> MetricBuilder {
+    MetricBuilder::new(name, TraceMetricType::Gauge)
+}
+
+/// Creates a distribution metric builder.
+///
+/// # Examples
+///
+/// ```
+/// sentry::metrics::distribution("response.time")
+///     .with_attribute("route", "my_route")
+///     .with_unit("millisecond")
+///     .emit(0.123);
+/// ```
+pub fn distribution(name: impl Into<String>) -> MetricBuilder {
+    MetricBuilder::new(name, TraceMetricType::Distribution)
+}
+
+/// A builder for constructing and emitting a trace metric.
+///
+/// Created via [`count()`], [`gauge()`], or [`distribution()`].
+/// Call [`emit()`](MetricBuilder::emit) to send the metric.
+pub struct MetricBuilder {
+    name: String,
     metric_type: TraceMetricType,
-    name: &str,
-    value: f64,
-    options: Option<MetricOptions>,
-) {
-    Hub::with_active(|hub| {
-        let opts = options.unwrap_or_default();
-        let metric = TraceMetric {
-            r#type: metric_type,
-            name: name.to_owned(),
-            value,
-            timestamp: SystemTime::now(),
-            trace_id: TraceId::default(),
-            span_id: None,
-            unit: opts.unit,
-            attributes: opts.attributes,
-        };
-        hub.capture_metric(metric);
-    })
+    unit: Option<String>,
+    attributes: Map<String, LogAttribute>,
 }
 
-/// Records a counter metric. Counters track event frequency (e.g., requests, errors).
-///
-/// # Examples
-///
-/// ```
-/// sentry::metrics_count("api.requests", 1.0, None);
-/// ```
-pub fn metrics_count(name: &str, value: f64, options: Option<MetricOptions>) {
-    capture_metric(TraceMetricType::Counter, name, value, options);
-}
+impl MetricBuilder {
+    fn new(name: impl Into<String>, metric_type: TraceMetricType) -> Self {
+        Self {
+            name: name.into(),
+            metric_type,
+            unit: None,
+            attributes: Map::new(),
+        }
+    }
 
-/// Records a gauge metric. Gauges represent current state (e.g., memory usage, pool size).
-///
-/// # Examples
-///
-/// ```
-/// sentry::metrics_gauge("memory.usage", 1024.0, None);
-/// ```
-pub fn metrics_gauge(name: &str, value: f64, options: Option<MetricOptions>) {
-    capture_metric(TraceMetricType::Gauge, name, value, options);
-}
+    /// Sets the measurement unit (e.g. "millisecond", "byte").
+    pub fn with_unit(mut self, unit: impl Into<String>) -> Self {
+        self.unit = Some(unit.into());
+        self
+    }
 
-/// Records a distribution metric. Distributions measure statistical spread (e.g., response times).
-///
-/// # Examples
-///
-/// ```
-/// sentry::metrics_distribution("http.response_time", 150.0, None);
-/// ```
-pub fn metrics_distribution(name: &str, value: f64, options: Option<MetricOptions>) {
-    capture_metric(TraceMetricType::Distribution, name, value, options);
+    /// Adds a key-value attribute to the metric.
+    pub fn with_attribute(mut self, key: impl Into<String>, value: impl Into<LogAttribute>) -> Self {
+        self.attributes.insert(key.into(), value.into());
+        self
+    }
+
+    /// Emits the metric with the given value.
+    pub fn emit(self, value: impl Into<f64>) {
+        Hub::with_active(|hub| {
+            let metric = TraceMetric {
+                r#type: self.metric_type,
+                name: self.name,
+                value: value.into(),
+                timestamp: SystemTime::now(),
+                trace_id: TraceId::default(),
+                span_id: None,
+                unit: self.unit,
+                attributes: self.attributes,
+            };
+            hub.capture_metric(metric);
+        })
+    }
 }
