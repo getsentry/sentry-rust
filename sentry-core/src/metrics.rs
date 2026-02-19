@@ -82,7 +82,11 @@ impl MetricBuilder {
     }
 
     /// Adds a key-value attribute to the metric.
-    pub fn with_attribute(mut self, key: impl Into<String>, value: impl Into<LogAttribute>) -> Self {
+    pub fn with_attribute(
+        mut self,
+        key: impl Into<String>,
+        value: impl Into<LogAttribute>,
+    ) -> Self {
         self.attributes.insert(key.into(), value.into());
         self
     }
