@@ -579,7 +579,7 @@ impl Client {
     /// processing it through `before_send_metric`.
     #[cfg(feature = "metrics")]
     fn prepare_metric(&self, mut metric: TraceMetric, scope: &Scope) -> Option<TraceMetric> {
-        scope.apply_to_metric(&mut metric);
+        scope.apply_to_metric(&mut metric, self.options.send_default_pii);
 
         if let Some(default_attributes) = self.default_metric_attributes.as_ref() {
             for (key, val) in default_attributes.iter() {

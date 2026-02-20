@@ -14,6 +14,7 @@ pub struct RateLimiter {
     transaction: Option<SystemTime>,
     attachment: Option<SystemTime>,
     log_item: Option<SystemTime>,
+    trace_metric: Option<SystemTime>,
 }
 
 impl RateLimiter {
@@ -59,6 +60,7 @@ impl RateLimiter {
                     "transaction" => self.transaction = new_time,
                     "attachment" => self.attachment = new_time,
                     "log_item" => self.log_item = new_time,
+                    "trace_metric" => self.trace_metric = new_time,
                     _ => {}
                 }
             }
@@ -93,6 +95,7 @@ impl RateLimiter {
             RateLimitingCategory::Transaction => self.transaction,
             RateLimitingCategory::Attachment => self.attachment,
             RateLimitingCategory::LogItem => self.log_item,
+            RateLimitingCategory::TraceMetric => self.trace_metric,
         }?;
         time_left.duration_since(SystemTime::now()).ok()
     }
@@ -119,6 +122,9 @@ impl RateLimiter {
                 EnvelopeItem::ItemContainer(ItemContainer::Logs(_)) => {
                     RateLimitingCategory::LogItem
                 }
+                EnvelopeItem::ItemContainer(ItemContainer::TraceMetrics(_)) => {
+                    RateLimitingCategory::TraceMetric
+                }
                 _ => RateLimitingCategory::Any,
             })
         })
@@ -140,6 +146,8 @@ pub enum RateLimitingCategory {
     Attachment,
     /// Rate Limit pertaining to Log Items.
     LogItem,
+    /// Rate Limit pertaining to Trace Metrics.
+    TraceMetric,
 }
 
 #[cfg(test)]
@@ -155,6 +163,7 @@ mod tests {
         assert!(rl.is_disabled(RateLimitingCategory::Session).unwrap() <= Duration::from_secs(60));
         assert!(rl.is_disabled(RateLimitingCategory::Transaction).is_none());
         assert!(rl.is_disabled(RateLimitingCategory::LogItem).is_none());
+        assert!(rl.is_disabled(RateLimitingCategory::TraceMetric).is_none());
         assert!(rl.is_disabled(RateLimitingCategory::Any).is_none());
 
         rl.update_from_sentry_header(
@@ -184,6 +193,9 @@ mod tests {
         assert!(rl.is_disabled(RateLimitingCategory::LogItem).unwrap() <= Duration::from_secs(120));
         assert!(
             rl.is_disabled(RateLimitingCategory::Attachment).unwrap() <= Duration::from_secs(120)
+        );
+        assert!(
+            rl.is_disabled(RateLimitingCategory::TraceMetric).unwrap() <= Duration::from_secs(120)
         );
         assert!(rl.is_disabled(RateLimitingCategory::Any).unwrap() <= Duration::from_secs(120));
     }

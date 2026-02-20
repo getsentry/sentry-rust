@@ -268,14 +268,17 @@ mod tests {
         }
 
         #[test]
-        fn test_metrics_disabled_by_default() {
+        fn test_metrics_disabled_explicitly() {
             let envelopes = test::with_captured_envelopes_options(
                 || {
                     for i in 0..10 {
                         crate::Hub::current().capture_metric(test_metric(&format!("metric.{i}")));
                     }
                 },
-                crate::ClientOptions::default(),
+                crate::ClientOptions {
+                    enable_metrics: false,
+                    ..Default::default()
+                },
             );
 
             assert_eq!(0, envelopes.len());

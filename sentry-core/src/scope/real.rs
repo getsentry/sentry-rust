@@ -405,9 +405,10 @@ impl Scope {
     }
 
     /// Applies the contained scoped data to a trace metric, setting the `trace_id`, `span_id`,
-    /// and certain default attributes.
+    /// and certain default attributes. User PII attributes are only attached when
+    /// `send_default_pii` is `true`.
     #[cfg(feature = "metrics")]
-    pub fn apply_to_metric(&self, metric: &mut TraceMetric) {
+    pub fn apply_to_metric(&self, metric: &mut TraceMetric, send_default_pii: bool) {
         if let Some(span) = self.span.as_ref() {
             metric.trace_id = span.get_trace_context().trace_id;
         } else {
@@ -426,29 +427,31 @@ impl Scope {
             }
         }
 
-        if let Some(user) = self.user.as_ref() {
-            if !metric.attributes.contains_key("user.id") {
-                if let Some(id) = user.id.as_ref() {
-                    metric
-                        .attributes
-                        .insert("user.id".to_owned(), LogAttribute(id.to_owned().into()));
+        if send_default_pii {
+            if let Some(user) = self.user.as_ref() {
+                if !metric.attributes.contains_key("user.id") {
+                    if let Some(id) = user.id.as_ref() {
+                        metric
+                            .attributes
+                            .insert("user.id".to_owned(), LogAttribute(id.to_owned().into()));
+                    }
                 }
-            }
 
-            if !metric.attributes.contains_key("user.name") {
-                if let Some(name) = user.username.as_ref() {
-                    metric
-                        .attributes
-                        .insert("user.name".to_owned(), LogAttribute(name.to_owned().into()));
+                if !metric.attributes.contains_key("user.name") {
+                    if let Some(name) = user.username.as_ref() {
+                        metric
+                            .attributes
+                            .insert("user.name".to_owned(), LogAttribute(name.to_owned().into()));
+                    }
                 }
-            }
 
-            if !metric.attributes.contains_key("user.email") {
-                if let Some(email) = user.email.as_ref() {
-                    metric.attributes.insert(
-                        "user.email".to_owned(),
-                        LogAttribute(email.to_owned().into()),
-                    );
+                if !metric.attributes.contains_key("user.email") {
+                    if let Some(email) = user.email.as_ref() {
+                        metric.attributes.insert(
+                            "user.email".to_owned(),
+                            LogAttribute(email.to_owned().into()),
+                        );
+                    }
                 }
             }
         }

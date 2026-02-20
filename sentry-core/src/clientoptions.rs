@@ -174,7 +174,7 @@ pub struct ClientOptions {
     /// Determines whether captured structured logs should be sent to Sentry (defaults to false).
     #[cfg(feature = "logs")]
     pub enable_logs: bool,
-    /// Determines whether captured trace metrics should be sent to Sentry (defaults to false).
+    /// Determines whether captured trace metrics should be sent to Sentry (defaults to true).
     #[cfg(feature = "metrics")]
     pub enable_metrics: bool,
     /// Callback that is executed for each TraceMetric being added.
@@ -337,7 +337,7 @@ impl Default for ClientOptions {
             #[cfg(feature = "logs")]
             before_send_log: None,
             #[cfg(feature = "metrics")]
-            enable_metrics: false,
+            enable_metrics: true,
             #[cfg(feature = "metrics")]
             before_send_metric: None,
         }

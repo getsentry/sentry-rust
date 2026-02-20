@@ -123,8 +123,9 @@ impl Scope {
 
     /// Applies the contained scoped data to fill a trace metric.
     #[cfg(feature = "metrics")]
-    pub fn apply_to_metric(&self, metric: &mut TraceMetric) {
+    pub fn apply_to_metric(&self, metric: &mut TraceMetric, send_default_pii: bool) {
         let _metric = metric;
+        let _send_default_pii = send_default_pii;
         minimal_unreachable!();
     }
 
