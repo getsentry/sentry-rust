@@ -1,6 +1,6 @@
 use std::borrow::Cow;
-use std::cell::RefCell;
-use std::collections::BTreeMap;
+use std::cell::{RefCell, UnsafeCell};
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
 use bitflags::bitflags;
@@ -236,7 +236,25 @@ pub(super) struct SentrySpanData {
     pub(super) sentry_span: TransactionOrSpan,
     parent_sentry_span: Option<TransactionOrSpan>,
     hub: Arc<sentry_core::Hub>,
-    hub_switch_guard: Option<sentry_core::HubSwitchGuard>,
+}
+
+thread_local! {
+    /// Cached forked hubs keyed by source hub pointer identity.
+    /// The source hub is kept alive by `SentrySpanData::hub` (an `Arc`), so
+    /// the pointer remains valid for the lifetime of any referencing span.
+    ///
+    /// SAFETY: Thread-local, only accessed within `.with()` closures that
+    /// never re-enter, so exclusive access is guaranteed without runtime checks.
+    static HUB_CACHE: UnsafeCell<HashMap<usize, Arc<sentry_core::Hub>>> = UnsafeCell::new(HashMap::new());
+
+    /// Stack of hub switch guards paired with their span ID.
+    /// Guards are pushed on `on_enter` and popped on `on_exit`/`on_close`.
+    ///
+    /// SAFETY: Same as `HUB_CACHE` — thread-local with non-reentrant access.
+    static SPAN_GUARDS: UnsafeCell<Vec<(span::Id, sentry_core::HubSwitchGuard)>> = const { UnsafeCell::new(Vec::new()) };
+
+    /// Reusable buffer for `Debug` formatting in `SpanFieldVisitor`.
+    static VISITOR_BUFFER: RefCell<String> = const { RefCell::new(String::new()) };
 }
 
 impl<S> Layer<S> for SentryLayer<S>
@@ -347,7 +365,6 @@ where
             sentry_span,
             parent_sentry_span,
             hub,
-            hub_switch_guard: None,
         });
     }
 
@@ -359,12 +376,31 @@ where
             None => return,
         };
 
-        let mut extensions = span.extensions_mut();
-        if let Some(data) = extensions.get_mut::<SentrySpanData>() {
-            data.hub_switch_guard = Some(sentry_core::HubSwitchGuard::new(data.hub.clone()));
-            data.hub.configure_scope_direct(|scope| {
+        let extensions = span.extensions();
+        if let Some(data) = extensions.get::<SentrySpanData>() {
+            let hub_key = Arc::as_ptr(&data.hub) as usize;
+
+            // Get or create a forked hub for this thread + source hub combination.
+            // The fork is cached so repeat entries (e.g. async polls) reuse it.
+            let hub = HUB_CACHE.with(|cache| {
+                // SAFETY: thread-local, non-reentrant access
+                let cache = unsafe { &mut *cache.get() };
+                cache
+                    .entry(hub_key)
+                    .or_insert_with(|| Arc::new(sentry_core::Hub::new_from_top(&data.hub)))
+                    .clone()
+            });
+
+            hub.configure_scope_direct(|scope| {
                 scope.set_span(Some(data.sentry_span.clone()));
-            })
+            });
+
+            let guard = sentry_core::HubSwitchGuard::new(hub);
+            SPAN_GUARDS.with(|guards| {
+                // SAFETY: thread-local, non-reentrant access
+                let guards = unsafe { &mut *guards.get() };
+                guards.push((id.clone(), guard));
+            });
         }
     }
 
@@ -375,18 +411,33 @@ where
             None => return,
         };
 
-        let mut extensions = span.extensions_mut();
-        if let Some(data) = extensions.get_mut::<SentrySpanData>() {
+        let extensions = span.extensions();
+        if let Some(data) = extensions.get::<SentrySpanData>() {
             data.hub.configure_scope_direct(|scope| {
                 scope.set_span(data.parent_sentry_span.clone());
             });
-            data.hub_switch_guard.take();
+
+            // Drop the guard to restore the previous thread-local hub.
+            SPAN_GUARDS.with(|guards| {
+                // SAFETY: thread-local, non-reentrant access
+                let guards = unsafe { &mut *guards.get() };
+                if let Some(pos) = guards.iter().rposition(|(sid, _)| sid == id) {
+                    guards.swap_remove(pos);
+                }
+            });
         }
     }
 
     /// When a span gets closed, finish the underlying sentry span, and set back
     /// its parent as the *current* sentry span.
     fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
+        // Clean up any lingering guards for this span.
+        SPAN_GUARDS.with(|guards| {
+            // SAFETY: thread-local, non-reentrant access
+            let guards = unsafe { &mut *guards.get() };
+            guards.retain(|(sid, _)| *sid != id);
+        });
+
         let span = match ctx.span(&id) {
             Some(span) => span,
             None => return,
@@ -508,10 +559,6 @@ fn extract_span_data(
         });
 
     (json_values, name, op, sentry_trace)
-}
-
-thread_local! {
-    static VISITOR_BUFFER: RefCell<String> = const { RefCell::new(String::new()) };
 }
 
 /// Records all span fields into a `BTreeMap`, reusing a mutable `String` as buffer.

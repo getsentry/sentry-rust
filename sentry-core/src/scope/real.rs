@@ -55,7 +55,7 @@ pub struct Scope {
     #[cfg(feature = "release-health")]
     pub(crate) session: Arc<Mutex<Option<Session>>>,
     pub(crate) request: Option<Request>,
-    pub(crate) span: Arc<Option<TransactionOrSpan>>,
+    pub(crate) span: Option<TransactionOrSpan>,
     pub(crate) attachments: Arc<Vec<Attachment>>,
     pub(crate) propagation_context: SentryTrace,
 }
@@ -416,12 +416,12 @@ impl Scope {
 
     /// Set the given [`TransactionOrSpan`] as the active span for this scope.
     pub fn set_span(&mut self, span: Option<TransactionOrSpan>) {
-        self.span = Arc::new(span);
+        self.span = span;
     }
 
     /// Returns the currently active span.
     pub fn get_span(&self) -> Option<TransactionOrSpan> {
-        self.span.as_ref().clone()
+        self.span.clone()
     }
 
     #[allow(unused_variables)]
