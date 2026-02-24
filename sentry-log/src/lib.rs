@@ -54,7 +54,7 @@
 //!
 //! let logger = sentry_log::SentryLogger::new().filter(|md| match md.level() {
 //!     log::Level::Error => LogFilter::Event,
-//!     log::Level::Warn => LogFilter::Breadcrumb | LogFilter::Log,
+//!     log::Level::Warn => LogFilter::Breadcrumb | LogFilter::Event,
 //!     _ => LogFilter::Ignore,
 //! });
 //! ```
