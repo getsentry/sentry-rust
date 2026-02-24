@@ -172,6 +172,14 @@ impl Hub {
         self.inner.with(|stack| stack.top().client.clone())
     }
 
+    /// Returns `true` if a client is bound to the current scope.
+    ///
+    /// This is more efficient than `client().is_some()` because it avoids
+    /// cloning the `Arc<Client>`.
+    pub fn has_client(&self) -> bool {
+        self.inner.with(|stack| stack.top().client.is_some())
+    }
+
     /// Binds a new client to the hub.
     pub fn bind_client(&self, client: Option<Arc<Client>>) {
         self.inner.with_mut(|stack| {

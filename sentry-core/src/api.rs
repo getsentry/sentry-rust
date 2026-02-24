@@ -157,6 +157,26 @@ where
     Hub::with_active(|hub| hub.configure_scope(f))
 }
 
+/// Invokes a function that can modify the current scope directly under a
+/// single write lock, avoiding a scope clone.
+///
+/// This is more efficient than [`configure_scope`], but the closure **must
+/// not** call any functions that re-enter the Hub's scope stack lock (e.g.
+/// [`capture_event`], [`start_transaction`]), as doing so will deadlock.
+///
+/// [`configure_scope`]: fn.configure_scope.html
+/// [`capture_event`]: fn.capture_event.html
+/// [`start_transaction`]: fn.start_transaction.html
+pub fn configure_scope_direct<F, R>(_f: F) -> R
+where
+    R: Default,
+    F: FnOnce(&mut Scope) -> R,
+{
+    with_client_impl! {{
+        Hub::with_active(|hub| hub.configure_scope_direct(_f))
+    }}
+}
+
 /// Temporarily pushes a scope for a single call optionally reconfiguring it.
 ///
 /// This function takes two arguments: the first is a callback that is passed

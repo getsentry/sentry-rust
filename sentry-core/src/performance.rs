@@ -655,23 +655,13 @@ pub struct TransactionData<'a>(MutexGuard<'a, TransactionInner>);
 impl<'a> TransactionData<'a> {
     /// Iterate over the [data attributes](protocol::TraceContext::data)
     /// associated with this [transaction][protocol::Transaction].
-    ///
-    /// If the transaction is not sampled for sending,
-    /// the metadata will not be populated at all,
-    /// so the produced iterator is empty.
     pub fn iter(&self) -> Box<dyn Iterator<Item = (&String, &protocol::Value)> + '_> {
-        if self.0.transaction.is_some() {
-            Box::new(self.0.context.data.iter())
-        } else {
-            Box::new(std::iter::empty())
-        }
+        Box::new(self.0.context.data.iter())
     }
 
     /// Set a data attribute to be sent with this Transaction.
     pub fn set_data(&mut self, key: Cow<'a, str>, value: protocol::Value) {
-        if self.0.transaction.is_some() {
-            self.0.context.data.insert(key.into(), value);
-        }
+        self.0.context.data.insert(key.into(), value);
     }
 
     /// Set a tag to be sent with this Transaction.
@@ -686,13 +676,18 @@ impl Transaction {
     #[cfg(feature = "client")]
     fn new(client: Option<Arc<Client>>, ctx: TransactionContext) -> Self {
         let ((sampled, sample_rate), transaction) = match client.as_ref() {
-            Some(client) => (
-                client.determine_sampling_decision(&ctx),
-                Some(protocol::Transaction {
-                    name: Some(ctx.name),
-                    ..Default::default()
-                }),
-            ),
+            Some(client) => {
+                let (sampled, sample_rate) = client.determine_sampling_decision(&ctx);
+                let transaction = if sampled {
+                    Some(protocol::Transaction {
+                        name: Some(ctx.name),
+                        ..Default::default()
+                    })
+                } else {
+                    None
+                };
+                ((sampled, sample_rate), transaction)
+            }
             None => (
                 (
                     ctx.sampled.unwrap_or(false),
@@ -743,9 +738,7 @@ impl Transaction {
     /// Set a data attribute to be sent with this Transaction.
     pub fn set_data(&self, key: &str, value: protocol::Value) {
         let mut inner = self.inner.lock().unwrap();
-        if inner.transaction.is_some() {
-            inner.context.data.insert(key.into(), value);
-        }
+        inner.context.data.insert(key.into(), value);
     }
 
     /// Set some extra information to be sent with this Transaction.
@@ -823,6 +816,17 @@ impl Transaction {
     pub fn set_origin(&self, origin: &str) {
         let mut inner = self.inner.lock().unwrap();
         inner.context.origin = Some(origin.to_owned());
+    }
+
+    /// Sets the HTTP request and origin in a single lock acquisition.
+    ///
+    /// This is more efficient than calling `set_request` and `set_origin` separately.
+    pub fn set_request_and_origin(&self, request: protocol::Request, origin: &str) {
+        let mut inner = self.inner.lock().unwrap();
+        inner.context.origin = Some(origin.to_owned());
+        if let Some(transaction) = inner.transaction.as_mut() {
+            transaction.request = Some(request);
+        }
     }
 
     /// Returns the headers needed for distributed tracing.
@@ -1138,7 +1142,7 @@ impl Span {
             let mut inner = self.transaction.lock().unwrap();
             if let Some(transaction) = inner.transaction.as_mut() {
                 if transaction.spans.len() <= MAX_SPANS {
-                    transaction.spans.push(span.clone());
+                    transaction.spans.push(std::mem::take(&mut *span));
                 }
             }
         }}

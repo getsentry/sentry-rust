@@ -217,6 +217,28 @@ impl Hub {
         }}
     }
 
+    /// Invokes a function that can modify the current scope directly
+    /// under a single write lock, avoiding a scope clone.
+    ///
+    /// See the global [`configure_scope_direct`](fn.configure_scope_direct.html)
+    /// for more documentation.
+    pub fn configure_scope_direct<F, R>(&self, f: F) -> R
+    where
+        R: Default,
+        F: FnOnce(&mut Scope) -> R,
+    {
+        with_client_impl! {{
+            self.inner.with_mut(|stack| {
+                let top = stack.top_mut();
+                if top.client.as_ref().is_some_and(|c| c.is_enabled()) {
+                    f(Arc::make_mut(&mut top.scope))
+                } else {
+                    Default::default()
+                }
+            })
+        }}
+    }
+
     /// Adds a new breadcrumb to the current scope.
     ///
     /// See the global [`add_breadcrumb`](fn.add_breadcrumb.html)

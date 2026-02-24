@@ -7,7 +7,7 @@ use std::sync::{Arc, PoisonError, RwLock};
 
 use crate::performance::TransactionOrSpan;
 use crate::protocol::{
-    Attachment, Breadcrumb, Context, Event, Level, TraceContext, Transaction, User, Value,
+    Attachment, Breadcrumb, Context, Event, Level, Request, TraceContext, Transaction, User, Value,
 };
 #[cfg(feature = "logs")]
 use crate::protocol::{Log, LogAttribute};
@@ -54,6 +54,7 @@ pub struct Scope {
     pub(crate) event_processors: Arc<Vec<EventProcessor>>,
     #[cfg(feature = "release-health")]
     pub(crate) session: Arc<Mutex<Option<Session>>>,
+    pub(crate) request: Option<Request>,
     pub(crate) span: Arc<Option<TransactionOrSpan>>,
     pub(crate) attachments: Arc<Vec<Attachment>>,
     pub(crate) propagation_context: SentryTrace,
@@ -77,6 +78,7 @@ impl fmt::Debug for Scope {
         debug_struct.field("session", &self.session);
 
         debug_struct
+            .field("request", &self.request)
             .field("span", &self.span)
             .field("attachments", &self.attachments.len())
             .field("propagation_context", &self.propagation_context)
@@ -280,6 +282,10 @@ impl Scope {
             }
         }
 
+        if event.request.is_none() {
+            event.request = self.request.clone();
+        }
+
         event.breadcrumbs.extend(self.breadcrumbs.iter().cloned());
         event
             .extra
@@ -333,6 +339,10 @@ impl Scope {
             if let Some(user) = self.user.as_deref() {
                 transaction.user = Some(user.clone());
             }
+        }
+
+        if transaction.request.is_none() {
+            transaction.request = self.request.clone();
         }
 
         transaction
@@ -397,6 +407,11 @@ impl Scope {
                 }
             }
         }
+    }
+
+    /// Sets the HTTP request data for this scope.
+    pub fn set_request(&mut self, request: Option<Request>) {
+        self.request = request;
     }
 
     /// Set the given [`TransactionOrSpan`] as the active span for this scope.

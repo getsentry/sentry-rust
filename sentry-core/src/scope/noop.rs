@@ -2,7 +2,7 @@ use std::fmt;
 
 #[cfg(feature = "logs")]
 use crate::protocol::Log;
-use crate::protocol::{Context, Event, Level, User, Value};
+use crate::protocol::{Context, Event, Level, Request, User, Value};
 use crate::TransactionOrSpan;
 
 /// A minimal API scope guard.
@@ -116,6 +116,12 @@ impl Scope {
     #[cfg(feature = "logs")]
     pub fn apply_to_log(&self, log: &mut Log) {
         let _log = log;
+        minimal_unreachable!();
+    }
+
+    /// Sets the HTTP request data for this scope.
+    pub fn set_request(&mut self, request: Option<Request>) {
+        let _request = request;
         minimal_unreachable!();
     }
 
