@@ -38,3 +38,8 @@ serde_json = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3.20", features = ["fmt", "registry"] }
 tokio = { version = "1.44", features = ["rt-multi-thread", "macros", "time"] }
+criterion = "0.8.2"
+
+[[bench]]
+name = "tracing_layer_perf"
+harness = false
