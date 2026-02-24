@@ -41,7 +41,7 @@ pub struct SentrySpanProcessor {}
 impl SentrySpanProcessor {
     /// Creates a new `SentrySpanProcessor`.
     pub fn new() -> Self {
-        sentry_core::configure_scope(|scope| {
+        sentry_core::configure_scope_direct(|scope| {
             // Associate Sentry events with the correct span and trace.
             // This works as long as all Sentry spans/transactions are managed exclusively through OTEL APIs.
             scope.add_event_processor(|mut event| {
@@ -190,7 +190,7 @@ impl SpanProcessor for SentrySpanProcessor {
     }
 
     fn set_resource(&mut self, resource: &Resource) {
-        sentry_core::configure_scope(|scope| {
+        sentry_core::configure_scope_direct(|scope| {
             let otel_context = sentry_core::protocol::OtelContext {
                 resource: resource
                     .iter()

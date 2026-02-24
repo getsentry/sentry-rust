@@ -116,23 +116,22 @@ where
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let slf = self.project();
         if let Some((sentry_req, trx_ctx)) = slf.on_first_poll.take() {
-            sentry_core::configure_scope(|scope| {
-                if let Some(trx_ctx) = trx_ctx {
-                    let transaction = sentry_core::start_transaction(trx_ctx);
-                    transaction.set_origin("auto.http.tower");
-                    let transaction: sentry_core::TransactionOrSpan = transaction.into();
-                    transaction.set_request(sentry_req.clone());
+            let transaction = trx_ctx.map(|trx_ctx| {
+                let transaction = sentry_core::start_transaction(trx_ctx);
+                if transaction.is_sampled() {
+                    transaction.set_request_and_origin(sentry_req.clone(), "auto.http.tower");
+                }
+                sentry_core::TransactionOrSpan::from(transaction)
+            });
+
+            sentry_core::configure_scope_direct(|scope| {
+                if let Some(transaction) = transaction {
                     let parent_span = scope.get_span();
                     scope.set_span(Some(transaction.clone()));
                     *slf.transaction = Some((transaction, parent_span));
                 }
 
-                scope.add_event_processor(move |mut event| {
-                    if event.request.is_none() {
-                        event.request = Some(sentry_req.clone());
-                    }
-                    Some(event)
-                });
+                scope.set_request(Some(sentry_req));
             });
         }
         match slf.future.poll(cx) {
@@ -146,7 +145,7 @@ where
                         transaction.set_status(status);
                     }
                     transaction.finish();
-                    sentry_core::configure_scope(|scope| scope.set_span(parent_span));
+                    sentry_core::configure_scope_direct(|scope| scope.set_span(parent_span));
                 }
                 Poll::Ready(res)
             }
@@ -167,7 +166,7 @@ impl<F> PinnedDrop for SentryHttpFuture<F> {
                 transaction.set_status(protocol::SpanStatus::Aborted);
             }
             transaction.finish();
-            sentry_core::configure_scope(|scope| scope.set_span(parent_span));
+            sentry_core::configure_scope_direct(|scope| scope.set_span(parent_span));
         }
     }
 }
@@ -185,39 +184,42 @@ where
     }
 
     fn call(&mut self, request: Request<ReqBody>) -> Self::Future {
-        let sentry_req = sentry_core::protocol::Request {
-            method: Some(request.method().to_string()),
-            url: get_url_from_request(&request).map(scrub_pii_from_url),
-            headers: request
-                .headers()
-                .into_iter()
-                .filter(|(_, value)| !value.is_sensitive())
-                .filter(|(header, _)| self.with_pii || !is_sensitive_header(header.as_str()))
-                .map(|(header, value)| {
-                    (
-                        header.to_string(),
-                        value.to_str().unwrap_or_default().into(),
-                    )
-                })
-                .collect(),
-            ..Default::default()
-        };
-        let trx_ctx = if self.start_transaction {
-            let headers = request.headers().into_iter().flat_map(|(header, value)| {
-                value.to_str().ok().map(|value| (header.as_str(), value))
-            });
-            let tx_name = format!("{} {}", request.method(), path_from_request(&request));
-            Some(sentry_core::TransactionContext::continue_from_headers(
-                &tx_name,
-                "http.server",
-                headers,
-            ))
-        } else {
-            None
-        };
+        let on_first_poll = sentry_core::Hub::with_active(|_| {
+            let sentry_req = sentry_core::protocol::Request {
+                method: Some(request.method().to_string()),
+                url: get_url_from_request(&request).map(scrub_pii_from_url),
+                headers: request
+                    .headers()
+                    .into_iter()
+                    .filter(|(_, value)| !value.is_sensitive())
+                    .filter(|(header, _)| self.with_pii || !is_sensitive_header(header.as_str()))
+                    .map(|(header, value)| {
+                        (
+                            header.to_string(),
+                            value.to_str().unwrap_or_default().into(),
+                        )
+                    })
+                    .collect(),
+                ..Default::default()
+            };
+            let trx_ctx = if self.start_transaction {
+                let headers = request.headers().into_iter().flat_map(|(header, value)| {
+                    value.to_str().ok().map(|value| (header.as_str(), value))
+                });
+                let tx_name = format!("{} {}", request.method(), path_from_request(&request));
+                Some(sentry_core::TransactionContext::continue_from_headers(
+                    &tx_name,
+                    "http.server",
+                    headers,
+                ))
+            } else {
+                None
+            };
+            Some((sentry_req, trx_ctx))
+        });
 
         SentryHttpFuture {
-            on_first_poll: Some((sentry_req, trx_ctx)),
+            on_first_poll,
             transaction: None,
             future: self.service.call(request),
         }

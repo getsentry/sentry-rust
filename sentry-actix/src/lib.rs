@@ -87,10 +87,9 @@ use bytes::{Bytes, BytesMut};
 use futures_util::future::{ok, Future, Ready};
 use futures_util::{FutureExt as _, TryStreamExt as _};
 
-use sentry_core::protocol::{self, ClientSdkPackage, Event, Request};
+use sentry_core::protocol::{self, ClientSdkPackage, Request};
 use sentry_core::utils::{is_sensitive_header, scrub_pii_from_url};
-use sentry_core::MaxRequestBodySize;
-use sentry_core::{Hub, SentryFutureExt};
+use sentry_core::{Hub, MaxRequestBodySize, SentryFutureExt};
 
 /// A helper construct that can be used to reconfigure and build the middleware.
 pub struct SentryBuilder {
@@ -279,9 +278,16 @@ where
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
         let inner = self.inner.clone();
-        let hub = Arc::new(Hub::new_from_top(
-            inner.hub.clone().unwrap_or_else(Hub::main),
-        ));
+
+        let source_hub = inner.hub.clone().unwrap_or_else(Hub::main);
+
+        // Fast path: skip all Sentry overhead when no client is bound.
+        if source_hub.client().is_none() {
+            let svc = self.service.clone();
+            return async move { svc.call(req).await }.boxed_local();
+        }
+
+        let hub = Arc::new(Hub::new_from_top(source_hub));
 
         let client = hub.client();
 
@@ -321,8 +327,9 @@ where
             );
 
             let transaction = hub.start_transaction(ctx);
-            transaction.set_request(sentry_req.clone());
-            transaction.set_origin("auto.http.actix");
+            if transaction.is_sampled() {
+                transaction.set_request_and_origin(sentry_req.clone(), "auto.http.actix");
+            }
             Some(transaction)
         } else {
             None
@@ -336,14 +343,15 @@ where
                 sentry_req.data = Some(capture_request_body(&mut req).await);
             }
 
-            let parent_span = hub.configure_scope(|scope| {
+            let parent_span = hub.configure_scope_direct(|scope| {
                 let parent_span = scope.get_span();
                 if let Some(transaction) = transaction.as_ref() {
                     scope.set_span(Some(transaction.clone().into()));
                 } else {
                     scope.set_transaction((!inner.start_transaction).then_some(&name));
                 }
-                scope.add_event_processor(move |event| Some(process_event(event, &sentry_req)));
+                scope.set_request(Some(sentry_req));
+                scope.add_event_processor(add_actix_sdk_package);
                 parent_span
             });
 
@@ -363,7 +371,7 @@ where
                             transaction.set_status(status);
                         }
                         transaction.finish();
-                        hub.configure_scope(|scope| scope.set_span(parent_span));
+                        hub.configure_scope_direct(|scope| scope.set_span(parent_span));
                     }
                     return Err(e);
                 }
@@ -389,7 +397,7 @@ where
                     transaction.set_status(status);
                 }
                 transaction.finish();
-                hub.configure_scope(|scope| scope.set_span(parent_span));
+                hub.configure_scope_direct(|scope| scope.set_span(parent_span));
             }
 
             Ok(res)
@@ -418,6 +426,19 @@ fn map_status(status: StatusCode) -> protocol::SpanStatus {
 fn transaction_name_from_http(req: &ServiceRequest) -> String {
     let path_part = req.match_pattern().unwrap_or_else(|| "<none>".to_string());
     format!("{} {}", req.method(), path_part)
+}
+
+/// Adds the `sentry-actix` SDK package to events.
+fn add_actix_sdk_package(mut event: protocol::Event<'static>) -> Option<protocol::Event<'static>> {
+    if let Some(sdk) = event.sdk.take() {
+        let mut sdk = sdk.into_owned();
+        sdk.packages.push(ClientSdkPackage {
+            name: "sentry-actix".into(),
+            version: env!("CARGO_PKG_VERSION").into(),
+        });
+        event.sdk = Some(Cow::Owned(sdk));
+    }
+    Some(event)
 }
 
 /// Build a Sentry request struct from the HTTP request
@@ -451,25 +472,6 @@ fn sentry_request_from_http(request: &ServiceRequest, with_pii: bool) -> Request
     };
 
     sentry_req
-}
-
-/// Add request data to a Sentry event
-fn process_event(mut event: Event<'static>, request: &Request) -> Event<'static> {
-    // Request
-    if event.request.is_none() {
-        event.request = Some(request.clone());
-    }
-
-    // SDK
-    if let Some(sdk) = event.sdk.take() {
-        let mut sdk = sdk.into_owned();
-        sdk.packages.push(ClientSdkPackage {
-            name: "sentry-actix".into(),
-            version: env!("CARGO_PKG_VERSION").into(),
-        });
-        event.sdk = Some(Cow::Owned(sdk));
-    }
-    event
 }
 
 #[cfg(test)]
@@ -831,5 +833,18 @@ mod tests {
                 join_all(futures).await;
             })
         });
+    }
+
+    #[actix_web::test]
+    async fn test_no_client_passthrough() {
+        // No Sentry client bound -- requests should pass through without overhead.
+        let app = App::new().wrap(Sentry::builder().finish()).route(
+            "/test",
+            web::get().to(|| async { HttpResponse::Ok().finish() }),
+        );
+        let app = init_service(app).await;
+        let req = TestRequest::get().uri("/test").to_request();
+        let res = call_service(&app, req).await;
+        assert_eq!(res.status(), StatusCode::OK);
     }
 }
