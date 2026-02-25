@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Breaking Changes
+
+- Update reqwest from 0.12.25 to 0.13.1 ([#998](https://github.com/getsentry/sentry-rust/pull/998)). This change is breaking for users who use the [`RequestHttpTransport::with_client`](https://docs.rs/sentry/latest/sentry/transports/struct.ReqwestHttpTransport.html#method.with_client) method.
+
 ### New Features
 
 - Added a `Envelope::into_items` method, which returns an iterator over owned [`EnvelopeItem`s](https://docs.rs/sentry/0.46.2/sentry/protocol/enum.EnvelopeItem.html) in the [`Envelope`](https://docs.rs/sentry/0.46.2/sentry/struct.Envelope.html) ([#983](https://github.com/getsentry/sentry-rust/pull/983)).
