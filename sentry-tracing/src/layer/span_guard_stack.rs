@@ -30,6 +30,7 @@ impl SpanGuardStack {
     }
 
     /// Pops the most recent guard for the span ID, removing the stack when empty.
+    #[must_use]
     pub(super) fn pop(&mut self, id: SpanId) -> Option<HubSwitchGuard> {
         match self.guards.entry(id) {
             Entry::Occupied(mut entry) => {
@@ -42,23 +43,6 @@ impl SpanGuardStack {
             }
             Entry::Vacant(_) => None,
         }
-    }
-
-    /// Removes all guards for the span ID without returning them.
-    ///
-    /// This function guarantees that the guards are dropped in LIFO order.
-    /// That way, the hub which was active when the span was first entered
-    /// will be the one active after this function returns.
-    ///
-    /// Typically, remove should only get called once the span is fully
-    /// exited, so this removal order guarantee is mostly just defensive.
-    pub(super) fn remove(&mut self, id: &SpanId) {
-        self.guards
-            .remove(id)
-            .into_iter()
-            .flatten()
-            .rev() // <- we drop in reverse order
-            .for_each(drop);
     }
 }
 
@@ -91,28 +75,5 @@ mod tests {
         assert!(Arc::ptr_eq(&Hub::current(), &initial));
 
         assert!(stack.pop(id).is_none());
-    }
-
-    #[test]
-    fn remove_drops_all_guards_in_lifo_order() {
-        let initial = Hub::current();
-        let hub_a = Arc::new(Hub::new_from_top(initial.clone()));
-        let hub_b = Arc::new(Hub::new_from_top(hub_a.clone()));
-
-        assert!(!Arc::ptr_eq(&hub_b, &initial));
-        assert!(!Arc::ptr_eq(&hub_a, &initial));
-        assert!(!Arc::ptr_eq(&hub_a, &hub_b));
-
-        let mut stack = SpanGuardStack::new();
-        let id = SpanId::from_u64(2);
-
-        stack.push(id.clone(), HubSwitchGuard::new(hub_a.clone()));
-        assert!(Arc::ptr_eq(&Hub::current(), &hub_a));
-
-        stack.push(id.clone(), HubSwitchGuard::new(hub_b.clone()));
-        assert!(Arc::ptr_eq(&Hub::current(), &hub_b));
-
-        stack.remove(&id);
-        assert!(Arc::ptr_eq(&Hub::current(), &initial));
     }
 }

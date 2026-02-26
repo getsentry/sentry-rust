@@ -338,8 +338,16 @@ where
         extensions.insert(SentrySpanData { sentry_span, hub });
     }
 
-    /// Sets entered span as *current* sentry span. A tracing span can be
-    /// entered and existed multiple times, for example, when using a `tracing::Instrumented` future.
+    /// Sets the entered span as *current* sentry span.
+    ///
+    /// A tracing span can be entered and exited multiple times, for example,
+    /// when using a `tracing::Instrumented` future.
+    ///
+    /// Spans must be exited on the same span that they are entered. The
+    /// `sentry-tracing` integration's behavior is undefined if spans are
+    /// exited on threads other than the one they are entered from;
+    /// specifically, doing so will likely cause data to bleed between
+    /// [`Hub`]s in unexpected ways.
     fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
         let span = match ctx.span(id) {
             Some(span) => span,
@@ -372,21 +380,20 @@ where
 
     /// Drop the current span's [`HubSwitchGuard`] to restore the parent [`Hub`].
     fn on_exit(&self, id: &span::Id, _: Context<'_, S>) {
-        SPAN_GUARDS.with(|guards| guards.borrow_mut().pop(id.clone()));
+        let popped = SPAN_GUARDS.with(|guards| guards.borrow_mut().pop(id.clone()));
+
+        sentry_core::debug_assert_or_log!(
+            popped.is_some(),
+            "[SentryLayer] missing HubSwitchGuard on exit for span {id:?}; \
+            expected balanced enter/exit on the same thread. Likely causes: cross-thread exit, \
+            unbalanced enter/exit, or holding enter guards across `.await` \
+            (prefer `Span::in_scope`/`Future::instrument`)."
+        );
     }
 
     /// When a span gets closed, finish the underlying sentry span, and set back
     /// its parent as the *current* sentry span.
     fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
-        // Ensure all remaining Hub guards are dropped, to restore the original
-        // Hub.
-        //
-        // By this point, the span probably should be fully executed, but we should
-        // still ensure the guard is dropped in case this expectation is violated.
-        SPAN_GUARDS.with(|guards| {
-            guards.borrow_mut().remove(&id);
-        });
-
         let span = match ctx.span(&id) {
             Some(span) => span,
             None => return,
@@ -512,8 +519,11 @@ fn extract_span_data(
 
 thread_local! {
     static VISITOR_BUFFER: RefCell<String> = const { RefCell::new(String::new()) };
-    /// Hub switch guards keyed by span ID. Stored in thread-local so guards are
-    /// always dropped on the same thread where they were created.
+    /// Hub switch guards keyed by span ID.
+    ///
+    /// Guard bookkeeping is thread-local by design. Correctness expects
+    /// balanced enter/exit callbacks on the same thread; `on_close` performs
+    /// best-effort fallback cleanup for mismatches.
     static SPAN_GUARDS: RefCell<SpanGuardStack> = RefCell::new(SpanGuardStack::new());
 }
 
