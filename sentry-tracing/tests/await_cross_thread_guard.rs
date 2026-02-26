@@ -6,8 +6,8 @@ use std::task::{Context, Poll, Waker};
 use std::thread;
 
 use sentry::protocol::{EnvelopeItem, Transaction};
-use sentry::Envelope;
-use tracing::Level;
+use sentry::{Envelope, Hub, HubSwitchGuard};
+use tracing::Span;
 
 /// Test that the [`sentry_tracing::SentryLayer`]'s `on_exit` implementation panics
 /// (only when `debug_assertions` are enabled) if a span is exited on a span that
@@ -16,6 +16,7 @@ use tracing::Level;
 /// scenario where this can occur.
 #[test]
 fn future_cross_thread() {
+    let _guard = HubSwitchGuard::new(Hub::new_from_top(Hub::current()).into());
     let transport = shared::init_sentry(1.0);
 
     let mut future = Box::pin(span_across_await());
@@ -61,6 +62,7 @@ fn future_cross_thread() {
 /// that it was entered on.
 #[test]
 fn futures_same_thread() {
+    let _guard = HubSwitchGuard::new(Hub::new_from_top(Hub::current()).into());
     let transport = shared::init_sentry(1.0);
 
     let mut future = Box::pin(span_across_await());
