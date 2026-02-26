@@ -1,5 +1,6 @@
 mod shared;
 
+use std::any::Any;
 use std::future::{self, Future};
 use std::sync::mpsc;
 use std::task::{Context, Poll, Waker};
@@ -10,62 +11,69 @@ use sentry::{Envelope, Hub, HubSwitchGuard};
 use tracing::Span;
 
 /// Test that the [`sentry_tracing::SentryLayer`]'s `on_exit` implementation panics
-/// (only when `debug_assertions` are enabled) if a span is exited on a span that
-/// was entered on a different thread than where it was exited. Here, we specifically
-/// test a future that is awaited across threads, as that is probably the most common
-/// scenario where this can occur.
+/// (only when `debug_assertions` are enabled) if a span, captured by Sentry, is exited
+/// on a span that was entered on a different thread than where it was exited.
+///
+/// Here, we specifically test a future that is awaited across threads, as that is
+/// probably the most common scenario where this can occur.
+///
+/// We use an info-level span, as that's the lowest level captured by Sentry by default.
 #[test]
-fn future_cross_thread() {
+fn future_cross_thread_info_span() {
+    const SPAN_NAME: &str = "future_cross_thread_info_span";
+
     let _guard = HubSwitchGuard::new(Hub::new_from_top(Hub::current()).into());
     let transport = shared::init_sentry(1.0);
 
-    let mut future = Box::pin(span_across_await());
+    let span = tracing::info_span!(SPAN_NAME);
 
-    let (tx, rx) = mpsc::channel();
+    let thread2_result = futures_cross_thread_common(span);
 
-    let thread1 = thread::spawn(move || {
-        let poll = future.as_mut().poll(&mut noop_context());
-        assert!(poll.is_pending(), "future should be pending");
-        tx.send(future).expect("failed to send future");
-    });
-
-    let thread2 = thread::spawn(move || {
-        let _ = rx
-            .recv()
-            .expect("failed to receive future")
-            .as_mut()
-            .poll(&mut noop_context());
-    });
-
-    thread1
-        .join()
-        .expect("thread 1 panicked, but should have completed");
-
-    let thread2_panic_message = thread2
-        .join()
+    let thread2_panic_message = thread2_result
         .expect_err("thread2 did not panic, but it should have")
         .downcast::<String>()
         .expect("expected thread2 to panic with a String message");
 
     assert!(
         thread2_panic_message.starts_with("[SentryLayer] missing HubSwitchGuard on exit for span"),
-        "Thread 2's panicked, but not for the expected reason. It is also possible that the panic \
+        "Thread 2 panicked, but not for the expected reason. It is also possible that the panic \
         message was changed without updating this test."
     );
 
-    // Despite the panic, the transaction should still get sent to Sentry
-    assert_transaction(transport.fetch_and_clear_envelopes());
+    assert_transaction(transport.fetch_and_clear_envelopes(), SPAN_NAME);
 }
 
-/// Counterpart to [`future_cross_thread`]; here, we check that the panic asserted in
-/// [`future_cross_thread`] is not triggered when the span is exited on the same thread
-/// that it was entered on.
+/// Counterpart to [`future_cross_thread_info_span`]; here, we check that no panic occurs
+/// if the span is not captured by Sentry.
+///
+/// No panic should occur because we do not change the [`Hub`] for spans that we don't capture,
+/// and so, we should not expect to pop a [`HubSwitchGuard`].
 #[test]
-fn futures_same_thread() {
+fn future_cross_thread_trace_span() {
     let _guard = HubSwitchGuard::new(Hub::new_from_top(Hub::current()).into());
     let transport = shared::init_sentry(1.0);
 
-    let mut future = Box::pin(span_across_await());
+    let span = tracing::trace_span!("future_cross_thread_trace_span");
+
+    futures_cross_thread_common(span)
+        .expect("no panic should occur for spans not captured by Sentry");
+
+    assert!(
+        transport.fetch_and_clear_envelopes().is_empty(),
+        "No envelopes should be sent for spans not captured by Sentry"
+    );
+}
+
+/// Counterpart to [`future_cross_thread_info_span`]; here, we check that the panic asserted in
+/// [`future_cross_thread`] is not triggered when the span is exited on the same thread
+/// that it was entered on.
+#[test]
+fn futures_same_thread_info_span() {
+    let _guard = HubSwitchGuard::new(Hub::new_from_top(Hub::current()).into());
+    let transport = shared::init_sentry(1.0);
+
+    let span = tracing::info_span!("futures_same_thread_info_span");
+    let mut future = Box::pin(span_across_await(span));
 
     let thread = thread::spawn(move || {
         assert!(
@@ -79,13 +87,48 @@ fn futures_same_thread() {
     });
 
     thread.join().expect("thread should complete successfully");
-    assert_transaction(transport.fetch_and_clear_envelopes());
+    assert_transaction(
+        transport.fetch_and_clear_envelopes(),
+        "futures_same_thread_info_span",
+    );
+}
+
+/// Common logic for cross-thread tests.
+///
+/// This function sets up the [`span_across_await`] future, then executes it such that
+/// the span gets entered and exited from different threads.
+fn futures_cross_thread_common(span: Span) -> Result<(), Box<dyn Any + Send + 'static>> {
+    let mut future = Box::pin(span_across_await(span));
+
+    let (tx, rx) = mpsc::channel();
+
+    let thread1 = thread::spawn(move || {
+        let poll = future.as_mut().poll(&mut noop_context());
+        assert!(poll.is_pending(), "future should be pending");
+        tx.send(future).expect("failed to send future");
+    });
+
+    let thread2 = thread::spawn(move || {
+        let poll = rx
+            .recv()
+            .expect("failed to receive future")
+            .as_mut()
+            .poll(&mut noop_context());
+
+        assert!(poll.is_ready(), "future should be ready");
+    });
+
+    thread1
+        .join()
+        .expect("thread 1 panicked, but should have completed");
+
+    thread2.join()
 }
 
 /// Assert that the given envelopes contain exactly one [`Envelope`],
 /// containing exactly one [`EnvelopeItem`], which is a [`Transaction`],
-/// with [`name`](Transaction::name) `"span_across_await"`.
-fn assert_transaction(envelopes: Vec<Envelope>) {
+/// with given [`name`](Transaction::name).
+fn assert_transaction(envelopes: Vec<Envelope>, name: &str) {
     let envelope = get_and_assert_only_item(envelopes, "expected exactly one envelope");
     let item = get_and_assert_only_item(envelope.into_items(), "expected exactly one item");
 
@@ -95,19 +138,17 @@ fn assert_transaction(envelopes: Vec<Envelope>) {
             EnvelopeItem::Transaction(Transaction {
                 name: Some(expected_name),
                 ..
-            }) if expected_name == "span_across_await"
+            }) if expected_name == name
         ),
-        "expected a Transaction item with name \"span_across_await\""
+        "expected a Transaction item with name {name:?}"
     );
 }
 
-/// A helper function which creates and [`enter`s](tracing::Span::enter)
-/// a [`Span`](tracing::Span), holding the returned
+/// A helper function which and [`enter`s](tracing::Span::enter)
+/// a given [`Span`](tracing::Span), holding the returned
 /// [`Entered<'_>`](tracing::span::Entered) guard across an `.await` boundary.
-async fn span_across_await() {
-    let span = tracing::span!(Level::INFO, "span_across_await");
+async fn span_across_await(span: Span) {
     let _entered = span.enter();
-
     yield_once().await;
     // _entered dropped here, after .await call
 }

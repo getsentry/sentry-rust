@@ -379,15 +379,19 @@ where
     }
 
     /// Drop the current span's [`HubSwitchGuard`] to restore the parent [`Hub`].
-    fn on_exit(&self, id: &span::Id, _: Context<'_, S>) {
+    fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
         let popped = SPAN_GUARDS.with(|guards| guards.borrow_mut().pop(id.clone()));
 
+        // We should have popped a guard if the tracing span has `SentrySpanData` extensions.
         sentry_core::debug_assert_or_log!(
-            popped.is_some(),
-            "[SentryLayer] missing HubSwitchGuard on exit for span {id:?}; \
-            expected balanced enter/exit on the same thread. Likely causes: cross-thread exit, \
-            unbalanced enter/exit, or holding enter guards across `.await` \
-            (prefer `Span::in_scope`/`Future::instrument`)."
+            popped.is_some()
+                || ctx
+                    .span(id)
+                    .is_none_or(|span| span.extensions().get::<SentrySpanData>().is_none()),
+            "[SentryLayer] missing HubSwitchGuard on exit for span {id:?}. \
+            This span has been exited more times on this thread than it has been entered, \
+            likely due to dropping an `Entered` guard in a different thread than where it was \
+            entered. This mismatch will likely cause the sentry-tracing layer to leak memory."
         );
     }
 
@@ -522,8 +526,7 @@ thread_local! {
     /// Hub switch guards keyed by span ID.
     ///
     /// Guard bookkeeping is thread-local by design. Correctness expects
-    /// balanced enter/exit callbacks on the same thread; `on_close` performs
-    /// best-effort fallback cleanup for mismatches.
+    /// balanced enter/exit callbacks on the same thread.
     static SPAN_GUARDS: RefCell<SpanGuardStack> = RefCell::new(SpanGuardStack::new());
 }
 
