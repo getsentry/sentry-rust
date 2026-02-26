@@ -27,6 +27,20 @@ thread_local! {
 pub struct SwitchGuard {
     inner: Option<(Arc<Hub>, bool)>,
     /// Makes this type `!Send` while keeping it `Sync`.
+    ///
+    /// ```rust
+    /// # use sentry_core::HubSwitchGuard as SwitchGuard;
+    /// trait AssertSync: Sync {}
+    ///
+    /// impl AssertSync for SwitchGuard {}
+    /// ```
+    ///
+    /// ```rust,compile_fail
+    /// # use sentry_core::HubSwitchGuard as SwitchGuard;
+    /// trait AssertSend: Send {}
+    ///
+    /// impl AssertSend for SwitchGuard {}
+    /// ```
     _not_send: PhantomData<MutexGuard<'static, ()>>,
 }
 
