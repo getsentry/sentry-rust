@@ -8,6 +8,7 @@
 
 ### New Features
 
+- Implement strict trace continuation with org_id validation ([#1017](https://github.com/getsentry/sentry-rust/pull/1017))
 - Added a `Envelope::into_items` method, which returns an iterator over owned [`EnvelopeItem`s](https://docs.rs/sentry/0.46.2/sentry/protocol/enum.EnvelopeItem.html) in the [`Envelope`](https://docs.rs/sentry/0.46.2/sentry/struct.Envelope.html) ([#983](https://github.com/getsentry/sentry-rust/pull/983)).
 - Expose transport utilities ([#949](https://github.com/getsentry/sentry-rust/pull/949))
 

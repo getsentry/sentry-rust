@@ -1506,14 +1506,8 @@ mod tests {
             parse_baggage_org_id("sentry-trace_id=abc, sentry-org_id=5678"),
             Some("5678".to_owned())
         );
-        assert_eq!(
-            parse_baggage_org_id("sentry-trace_id=abc"),
-            None
-        );
-        assert_eq!(
-            parse_baggage_org_id("sentry-org_id="),
-            None
-        );
+        assert_eq!(parse_baggage_org_id("sentry-trace_id=abc"), None);
+        assert_eq!(parse_baggage_org_id("sentry-org_id="), None);
     }
 
     #[cfg(feature = "client")]

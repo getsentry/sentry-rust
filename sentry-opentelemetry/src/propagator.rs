@@ -71,7 +71,7 @@ impl TextMapPropagator for SentryPropagator {
             .filter_map(|&key| extractor.get(key).map(|value| (key, value)))
             .collect();
 
-        let sentry_trace = parse_headers(pairs.iter().map(|(k, v)| (*k, v.as_ref())));
+        let sentry_trace = parse_headers(pairs.iter().map(|(k, v)| (*k, &**v)));
         let sentry_trace = match sentry_trace {
             Some(st) => st,
             None => return ctx.clone(),
