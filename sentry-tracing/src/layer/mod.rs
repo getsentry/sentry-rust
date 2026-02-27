@@ -343,7 +343,7 @@ where
     /// A tracing span can be entered and exited multiple times, for example,
     /// when using a `tracing::Instrumented` future.
     ///
-    /// Spans must be exited on the same span that they are entered. The
+    /// Spans must be exited on the same thread that they are entered. The
     /// `sentry-tracing` integration's behavior is undefined if spans are
     /// exited on threads other than the one they are entered from;
     /// specifically, doing so will likely cause data to bleed between
