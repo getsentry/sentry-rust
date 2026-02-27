@@ -12,7 +12,7 @@ use tracing::Span;
 
 /// Test that the [`sentry_tracing::SentryLayer`]'s `on_exit` implementation panics
 /// (only when `debug_assertions` are enabled) if a span, captured by Sentry, is exited
-/// on a span that was entered on a different thread than where it was exited.
+/// on a different thread than where it was entered.
 ///
 /// Here, we specifically test a future that is awaited across threads, as that is
 /// probably the most common scenario where this can occur.
@@ -29,16 +29,23 @@ fn future_cross_thread_info_span() {
 
     let thread2_result = futures_cross_thread_common(span);
 
-    let thread2_panic_message = thread2_result
-        .expect_err("thread2 did not panic, but it should have")
-        .downcast::<String>()
-        .expect("expected thread2 to panic with a String message");
+    // Panic should only occur when debug_assertions are enabled.
+    #[cfg(debug_assertions)]
+    {
+        let thread2_panic_message = thread2_result
+            .expect_err("thread2 did not panic, but it should have (debug_assertions enabled)")
+            .downcast::<String>()
+            .expect("expected thread2 to panic with a String message");
 
-    assert!(
-        thread2_panic_message.starts_with("[SentryLayer] missing HubSwitchGuard on exit for span"),
-        "Thread 2 panicked, but not for the expected reason. It is also possible that the panic \
-        message was changed without updating this test."
-    );
+        assert!(
+            thread2_panic_message.starts_with("[SentryLayer] missing HubSwitchGuard on exit for span"),
+            "Thread 2 panicked, but not for the expected reason. It is also possible that the panic \
+            message was changed without updating this test."
+        );
+    }
+
+    #[cfg(not(debug_assertions))]
+    thread2_result.expect("thread2 should not panic if debug_assertions are disabled");
 
     assert_transaction(transport.fetch_and_clear_envelopes(), SPAN_NAME);
 }
