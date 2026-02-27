@@ -7,6 +7,8 @@ use crate::constants::USER_AGENT;
 use crate::performance::TracesSampler;
 #[cfg(feature = "logs")]
 use crate::protocol::Log;
+#[cfg(feature = "metrics")]
+use crate::protocol::TraceMetric;
 use crate::protocol::{Breadcrumb, Event};
 use crate::types::Dsn;
 use crate::{Integration, IntoDsn, TransportFactory};
@@ -172,6 +174,12 @@ pub struct ClientOptions {
     /// Determines whether captured structured logs should be sent to Sentry (defaults to false).
     #[cfg(feature = "logs")]
     pub enable_logs: bool,
+    /// Determines whether captured trace metrics should be sent to Sentry (defaults to true).
+    #[cfg(feature = "metrics")]
+    pub enable_metrics: bool,
+    /// Callback that is executed for each TraceMetric being added.
+    #[cfg(feature = "metrics")]
+    pub before_send_metric: Option<BeforeCallback<TraceMetric>>,
     // Other options not documented in Unified API
     /// Disable SSL verification.
     ///
@@ -232,6 +240,12 @@ impl fmt::Debug for ClientOptions {
             struct BeforeSendLog;
             self.before_send_log.as_ref().map(|_| BeforeSendLog)
         };
+        #[cfg(feature = "metrics")]
+        let before_send_metric = {
+            #[derive(Debug)]
+            struct BeforeSendMetric;
+            self.before_send_metric.as_ref().map(|_| BeforeSendMetric)
+        };
         #[derive(Debug)]
         struct TransportFactory;
 
@@ -278,6 +292,11 @@ impl fmt::Debug for ClientOptions {
             .field("enable_logs", &self.enable_logs)
             .field("before_send_log", &before_send_log);
 
+        #[cfg(feature = "metrics")]
+        debug_struct
+            .field("enable_metrics", &self.enable_metrics)
+            .field("before_send_metric", &before_send_metric);
+
         debug_struct.field("user_agent", &self.user_agent).finish()
     }
 }
@@ -317,6 +336,10 @@ impl Default for ClientOptions {
             enable_logs: true,
             #[cfg(feature = "logs")]
             before_send_log: None,
+            #[cfg(feature = "metrics")]
+            enable_metrics: true,
+            #[cfg(feature = "metrics")]
+            before_send_metric: None,
         }
     }
 }

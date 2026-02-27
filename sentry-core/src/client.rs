@@ -1,6 +1,6 @@
 use std::any::TypeId;
 use std::borrow::Cow;
-#[cfg(feature = "logs")]
+#[cfg(any(feature = "logs", feature = "metrics"))]
 use std::collections::BTreeMap;
 use std::fmt;
 use std::panic::RefUnwindSafe;
@@ -12,9 +12,9 @@ use crate::protocol::SessionUpdate;
 use rand::random;
 use sentry_types::random_uuid;
 
+#[cfg(any(feature = "logs", feature = "metrics"))]
+use crate::batcher::Batcher;
 use crate::constants::SDK_INFO;
-#[cfg(feature = "logs")]
-use crate::logs::LogsBatcher;
 use crate::protocol::{ClientSdkInfo, Event};
 #[cfg(feature = "release-health")]
 use crate::session::SessionFlusher;
@@ -24,6 +24,10 @@ use crate::SessionMode;
 use crate::{ClientOptions, Envelope, Hub, Integration, Scope, Transport};
 #[cfg(feature = "logs")]
 use sentry_types::protocol::v7::Context;
+#[cfg(all(feature = "metrics", not(feature = "logs")))]
+use sentry_types::protocol::v7::LogAttribute;
+#[cfg(feature = "metrics")]
+use sentry_types::protocol::v7::TraceMetric;
 #[cfg(feature = "logs")]
 use sentry_types::protocol::v7::{Log, LogAttribute};
 
@@ -58,9 +62,13 @@ pub struct Client {
     #[cfg(feature = "release-health")]
     session_flusher: RwLock<Option<SessionFlusher>>,
     #[cfg(feature = "logs")]
-    logs_batcher: RwLock<Option<LogsBatcher>>,
+    logs_batcher: RwLock<Option<Batcher<Log>>>,
     #[cfg(feature = "logs")]
     default_log_attributes: Option<BTreeMap<String, LogAttribute>>,
+    #[cfg(feature = "metrics")]
+    metrics_batcher: RwLock<Option<Batcher<TraceMetric>>>,
+    #[cfg(feature = "metrics")]
+    default_metric_attributes: Option<BTreeMap<String, LogAttribute>>,
     integrations: Vec<(TypeId, Arc<dyn Integration>)>,
     pub(crate) sdk_info: ClientSdkInfo,
 }
@@ -86,7 +94,14 @@ impl Clone for Client {
 
         #[cfg(feature = "logs")]
         let logs_batcher = RwLock::new(if self.options.enable_logs {
-            Some(LogsBatcher::new(transport.clone()))
+            Some(Batcher::new(transport.clone(), "logs"))
+        } else {
+            None
+        });
+
+        #[cfg(feature = "metrics")]
+        let metrics_batcher = RwLock::new(if self.options.enable_metrics {
+            Some(Batcher::new(transport.clone(), "metrics"))
         } else {
             None
         });
@@ -100,6 +115,10 @@ impl Clone for Client {
             logs_batcher,
             #[cfg(feature = "logs")]
             default_log_attributes: self.default_log_attributes.clone(),
+            #[cfg(feature = "metrics")]
+            metrics_batcher,
+            #[cfg(feature = "metrics")]
+            default_metric_attributes: self.default_metric_attributes.clone(),
             integrations: self.integrations.clone(),
             sdk_info: self.sdk_info.clone(),
         }
@@ -171,7 +190,14 @@ impl Client {
 
         #[cfg(feature = "logs")]
         let logs_batcher = RwLock::new(if options.enable_logs {
-            Some(LogsBatcher::new(transport.clone()))
+            Some(Batcher::new(transport.clone(), "logs"))
+        } else {
+            None
+        });
+
+        #[cfg(feature = "metrics")]
+        let metrics_batcher = RwLock::new(if options.enable_metrics {
+            Some(Batcher::new(transport.clone(), "metrics"))
         } else {
             None
         });
@@ -186,12 +212,19 @@ impl Client {
             logs_batcher,
             #[cfg(feature = "logs")]
             default_log_attributes: None,
+            #[cfg(feature = "metrics")]
+            metrics_batcher,
+            #[cfg(feature = "metrics")]
+            default_metric_attributes: None,
             integrations,
             sdk_info,
         };
 
         #[cfg(feature = "logs")]
         client.cache_default_log_attributes();
+
+        #[cfg(feature = "metrics")]
+        client.cache_default_metric_attributes();
 
         client
     }
@@ -245,6 +278,35 @@ impl Client {
         }
 
         self.default_log_attributes = Some(attributes);
+    }
+
+    #[cfg(feature = "metrics")]
+    fn cache_default_metric_attributes(&mut self) {
+        let mut attributes = BTreeMap::new();
+
+        if let Some(environment) = self.options.environment.as_ref() {
+            attributes.insert("sentry.environment".to_owned(), environment.clone().into());
+        }
+
+        if let Some(release) = self.options.release.as_ref() {
+            attributes.insert("sentry.release".to_owned(), release.clone().into());
+        }
+
+        attributes.insert(
+            "sentry.sdk.name".to_owned(),
+            self.sdk_info.name.to_owned().into(),
+        );
+
+        attributes.insert(
+            "sentry.sdk.version".to_owned(),
+            self.sdk_info.version.to_owned().into(),
+        );
+
+        if let Some(server) = &self.options.server_name {
+            attributes.insert("server.address".to_owned(), server.clone().into());
+        }
+
+        self.default_metric_attributes = Some(attributes);
     }
 
     pub(crate) fn get_integration<I>(&self) -> Option<&I>
@@ -420,6 +482,10 @@ impl Client {
         if let Some(ref batcher) = *self.logs_batcher.read().unwrap() {
             batcher.flush();
         }
+        #[cfg(feature = "metrics")]
+        if let Some(ref batcher) = *self.metrics_batcher.read().unwrap() {
+            batcher.flush();
+        }
         if let Some(ref transport) = *self.transport.read().unwrap() {
             transport.flush(timeout.unwrap_or(self.options.shutdown_timeout))
         } else {
@@ -439,6 +505,8 @@ impl Client {
         drop(self.session_flusher.write().unwrap().take());
         #[cfg(feature = "logs")]
         drop(self.logs_batcher.write().unwrap().take());
+        #[cfg(feature = "metrics")]
+        drop(self.metrics_batcher.write().unwrap().take());
         let transport_opt = self.transport.write().unwrap().take();
         if let Some(transport) = transport_opt {
             sentry_debug!("client close; request transport to shut down");
@@ -492,6 +560,41 @@ impl Client {
         }
 
         Some(log)
+    }
+
+    /// Captures a trace metric and sends it to Sentry.
+    #[cfg(feature = "metrics")]
+    pub fn capture_metric(&self, metric: TraceMetric, scope: &Scope) {
+        if !self.options.enable_metrics {
+            return;
+        }
+        if let Some(metric) = self.prepare_metric(metric, scope) {
+            if let Some(ref batcher) = *self.metrics_batcher.read().unwrap() {
+                batcher.enqueue(metric);
+            }
+        }
+    }
+
+    /// Prepares a metric to be sent, setting the `trace_id` and other default attributes, and
+    /// processing it through `before_send_metric`.
+    #[cfg(feature = "metrics")]
+    fn prepare_metric(&self, mut metric: TraceMetric, scope: &Scope) -> Option<TraceMetric> {
+        scope.apply_to_metric(&mut metric, self.options.send_default_pii);
+
+        if let Some(default_attributes) = self.default_metric_attributes.as_ref() {
+            for (key, val) in default_attributes.iter() {
+                metric
+                    .attributes
+                    .entry(key.to_owned())
+                    .or_insert(val.clone());
+            }
+        }
+
+        if let Some(ref func) = self.options.before_send_metric {
+            metric = func(metric)?;
+        }
+
+        Some(metric)
     }
 }
 

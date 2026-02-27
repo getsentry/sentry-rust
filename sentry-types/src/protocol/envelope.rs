@@ -11,7 +11,7 @@ use super::v7 as protocol;
 
 use protocol::{
     Attachment, AttachmentType, ClientSdkInfo, DynamicSamplingContext, Event, Log, MonitorCheckIn,
-    SessionAggregates, SessionUpdate, Transaction,
+    SessionAggregates, SessionUpdate, TraceMetric, Transaction,
 };
 
 /// Raised if a envelope cannot be parsed from a given input.
@@ -127,6 +127,9 @@ enum EnvelopeItemType {
     /// A container of Log items.
     #[serde(rename = "log")]
     LogsContainer,
+    /// A container of TraceMetric items.
+    #[serde(rename = "trace_metric")]
+    TraceMetricsContainer,
 }
 
 /// An Envelope Item Header.
@@ -192,6 +195,8 @@ pub enum EnvelopeItem {
 pub enum ItemContainer {
     /// A list of logs.
     Logs(Vec<Log>),
+    /// A list of trace metrics.
+    TraceMetrics(Vec<TraceMetric>),
 }
 
 #[allow(clippy::len_without_is_empty, reason = "is_empty is not needed")]
@@ -200,6 +205,7 @@ impl ItemContainer {
     pub fn len(&self) -> usize {
         match self {
             Self::Logs(logs) => logs.len(),
+            Self::TraceMetrics(metrics) => metrics.len(),
         }
     }
 
@@ -207,6 +213,7 @@ impl ItemContainer {
     pub fn ty(&self) -> &'static str {
         match self {
             Self::Logs(_) => "log",
+            Self::TraceMetrics(_) => "trace_metric",
         }
     }
 
@@ -214,6 +221,7 @@ impl ItemContainer {
     pub fn content_type(&self) -> &'static str {
         match self {
             Self::Logs(_) => "application/vnd.sentry.items.log+json",
+            Self::TraceMetrics(_) => "application/vnd.sentry.items.trace-metric+json",
         }
     }
 }
@@ -221,6 +229,12 @@ impl ItemContainer {
 impl From<Vec<Log>> for ItemContainer {
     fn from(logs: Vec<Log>) -> Self {
         Self::Logs(logs)
+    }
+}
+
+impl From<Vec<TraceMetric>> for ItemContainer {
+    fn from(metrics: Vec<TraceMetric>) -> Self {
+        Self::TraceMetrics(metrics)
     }
 }
 
@@ -232,6 +246,16 @@ struct LogsSerializationWrapper<'a> {
 #[derive(Deserialize)]
 struct LogsDeserializationWrapper {
     items: Vec<Log>,
+}
+
+#[derive(Serialize)]
+struct TraceMetricsSerializationWrapper<'a> {
+    items: &'a [TraceMetric],
+}
+
+#[derive(Deserialize)]
+struct TraceMetricsDeserializationWrapper {
+    items: Vec<TraceMetric>,
 }
 
 impl From<Event<'static>> for EnvelopeItem {
@@ -279,6 +303,12 @@ impl From<ItemContainer> for EnvelopeItem {
 impl From<Vec<Log>> for EnvelopeItem {
     fn from(logs: Vec<Log>) -> Self {
         EnvelopeItem::ItemContainer(logs.into())
+    }
+}
+
+impl From<Vec<TraceMetric>> for EnvelopeItem {
+    fn from(metrics: Vec<TraceMetric>) -> Self {
+        EnvelopeItem::ItemContainer(metrics.into())
     }
 }
 
@@ -505,6 +535,10 @@ impl Envelope {
                         let wrapper = LogsSerializationWrapper { items: logs };
                         serde_json::to_writer(&mut item_buf, &wrapper)?
                     }
+                    ItemContainer::TraceMetrics(metrics) => {
+                        let wrapper = TraceMetricsSerializationWrapper { items: metrics };
+                        serde_json::to_writer(&mut item_buf, &wrapper)?
+                    }
                 },
                 EnvelopeItem::Raw => {
                     continue;
@@ -675,6 +709,10 @@ impl Envelope {
             EnvelopeItemType::LogsContainer => {
                 serde_json::from_slice::<LogsDeserializationWrapper>(payload)
                     .map(|x| EnvelopeItem::ItemContainer(ItemContainer::Logs(x.items)))
+            }
+            EnvelopeItemType::TraceMetricsContainer => {
+                serde_json::from_slice::<TraceMetricsDeserializationWrapper>(payload)
+                    .map(|x| EnvelopeItem::ItemContainer(ItemContainer::TraceMetrics(x.items)))
             }
         }
         .map_err(EnvelopeError::InvalidItemPayload)?;

@@ -6,11 +6,16 @@ use std::sync::Mutex;
 use std::sync::{Arc, PoisonError, RwLock};
 
 use crate::performance::TransactionOrSpan;
+#[cfg(feature = "logs")]
+use crate::protocol::Log;
+#[cfg(any(feature = "logs", feature = "metrics"))]
+use crate::protocol::LogAttribute;
+#[cfg(feature = "metrics")]
+use crate::protocol::TraceMetric;
 use crate::protocol::{
     Attachment, Breadcrumb, Context, Event, Level, TraceContext, Transaction, User, Value,
 };
-#[cfg(feature = "logs")]
-use crate::protocol::{Log, LogAttribute};
+
 #[cfg(feature = "release-health")]
 use crate::session::Session;
 use crate::{Client, SentryTrace, TraceHeader, TraceHeadersIter};
@@ -394,6 +399,59 @@ impl Scope {
                         "user.email".to_owned(),
                         LogAttribute(email.to_owned().into()),
                     );
+                }
+            }
+        }
+    }
+
+    /// Applies the contained scoped data to a trace metric, setting the `trace_id`, `span_id`,
+    /// and certain default attributes. User PII attributes are only attached when
+    /// `send_default_pii` is `true`.
+    #[cfg(feature = "metrics")]
+    pub fn apply_to_metric(&self, metric: &mut TraceMetric, send_default_pii: bool) {
+        if let Some(span) = self.span.as_ref() {
+            metric.trace_id = span.get_trace_context().trace_id;
+        } else {
+            metric.trace_id = self.propagation_context.trace_id;
+        }
+
+        if metric.span_id.is_none() {
+            if let Some(span) = self.get_span() {
+                let span_id = match span {
+                    crate::TransactionOrSpan::Transaction(transaction) => {
+                        transaction.get_trace_context().span_id
+                    }
+                    crate::TransactionOrSpan::Span(span) => span.get_span_id(),
+                };
+                metric.span_id = Some(span_id);
+            }
+        }
+
+        if send_default_pii {
+            if let Some(user) = self.user.as_ref() {
+                if !metric.attributes.contains_key("user.id") {
+                    if let Some(id) = user.id.as_ref() {
+                        metric
+                            .attributes
+                            .insert("user.id".to_owned(), LogAttribute(id.to_owned().into()));
+                    }
+                }
+
+                if !metric.attributes.contains_key("user.name") {
+                    if let Some(name) = user.username.as_ref() {
+                        metric
+                            .attributes
+                            .insert("user.name".to_owned(), LogAttribute(name.to_owned().into()));
+                    }
+                }
+
+                if !metric.attributes.contains_key("user.email") {
+                    if let Some(email) = user.email.as_ref() {
+                        metric.attributes.insert(
+                            "user.email".to_owned(),
+                            LogAttribute(email.to_owned().into()),
+                        );
+                    }
                 }
             }
         }
