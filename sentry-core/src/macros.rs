@@ -113,14 +113,22 @@ mod tests {
     }
 
     #[test]
+    #[cfg(debug_assertions)]
     #[should_panic(expected = "assertion failed: 1 == 2")]
     fn debug_assert_or_log_panics_with_default_message_when_condition_fails() {
         crate::debug_assert_or_log!(1 == 2);
     }
 
     #[test]
+    #[cfg(debug_assertions)]
     #[should_panic(expected = "custom invariant message")]
     fn debug_assert_or_log_panics_with_custom_message_when_condition_fails() {
         crate::debug_assert_or_log!(false, "custom invariant message");
+    }
+
+    #[test]
+    #[cfg(not(debug_assertions))]
+    fn no_panic_without_debug_assertions() {
+        crate::debug_assert_or_log!(false, "should not panic");
     }
 }
