@@ -19,8 +19,7 @@ use opentelemetry::{
     trace::TraceContextExt,
     Context, SpanId, TraceId,
 };
-use sentry_core::parse_headers;
-use sentry_core::SentryTrace;
+use sentry_core::{parse_baggage_org_id, parse_headers, SentryTrace};
 
 use crate::converters::{convert_span_id, convert_trace_id};
 
@@ -67,13 +66,35 @@ impl TextMapPropagator for SentryPropagator {
 
     fn extract_with_context(&self, ctx: &Context, extractor: &dyn Extractor) -> Context {
         let keys = extractor.keys();
-        let pairs = keys
+        let pairs: Vec<_> = keys
             .iter()
-            .filter_map(|&key| extractor.get(key).map(|value| (key, value)));
-        if let Some(sentry_trace) = parse_headers(pairs) {
-            return ctx.with_value(sentry_trace);
+            .filter_map(|&key| extractor.get(key).map(|value| (key, value)))
+            .collect();
+
+        let sentry_trace = parse_headers(pairs.iter().map(|(k, v)| (*k, v.as_ref())));
+        let sentry_trace = match sentry_trace {
+            Some(st) => st,
+            None => return ctx.clone(),
+        };
+
+        // Extract baggage org_id for trace continuation validation
+        let baggage_org_id = pairs
+            .iter()
+            .find(|(k, _)| k.eq_ignore_ascii_case("baggage"))
+            .and_then(|(_, v)| parse_baggage_org_id(v));
+
+        // Validate org_id before continuing the trace
+        let client = sentry_core::Hub::with_active(|hub| hub.client());
+        if let Some(ref client) = client {
+            let client_org_id = client.org_id();
+            let strict = client.options().strict_trace_continuation;
+            if !sentry_core::should_continue_trace(client_org_id, baggage_org_id.as_deref(), strict)
+            {
+                return ctx.clone();
+            }
         }
-        ctx.clone()
+
+        ctx.with_value(sentry_trace)
     }
 
     fn fields(&self) -> FieldIter<'_> {

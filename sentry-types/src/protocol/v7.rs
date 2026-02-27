@@ -2558,4 +2558,9 @@ impl DynamicSamplingContext {
         self.org_id = Some(org_id);
         self
     }
+
+    /// Returns the organization ID, if set.
+    pub fn org_id(&self) -> Option<&OrganizationId> {
+        self.org_id.as_ref()
+    }
 }

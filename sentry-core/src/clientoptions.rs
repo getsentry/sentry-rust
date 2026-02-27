@@ -191,6 +191,22 @@ pub struct ClientOptions {
     pub session_mode: SessionMode,
     /// The user agent that should be reported.
     pub user_agent: Cow<'static, str>,
+    /// An explicit organization ID override.
+    ///
+    /// The SDK extracts the organization ID from the DSN automatically.
+    /// Use this option to override it for self-hosted or Relay setups.
+    /// This value is used for trace propagation and for `strict_trace_continuation`.
+    pub org_id: Option<String>,
+    /// If set to `true`, the SDK will only continue an incoming trace if the `org_id`
+    /// in the incoming baggage header matches the SDK's own `org_id`, and only if
+    /// **both** are present.
+    ///
+    /// When `false` (the default), org_id consistency is only enforced when both
+    /// the incoming trace and the SDK have an org_id. If either is missing, the
+    /// trace is continued.
+    ///
+    /// See <https://develop.sentry.dev/sdk/foundations/trace-propagation/#strict-trace-continuation>
+    pub strict_trace_continuation: bool,
 }
 
 impl ClientOptions {
@@ -278,7 +294,11 @@ impl fmt::Debug for ClientOptions {
             .field("enable_logs", &self.enable_logs)
             .field("before_send_log", &before_send_log);
 
-        debug_struct.field("user_agent", &self.user_agent).finish()
+        debug_struct
+            .field("user_agent", &self.user_agent)
+            .field("org_id", &self.org_id)
+            .field("strict_trace_continuation", &self.strict_trace_continuation)
+            .finish()
     }
 }
 
@@ -317,6 +337,8 @@ impl Default for ClientOptions {
             enable_logs: true,
             #[cfg(feature = "logs")]
             before_send_log: None,
+            org_id: None,
+            strict_trace_continuation: false,
         }
     }
 }
