@@ -12,9 +12,9 @@ use crate::protocol::SessionUpdate;
 use rand::random;
 use sentry_types::random_uuid;
 
-use crate::constants::SDK_INFO;
 #[cfg(feature = "logs")]
-use crate::logs::LogsBatcher;
+use crate::batcher::Batcher;
+use crate::constants::SDK_INFO;
 use crate::protocol::{ClientSdkInfo, Event};
 #[cfg(feature = "release-health")]
 use crate::session::SessionFlusher;
@@ -58,7 +58,7 @@ pub struct Client {
     #[cfg(feature = "release-health")]
     session_flusher: RwLock<Option<SessionFlusher>>,
     #[cfg(feature = "logs")]
-    logs_batcher: RwLock<Option<LogsBatcher>>,
+    logs_batcher: RwLock<Option<Batcher<Log>>>,
     #[cfg(feature = "logs")]
     default_log_attributes: Option<BTreeMap<String, LogAttribute>>,
     integrations: Vec<(TypeId, Arc<dyn Integration>)>,
@@ -86,7 +86,7 @@ impl Clone for Client {
 
         #[cfg(feature = "logs")]
         let logs_batcher = RwLock::new(if self.options.enable_logs {
-            Some(LogsBatcher::new(transport.clone()))
+            Some(Batcher::new(transport.clone()))
         } else {
             None
         });
@@ -171,7 +171,7 @@ impl Client {
 
         #[cfg(feature = "logs")]
         let logs_batcher = RwLock::new(if options.enable_logs {
-            Some(LogsBatcher::new(transport.clone()))
+            Some(Batcher::new(transport.clone()))
         } else {
             None
         });
