@@ -136,12 +136,12 @@ pub use crate::transport::{Transport, TransportFactory};
 mod logger; // structured logging macros exported with `#[macro_export]`
 
 // client feature
+#[cfg(all(feature = "client", feature = "logs"))]
+mod batcher;
 #[cfg(feature = "client")]
 mod client;
 #[cfg(feature = "client")]
 mod hub_impl;
-#[cfg(all(feature = "client", feature = "logs"))]
-mod logs;
 #[cfg(feature = "client")]
 mod session;
 

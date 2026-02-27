@@ -1,4 +1,4 @@
-//! Batching for Sentry [structured logs](https://docs.sentry.io/product/explore/logs/).
+//! Generic batching for Sentry envelope items.
 
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::thread::JoinHandle;
@@ -7,31 +7,36 @@ use std::time::{Duration, Instant};
 use crate::client::TransportArc;
 use crate::protocol::EnvelopeItem;
 use crate::Envelope;
-use sentry_types::protocol::v7::Log;
 
-// Flush when there's 100 logs in the buffer
-const MAX_LOG_ITEMS: usize = 100;
+// Flush when there's 100 items in the buffer
+const MAX_ITEMS: usize = 100;
 // Or when 5 seconds have passed from the last flush
 const FLUSH_INTERVAL: Duration = Duration::from_secs(5);
 
-#[derive(Debug, Default)]
-struct LogQueue {
-    logs: Vec<Log>,
+#[derive(Debug)]
+struct BatchQueue<T> {
+    items: Vec<T>,
 }
 
-/// Accumulates logs in the queue and submits them through the transport when one of the flushing
+/// Accumulates items in the queue and submits them through the transport when one of the flushing
 /// conditions is met.
-pub(crate) struct LogsBatcher {
+pub(crate) struct Batcher<T: Send + 'static> {
     transport: TransportArc,
-    queue: Arc<Mutex<LogQueue>>,
+    queue: Arc<Mutex<BatchQueue<T>>>,
     shutdown: Arc<(Mutex<bool>, Condvar)>,
     worker: Option<JoinHandle<()>>,
+    into_envelope_item: fn(Vec<T>) -> EnvelopeItem,
+    name: &'static str,
 }
 
-impl LogsBatcher {
-    /// Creates a new LogsBatcher that will submit envelopes to the given `transport`.
-    pub(crate) fn new(transport: TransportArc) -> Self {
-        let queue = Arc::new(Mutex::new(Default::default()));
+impl<T: Send + 'static> Batcher<T> {
+    /// Creates a new Batcher that will submit envelopes to the given `transport`.
+    pub(crate) fn new(
+        transport: TransportArc,
+        name: &'static str,
+        into_envelope_item: fn(Vec<T>) -> EnvelopeItem,
+    ) -> Self {
+        let queue = Arc::new(Mutex::new(BatchQueue { items: Vec::new() }));
         #[allow(clippy::mutex_atomic)]
         let shutdown = Arc::new((Mutex::new(false), Condvar::new()));
 
@@ -39,7 +44,7 @@ impl LogsBatcher {
         let worker_queue = queue.clone();
         let worker_shutdown = shutdown.clone();
         let worker = std::thread::Builder::new()
-            .name("sentry-logs-batcher".into())
+            .name(format!("sentry-{name}-batcher"))
             .spawn(move || {
                 let (lock, cvar) = worker_shutdown.as_ref();
                 let mut shutdown = lock.lock().unwrap();
@@ -57,9 +62,11 @@ impl LogsBatcher {
                         return;
                     }
                     if last_flush.elapsed() >= FLUSH_INTERVAL {
-                        LogsBatcher::flush_queue_internal(
+                        Batcher::flush_queue_internal(
                             worker_queue.lock().unwrap(),
                             &worker_transport,
+                            into_envelope_item,
+                            name,
                         );
                         last_flush = Instant::now();
                     }
@@ -72,50 +79,61 @@ impl LogsBatcher {
             queue,
             shutdown,
             worker: Some(worker),
+            into_envelope_item,
+            name,
         }
     }
 
-    /// Enqueues a log for delayed sending.
+    /// Enqueues an item for delayed sending.
     ///
-    /// This will automatically flush the queue if it reaches a size of `BATCH_SIZE`.
-    pub(crate) fn enqueue(&self, log: Log) {
+    /// This will automatically flush the queue if it reaches a size of `MAX_ITEMS`.
+    pub(crate) fn enqueue(&self, item: T) {
         let mut queue = self.queue.lock().unwrap();
-        queue.logs.push(log);
-        if queue.logs.len() >= MAX_LOG_ITEMS {
-            LogsBatcher::flush_queue_internal(queue, &self.transport);
+        queue.items.push(item);
+        if queue.items.len() >= MAX_ITEMS {
+            Batcher::flush_queue_internal(
+                queue,
+                &self.transport,
+                self.into_envelope_item,
+                self.name,
+            );
         }
     }
 
     /// Flushes the queue to the transport.
     pub(crate) fn flush(&self) {
         let queue = self.queue.lock().unwrap();
-        LogsBatcher::flush_queue_internal(queue, &self.transport);
+        Batcher::flush_queue_internal(queue, &self.transport, self.into_envelope_item, self.name);
     }
 
     /// Flushes the queue to the transport.
     ///
     /// This is a static method as it will be called from both the background
     /// thread and the main thread on drop.
-    fn flush_queue_internal(mut queue_lock: MutexGuard<LogQueue>, transport: &TransportArc) {
-        let logs = std::mem::take(&mut queue_lock.logs);
+    fn flush_queue_internal(
+        mut queue_lock: MutexGuard<BatchQueue<T>>,
+        transport: &TransportArc,
+        into_envelope_item: fn(Vec<T>) -> EnvelopeItem,
+        name: &'static str,
+    ) {
+        let items = std::mem::take(&mut queue_lock.items);
         drop(queue_lock);
 
-        if logs.is_empty() {
+        if items.is_empty() {
             return;
         }
 
-        sentry_debug!("[LogsBatcher] Flushing {} logs", logs.len());
+        sentry_debug!("[Batcher({name})] Flushing {} items", items.len());
 
         if let Some(ref transport) = *transport.read().unwrap() {
             let mut envelope = Envelope::new();
-            let logs_item: EnvelopeItem = logs.into();
-            envelope.add_item(logs_item);
+            envelope.add_item(into_envelope_item(items));
             transport.send_envelope(envelope);
         }
     }
 }
 
-impl Drop for LogsBatcher {
+impl<T: Send + 'static> Drop for Batcher<T> {
     fn drop(&mut self) {
         let (lock, cvar) = self.shutdown.as_ref();
         *lock.lock().unwrap() = true;
@@ -124,7 +142,12 @@ impl Drop for LogsBatcher {
         if let Some(worker) = self.worker.take() {
             worker.join().ok();
         }
-        LogsBatcher::flush_queue_internal(self.queue.lock().unwrap(), &self.transport);
+        Batcher::flush_queue_internal(
+            self.queue.lock().unwrap(),
+            &self.transport,
+            self.into_envelope_item,
+            self.name,
+        );
     }
 }
 
