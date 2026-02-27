@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use bitflags::bitflags;
 use sentry_core::protocol::Value;
-use sentry_core::{Breadcrumb, TransactionOrSpan};
+use sentry_core::{Breadcrumb, Hub, HubSwitchGuard, TransactionOrSpan};
 use tracing_core::field::Visit;
 use tracing_core::{span, Event, Field, Level, Metadata, Subscriber};
 use tracing_subscriber::layer::{Context, Layer};
@@ -16,6 +16,9 @@ use crate::SENTRY_NAME_FIELD;
 use crate::SENTRY_OP_FIELD;
 use crate::SENTRY_TRACE_FIELD;
 use crate::TAGS_PREFIX;
+use span_guard_stack::SpanGuardStack;
+
+mod span_guard_stack;
 
 bitflags! {
     /// The action that Sentry should perform for a given [`Event`]
@@ -234,9 +237,7 @@ fn record_fields<'a, K: AsRef<str> + Into<Cow<'a, str>>>(
 /// the *current* span.
 pub(super) struct SentrySpanData {
     pub(super) sentry_span: TransactionOrSpan,
-    parent_sentry_span: Option<TransactionOrSpan>,
     hub: Arc<sentry_core::Hub>,
-    hub_switch_guard: Option<sentry_core::HubSwitchGuard>,
 }
 
 impl<S> Layer<S> for SentryLayer<S>
@@ -334,45 +335,64 @@ where
         set_default_attributes(&mut sentry_span, span.metadata());
 
         let mut extensions = span.extensions_mut();
-        extensions.insert(SentrySpanData {
-            sentry_span,
-            parent_sentry_span,
-            hub,
-            hub_switch_guard: None,
-        });
+        extensions.insert(SentrySpanData { sentry_span, hub });
     }
 
-    /// Sets entered span as *current* sentry span. A tracing span can be
-    /// entered and existed multiple times, for example, when using a `tracing::Instrumented` future.
+    /// Sets the entered span as *current* sentry span.
+    ///
+    /// A tracing span can be entered and exited multiple times, for example,
+    /// when using a `tracing::Instrumented` future.
+    ///
+    /// Spans must be exited on the same thread that they are entered. The
+    /// `sentry-tracing` integration's behavior is undefined if spans are
+    /// exited on threads other than the one they are entered from;
+    /// specifically, doing so will likely cause data to bleed between
+    /// [`Hub`]s in unexpected ways.
     fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
         let span = match ctx.span(id) {
             Some(span) => span,
             None => return,
         };
 
-        let mut extensions = span.extensions_mut();
-        if let Some(data) = extensions.get_mut::<SentrySpanData>() {
-            data.hub_switch_guard = Some(sentry_core::HubSwitchGuard::new(data.hub.clone()));
-            data.hub.configure_scope(|scope| {
+        let extensions = span.extensions();
+        if let Some(data) = extensions.get::<SentrySpanData>() {
+            // We fork the hub (based on the hub associated with the span)
+            // upon entering the span. This prevents data leakage if the span
+            // is entered and exited multiple times.
+            //
+            // Further, Hubs are meant to manage thread-local state, even
+            // though they can be shared across threads. As the span may being
+            // entered on a different thread than where it was created, we need
+            // to use a new hub to avoid altering state on the original thread.
+            let hub = Arc::new(Hub::new_from_top(&data.hub));
+
+            hub.configure_scope(|scope| {
                 scope.set_span(Some(data.sentry_span.clone()));
-            })
+            });
+
+            let guard = HubSwitchGuard::new(hub);
+
+            SPAN_GUARDS.with(|guards| {
+                guards.borrow_mut().push(id.clone(), guard);
+            });
         }
     }
 
-    /// Set exited span's parent as *current* sentry span.
+    /// Drop the current span's [`HubSwitchGuard`] to restore the parent [`Hub`].
     fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
-        let span = match ctx.span(id) {
-            Some(span) => span,
-            None => return,
-        };
+        let popped = SPAN_GUARDS.with(|guards| guards.borrow_mut().pop(id.clone()));
 
-        let mut extensions = span.extensions_mut();
-        if let Some(data) = extensions.get_mut::<SentrySpanData>() {
-            data.hub.configure_scope(|scope| {
-                scope.set_span(data.parent_sentry_span.clone());
-            });
-            data.hub_switch_guard.take();
-        }
+        // We should have popped a guard if the tracing span has `SentrySpanData` extensions.
+        sentry_core::debug_assert_or_log!(
+            popped.is_some()
+                || ctx
+                    .span(id)
+                    .is_none_or(|span| span.extensions().get::<SentrySpanData>().is_none()),
+            "[SentryLayer] missing HubSwitchGuard on exit for span {id:?}. \
+            This span has been exited more times on this thread than it has been entered, \
+            likely due to dropping an `Entered` guard in a different thread than where it was \
+            entered. This mismatch will likely cause the sentry-tracing layer to leak memory."
+        );
     }
 
     /// When a span gets closed, finish the underlying sentry span, and set back
@@ -503,6 +523,11 @@ fn extract_span_data(
 
 thread_local! {
     static VISITOR_BUFFER: RefCell<String> = const { RefCell::new(String::new()) };
+    /// Hub switch guards keyed by span ID.
+    ///
+    /// Guard bookkeeping is thread-local by design. Correctness expects
+    /// balanced enter/exit callbacks on the same thread.
+    static SPAN_GUARDS: RefCell<SpanGuardStack> = RefCell::new(SpanGuardStack::new());
 }
 
 /// Records all span fields into a `BTreeMap`, reusing a mutable `String` as buffer.

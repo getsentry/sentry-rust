@@ -64,6 +64,37 @@ macro_rules! sentry_debug {
     }
 }
 
+/// Panics in debug builds and logs through `sentry_debug!` in non-debug builds.
+#[macro_export]
+#[doc(hidden)]
+macro_rules! debug_panic_or_log {
+    ($($arg:tt)*) => {{
+        #[cfg(debug_assertions)]
+        panic!($($arg)*);
+
+        #[cfg(not(debug_assertions))]
+        $crate::sentry_debug!($($arg)*);
+    }};
+}
+
+/// If the condition is false, panics in debug builds and logs in non-debug builds.
+#[macro_export]
+#[doc(hidden)]
+macro_rules! debug_assert_or_log {
+    ($cond:expr $(,)?) => {{
+        let condition = $cond;
+        if !condition {
+            $crate::debug_panic_or_log!("assertion failed: {}", stringify!($cond));
+        }
+    }};
+    ($cond:expr, $($arg:tt)+) => {{
+        let condition = $cond;
+        if !condition {
+            $crate::debug_panic_or_log!($($arg)+);
+        }
+    }};
+}
+
 #[allow(unused_macros)]
 macro_rules! minimal_unreachable {
     () => {
@@ -72,4 +103,32 @@ macro_rules! minimal_unreachable {
              If you get this error this is a bug in the sentry minimal support"
         );
     };
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn debug_assert_or_log_does_not_panic_when_condition_holds() {
+        crate::debug_assert_or_log!(2 + 2 == 4, "should not panic");
+    }
+
+    #[test]
+    #[cfg(debug_assertions)]
+    #[should_panic(expected = "assertion failed: 1 == 2")]
+    fn debug_assert_or_log_panics_with_default_message_when_condition_fails() {
+        crate::debug_assert_or_log!(1 == 2);
+    }
+
+    #[test]
+    #[cfg(debug_assertions)]
+    #[should_panic(expected = "custom invariant message")]
+    fn debug_assert_or_log_panics_with_custom_message_when_condition_fails() {
+        crate::debug_assert_or_log!(false, "custom invariant message");
+    }
+
+    #[test]
+    #[cfg(not(debug_assertions))]
+    fn no_panic_without_debug_assertions() {
+        crate::debug_assert_or_log!(false, "should not panic");
+    }
 }

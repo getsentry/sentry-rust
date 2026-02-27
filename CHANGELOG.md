@@ -11,6 +11,12 @@
 - Added a `Envelope::into_items` method, which returns an iterator over owned [`EnvelopeItem`s](https://docs.rs/sentry/0.46.2/sentry/protocol/enum.EnvelopeItem.html) in the [`Envelope`](https://docs.rs/sentry/0.46.2/sentry/struct.Envelope.html) ([#983](https://github.com/getsentry/sentry-rust/pull/983)).
 - Expose transport utilities ([#949](https://github.com/getsentry/sentry-rust/pull/949))
 
+### Fixes
+
+- Fixed thread corruption bug where `HubSwitchGuard` could be dropped on wrong thread ([#957](https://github.com/getsentry/sentry-rust/pull/957)).
+  - **Breaking change**: `sentry_core::HubSwitchGuard` is now `!Send`, preventing it from being moved across threads. Code that previously sent the guard to another thread will no longer compile.
+- We now fork the `Hub` every time a span is entered. This prevents data from leaking across spans ([#957](https://github.com/getsentry/sentry-rust/pull/957)). 
+
 ## 0.46.2
 
 ### New Features
