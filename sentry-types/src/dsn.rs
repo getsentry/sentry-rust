@@ -143,6 +143,22 @@ impl Dsn {
     pub fn project_id(&self) -> &ProjectId {
         &self.project_id
     }
+
+    /// Extracts the organization ID from the DSN host.
+    ///
+    /// For Sentry SaaS DSNs, the host looks like `o{org_id}.ingest.sentry.io`,
+    /// e.g., `o1234.ingest.sentry.io` would return `Some("1234")`.
+    pub fn org_id(&self) -> Option<&str> {
+        let host = self.host();
+        if let Some(rest) = host.strip_prefix('o') {
+            if let Some(org_id) = rest.split('.').next() {
+                if !org_id.is_empty() && org_id.chars().all(|c| c.is_ascii_digit()) {
+                    return Some(org_id);
+                }
+            }
+        }
+        None
+    }
 }
 
 impl fmt::Display for Dsn {
@@ -345,5 +361,29 @@ mod test {
     #[should_panic(expected = "InvalidScheme")]
     fn test_dsn_invalid_scheme() {
         Dsn::from_str("ftp://username:password@domain:8888/1").unwrap();
+    }
+
+    #[test]
+    fn test_dsn_org_id_from_sentry_saas() {
+        let dsn = Dsn::from_str("https://key@o1234.ingest.sentry.io/42").unwrap();
+        assert_eq!(dsn.org_id(), Some("1234"));
+    }
+
+    #[test]
+    fn test_dsn_org_id_from_sentry_saas_us() {
+        let dsn = Dsn::from_str("https://key@o567.ingest.us.sentry.io/42").unwrap();
+        assert_eq!(dsn.org_id(), Some("567"));
+    }
+
+    #[test]
+    fn test_dsn_org_id_not_present() {
+        let dsn = Dsn::from_str("https://key@custom.domain.com/42").unwrap();
+        assert_eq!(dsn.org_id(), None);
+    }
+
+    #[test]
+    fn test_dsn_org_id_non_numeric() {
+        let dsn = Dsn::from_str("https://key@oabc.ingest.sentry.io/42").unwrap();
+        assert_eq!(dsn.org_id(), None);
     }
 }

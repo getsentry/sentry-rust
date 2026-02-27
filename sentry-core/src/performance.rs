@@ -172,23 +172,55 @@ impl TransactionContext {
     ///
     /// The `headers` in particular need to include the `sentry-trace` header,
     /// which is used to associate the transaction with a distributed trace.
+    ///
+    /// If the incoming `baggage` header contains a `sentry-org_id` that does not match
+    /// the SDK's org_id, a new trace will be started instead of continuing the incoming one.
+    /// See <https://develop.sentry.dev/sdk/foundations/trace-propagation/#strict-trace-continuation>
     #[must_use = "this must be used with `start_transaction`"]
     pub fn continue_from_headers<'a, I: IntoIterator<Item = (&'a str, &'a str)>>(
         name: &str,
         op: &str,
         headers: I,
     ) -> Self {
-        parse_headers(headers)
-            .map(|sentry_trace| Self::continue_from_sentry_trace(name, op, &sentry_trace, None))
-            .unwrap_or_else(|| Self {
-                name: name.into(),
-                op: op.into(),
-                trace_id: Default::default(),
-                parent_span_id: None,
-                span_id: Default::default(),
-                sampled: None,
-                custom: None,
-            })
+        let new_context = || Self {
+            name: name.into(),
+            op: op.into(),
+            trace_id: Default::default(),
+            parent_span_id: None,
+            span_id: Default::default(),
+            sampled: None,
+            custom: None,
+        };
+
+        let mut sentry_trace = None;
+        let mut baggage_org_id = None;
+
+        for (k, v) in headers.into_iter() {
+            if k.eq_ignore_ascii_case("sentry-trace") && sentry_trace.is_none() {
+                sentry_trace = parse_sentry_trace(v);
+            } else if k.eq_ignore_ascii_case("baggage") && baggage_org_id.is_none() {
+                baggage_org_id = parse_baggage_org_id(v);
+            }
+        }
+
+        let sentry_trace = match sentry_trace {
+            Some(st) => st,
+            None => return new_context(),
+        };
+
+        #[cfg(feature = "client")]
+        {
+            let client = Hub::with_active(|hub| hub.client());
+            if let Some(ref client) = client {
+                let client_org_id = client.org_id();
+                let strict = client.options().strict_trace_continuation;
+                if !should_continue_trace(client_org_id, baggage_org_id.as_deref(), strict) {
+                    return new_context();
+                }
+            }
+        }
+
+        Self::continue_from_sentry_trace(name, op, &sentry_trace, None)
     }
 
     /// Creates a new Transaction Context based on the provided distributed tracing data,
@@ -879,6 +911,11 @@ impl Transaction {
                     if let Some(public_key) = client.dsn().map(|dsn| dsn.public_key()) {
                         dsc = dsc.with_public_key(public_key.to_owned());
                     }
+                    if let Some(org_id) = client.org_id() {
+                        if let Ok(org_id) = org_id.parse() {
+                            dsc = dsc.with_org_id(org_id);
+                        }
+                    }
 
                     drop(inner);
 
@@ -1297,6 +1334,46 @@ pub fn parse_headers<'a, I: IntoIterator<Item = (&'a str, &'a str)>>(
     trace
 }
 
+/// Extracts the `sentry-org_id` value from a baggage header string.
+///
+/// The baggage header is a comma-separated list of key=value pairs.
+/// We look for the `sentry-org_id` key specifically.
+pub fn parse_baggage_org_id(baggage_header: &str) -> Option<String> {
+    for entry in baggage_header.split(',') {
+        let entry = entry.trim();
+        if let Some((key, value)) = entry.split_once('=') {
+            if key.trim() == "sentry-org_id" {
+                let value = value.trim();
+                if !value.is_empty() {
+                    return Some(value.to_owned());
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Determines whether an incoming trace should be continued based on org_id validation.
+///
+/// See <https://develop.sentry.dev/sdk/foundations/trace-propagation/#strict-trace-continuation>
+#[cfg(feature = "client")]
+pub fn should_continue_trace(
+    client_org_id: Option<&str>,
+    baggage_org_id: Option<&str>,
+    strict: bool,
+) -> bool {
+    match (client_org_id, baggage_org_id) {
+        // Both present and mismatching → always reject
+        (Some(client), Some(baggage)) if client != baggage => false,
+        // Both present and matching → always continue
+        (Some(_), Some(_)) => true,
+        // Both absent → always continue
+        (None, None) => true,
+        // One present, one absent → depends on strict mode
+        _ => !strict,
+    }
+}
+
 impl std::fmt::Display for SentryTrace {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}-{}", self.trace_id, self.span_id)?;
@@ -1417,5 +1494,43 @@ mod tests {
         let mut ctx = TransactionContext::new("noop", "noop");
         ctx.custom_insert("rate".to_owned(), serde_json::json!(0.7));
         assert_eq!(transaction_sample_rate(Some(&sampler), &ctx, 0.3), 0.7);
+    }
+
+    #[test]
+    fn test_parse_baggage_org_id() {
+        assert_eq!(
+            parse_baggage_org_id("sentry-org_id=1234, sentry-trace_id=abc"),
+            Some("1234".to_owned())
+        );
+        assert_eq!(
+            parse_baggage_org_id("sentry-trace_id=abc, sentry-org_id=5678"),
+            Some("5678".to_owned())
+        );
+        assert_eq!(parse_baggage_org_id("sentry-trace_id=abc"), None);
+        assert_eq!(parse_baggage_org_id("sentry-org_id="), None);
+    }
+
+    #[cfg(feature = "client")]
+    #[test]
+    fn test_should_continue_trace() {
+        // Both match → continue
+        assert!(should_continue_trace(Some("1"), Some("1"), false));
+        assert!(should_continue_trace(Some("1"), Some("1"), true));
+
+        // Both absent → continue
+        assert!(should_continue_trace(None, None, false));
+        assert!(should_continue_trace(None, None, true));
+
+        // Mismatch → always reject
+        assert!(!should_continue_trace(Some("1"), Some("2"), false));
+        assert!(!should_continue_trace(Some("1"), Some("2"), true));
+
+        // One missing, non-strict → continue
+        assert!(should_continue_trace(None, Some("1"), false));
+        assert!(should_continue_trace(Some("1"), None, false));
+
+        // One missing, strict → reject
+        assert!(!should_continue_trace(None, Some("1"), true));
+        assert!(!should_continue_trace(Some("1"), None, true));
     }
 }

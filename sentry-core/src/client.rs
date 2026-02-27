@@ -333,6 +333,17 @@ impl Client {
         self.options.dsn.as_ref()
     }
 
+    /// Returns the resolved organization ID.
+    ///
+    /// The explicit `org_id` option takes precedence over the DSN-derived value.
+    pub fn org_id(&self) -> Option<&str> {
+        if let Some(ref org_id) = self.options.org_id {
+            Some(org_id.as_str())
+        } else {
+            self.dsn().and_then(|dsn| dsn.org_id())
+        }
+    }
+
     /// Quick check to see if the client is enabled.
     ///
     /// The Client is enabled if it has a valid DSN and Transport configured.
