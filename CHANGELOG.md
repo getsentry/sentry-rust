@@ -9,8 +9,9 @@
 
 ### Fixes
 
-- Fixed thread corruption bug where `HubSwitchGuard` could be dropped on wrong thread ([#957](https://github.com/getsentry/sentry-rust/pull/957))
+- Fixed thread corruption bug where `HubSwitchGuard` could be dropped on wrong thread ([#957](https://github.com/getsentry/sentry-rust/pull/957)).
   - **Breaking change**: `sentry_core::HubSwitchGuard` is now `!Send`, preventing it from being moved across threads. Code that previously sent the guard to another thread will no longer compile.
+- We now fork the `Hub` every time a span is entered. This prevents data from leaking across spans ([#957](https://github.com/getsentry/sentry-rust/pull/957)). 
 
 ## 0.46.2
 
