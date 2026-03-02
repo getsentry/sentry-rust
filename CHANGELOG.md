@@ -9,6 +9,8 @@
 ### New Features
 
 - Added a `Envelope::into_items` method, which returns an iterator over owned [`EnvelopeItem`s](https://docs.rs/sentry/0.46.2/sentry/protocol/enum.EnvelopeItem.html) in the [`Envelope`](https://docs.rs/sentry/0.46.2/sentry/struct.Envelope.html) ([#983](https://github.com/getsentry/sentry-rust/pull/983)).
+- Add SDK protocol support for sending `trace_metric` envelope items ([#1022](https://github.com/getsentry/sentry-rust/pull/1022)).
+- Add `Metric` and `MetricType` types representing [trace metrics](https://develop.sentry.dev/sdk/telemetry/metrics/) ([#1026](https://github.com/getsentry/sentry-rust/pull/1026)).
 - Expose transport utilities ([#949](https://github.com/getsentry/sentry-rust/pull/949))
 
 ### Fixes
