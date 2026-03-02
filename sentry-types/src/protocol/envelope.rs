@@ -1,4 +1,4 @@
-use std::{io::Write, path::Path, time::SystemTime};
+use std::{borrow::Cow, io::Write, path::Path, time::SystemTime};
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -224,14 +224,15 @@ impl From<Vec<Log>> for ItemContainer {
     }
 }
 
-#[derive(Serialize)]
-struct LogsSerializationWrapper<'a> {
-    items: &'a [Log],
-}
-
-#[derive(Deserialize)]
-struct LogsDeserializationWrapper {
-    items: Vec<Log>,
+/// A lightweight wrapper for serializing/deserializing a slice of items,
+/// so that it looks like:
+///
+/// ```json
+/// { items: [...] }
+/// ```
+#[derive(Deserialize, Serialize)]
+struct ItemsSerdeWrapper<'a, T: Clone> {
+    items: Cow<'a, [T]>,
 }
 
 impl From<Event<'static>> for EnvelopeItem {
@@ -502,7 +503,7 @@ impl Envelope {
                 }
                 EnvelopeItem::ItemContainer(container) => match container {
                     ItemContainer::Logs(logs) => {
-                        let wrapper = LogsSerializationWrapper { items: logs };
+                        let wrapper = ItemsSerdeWrapper { items: logs.into() };
                         serde_json::to_writer(&mut item_buf, &wrapper)?
                     }
                 },
@@ -673,8 +674,8 @@ impl Envelope {
                 serde_json::from_slice(payload).map(EnvelopeItem::MonitorCheckIn)
             }
             EnvelopeItemType::LogsContainer => {
-                serde_json::from_slice::<LogsDeserializationWrapper>(payload)
-                    .map(|x| EnvelopeItem::ItemContainer(ItemContainer::Logs(x.items)))
+                serde_json::from_slice::<ItemsSerdeWrapper<_>>(payload)
+                    .map(|x| EnvelopeItem::ItemContainer(ItemContainer::Logs(x.items.into())))
             }
         }
         .map_err(EnvelopeError::InvalidItemPayload)?;
