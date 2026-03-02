@@ -2383,7 +2383,6 @@ pub enum TraceMetricType {
 
 /// A single [trace metric](https://develop.sentry.dev/sdk/telemetry/metrics/).
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-#[non_exhaustive]
 pub struct TraceMetric {
     /// The metric type.
     pub r#type: TraceMetricType,
