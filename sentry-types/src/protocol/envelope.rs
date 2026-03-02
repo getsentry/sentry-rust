@@ -11,7 +11,7 @@ use super::v7 as protocol;
 
 use protocol::{
     Attachment, AttachmentType, ClientSdkInfo, DynamicSamplingContext, Event, Log, MonitorCheckIn,
-    SessionAggregates, SessionUpdate, Transaction,
+    SessionAggregates, SessionUpdate, TraceMetric, Transaction,
 };
 
 /// Raised if a envelope cannot be parsed from a given input.
@@ -127,6 +127,9 @@ enum EnvelopeItemType {
     /// A container of Log items.
     #[serde(rename = "log")]
     LogsContainer,
+    /// A container of TraceMetric items.
+    #[serde(rename = "trace_metric")]
+    TraceMetricsContainer,
 }
 
 /// An Envelope Item Header.
@@ -192,6 +195,8 @@ pub enum EnvelopeItem {
 pub enum ItemContainer {
     /// A list of logs.
     Logs(Vec<Log>),
+    /// A list of trace metrics.
+    TraceMetrics(Vec<TraceMetric>),
 }
 
 #[allow(clippy::len_without_is_empty, reason = "is_empty is not needed")]
@@ -200,6 +205,7 @@ impl ItemContainer {
     pub fn len(&self) -> usize {
         match self {
             Self::Logs(logs) => logs.len(),
+            Self::TraceMetrics(metrics) => metrics.len(),
         }
     }
 
@@ -207,6 +213,7 @@ impl ItemContainer {
     pub fn ty(&self) -> &'static str {
         match self {
             Self::Logs(_) => "log",
+            Self::TraceMetrics(_) => "trace_metric",
         }
     }
 
@@ -214,6 +221,7 @@ impl ItemContainer {
     pub fn content_type(&self) -> &'static str {
         match self {
             Self::Logs(_) => "application/vnd.sentry.items.log+json",
+            Self::TraceMetrics(_) => "application/vnd.sentry.items.trace-metric+json",
         }
     }
 }
@@ -233,6 +241,12 @@ impl From<Vec<Log>> for ItemContainer {
 #[derive(Deserialize, Serialize)]
 struct ItemsSerdeWrapper<'a, T: Clone> {
     items: Cow<'a, [T]>,
+}
+
+impl From<Vec<TraceMetric>> for ItemContainer {
+    fn from(metrics: Vec<TraceMetric>) -> Self {
+        Self::TraceMetrics(metrics)
+    }
 }
 
 impl From<Event<'static>> for EnvelopeItem {
@@ -280,6 +294,12 @@ impl From<ItemContainer> for EnvelopeItem {
 impl From<Vec<Log>> for EnvelopeItem {
     fn from(logs: Vec<Log>) -> Self {
         EnvelopeItem::ItemContainer(logs.into())
+    }
+}
+
+impl From<Vec<TraceMetric>> for EnvelopeItem {
+    fn from(metrics: Vec<TraceMetric>) -> Self {
+        EnvelopeItem::ItemContainer(metrics.into())
     }
 }
 
@@ -506,6 +526,12 @@ impl Envelope {
                         let wrapper = ItemsSerdeWrapper { items: logs.into() };
                         serde_json::to_writer(&mut item_buf, &wrapper)?
                     }
+                    ItemContainer::TraceMetrics(metrics) => {
+                        let wrapper = ItemsSerdeWrapper {
+                            items: metrics.into(),
+                        };
+                        serde_json::to_writer(&mut item_buf, &wrapper)?
+                    }
                 },
                 EnvelopeItem::Raw => {
                     continue;
@@ -677,6 +703,11 @@ impl Envelope {
                 serde_json::from_slice::<ItemsSerdeWrapper<_>>(payload)
                     .map(|x| EnvelopeItem::ItemContainer(ItemContainer::Logs(x.items.into())))
             }
+            EnvelopeItemType::TraceMetricsContainer => {
+                serde_json::from_slice::<ItemsSerdeWrapper<_>>(payload).map(|x| {
+                    EnvelopeItem::ItemContainer(ItemContainer::TraceMetrics(x.items.into()))
+                })
+            }
         }
         .map_err(EnvelopeError::InvalidItemPayload)?;
 
@@ -708,6 +739,7 @@ mod test {
     use std::time::{Duration, SystemTime};
 
     use protocol::Map;
+    use serde_json::Value;
     use time::format_description::well_known::Rfc3339;
     use time::OffsetDateTime;
 
@@ -1121,6 +1153,49 @@ some content
         assert_eq!(expected, serialized.as_bytes());
     }
 
+    #[test]
+    fn test_trace_metric_container_header() {
+        let metrics: EnvelopeItem = vec![TraceMetric {
+            r#type: protocol::TraceMetricType::Counter,
+            name: "api.requests".into(),
+            value: 1.0,
+            timestamp: timestamp("2026-03-02T13:36:02.000Z"),
+            trace_id: "335e53d614474acc9f89e632b776cc28".parse().unwrap(),
+            span_id: None,
+            unit: None,
+            attributes: Map::new(),
+        }]
+        .into();
+
+        let mut envelope = Envelope::new();
+        envelope.add_item(metrics);
+
+        let expected = [
+            serde_json::json!({}),
+            serde_json::json!({
+                "type": "trace_metric",
+                "item_count": 1,
+                "content_type": "application/vnd.sentry.items.trace-metric+json"
+            }),
+            serde_json::json!({
+                "items": [{
+                    "type": "counter",
+                    "name": "api.requests",
+                    "value": 1.0,
+                    "timestamp": 1772458562,
+                    "trace_id": "335e53d614474acc9f89e632b776cc28"
+                }]
+            }),
+        ];
+
+        let serialized = to_str(envelope);
+        let actual = serialized
+            .lines()
+            .map(|line| serde_json::from_str::<Value>(line).expect("envelope has invalid JSON"));
+
+        assert!(actual.eq(expected.into_iter()));
+    }
+
     // Test all possible item types in a single envelope
     #[test]
     fn test_deserialize_serialized() {
@@ -1197,12 +1272,27 @@ some content
         ]
         .into();
 
+        let mut metric_attributes = Map::new();
+        metric_attributes.insert("route".into(), "/users".into());
+        let trace_metrics: EnvelopeItem = vec![TraceMetric {
+            r#type: protocol::TraceMetricType::Distribution,
+            name: "response.time".to_owned(),
+            value: 123.4,
+            timestamp: timestamp("2022-07-26T14:51:14.296Z"),
+            trace_id: "335e53d614474acc9f89e632b776cc28".parse().unwrap(),
+            span_id: Some("d42cee9fc3e74f5c".parse().unwrap()),
+            unit: Some("millisecond".to_owned()),
+            attributes: metric_attributes,
+        }]
+        .into();
+
         let mut envelope: Envelope = Envelope::new();
         envelope.add_item(event);
         envelope.add_item(transaction);
         envelope.add_item(session);
         envelope.add_item(attachment);
         envelope.add_item(logs);
+        envelope.add_item(trace_metrics);
 
         let serialized = to_str(envelope);
         let deserialized = Envelope::from_slice(serialized.as_bytes()).unwrap();
