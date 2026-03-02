@@ -2369,6 +2369,43 @@ impl<'de> Deserialize<'de> for LogAttribute {
     }
 }
 
+/// The type of a [metric](https://develop.sentry.dev/sdk/telemetry/metrics/).
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum MetricType {
+    /// A counter metric that only increments.
+    Counter,
+    /// A gauge metric that can go up and down.
+    Gauge,
+    /// A distribution metric for statistical spread measurements.
+    Distribution,
+}
+
+/// A single [metric](https://develop.sentry.dev/sdk/telemetry/metrics/).
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct Metric {
+    /// The metric type.
+    pub r#type: MetricType,
+    /// The metric name. Uses dot separators for hierarchy.
+    pub name: Cow<'static, str>,
+    /// The numeric value.
+    pub value: f64,
+    /// The timestamp when recorded.
+    #[serde(with = "ts_seconds_float")]
+    pub timestamp: SystemTime,
+    /// The trace ID this metric is associated with.
+    pub trace_id: TraceId,
+    /// The span ID of the active span, if any.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub span_id: Option<SpanId>,
+    /// The measurement unit.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub unit: Option<Unit>,
+    /// Additional key-value attributes.
+    #[serde(default, skip_serializing_if = "Map::is_empty")]
+    pub attributes: Map<Cow<'static, str>, LogAttribute>,
+}
+
 /// An ID that identifies an organization in the Sentry backend.
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub struct OrganizationId(u64);
