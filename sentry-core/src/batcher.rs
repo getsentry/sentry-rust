@@ -8,6 +8,8 @@ use crate::client::TransportArc;
 use crate::protocol::EnvelopeItem;
 use crate::Envelope;
 use sentry_types::protocol::v7::Log;
+#[cfg(feature = "metrics")]
+use sentry_types::protocol::v7::TraceMetric;
 
 // Flush when there's 100 items in the buffer
 const MAX_ITEMS: usize = 100;
@@ -38,6 +40,11 @@ pub(crate) trait Batch: IntoBatchEnvelopeItem {
 
 impl Batch for Log {
     const TYPE_NAME: &str = "logs";
+}
+
+#[cfg(feature = "metrics")]
+impl Batch for TraceMetric {
+    const TYPE_NAME: &str = "metrics";
 }
 
 /// Accumulates items in the queue and submits them through the transport when one of the flushing
@@ -156,66 +163,164 @@ impl<T: Batch> Drop for Batcher<T> {
 
 #[cfg(all(test, feature = "test"))]
 mod tests {
-    use crate::logger_info;
     use crate::test;
 
-    // Test that logs are sent in batches
-    #[test]
-    fn test_logs_batching() {
-        let envelopes = test::with_captured_envelopes_options(
-            || {
-                for i in 0..150 {
-                    logger_info!("test log {}", i);
+    #[cfg(feature = "logs")]
+    mod logs {
+        use super::*;
+        use crate::logger_info;
+
+        #[test]
+        fn test_logs_batching() {
+            let envelopes = test::with_captured_envelopes_options(
+                || {
+                    for i in 0..150 {
+                        logger_info!("test log {}", i);
+                    }
+                },
+                crate::ClientOptions {
+                    enable_logs: true,
+                    ..Default::default()
+                },
+            );
+
+            assert_eq!(2, envelopes.len());
+
+            let mut total_logs = 0;
+            for envelope in &envelopes {
+                for item in envelope.items() {
+                    if let crate::protocol::EnvelopeItem::ItemContainer(
+                        crate::protocol::ItemContainer::Logs(logs),
+                    ) = item
+                    {
+                        total_logs += logs.len();
+                    }
                 }
-            },
-            crate::ClientOptions {
-                enable_logs: true,
-                ..Default::default()
-            },
-        );
+            }
 
-        assert_eq!(2, envelopes.len());
+            assert_eq!(150, total_logs);
+        }
 
-        let mut total_logs = 0;
-        for envelope in &envelopes {
-            for item in envelope.items() {
-                if let crate::protocol::EnvelopeItem::ItemContainer(
-                    crate::protocol::ItemContainer::Logs(logs),
-                ) = item
-                {
-                    total_logs += logs.len();
+        #[test]
+        fn test_logs_batcher_flush() {
+            let envelopes = test::with_captured_envelopes_options(
+                || {
+                    for i in 0..12 {
+                        logger_info!("test log {}", i);
+                    }
+                },
+                crate::ClientOptions {
+                    enable_logs: true,
+                    ..Default::default()
+                },
+            );
+
+            assert_eq!(1, envelopes.len());
+
+            for envelope in &envelopes {
+                for item in envelope.items() {
+                    if let crate::protocol::EnvelopeItem::ItemContainer(
+                        crate::protocol::ItemContainer::Logs(logs),
+                    ) = item
+                    {
+                        assert_eq!(12, logs.len());
+                        break;
+                    }
                 }
             }
         }
-
-        assert_eq!(150, total_logs);
     }
 
-    // Test that the batcher is flushed on client close
-    #[test]
-    fn test_logs_batcher_flush() {
-        let envelopes = test::with_captured_envelopes_options(
-            || {
-                for i in 0..12 {
-                    logger_info!("test log {}", i);
+    #[cfg(feature = "metrics")]
+    mod metrics {
+        use super::*;
+        use sentry_types::protocol::v7::TraceMetric;
+
+        fn test_metric(name: &str) -> TraceMetric {
+            serde_json::from_value(serde_json::json!({
+                "type": "counter",
+                "name": name,
+                "value": 1.0,
+                "timestamp": 0.0,
+                "trace_id": "4c79f60c11214eb38604f4ae0781bfb2",
+                "attributes": {}
+            }))
+            .unwrap()
+        }
+
+        #[test]
+        fn test_metrics_disabled_explicitly() {
+            let envelopes = test::with_captured_envelopes_options(
+                || {
+                    for i in 0..10 {
+                        crate::Hub::current().capture_metric(test_metric(&format!("metric.{i}")));
+                    }
+                },
+                crate::ClientOptions {
+                    enable_metrics: false,
+                    ..Default::default()
+                },
+            );
+
+            assert_eq!(0, envelopes.len());
+        }
+
+        #[test]
+        fn test_metrics_batching() {
+            let envelopes = test::with_captured_envelopes_options(
+                || {
+                    for i in 0..150 {
+                        crate::Hub::current().capture_metric(test_metric(&format!("metric.{i}")));
+                    }
+                },
+                crate::ClientOptions {
+                    enable_metrics: true,
+                    ..Default::default()
+                },
+            );
+
+            assert_eq!(2, envelopes.len());
+
+            let mut total_metrics = 0;
+            for envelope in &envelopes {
+                for item in envelope.items() {
+                    if let crate::protocol::EnvelopeItem::ItemContainer(
+                        crate::protocol::ItemContainer::TraceMetrics(metrics),
+                    ) = item
+                    {
+                        total_metrics += metrics.len();
+                    }
                 }
-            },
-            crate::ClientOptions {
-                enable_logs: true,
-                ..Default::default()
-            },
-        );
+            }
 
-        assert_eq!(1, envelopes.len());
+            assert_eq!(150, total_metrics);
+        }
 
-        for envelope in &envelopes {
-            for item in envelope.items() {
-                if let crate::protocol::EnvelopeItem::ItemContainer(
-                    crate::protocol::ItemContainer::Logs(logs),
-                ) = item
-                {
-                    assert_eq!(12, logs.len());
-                    break;
+        #[test]
+        fn test_metrics_batcher_flush() {
+            let envelopes = test::with_captured_envelopes_options(
+                || {
+                    for i in 0..12 {
+                        crate::Hub::current().capture_metric(test_metric(&format!("metric.{i}")));
+                    }
+                },
+                crate::ClientOptions {
+                    enable_metrics: true,
+                    ..Default::default()
+                },
+            );
+
+            assert_eq!(1, envelopes.len());
+
+            for envelope in &envelopes {
+                for item in envelope.items() {
+                    if let crate::protocol::EnvelopeItem::ItemContainer(
+                        crate::protocol::ItemContainer::TraceMetrics(metrics),
+                    ) = item
+                    {
+                        assert_eq!(12, metrics.len());
+                        break;
+                    }
                 }
             }
         }
