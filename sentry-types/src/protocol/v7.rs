@@ -2381,6 +2381,8 @@ pub enum MetricType {
 }
 
 /// A single [metric](https://develop.sentry.dev/sdk/telemetry/metrics/).
+///
+/// Construct this type directly with a struct literal.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Metric {
     /// The metric type.
