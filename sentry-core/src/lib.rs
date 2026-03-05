@@ -136,7 +136,7 @@ pub use crate::transport::{Transport, TransportFactory};
 mod logger; // structured logging macros exported with `#[macro_export]`
 
 // client feature
-#[cfg(all(feature = "client", feature = "logs"))]
+#[cfg(all(feature = "client", any(feature = "logs", feature = "metrics")))]
 mod batcher;
 #[cfg(feature = "client")]
 mod client;
