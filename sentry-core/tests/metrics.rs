@@ -1,0 +1,428 @@
+#![cfg(all(feature = "test", feature = "metrics"))]
+
+use std::collections::HashSet;
+
+use anyhow::{Context, Result};
+
+use sentry::protocol::{MetricType, Unit, Value};
+use sentry_core::protocol::{EnvelopeItem, ItemContainer};
+use sentry_core::{metrics, test};
+use sentry_core::{ClientOptions, TransactionContext};
+use sentry_types::protocol::v7::Metric;
+
+/// Test that metrics are sent when metrics are enabled.
+#[test]
+fn sent_when_enabled() {
+    let options = ClientOptions {
+        enable_metrics: true,
+        ..Default::default()
+    };
+
+    let mut envelopes =
+        test::with_captured_envelopes_options(|| metrics::counter("test", 1).capture(), options);
+
+    assert_eq!(envelopes.len(), 1, "expected exactly one envelope");
+
+    let envelope = envelopes.pop().unwrap();
+
+    let mut items = envelope.into_items();
+    let Some(item) = items.next() else {
+        panic!("Expected at least one item");
+    };
+
+    assert!(items.next().is_none(), "Expected only one item");
+
+    let EnvelopeItem::ItemContainer(ItemContainer::Metrics(mut metrics)) = item else {
+        panic!("Envelope item has unexpected structure");
+    };
+
+    assert_eq!(metrics.len(), 1, "Expected exactly one metric");
+
+    let metric = metrics.pop().unwrap();
+    assert!(matches!(metric, Metric {
+        r#type: MetricType::Counter,
+        name,
+        value: 1.0,
+        ..
+    } if name == "test"));
+}
+
+/// Test that metrics are disabled (not sent) when disabled in the
+/// [`ClientOptions`].
+#[test]
+fn metrics_disabled_by_default() {
+    // Metrics are disabled by default.
+    let options: ClientOptions = Default::default();
+
+    let envelopes =
+        test::with_captured_envelopes_options(|| metrics::counter("test", 1).capture(), options);
+    assert!(
+        envelopes.is_empty(),
+        "no envelopes should be captured when metrics disabled"
+    )
+}
+
+/// Test that no metrics are captured by a no-op call with
+/// metrics enabled
+#[test]
+fn noop_sends_nothing() {
+    let options = ClientOptions {
+        enable_metrics: true,
+        ..Default::default()
+    };
+
+    let envelopes = test::with_captured_envelopes_options(|| (), options);
+
+    assert!(envelopes.is_empty(), "no-op should not capture metrics");
+}
+
+/// Test that 100 metrics are sent in a single envelope.
+#[test]
+fn test_metrics_batching_at_limit() {
+    let options = ClientOptions {
+        enable_metrics: true,
+        ..Default::default()
+    };
+
+    let envelopes = test::with_captured_envelopes_options(
+        || {
+            (0..100)
+                .map(|i| format!("metric.{i}"))
+                .for_each(|name| metrics::counter(name, 1).capture());
+        },
+        options,
+    );
+
+    let envelope = envelopes
+        .try_into_only_item()
+        .expect("expected exactly one envelope");
+    let item = envelope
+        .into_items()
+        .try_into_only_item()
+        .expect("expected exactly one item");
+    let metrics = item
+        .into_metrics()
+        .expect("the envelope item is not a metrics item");
+
+    assert_eq!(metrics.len(), 100, "expected 100 metrics");
+
+    let metric_names: HashSet<_> = metrics
+        .into_iter()
+        .inspect(|metric| assert_eq!(metric.value, 1.0, "metric had unexpected value"))
+        .inspect(|metric| {
+            assert_eq!(
+                metric.r#type,
+                MetricType::Counter,
+                "metric had unexpected type"
+            )
+        })
+        .map(|metric| metric.name)
+        .collect();
+
+    (0..100)
+        .map(|i| format!("metric.{i}"))
+        .for_each(|metric_name| {
+            assert!(
+                metric_names.contains(metric_name.as_str()),
+                "expected metric {metric_name} was not captured"
+            )
+        });
+}
+
+/// Test that 101 envelopes are sent in two separate envelopes
+#[test]
+fn test_metrics_batching_over_limit() {
+    let options = ClientOptions {
+        enable_metrics: true,
+        ..Default::default()
+    };
+
+    let mut envelopes = test::with_captured_envelopes_options(
+        || {
+            (0..101)
+                .map(|i| format!("metric.{i}"))
+                .for_each(|name| metrics::counter(name, 1).capture());
+        },
+        options,
+    )
+    .into_iter();
+    let envelope1 = envelopes.next().expect("expected a first envelope");
+    let envelope2 = envelopes.next().expect("expected a second envelope");
+    assert!(envelopes.next().is_none(), "expected exactly two envelopes");
+
+    let item1 = envelope1
+        .into_items()
+        .try_into_only_item()
+        .expect("expected exactly one item in the first envelope");
+    let metrics1 = item1
+        .into_metrics()
+        .expect("the first envelope item is not a metrics item");
+
+    assert_eq!(metrics1.len(), 100, "expected 100 metrics");
+
+    let first_metric_names: HashSet<_> = metrics1
+        .into_iter()
+        .inspect(|metric| assert_eq!(metric.value, 1.0, "metric had unexpected value"))
+        .inspect(|metric| {
+            assert_eq!(
+                metric.r#type,
+                MetricType::Counter,
+                "metric had unexpected type"
+            )
+        })
+        .map(|metric| metric.name)
+        .collect();
+
+    (0..100)
+        .map(|i| format!("metric.{i}"))
+        .for_each(|metric_name| {
+            assert!(
+                first_metric_names.contains(metric_name.as_str()),
+                "expected metric {metric_name} was not captured in the first envelope"
+            )
+        });
+
+    let item2 = envelope2
+        .into_items()
+        .try_into_only_item()
+        .expect("expected exactly one item in the second envelope");
+    let metrics2 = item2
+        .into_metrics()
+        .expect("the second envelope item is not a metrics item");
+    let metric2 = metrics2
+        .try_into_only_item()
+        .expect("expected exactly one metric in the second envelope");
+
+    assert!(
+        matches!(metric2, Metric {
+            r#type: MetricType::Counter,
+            name,
+            value: 1.0,
+            ..
+        } if name == "metric.100"),
+        "unexpected metric captured"
+    )
+}
+
+#[test]
+fn metric_attributes_are_captured() {
+    let options = ClientOptions {
+        enable_metrics: true,
+        ..Default::default()
+    };
+
+    let envelopes = test::with_captured_envelopes_options(
+        || {
+            metrics::counter("test", 1)
+                .attribute("http.route", "/health")
+                .attribute("http.response.status_code", 200)
+                .capture();
+        },
+        options,
+    );
+
+    let envelope = envelopes
+        .try_into_only_item()
+        .expect("expected exactly one envelope");
+    let item = envelope
+        .into_items()
+        .try_into_only_item()
+        .expect("expected exactly one item");
+    let metric = item
+        .into_metrics()
+        .expect("expected metrics item")
+        .try_into_only_item()
+        .expect("expected exactly one metric in the envelope");
+
+    let Metric {
+        r#type,
+        name,
+        value,
+        timestamp: _,
+        trace_id: _,
+        span_id,
+        unit,
+        attributes,
+    } = metric;
+
+    assert_eq!(r#type, MetricType::Counter);
+    assert_eq!(name, "test");
+    assert_eq!(value, 1.0);
+    assert!(span_id.is_none());
+    assert!(unit.is_none());
+    assert_eq!(attributes.len(), 2, "expected two attributes");
+    assert_eq!(
+        attributes.get("http.route").map(|value| &value.0),
+        Some(&Value::from("/health")),
+    );
+    assert_eq!(
+        attributes
+            .get("http.response.status_code")
+            .map(|value| &value.0),
+        Some(&Value::from(200)),
+    );
+}
+
+#[test]
+fn metric_unit_is_captured() {
+    let options = ClientOptions {
+        enable_metrics: true,
+        ..Default::default()
+    };
+
+    let envelopes = test::with_captured_envelopes_options(
+        || metrics::gauge("test", 42).unit(Unit::Millisecond).capture(),
+        options,
+    );
+
+    let envelope = envelopes
+        .try_into_only_item()
+        .expect("expected exactly one envelope");
+    let item = envelope
+        .into_items()
+        .try_into_only_item()
+        .expect("expected exactly one item");
+    let metric = item
+        .into_metrics()
+        .expect("expected metrics item")
+        .try_into_only_item()
+        .expect("expected exactly one metric in the envelope");
+
+    let Metric {
+        r#type,
+        name,
+        value,
+        timestamp: _,
+        trace_id: _,
+        span_id,
+        unit,
+        attributes,
+    } = metric;
+
+    assert_eq!(r#type, MetricType::Gauge);
+    assert_eq!(name, "test");
+    assert_eq!(value, 42.0);
+    assert!(span_id.is_none());
+    assert_eq!(unit, Some(Unit::Millisecond));
+    assert!(attributes.is_empty(), "expected no attributes");
+}
+
+/// Test that metrics in the same scope share the same trace_id when no span is active.
+///
+/// This tests that trace ID is set from the propagation context when there is no active span.
+#[test]
+fn metrics_share_trace_id_without_active_span() {
+    let options = ClientOptions {
+        enable_metrics: true,
+        ..Default::default()
+    };
+
+    let envelopes = test::with_captured_envelopes_options(
+        || {
+            metrics::counter("test-2", 1).capture();
+            metrics::counter("test-2", 1).capture();
+        },
+        options,
+    );
+    let envelope = envelopes
+        .try_into_only_item()
+        .expect("expected one envelope");
+    let item = envelope
+        .into_items()
+        .try_into_only_item()
+        .expect("expected one item");
+    let metrics = item.into_metrics().expect("expected metrics item");
+
+    let [metric1, metric2] = metrics.as_slice() else {
+        panic!("expected exactly two metrics");
+    };
+
+    assert_eq!(
+        metric1.trace_id, metric2.trace_id,
+        "metrics in the same scope should share the same trace_id"
+    );
+
+    assert!(metric1.span_id.is_none());
+    assert!(metric2.span_id.is_none());
+}
+
+/// Test that span_id is set from the active span when one is present.
+#[test]
+fn metrics_span_id_from_active_span() {
+    let options = ClientOptions {
+        enable_metrics: true,
+        ..Default::default()
+    };
+
+    let mut expected_span_id = None;
+    let envelopes = test::with_captured_envelopes_options(
+        || {
+            let transaction_ctx = TransactionContext::new("test transaction", "test");
+            expected_span_id = Some(transaction_ctx.span_id());
+            let transaction = sentry_core::start_transaction(transaction_ctx);
+            sentry_core::configure_scope(|scope| scope.set_span(Some(transaction.clone().into())));
+            metrics::counter("test", 1).capture();
+            transaction.finish();
+        },
+        options,
+    );
+
+    let expected_span_id = expected_span_id.expect("expected_span_id did not get set");
+
+    let envelope = envelopes
+        .try_into_only_item()
+        .expect("expected one envelope");
+    let item = envelope
+        .into_items()
+        .try_into_only_item()
+        .expect("expected one item");
+    let mut metrics = item.into_metrics().expect("expected metrics item");
+    let metric = metrics.pop().expect("expected one metric");
+
+    assert_eq!(
+        metric.span_id,
+        Some(expected_span_id),
+        "span_id should be set from the active span"
+    );
+}
+
+/// Extension trait for iterators allowing conversion to only item.
+trait TryIntoOnlyElementExt<I> {
+    type Item;
+
+    /// Convert the iterator to the only item, erroring if the
+    /// iterator does not contain exactly one item.
+    fn try_into_only_item(self) -> Result<Self::Item>;
+}
+
+impl<I> TryIntoOnlyElementExt<I> for I
+where
+    I: IntoIterator,
+{
+    type Item = I::Item;
+
+    fn try_into_only_item(self) -> Result<Self::Item> {
+        let mut iter = self.into_iter();
+        let rv = iter.next().context("iterator was empty")?;
+
+        match iter.next() {
+            Some(_) => anyhow::bail!("iterator had more than one item"),
+            None => Ok(rv),
+        }
+    }
+}
+
+trait IntoMetricsExt {
+    /// Attempt to convert the provided value to a trace metric,
+    /// returning None if the conversion is not possible.
+    fn into_metrics(self) -> Option<Vec<Metric>>;
+}
+
+impl IntoMetricsExt for EnvelopeItem {
+    fn into_metrics(self) -> Option<Vec<Metric>> {
+        match self {
+            EnvelopeItem::ItemContainer(ItemContainer::Metrics(metrics)) => Some(metrics),
+            _ => None,
+        }
+    }
+}

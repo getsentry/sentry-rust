@@ -4,6 +4,8 @@
 
 use std::sync::{Arc, RwLock};
 
+#[cfg(feature = "metrics")]
+use crate::metrics::IntoProtocolMetric;
 use crate::protocol::{Event, Level, Log, LogAttribute, LogLevel, Map, SessionStatus};
 use crate::types::Uuid;
 use crate::{Integration, IntoBreadcrumbs, Scope, ScopeGuard};
@@ -253,6 +255,18 @@ impl Hub {
             let top = self.inner.with(|stack| stack.top().clone());
             let Some(ref client) = top.client else { return };
             client.capture_log(log, &top.scope);
+        }}
+    }
+
+    /// Captures a metric on this hub, sending it to Sentry.
+    ///
+    /// If this hub has no client, the metric is dropped.
+    #[cfg(feature = "metrics")]
+    pub fn capture_metric<M: IntoProtocolMetric>(&self, metric: M) {
+        with_client_impl! {{
+            let top = self.inner.with(|stack| stack.top().clone());
+            let Some(ref client) = top.client else { return };
+            client.capture_metric(metric, &top.scope);
         }}
     }
 }
