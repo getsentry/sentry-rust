@@ -5,6 +5,7 @@
 ### Breaking Changes
 
 - Update reqwest from 0.12.25 to 0.13.1 ([#998](https://github.com/getsentry/sentry-rust/pull/998)). This change is breaking for users who use the [`RequestHttpTransport::with_client`](https://docs.rs/sentry/latest/sentry/transports/struct.ReqwestHttpTransport.html#method.with_client) method.
+- `sentry_core::HubSwitchGuard` is now `!Send`, preventing it from being moved across threads ([#957](https://github.com/getsentry/sentry-rust/pull/957)).
 
 ### New Features
 
@@ -14,7 +15,6 @@
 ### Fixes
 
 - Fixed thread corruption bug where `HubSwitchGuard` could be dropped on wrong thread ([#957](https://github.com/getsentry/sentry-rust/pull/957)).
-  - **Breaking change**: `sentry_core::HubSwitchGuard` is now `!Send`, preventing it from being moved across threads. Code that previously sent the guard to another thread will no longer compile.
 - We now fork the `Hub` every time a span is entered. This prevents data from leaking across spans ([#957](https://github.com/getsentry/sentry-rust/pull/957)). 
 
 ## 0.46.2
