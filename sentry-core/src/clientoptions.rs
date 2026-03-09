@@ -7,6 +7,8 @@ use crate::constants::USER_AGENT;
 use crate::performance::TracesSampler;
 #[cfg(feature = "logs")]
 use crate::protocol::Log;
+#[cfg(feature = "metrics")]
+use crate::protocol::Metric;
 use crate::protocol::{Breadcrumb, Event};
 use crate::types::Dsn;
 use crate::{Integration, IntoDsn, TransportFactory};
@@ -175,6 +177,9 @@ pub struct ClientOptions {
     /// Determines whether captured metrics should be sent to Sentry (defaults to false).
     #[cfg(feature = "metrics")]
     pub enable_metrics: bool,
+    /// Callback that is executed for each Metric before sending.
+    #[cfg(feature = "metrics")]
+    pub before_send_metric: Option<BeforeCallback<Metric>>,
     // Other options not documented in Unified API
     /// Disable SSL verification.
     ///
@@ -282,7 +287,16 @@ impl fmt::Debug for ClientOptions {
             .field("before_send_log", &before_send_log);
 
         #[cfg(feature = "metrics")]
-        debug_struct.field("enable_metrics", &self.enable_metrics);
+        {
+            let before_send_metric = {
+                #[derive(Debug)]
+                struct BeforeSendMetric;
+                self.before_send_metric.as_ref().map(|_| BeforeSendMetric)
+            };
+            debug_struct
+                .field("enable_metrics", &self.enable_metrics)
+                .field("before_send_metric", &before_send_metric);
+        }
 
         debug_struct.field("user_agent", &self.user_agent).finish()
     }
@@ -325,6 +339,8 @@ impl Default for ClientOptions {
             before_send_log: None,
             #[cfg(feature = "metrics")]
             enable_metrics: false,
+            #[cfg(feature = "metrics")]
+            before_send_metric: None,
         }
     }
 }
