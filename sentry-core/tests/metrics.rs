@@ -1,11 +1,12 @@
 #![cfg(all(feature = "test", feature = "metrics"))]
 
 use std::collections::HashSet;
+use std::sync::Arc;
 
 use anyhow::{Context, Result};
 
-use sentry::protocol::TraceMetricType;
-use sentry_core::protocol::{EnvelopeItem, ItemContainer};
+use sentry::protocol::{LogAttribute, TraceMetricType, User};
+use sentry_core::protocol::{EnvelopeItem, ItemContainer, Value};
 use sentry_core::test;
 use sentry_core::{ClientOptions, Hub};
 use sentry_types::protocol::v7::TraceMetric;
@@ -259,4 +260,265 @@ impl IntoMetricsExt for EnvelopeItem {
             _ => None,
         }
     }
+}
+
+/// Helper to extract the single metric from captured envelopes.
+fn extract_single_metric(envelopes: Vec<sentry_core::Envelope>) -> TraceMetric {
+    let envelope = envelopes.into_only_item().expect("expected one envelope");
+    let item = envelope
+        .into_items()
+        .into_only_item()
+        .expect("expected one item");
+    let mut metrics = item.into_metrics().expect("expected metrics item");
+    assert_eq!(metrics.len(), 1, "expected exactly one metric");
+    metrics.pop().unwrap()
+}
+
+/// Test that trace_id is set from the propagation context when no span is active.
+#[test]
+fn trace_id_from_propagation_context() {
+    let options = ClientOptions {
+        enable_metrics: true,
+        ..Default::default()
+    };
+
+    let envelopes = test::with_captured_envelopes_options(|| capture_test_metric("test"), options);
+    let metric = extract_single_metric(envelopes);
+
+    // trace_id should be non-zero (set from propagation context)
+    assert_ne!(
+        metric.trace_id,
+        Default::default(),
+        "trace_id should be set from propagation context"
+    );
+}
+
+/// Test that default SDK attributes are attached to metrics.
+#[test]
+fn default_attributes_attached() {
+    let options = ClientOptions {
+        enable_metrics: true,
+        environment: Some("test-env".into()),
+        release: Some("1.0.0".into()),
+        server_name: Some("test-server".into()),
+        ..Default::default()
+    };
+
+    let envelopes = test::with_captured_envelopes_options(|| capture_test_metric("test"), options);
+    let metric = extract_single_metric(envelopes);
+
+    assert_eq!(
+        metric.attributes.get("sentry.environment"),
+        Some(&LogAttribute(Value::from("test-env"))),
+    );
+    assert_eq!(
+        metric.attributes.get("sentry.release"),
+        Some(&LogAttribute(Value::from("1.0.0"))),
+    );
+    assert!(
+        metric.attributes.contains_key("sentry.sdk.name"),
+        "sentry.sdk.name should be present"
+    );
+    assert!(
+        metric.attributes.contains_key("sentry.sdk.version"),
+        "sentry.sdk.version should be present"
+    );
+    assert_eq!(
+        metric.attributes.get("server.address"),
+        Some(&LogAttribute(Value::from("test-server"))),
+    );
+}
+
+/// Test that explicitly set metric attributes are not overwritten by defaults.
+#[test]
+fn default_attributes_do_not_overwrite_explicit() {
+    let options = ClientOptions {
+        enable_metrics: true,
+        environment: Some("default-env".into()),
+        ..Default::default()
+    };
+
+    let envelopes = test::with_captured_envelopes_options(
+        || {
+            let mut metric = test_metric("test");
+            metric.attributes.insert(
+                "sentry.environment".to_owned(),
+                LogAttribute(Value::from("custom-env")),
+            );
+            Hub::current().capture_metric(metric);
+        },
+        options,
+    );
+    let metric = extract_single_metric(envelopes);
+
+    assert_eq!(
+        metric.attributes.get("sentry.environment"),
+        Some(&LogAttribute(Value::from("custom-env"))),
+        "explicitly set attribute should not be overwritten"
+    );
+}
+
+/// Test that user attributes are NOT attached when `send_default_pii` is false.
+#[test]
+fn user_attributes_absent_without_send_default_pii() {
+    let options = ClientOptions {
+        enable_metrics: true,
+        send_default_pii: false,
+        ..Default::default()
+    };
+
+    let envelopes = test::with_captured_envelopes_options(
+        || {
+            sentry_core::configure_scope(|scope| {
+                scope.set_user(Some(User {
+                    id: Some("uid-123".into()),
+                    username: Some("testuser".into()),
+                    email: Some("test@example.com".into()),
+                    ..Default::default()
+                }));
+            });
+            capture_test_metric("test");
+        },
+        options,
+    );
+    let metric = extract_single_metric(envelopes);
+
+    assert!(
+        !metric.attributes.contains_key("user.id"),
+        "user.id should not be set when send_default_pii is false"
+    );
+    assert!(
+        !metric.attributes.contains_key("user.name"),
+        "user.name should not be set when send_default_pii is false"
+    );
+    assert!(
+        !metric.attributes.contains_key("user.email"),
+        "user.email should not be set when send_default_pii is false"
+    );
+}
+
+/// Test that user attributes ARE attached when `send_default_pii` is true.
+#[test]
+fn user_attributes_present_with_send_default_pii() {
+    let options = ClientOptions {
+        enable_metrics: true,
+        send_default_pii: true,
+        ..Default::default()
+    };
+
+    let envelopes = test::with_captured_envelopes_options(
+        || {
+            sentry_core::configure_scope(|scope| {
+                scope.set_user(Some(User {
+                    id: Some("uid-123".into()),
+                    username: Some("testuser".into()),
+                    email: Some("test@example.com".into()),
+                    ..Default::default()
+                }));
+            });
+            capture_test_metric("test");
+        },
+        options,
+    );
+    let metric = extract_single_metric(envelopes);
+
+    assert_eq!(
+        metric.attributes.get("user.id"),
+        Some(&LogAttribute(Value::from("uid-123"))),
+    );
+    assert_eq!(
+        metric.attributes.get("user.name"),
+        Some(&LogAttribute(Value::from("testuser"))),
+    );
+    assert_eq!(
+        metric.attributes.get("user.email"),
+        Some(&LogAttribute(Value::from("test@example.com"))),
+    );
+}
+
+/// Test that explicitly set user attributes on the metric are not overwritten
+/// by scope user data, even when `send_default_pii` is true.
+#[test]
+fn user_attributes_do_not_overwrite_explicit() {
+    let options = ClientOptions {
+        enable_metrics: true,
+        send_default_pii: true,
+        ..Default::default()
+    };
+
+    let envelopes = test::with_captured_envelopes_options(
+        || {
+            sentry_core::configure_scope(|scope| {
+                scope.set_user(Some(User {
+                    id: Some("scope-uid".into()),
+                    username: Some("scope-user".into()),
+                    email: Some("scope@example.com".into()),
+                    ..Default::default()
+                }));
+            });
+            let mut metric = test_metric("test");
+            metric.attributes.insert(
+                "user.id".to_owned(),
+                LogAttribute(Value::from("explicit-uid")),
+            );
+            Hub::current().capture_metric(metric);
+        },
+        options,
+    );
+    let metric = extract_single_metric(envelopes);
+
+    assert_eq!(
+        metric.attributes.get("user.id"),
+        Some(&LogAttribute(Value::from("explicit-uid"))),
+        "explicitly set user.id should not be overwritten"
+    );
+    // Non-explicit user attributes should still come from scope
+    assert_eq!(
+        metric.attributes.get("user.name"),
+        Some(&LogAttribute(Value::from("scope-user"))),
+    );
+    assert_eq!(
+        metric.attributes.get("user.email"),
+        Some(&LogAttribute(Value::from("scope@example.com"))),
+    );
+}
+
+/// Test that `before_send_metric` can filter out metrics.
+#[test]
+fn before_send_metric_can_drop() {
+    let options = ClientOptions {
+        enable_metrics: true,
+        before_send_metric: Some(Arc::new(|_| None)),
+        ..Default::default()
+    };
+
+    let envelopes = test::with_captured_envelopes_options(|| capture_test_metric("test"), options);
+    assert!(
+        envelopes.is_empty(),
+        "metric should be dropped by before_send_metric"
+    );
+}
+
+/// Test that `before_send_metric` can modify metrics.
+#[test]
+fn before_send_metric_can_modify() {
+    let options = ClientOptions {
+        enable_metrics: true,
+        before_send_metric: Some(Arc::new(|mut metric| {
+            metric.attributes.insert(
+                "added_by_callback".to_owned(),
+                LogAttribute(Value::from("yes")),
+            );
+            Some(metric)
+        })),
+        ..Default::default()
+    };
+
+    let envelopes = test::with_captured_envelopes_options(|| capture_test_metric("test"), options);
+    let metric = extract_single_metric(envelopes);
+
+    assert_eq!(
+        metric.attributes.get("added_by_callback"),
+        Some(&LogAttribute(Value::from("yes"))),
+    );
 }

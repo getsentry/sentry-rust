@@ -2,6 +2,8 @@ use std::fmt;
 
 #[cfg(feature = "logs")]
 use crate::protocol::Log;
+#[cfg(feature = "metrics")]
+use crate::protocol::TraceMetric;
 use crate::protocol::{Context, Event, Level, User, Value};
 use crate::TransactionOrSpan;
 
@@ -116,6 +118,14 @@ impl Scope {
     #[cfg(feature = "logs")]
     pub fn apply_to_log(&self, log: &mut Log) {
         let _log = log;
+        minimal_unreachable!();
+    }
+
+    /// Applies the contained scoped data to fill a trace metric.
+    #[cfg(feature = "metrics")]
+    pub fn apply_to_metric(&self, metric: &mut TraceMetric, send_default_pii: bool) {
+        let _metric = metric;
+        let _send_default_pii = send_default_pii;
         minimal_unreachable!();
     }
 
