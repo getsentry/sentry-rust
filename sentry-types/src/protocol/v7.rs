@@ -2407,6 +2407,26 @@ pub struct TraceMetric {
     pub attributes: Map<String, LogAttribute>,
 }
 
+impl TraceMetric {
+    /// Create a new [`TraceMetric`] with provided values and the current time
+    /// as the timestamp. Other values set to their [`Default`] values.
+    pub fn new<S>(r#type: TraceMetricType, name: S, value: f64, trace_id: TraceId) -> Self
+    where
+        S: Into<String>,
+    {
+        Self {
+            r#type,
+            name: name.into(),
+            value,
+            timestamp: SystemTime::now(),
+            trace_id,
+            span_id: Default::default(),
+            unit: Default::default(),
+            attributes: Default::default(),
+        }
+    }
+}
+
 /// An ID that identifies an organization in the Sentry backend.
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub struct OrganizationId(u64);

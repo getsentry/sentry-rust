@@ -12,7 +12,7 @@ use crate::protocol::SessionUpdate;
 use rand::random;
 use sentry_types::random_uuid;
 
-#[cfg(feature = "logs")]
+#[cfg(any(feature = "logs", feature = "metrics"))]
 use crate::batcher::Batcher;
 use crate::constants::SDK_INFO;
 use crate::protocol::{ClientSdkInfo, Event};
@@ -24,6 +24,8 @@ use crate::SessionMode;
 use crate::{ClientOptions, Envelope, Hub, Integration, Scope, Transport};
 #[cfg(feature = "logs")]
 use sentry_types::protocol::v7::Context;
+#[cfg(feature = "metrics")]
+use sentry_types::protocol::v7::TraceMetric;
 #[cfg(feature = "logs")]
 use sentry_types::protocol::v7::{Log, LogAttribute};
 
@@ -59,6 +61,8 @@ pub struct Client {
     session_flusher: RwLock<Option<SessionFlusher>>,
     #[cfg(feature = "logs")]
     logs_batcher: RwLock<Option<Batcher<Log>>>,
+    #[cfg(feature = "metrics")]
+    metrics_batcher: RwLock<Option<Batcher<TraceMetric>>>,
     #[cfg(feature = "logs")]
     default_log_attributes: Option<BTreeMap<String, LogAttribute>>,
     integrations: Vec<(TypeId, Arc<dyn Integration>)>,
@@ -91,6 +95,13 @@ impl Clone for Client {
             None
         });
 
+        #[cfg(feature = "metrics")]
+        let metrics_batcher = RwLock::new(if self.options.enable_metrics {
+            Some(Batcher::new(transport.clone()))
+        } else {
+            None
+        });
+
         Client {
             options: self.options.clone(),
             transport,
@@ -98,6 +109,8 @@ impl Clone for Client {
             session_flusher,
             #[cfg(feature = "logs")]
             logs_batcher,
+            #[cfg(feature = "metrics")]
+            metrics_batcher,
             #[cfg(feature = "logs")]
             default_log_attributes: self.default_log_attributes.clone(),
             integrations: self.integrations.clone(),
@@ -176,6 +189,13 @@ impl Client {
             None
         });
 
+        #[cfg(feature = "metrics")]
+        let metrics_batcher = RwLock::new(if options.enable_metrics {
+            Some(Batcher::new(transport.clone()))
+        } else {
+            None
+        });
+
         #[allow(unused_mut)]
         let mut client = Client {
             options,
@@ -184,6 +204,8 @@ impl Client {
             session_flusher,
             #[cfg(feature = "logs")]
             logs_batcher,
+            #[cfg(feature = "metrics")]
+            metrics_batcher,
             #[cfg(feature = "logs")]
             default_log_attributes: None,
             integrations,
@@ -420,6 +442,10 @@ impl Client {
         if let Some(ref batcher) = *self.logs_batcher.read().unwrap() {
             batcher.flush();
         }
+        #[cfg(feature = "metrics")]
+        if let Some(ref batcher) = *self.metrics_batcher.read().unwrap() {
+            batcher.flush();
+        }
         if let Some(ref transport) = *self.transport.read().unwrap() {
             transport.flush(timeout.unwrap_or(self.options.shutdown_timeout))
         } else {
@@ -439,6 +465,8 @@ impl Client {
         drop(self.session_flusher.write().unwrap().take());
         #[cfg(feature = "logs")]
         drop(self.logs_batcher.write().unwrap().take());
+        #[cfg(feature = "metrics")]
+        drop(self.metrics_batcher.write().unwrap().take());
         let transport_opt = self.transport.write().unwrap().take();
         if let Some(transport) = transport_opt {
             sentry_debug!("client close; request transport to shut down");
@@ -492,6 +520,20 @@ impl Client {
         }
 
         Some(log)
+    }
+
+    /// Captures a trace metric and sends it to Sentry.
+    #[cfg(feature = "metrics")]
+    pub fn capture_metric(&self, metric: TraceMetric, _: &Scope) {
+        // TODO: Read scope
+        if let Some(batcher) = self
+            .metrics_batcher
+            .read()
+            .expect("metrics batcher lock could not be acquired")
+            .as_ref()
+        {
+            batcher.enqueue(metric);
+        }
     }
 }
 
