@@ -2383,7 +2383,6 @@ pub enum MetricType {
 
 /// A single [metric](https://develop.sentry.dev/sdk/telemetry/metrics/).
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-#[non_exhaustive]
 pub struct Metric {
     /// The metric type.
     pub r#type: MetricType,
