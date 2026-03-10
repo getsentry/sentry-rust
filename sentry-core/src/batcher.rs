@@ -161,7 +161,7 @@ impl<T: Batch> Drop for Batcher<T> {
     }
 }
 
-#[cfg(all(test, feature = "test"))]
+#[cfg(all(test, feature = "test", feature = "logs"))]
 mod tests {
     use crate::logger_info;
     use crate::test;
