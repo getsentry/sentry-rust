@@ -1,6 +1,6 @@
 [package]
 name = "sentry-opentelemetry"
-version = "0.46.2"
+version = "0.47.0"
 authors = { workspace = true }
 license = "MIT"
 readme = "README.md"
@@ -16,7 +16,7 @@ rust-version = { workspace = true }
 all-features = true
 
 [dependencies]
-sentry-core = { version = "0.46.2", path = "../sentry-core", features = [
+sentry-core = { version = "0.47.0", path = "../sentry-core", features = [
     "client",
 ] }
 opentelemetry = { version = "0.29.0", default-features = false }
