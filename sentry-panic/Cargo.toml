@@ -1,6 +1,6 @@
 [package]
 name = "sentry-panic"
-version = "0.46.2"
+version = "0.47.0"
 authors = { workspace = true }
 license = "MIT"
 readme = "README.md"
@@ -13,8 +13,8 @@ edition = { workspace = true }
 rust-version = { workspace = true }
 
 [dependencies]
-sentry-core = { version = "0.46.2", path = "../sentry-core", features = ["client"] }
-sentry-backtrace = { version = "0.46.2", path = "../sentry-backtrace" }
+sentry-core = { version = "0.47.0", path = "../sentry-core", features = ["client"] }
+sentry-backtrace = { version = "0.47.0", path = "../sentry-backtrace" }
 
 [dev-dependencies]
 sentry = { path = "../sentry", default-features = false, features = ["test"] }
