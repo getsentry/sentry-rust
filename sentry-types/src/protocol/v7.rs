@@ -26,6 +26,7 @@ use crate::utils::{display_from_str_opt, ts_rfc3339_opt, ts_seconds_float};
 
 pub use super::attachment::*;
 pub use super::envelope::*;
+pub use super::feedback::*;
 pub use super::monitor::*;
 pub use super::session::*;
 
@@ -1102,6 +1103,8 @@ pub enum Context {
     Otel(Box<OtelContext>),
     /// HTTP response data.
     Response(Box<ResponseContext>),
+    /// User feedback
+    Feedback(Box<Feedback>),
     /// Generic other context data.
     #[serde(rename = "unknown")]
     Other(Map<String, Value>),
@@ -1120,6 +1123,7 @@ impl Context {
             Context::Gpu(..) => "gpu",
             Context::Otel(..) => "otel",
             Context::Response(..) => "response",
+            Context::Feedback(..) => "feedback",
             Context::Other(..) => "unknown",
         }
     }
@@ -1721,6 +1725,9 @@ pub struct Event<'a> {
     /// SDK metadata
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sdk: Option<Cow<'a, ClientSdkInfo>>,
+    /// The event type
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub r#type: Option<String>,
 }
 
 impl Default for Event<'_> {
@@ -1753,6 +1760,7 @@ impl Default for Event<'_> {
             extra: Default::default(),
             debug_meta: Default::default(),
             sdk: Default::default(),
+            r#type: Default::default(),
         }
     }
 }
@@ -1798,6 +1806,7 @@ impl<'a> Event<'a> {
             extra: self.extra,
             debug_meta: Cow::Owned(self.debug_meta.into_owned()),
             sdk: self.sdk.map(|x| Cow::Owned(x.into_owned())),
+            r#type: self.r#type,
         }
     }
 }
