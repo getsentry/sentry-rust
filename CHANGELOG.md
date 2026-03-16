@@ -6,6 +6,7 @@
 
 - Add SDK protocol support for sending `trace_metric` envelope items ([#1022](https://github.com/getsentry/sentry-rust/pull/1022)).
 - Add `Metric` and `MetricType` types representing [trace metrics](https://develop.sentry.dev/sdk/telemetry/metrics/) ([#1026](https://github.com/getsentry/sentry-rust/pull/1026)).
+- Add metric capture and batching in `sentry-core`. Metrics can be captured via `Hub::capture_metric` and are batched and sent as `trace_metric` envelope items. Controlled by the `metrics` feature flag and `ClientOptions::enable_metrics` ([#1026](https://github.com/getsentry/sentry-rust/pull/1026)).
 
 ## 0.47.0
 
