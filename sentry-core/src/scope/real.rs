@@ -6,11 +6,15 @@ use std::sync::Mutex;
 use std::sync::{Arc, PoisonError, RwLock};
 
 use crate::performance::TransactionOrSpan;
+#[cfg(feature = "logs")]
+use crate::protocol::Log;
+#[cfg(any(feature = "logs", feature = "metrics"))]
+use crate::protocol::LogAttribute;
+#[cfg(feature = "metrics")]
+use crate::protocol::Metric;
 use crate::protocol::{
     Attachment, Breadcrumb, Context, Event, Level, TraceContext, Transaction, User, Value,
 };
-#[cfg(feature = "logs")]
-use crate::protocol::{Log, LogAttribute};
 #[cfg(feature = "release-health")]
 use crate::session::Session;
 use crate::{Client, SentryTrace, TraceHeader, TraceHeadersIter};
@@ -399,6 +403,33 @@ impl Scope {
         }
     }
 
+    /// Applies the contained scoped data to a trace metric, setting the `trace_id`, `span_id`,
+    /// and certain default attributes. User PII attributes are only attached when
+    /// `send_default_pii` is `true`.
+    #[cfg(feature = "metrics")]
+    pub fn apply_to_metric(&self, metric: &mut Metric, send_default_pii: bool) {
+        metric.trace_id = match self.span.as_ref().as_ref() {
+            Some(span) => span.get_trace_context().trace_id,
+            None => self.propagation_context.trace_id,
+        };
+
+        metric.span_id = metric
+            .span_id
+            .or_else(|| self.get_span().map(|ts| ts.span_id()));
+
+        if !send_default_pii {
+            return;
+        }
+
+        let Some(user) = self.user.as_ref() else {
+            return;
+        };
+
+        metric.insert_attribute("user.id", user.id.as_deref());
+        metric.insert_attribute("user.name", user.username.as_deref());
+        metric.insert_attribute("user.email", user.email.as_deref());
+    }
+
     /// Set the given [`TransactionOrSpan`] as the active span for this scope.
     pub fn set_span(&mut self, span: Option<TransactionOrSpan>) {
         self.span = Arc::new(span);
@@ -442,5 +473,24 @@ impl Scope {
             );
             TraceHeadersIter::new(data.to_string())
         }
+    }
+}
+
+#[cfg(feature = "metrics")]
+trait MetricExt {
+    fn insert_attribute<K, V>(&mut self, key: K, value: V)
+    where
+        K: Into<String>,
+        V: Into<Value>;
+}
+
+#[cfg(feature = "metrics")]
+impl MetricExt for Metric {
+    fn insert_attribute<K, V>(&mut self, key: K, value: V)
+    where
+        K: Into<String>,
+        V: Into<Value>,
+    {
+        self.attributes.insert(key, LogAttribute(value.into()));
     }
 }
