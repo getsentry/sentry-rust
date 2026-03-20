@@ -1,5 +1,6 @@
 #![cfg(all(feature = "test", feature = "metrics"))]
 
+use std::borrow::Cow;
 use std::collections::HashSet;
 use std::sync::Arc;
 
@@ -121,6 +122,7 @@ fn test_metrics_batching_at_limit() {
 
     (0..100)
         .map(|i| format!("metric.{i}"))
+        .map(Cow::Owned)
         .for_each(|metric_name| {
             assert!(
                 metric_names.contains(&metric_name),
@@ -175,6 +177,7 @@ fn test_metrics_batching_over_limit() {
 
     (0..100)
         .map(|i| format!("metric.{i}"))
+        .map(Cow::Owned)
         .for_each(|metric_name| {
             assert!(
                 first_metric_names.contains(&metric_name),
@@ -208,7 +211,7 @@ fn test_metrics_batching_over_limit() {
 /// the provided name, and a value of `1.0`. The other fields are unspecified.
 fn test_metric<S>(name: S) -> Metric
 where
-    S: Into<String>,
+    S: Into<Cow<'static, str>>,
 {
     Metric::new(MetricType::Counter, name, 1.0, Default::default())
 }
@@ -216,7 +219,7 @@ where
 /// Helper function to capture a metric, returned by `test_metric` on the current Hub.
 fn capture_test_metric<S>(name: S)
 where
-    S: Into<String>,
+    S: Into<Cow<'static, str>>,
 {
     Hub::current().capture_metric(test_metric(name))
 }
@@ -264,10 +267,12 @@ impl IntoMetricsExt for EnvelopeItem {
 
 /// Helper to extract the single metric from captured envelopes.
 fn extract_single_metric(envelopes: Vec<sentry_core::Envelope>) -> Metric {
-    let envelope = envelopes.into_only_item().expect("expected one envelope");
+    let envelope = envelopes
+        .try_into_only_item()
+        .expect("expected one envelope");
     let item = envelope
         .into_items()
-        .into_only_item()
+        .try_into_only_item()
         .expect("expected one item");
     let mut metrics = item.into_metrics().expect("expected metrics item");
     assert_eq!(metrics.len(), 1, "expected exactly one metric");
@@ -342,7 +347,7 @@ fn default_attributes_do_not_overwrite_explicit() {
         || {
             let mut metric = test_metric("test");
             metric.attributes.insert(
-                "sentry.environment".to_owned(),
+                "sentry.environment".into(),
                 LogAttribute(Value::from("custom-env")),
             );
             Hub::current().capture_metric(metric);
@@ -457,10 +462,9 @@ fn user_attributes_do_not_overwrite_explicit() {
                 }));
             });
             let mut metric = test_metric("test");
-            metric.attributes.insert(
-                "user.id".to_owned(),
-                LogAttribute(Value::from("explicit-uid")),
-            );
+            metric
+                .attributes
+                .insert("user.id".into(), LogAttribute(Value::from("explicit-uid")));
             Hub::current().capture_metric(metric);
         },
         options,
@@ -505,10 +509,9 @@ fn before_send_metric_can_modify() {
     let options = ClientOptions {
         enable_metrics: true,
         before_send_metric: Some(Arc::new(|mut metric| {
-            metric.attributes.insert(
-                "added_by_callback".to_owned(),
-                LogAttribute(Value::from("yes")),
-            );
+            metric
+                .attributes
+                .insert("added_by_callback".into(), LogAttribute(Value::from("yes")));
             Some(metric)
         })),
         ..Default::default()

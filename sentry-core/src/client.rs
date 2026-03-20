@@ -68,7 +68,7 @@ pub struct Client {
     #[cfg(feature = "logs")]
     default_log_attributes: Option<BTreeMap<String, LogAttribute>>,
     #[cfg(feature = "metrics")]
-    default_metric_attributes: Option<BTreeMap<String, LogAttribute>>,
+    default_metric_attributes: Option<BTreeMap<Cow<'static, str>, LogAttribute>>,
     integrations: Vec<(TypeId, Arc<dyn Integration>)>,
     pub(crate) sdk_info: ClientSdkInfo,
 }
@@ -285,25 +285,25 @@ impl Client {
         let mut attributes = BTreeMap::new();
 
         if let Some(environment) = self.options.environment.as_ref() {
-            attributes.insert("sentry.environment".to_owned(), environment.clone().into());
+            attributes.insert("sentry.environment".into(), environment.clone().into());
         }
 
         if let Some(release) = self.options.release.as_ref() {
-            attributes.insert("sentry.release".to_owned(), release.clone().into());
+            attributes.insert("sentry.release".into(), release.clone().into());
         }
 
         attributes.insert(
-            "sentry.sdk.name".to_owned(),
+            "sentry.sdk.name".into(),
             self.sdk_info.name.to_owned().into(),
         );
 
         attributes.insert(
-            "sentry.sdk.version".to_owned(),
+            "sentry.sdk.version".into(),
             self.sdk_info.version.to_owned().into(),
         );
 
         if let Some(server) = &self.options.server_name {
-            attributes.insert("server.address".to_owned(), server.clone().into());
+            attributes.insert("server.address".into(), server.clone().into());
         }
 
         self.default_metric_attributes = Some(attributes);
@@ -583,10 +583,7 @@ impl Client {
 
         if let Some(default_attributes) = self.default_metric_attributes.as_ref() {
             for (key, val) in default_attributes.iter() {
-                metric
-                    .attributes
-                    .entry(key.to_owned())
-                    .or_insert(val.clone());
+                metric.attributes.entry(key.clone()).or_insert(val.clone());
             }
         }
 

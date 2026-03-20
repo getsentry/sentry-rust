@@ -2412,7 +2412,7 @@ impl Metric {
     /// as the timestamp. Other values set to their [`Default`] values.
     pub fn new<S>(r#type: MetricType, name: S, value: f64, trace_id: TraceId) -> Self
     where
-        S: Into<String>,
+        S: Into<Cow<'static, str>>,
     {
         Self {
             r#type,
