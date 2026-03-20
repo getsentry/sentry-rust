@@ -163,3 +163,6 @@ pub use sentry_types::protocol::v7::{Breadcrumb, Envelope, Level, User};
 
 // utilities reused across integrations
 pub mod utils;
+
+// telemtry types (limited to metrics for now)
+pub mod telemetry;
