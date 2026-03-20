@@ -480,7 +480,7 @@ impl Scope {
 trait MetricExt {
     fn insert_attribute<K, V>(&mut self, key: K, value: V)
     where
-        K: Into<String>,
+        K: Into<Cow<'static, str>>,
         V: Into<Value>;
 }
 
@@ -488,9 +488,10 @@ trait MetricExt {
 impl MetricExt for Metric {
     fn insert_attribute<K, V>(&mut self, key: K, value: V)
     where
-        K: Into<String>,
+        K: Into<Cow<'static, str>>,
         V: Into<Value>,
     {
-        self.attributes.insert(key, LogAttribute(value.into()));
+        self.attributes
+            .insert(key.into(), LogAttribute(value.into()));
     }
 }

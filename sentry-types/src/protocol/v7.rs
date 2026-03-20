@@ -8,7 +8,7 @@
 use std::borrow::Cow;
 use std::cmp;
 use std::convert::TryFrom;
-use std::fmt;
+use std::fmt::{self, Display};
 use std::iter::FromIterator;
 use std::net::{AddrParseError, IpAddr};
 use std::ops;
@@ -2378,6 +2378,18 @@ pub enum MetricType {
     Gauge,
     /// A distribution metric for statistical spread measurements.
     Distribution,
+}
+
+impl Display for MetricType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let name = match self {
+            MetricType::Counter => "counter",
+            MetricType::Gauge => "gauge",
+            MetricType::Distribution => "distribution",
+        };
+
+        write!(f, "{name}")
+    }
 }
 
 /// A single [metric](https://develop.sentry.dev/sdk/telemetry/metrics/).
