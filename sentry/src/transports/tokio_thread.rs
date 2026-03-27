@@ -27,13 +27,13 @@ pub struct TransportThread {
 
 impl TransportThread {
     /// Spawn a new background thread.
-    pub fn new<SendFn, SendFuture>(mut send: SendFn) -> Self
+    pub fn new<SendFn, SendFuture>(mut send: SendFn, channel_capacity: usize) -> Self
     where
         SendFn: FnMut(Envelope, RateLimiter) -> SendFuture + Send + 'static,
         // NOTE: returning RateLimiter here, otherwise we are in borrow hell
         SendFuture: std::future::Future<Output = RateLimiter>,
     {
-        let (sender, receiver) = sync_channel(30);
+        let (sender, receiver) = sync_channel(channel_capacity);
         let shutdown = Arc::new(AtomicBool::new(false));
         let shutdown_worker = shutdown.clone();
         let handle = thread::Builder::new()
