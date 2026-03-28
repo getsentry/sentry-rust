@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### New Features
+
+- Add SDK protocol support for sending `trace_metric` envelope items ([#1022](https://github.com/getsentry/sentry-rust/pull/1022)).
+- Add `Metric` and `MetricType` types representing [trace metrics](https://develop.sentry.dev/sdk/telemetry/metrics/) ([#1026](https://github.com/getsentry/sentry-rust/pull/1026)).
+
 ## 0.47.0
 
 ### Breaking Changes
