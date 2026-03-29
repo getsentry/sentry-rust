@@ -36,6 +36,7 @@ impl CurlHttpTransport {
         let url = dsn.envelope_api_url().to_string();
         let scheme = dsn.scheme();
         let accept_invalid_certs = options.accept_invalid_certs;
+        let channel_capacity = options.transport_channel_capacity;
 
         let mut handle = client;
         let thread = TransportThread::new(move |envelope, rl| {
@@ -130,7 +131,7 @@ impl CurlHttpTransport {
                     sentry_debug!("Failed to send envelope: {}", err);
                 }
             }
-        });
+        }, channel_capacity);
         Self { thread }
     }
 }

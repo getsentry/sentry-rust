@@ -82,6 +82,7 @@ impl UreqHttpTransport {
         let user_agent = options.user_agent.clone();
         let auth = dsn.to_auth(Some(&user_agent)).to_string();
         let url = dsn.envelope_api_url().to_string();
+        let channel_capacity = options.transport_channel_capacity;
 
         let thread = TransportThread::new(move |envelope, rl| {
             let mut body = Vec::new();
@@ -118,7 +119,7 @@ impl UreqHttpTransport {
                     sentry_debug!("Failed to send envelope: {}", err);
                 }
             }
-        });
+        }, channel_capacity);
         Self { thread }
     }
 }

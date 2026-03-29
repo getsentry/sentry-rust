@@ -63,6 +63,7 @@ impl ReqwestHttpTransport {
         let user_agent = options.user_agent.clone();
         let auth = dsn.to_auth(Some(&user_agent)).to_string();
         let url = dsn.envelope_api_url().to_string();
+        let channel_capacity = options.transport_channel_capacity;
 
         let thread = TransportThread::new(move |envelope, mut rl| {
             let mut body = Vec::new();
@@ -110,7 +111,7 @@ impl ReqwestHttpTransport {
                 }
                 rl
             }
-        });
+        }, channel_capacity);
         Self { thread }
     }
 }
