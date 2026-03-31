@@ -18,6 +18,8 @@ use crate::constants::SDK_INFO;
 use crate::protocol::{ClientSdkInfo, Event};
 #[cfg(feature = "release-health")]
 use crate::session::SessionFlusher;
+#[cfg(feature = "metrics")]
+use crate::telemetry::Metric;
 use crate::types::{Dsn, Uuid};
 #[cfg(feature = "release-health")]
 use crate::SessionMode;
@@ -27,7 +29,7 @@ use sentry_types::protocol::v7::Context;
 #[cfg(all(feature = "metrics", not(feature = "logs")))]
 use sentry_types::protocol::v7::LogAttribute;
 #[cfg(feature = "metrics")]
-use sentry_types::protocol::v7::Metric;
+use sentry_types::protocol::v7::Metric as ProtocolMetric;
 #[cfg(feature = "logs")]
 use sentry_types::protocol::v7::{Log, LogAttribute};
 
@@ -64,7 +66,7 @@ pub struct Client {
     #[cfg(feature = "logs")]
     logs_batcher: RwLock<Option<Batcher<Log>>>,
     #[cfg(feature = "metrics")]
-    metrics_batcher: RwLock<Option<Batcher<Metric>>>,
+    metrics_batcher: RwLock<Option<Batcher<ProtocolMetric>>>,
     #[cfg(feature = "logs")]
     default_log_attributes: Option<BTreeMap<String, LogAttribute>>,
     #[cfg(feature = "metrics")]
@@ -578,15 +580,12 @@ impl Client {
     /// Prepares a metric to be sent, setting the `trace_id` and other default attributes, and
     /// processing it through `before_send_metric`.
     #[cfg(feature = "metrics")]
-    fn prepare_metric(&self, mut metric: Metric, scope: &Scope) -> Option<Metric> {
-        scope.apply_to_metric(&mut metric, self.options.send_default_pii);
-
+    fn prepare_metric(&self, mut metric: Metric, scope: &Scope) -> Option<ProtocolMetric> {
         if let Some(default_attributes) = self.default_metric_attributes.as_ref() {
-            for (key, val) in default_attributes.iter() {
-                metric.attributes.entry(key.clone()).or_insert(val.clone());
-            }
+            metric.add_default_attributes(default_attributes);
         }
 
+        scope.apply_to_metric(&mut metric, self.options.send_default_pii);
         if let Some(ref func) = self.options.before_send_metric {
             metric = func(metric)?;
         }

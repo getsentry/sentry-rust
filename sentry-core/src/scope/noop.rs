@@ -3,7 +3,7 @@ use std::fmt;
 #[cfg(feature = "logs")]
 use crate::protocol::Log;
 #[cfg(feature = "metrics")]
-use crate::protocol::Metric;
+use crate::protocol::Metric as ProtocolMetric;
 use crate::protocol::{Context, Event, Level, User, Value};
 use crate::TransactionOrSpan;
 

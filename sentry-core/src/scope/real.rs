@@ -5,13 +5,15 @@ use std::fmt;
 use std::sync::Mutex;
 use std::sync::{Arc, PoisonError, RwLock};
 
+use sentry_types::protocol::v7::{SpanId, TraceId};
+
 use crate::performance::TransactionOrSpan;
 #[cfg(feature = "logs")]
 use crate::protocol::Log;
 #[cfg(any(feature = "logs", feature = "metrics"))]
 use crate::protocol::LogAttribute;
 #[cfg(feature = "metrics")]
-use crate::protocol::Metric;
+use crate::protocol::Metric as ProtocolMetric;
 use crate::protocol::{
     Attachment, Breadcrumb, Context, Event, Level, TraceContext, Transaction, User, Value,
 };
@@ -407,7 +409,7 @@ impl Scope {
     /// and certain default attributes. User PII attributes are only attached when
     /// `send_default_pii` is `true`.
     #[cfg(feature = "metrics")]
-    pub fn apply_to_metric(&self, metric: &mut Metric, send_default_pii: bool) {
+    pub fn apply_to_metric(&self, metric: &mut ProtocolMetric, send_default_pii: bool) {
         metric.trace_id = match self.span.as_ref().as_ref() {
             Some(span) => span.get_trace_context().trace_id,
             None => self.propagation_context.trace_id,
@@ -474,10 +476,26 @@ impl Scope {
             TraceHeadersIter::new(data.to_string())
         }
     }
+
+    /// Returns the [`SpanId`] of [`Self::span`], or [`None`] if [`Self::span`] is [`None`].
+    pub(crate) fn span_id(&self) -> Option<SpanId> {
+        self.span.as_ref().as_ref().map(|span| span.span_id())
+    }
+
+    /// Gets this scope's [`TraceId`].
+    ///
+    /// If this scope has a span, the trace ID comes from the span's trace context, otherwise it
+    /// comes from [`Self::propagation_context`].
+    pub(crate) fn trace_id(&self) -> TraceId {
+        match self.span.as_ref() {
+            Some(span) => span.get_trace_context().trace_id,
+            None => self.propagation_context.trace_id,
+        }
+    }
 }
 
 #[cfg(feature = "metrics")]
-trait MetricExt {
+trait ProtocolMetricExt {
     fn insert_attribute<K, V>(&mut self, key: K, value: V)
     where
         K: Into<Cow<'static, str>>,
@@ -485,7 +503,7 @@ trait MetricExt {
 }
 
 #[cfg(feature = "metrics")]
-impl MetricExt for Metric {
+impl ProtocolMetricExt for ProtocolMetric {
     fn insert_attribute<K, V>(&mut self, key: K, value: V)
     where
         K: Into<Cow<'static, str>>,

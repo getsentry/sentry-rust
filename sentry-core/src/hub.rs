@@ -5,7 +5,7 @@
 use std::sync::{Arc, RwLock};
 
 #[cfg(feature = "metrics")]
-use crate::protocol::Metric;
+use crate::telemetry::Metric;
 use crate::protocol::{Event, Level, Log, LogAttribute, LogLevel, Map, SessionStatus};
 use crate::types::Uuid;
 use crate::{Integration, IntoBreadcrumbs, Scope, ScopeGuard};

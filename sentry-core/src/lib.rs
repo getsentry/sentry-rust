@@ -119,6 +119,8 @@ mod intodsn;
 mod performance;
 mod scope;
 mod transport;
+#[cfg(feature = "metrics")]
+pub mod telemetry;
 
 // public api or exports from this crate
 pub use crate::api::*;

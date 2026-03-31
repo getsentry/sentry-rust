@@ -15,7 +15,8 @@
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 
-use crate::protocol::{LogAttribute, MetricType};
+use crate::protocol::{LogAttribute, Metric as ProtocolMetric, MetricType};
+use crate::Scope;
 
 /// User-facing telemetry types.
 #[derive(Clone, Debug, PartialEq)]
@@ -153,13 +154,52 @@ impl Metric {
     }
 
     /// Inserts a metric attribute.
-    pub fn with_attribute<K, V>(mut self, key: K, value: V) -> Self
+    pub fn add_attribute<K, V>(mut self, key: K, value: V) -> Self
     where
         K: Into<Cow<'static, str>>,
         V: Into<LogAttribute>,
     {
         self.attributes.insert(key.into(), value.into());
         self
+    }
+
+    /// Inserts the provided default attributes.
+    ///
+    /// Any existing attributes take precedence over the attributes passed.
+    pub(crate) fn add_default_attributes<'a, A>(mut self, default_attributes: &'a A)
+    where
+        &'a A: IntoIterator<Item = (&'a Cow<'static, str>, &'a LogAttribute)>,
+    {
+        for (k, v) in default_attributes {
+            self.attributes
+                .entry(k.clone())
+                .or_insert_with(|| v.clone());
+        }
+    }
+
+    /// Converts this [`Metric`] into a [`ProtocolMetric`].
+    ///
+    /// As a [`ProtocolMetric`] also requires the `trace_id`, and optionally the `span_id`, from
+    /// the [`Scope`], this method takes a scope and applies the relevant fields to the returned
+    /// [`ProtocolMetric`].
+    pub(crate) fn into_protocol_metric(self, scope: &Scope) -> ProtocolMetric {
+        let Metric {
+            metric_type,
+            name,
+            value,
+            unit,
+            attributes,
+        } = self;
+
+        let trace_id = scope.trace_id();
+        let span_id = scope.get_span().map(|ts| ts.span_id());
+
+        let mut protocol_metric = ProtocolMetric::new(metric_type, name, value, trace_id);
+        protocol_metric.unit = unit;
+        protocol_metric.attributes = attributes;
+        protocol_metric.span_id = span_id;
+
+        protocol_metric
     }
 
     /// Checks if the provided float value is valid for this metric.
