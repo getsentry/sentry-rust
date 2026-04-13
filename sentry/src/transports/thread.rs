@@ -31,7 +31,7 @@ impl TransportThread {
     where
         SendFn: FnMut(Envelope, &mut RateLimiter) + Send + 'static,
     {
-        let (sender, receiver) = sync_channel(channel_capacity);
+        let (sender, receiver) = sync_channel(channel_capacity.max(1));
         let shutdown = Arc::new(AtomicBool::new(false));
         let shutdown_worker = shutdown.clone();
         let handle = thread::Builder::new()

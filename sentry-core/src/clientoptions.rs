@@ -284,7 +284,13 @@ impl fmt::Debug for ClientOptions {
             .field("enable_logs", &self.enable_logs)
             .field("before_send_log", &before_send_log);
 
-        debug_struct.field("user_agent", &self.user_agent).finish()
+        debug_struct
+            .field("user_agent", &self.user_agent)
+            .field(
+                "transport_channel_capacity",
+                &self.transport_channel_capacity,
+            )
+            .finish()
     }
 }
 

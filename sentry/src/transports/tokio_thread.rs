@@ -33,7 +33,7 @@ impl TransportThread {
         // NOTE: returning RateLimiter here, otherwise we are in borrow hell
         SendFuture: std::future::Future<Output = RateLimiter>,
     {
-        let (sender, receiver) = sync_channel(channel_capacity);
+        let (sender, receiver) = sync_channel(channel_capacity.max(1));
         let shutdown = Arc::new(AtomicBool::new(false));
         let shutdown_worker = shutdown.clone();
         let handle = thread::Builder::new()

@@ -84,42 +84,48 @@ impl UreqHttpTransport {
         let url = dsn.envelope_api_url().to_string();
         let channel_capacity = options.transport_channel_capacity;
 
-        let thread = TransportThread::new(move |envelope, rl| {
-            let mut body = Vec::new();
-            envelope.to_writer(&mut body).unwrap();
-            let request = agent.post(&url).header("X-Sentry-Auth", &auth).send(&body);
+        let thread = TransportThread::new(
+            move |envelope, rl| {
+                let mut body = Vec::new();
+                envelope.to_writer(&mut body).unwrap();
+                let request = agent.post(&url).header("X-Sentry-Auth", &auth).send(&body);
 
-            match request {
-                Ok(mut response) => {
-                    fn header_str<'a, B>(response: &'a Response<B>, key: &str) -> Option<&'a str> {
-                        response.headers().get(key)?.to_str().ok()
-                    }
-
-                    if let Some(sentry_header) = header_str(&response, "x-sentry-rate-limits") {
-                        rl.update_from_sentry_header(sentry_header);
-                    } else if let Some(retry_after) = header_str(&response, "retry-after") {
-                        rl.update_from_retry_after(retry_after);
-                    } else if response.status() == 429 {
-                        rl.update_from_429();
-                    }
-
-                    match response.body_mut().read_to_string() {
-                        Err(err) => {
-                            sentry_debug!("Failed to read sentry response: {}", err);
+                match request {
+                    Ok(mut response) => {
+                        fn header_str<'a, B>(
+                            response: &'a Response<B>,
+                            key: &str,
+                        ) -> Option<&'a str> {
+                            response.headers().get(key)?.to_str().ok()
                         }
-                        Ok(text) => {
-                            sentry_debug!("Get response: `{}`", text);
+
+                        if let Some(sentry_header) = header_str(&response, "x-sentry-rate-limits") {
+                            rl.update_from_sentry_header(sentry_header);
+                        } else if let Some(retry_after) = header_str(&response, "retry-after") {
+                            rl.update_from_retry_after(retry_after);
+                        } else if response.status() == 429 {
+                            rl.update_from_429();
+                        }
+
+                        match response.body_mut().read_to_string() {
+                            Err(err) => {
+                                sentry_debug!("Failed to read sentry response: {}", err);
+                            }
+                            Ok(text) => {
+                                sentry_debug!("Get response: `{}`", text);
+                            }
+                        }
+                        if response.status() == HTTP_PAYLOAD_TOO_LARGE {
+                            sentry_debug!("{HTTP_PAYLOAD_TOO_LARGE_MESSAGE}");
                         }
                     }
-                    if response.status() == HTTP_PAYLOAD_TOO_LARGE {
-                        sentry_debug!("{HTTP_PAYLOAD_TOO_LARGE_MESSAGE}");
+                    Err(err) => {
+                        sentry_debug!("Failed to send envelope: {}", err);
                     }
                 }
-                Err(err) => {
-                    sentry_debug!("Failed to send envelope: {}", err);
-                }
-            }
-        }, channel_capacity);
+            },
+            channel_capacity,
+        );
         Self { thread }
     }
 }

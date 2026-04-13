@@ -65,53 +65,56 @@ impl ReqwestHttpTransport {
         let url = dsn.envelope_api_url().to_string();
         let channel_capacity = options.transport_channel_capacity;
 
-        let thread = TransportThread::new(move |envelope, mut rl| {
-            let mut body = Vec::new();
-            envelope.to_writer(&mut body).unwrap();
-            let request = client.post(&url).header("X-Sentry-Auth", &auth).body(body);
+        let thread = TransportThread::new(
+            move |envelope, mut rl| {
+                let mut body = Vec::new();
+                envelope.to_writer(&mut body).unwrap();
+                let request = client.post(&url).header("X-Sentry-Auth", &auth).body(body);
 
-            // NOTE: because of lifetime issues, building the request using the
-            // `client` has to happen outside of this async block.
-            async move {
-                match request.send().await {
-                    Ok(response) => {
-                        let headers = response.headers();
+                // NOTE: because of lifetime issues, building the request using the
+                // `client` has to happen outside of this async block.
+                async move {
+                    match request.send().await {
+                        Ok(response) => {
+                            let headers = response.headers();
 
-                        if let Some(sentry_header) = headers
-                            .get("x-sentry-rate-limits")
-                            .and_then(|x| x.to_str().ok())
-                        {
-                            rl.update_from_sentry_header(sentry_header);
-                        } else if let Some(retry_after) = headers
-                            .get(ReqwestHeaders::RETRY_AFTER)
-                            .and_then(|x| x.to_str().ok())
-                        {
-                            rl.update_from_retry_after(retry_after);
-                        } else if response.status() == StatusCode::TOO_MANY_REQUESTS {
-                            rl.update_from_429();
-                        }
-
-                        let is_payload_too_large =
-                            response.status().as_u16() == HTTP_PAYLOAD_TOO_LARGE;
-                        match response.text().await {
-                            Err(err) => {
-                                sentry_debug!("Failed to read sentry response: {}", err);
+                            if let Some(sentry_header) = headers
+                                .get("x-sentry-rate-limits")
+                                .and_then(|x| x.to_str().ok())
+                            {
+                                rl.update_from_sentry_header(sentry_header);
+                            } else if let Some(retry_after) = headers
+                                .get(ReqwestHeaders::RETRY_AFTER)
+                                .and_then(|x| x.to_str().ok())
+                            {
+                                rl.update_from_retry_after(retry_after);
+                            } else if response.status() == StatusCode::TOO_MANY_REQUESTS {
+                                rl.update_from_429();
                             }
-                            Ok(text) => {
-                                sentry_debug!("Get response: `{}`", text);
+
+                            let is_payload_too_large =
+                                response.status().as_u16() == HTTP_PAYLOAD_TOO_LARGE;
+                            match response.text().await {
+                                Err(err) => {
+                                    sentry_debug!("Failed to read sentry response: {}", err);
+                                }
+                                Ok(text) => {
+                                    sentry_debug!("Get response: `{}`", text);
+                                }
+                            }
+                            if is_payload_too_large {
+                                sentry_debug!("{HTTP_PAYLOAD_TOO_LARGE_MESSAGE}");
                             }
                         }
-                        if is_payload_too_large {
-                            sentry_debug!("{HTTP_PAYLOAD_TOO_LARGE_MESSAGE}");
+                        Err(err) => {
+                            sentry_debug!("Failed to send envelope: {}", err);
                         }
                     }
-                    Err(err) => {
-                        sentry_debug!("Failed to send envelope: {}", err);
-                    }
+                    rl
                 }
-                rl
-            }
-        }, channel_capacity);
+            },
+            channel_capacity,
+        );
         Self { thread }
     }
 }
