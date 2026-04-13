@@ -27,11 +27,11 @@ pub struct TransportThread {
 
 impl TransportThread {
     /// Spawn a new background thread.
-    pub fn new<SendFn>(mut send: SendFn) -> Self
+    pub fn new<SendFn>(mut send: SendFn, channel_capacity: usize) -> Self
     where
         SendFn: FnMut(Envelope, &mut RateLimiter) + Send + 'static,
     {
-        let (sender, receiver) = sync_channel(30);
+        let (sender, receiver) = sync_channel(channel_capacity.max(1));
         let shutdown = Arc::new(AtomicBool::new(false));
         let shutdown_worker = shutdown.clone();
         let handle = thread::Builder::new()
