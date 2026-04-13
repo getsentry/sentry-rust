@@ -1,6 +1,6 @@
 use std::any::TypeId;
 use std::borrow::Cow;
-#[cfg(feature = "logs")]
+#[cfg(any(feature = "logs", feature = "metrics"))]
 use std::collections::BTreeMap;
 use std::fmt;
 use std::panic::RefUnwindSafe;
@@ -24,6 +24,8 @@ use crate::SessionMode;
 use crate::{ClientOptions, Envelope, Hub, Integration, Scope, Transport};
 #[cfg(feature = "logs")]
 use sentry_types::protocol::v7::Context;
+#[cfg(all(feature = "metrics", not(feature = "logs")))]
+use sentry_types::protocol::v7::LogAttribute;
 #[cfg(feature = "metrics")]
 use sentry_types::protocol::v7::Metric;
 #[cfg(feature = "logs")]
@@ -65,6 +67,8 @@ pub struct Client {
     metrics_batcher: RwLock<Option<Batcher<Metric>>>,
     #[cfg(feature = "logs")]
     default_log_attributes: Option<BTreeMap<String, LogAttribute>>,
+    #[cfg(feature = "metrics")]
+    default_metric_attributes: Option<BTreeMap<Cow<'static, str>, LogAttribute>>,
     integrations: Vec<(TypeId, Arc<dyn Integration>)>,
     pub(crate) sdk_info: ClientSdkInfo,
 }
@@ -113,6 +117,8 @@ impl Clone for Client {
             metrics_batcher,
             #[cfg(feature = "logs")]
             default_log_attributes: self.default_log_attributes.clone(),
+            #[cfg(feature = "metrics")]
+            default_metric_attributes: self.default_metric_attributes.clone(),
             integrations: self.integrations.clone(),
             sdk_info: self.sdk_info.clone(),
         }
@@ -208,12 +214,17 @@ impl Client {
             metrics_batcher,
             #[cfg(feature = "logs")]
             default_log_attributes: None,
+            #[cfg(feature = "metrics")]
+            default_metric_attributes: None,
             integrations,
             sdk_info,
         };
 
         #[cfg(feature = "logs")]
         client.cache_default_log_attributes();
+
+        #[cfg(feature = "metrics")]
+        client.cache_default_metric_attributes();
 
         client
     }
@@ -267,6 +278,35 @@ impl Client {
         }
 
         self.default_log_attributes = Some(attributes);
+    }
+
+    #[cfg(feature = "metrics")]
+    fn cache_default_metric_attributes(&mut self) {
+        let mut attributes = BTreeMap::new();
+
+        if let Some(environment) = self.options.environment.as_ref() {
+            attributes.insert("sentry.environment".into(), environment.clone().into());
+        }
+
+        if let Some(release) = self.options.release.as_ref() {
+            attributes.insert("sentry.release".into(), release.clone().into());
+        }
+
+        attributes.insert(
+            "sentry.sdk.name".into(),
+            self.sdk_info.name.to_owned().into(),
+        );
+
+        attributes.insert(
+            "sentry.sdk.version".into(),
+            self.sdk_info.version.to_owned().into(),
+        );
+
+        if let Some(server) = &self.options.server_name {
+            attributes.insert("server.address".into(), server.clone().into());
+        }
+
+        self.default_metric_attributes = Some(attributes);
     }
 
     pub(crate) fn get_integration<I>(&self) -> Option<&I>
@@ -524,15 +564,34 @@ impl Client {
 
     /// Captures a metric and sends it to Sentry.
     #[cfg(feature = "metrics")]
-    pub fn capture_metric(&self, metric: Metric, _: &Scope) {
-        if let Some(batcher) = self
-            .metrics_batcher
-            .read()
-            .expect("metrics batcher lock could not be acquired")
-            .as_ref()
-        {
-            batcher.enqueue(metric);
+    pub fn capture_metric(&self, metric: Metric, scope: &Scope) {
+        if !self.options.enable_metrics {
+            return;
         }
+        if let Some(metric) = self.prepare_metric(metric, scope) {
+            if let Some(ref batcher) = *self.metrics_batcher.read().unwrap() {
+                batcher.enqueue(metric);
+            }
+        }
+    }
+
+    /// Prepares a metric to be sent, setting the `trace_id` and other default attributes, and
+    /// processing it through `before_send_metric`.
+    #[cfg(feature = "metrics")]
+    fn prepare_metric(&self, mut metric: Metric, scope: &Scope) -> Option<Metric> {
+        scope.apply_to_metric(&mut metric, self.options.send_default_pii);
+
+        if let Some(default_attributes) = self.default_metric_attributes.as_ref() {
+            for (key, val) in default_attributes.iter() {
+                metric.attributes.entry(key.clone()).or_insert(val.clone());
+            }
+        }
+
+        if let Some(ref func) = self.options.before_send_metric {
+            metric = func(metric)?;
+        }
+
+        Some(metric)
     }
 }
 
