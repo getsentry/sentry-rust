@@ -172,6 +172,9 @@ pub struct ClientOptions {
     /// Determines whether captured structured logs should be sent to Sentry (defaults to false).
     #[cfg(feature = "logs")]
     pub enable_logs: bool,
+    /// Determines whether captured metrics should be sent to Sentry (defaults to false).
+    #[cfg(feature = "metrics")]
+    pub enable_metrics: bool,
     // Other options not documented in Unified API
     /// Disable SSL verification.
     ///
@@ -278,6 +281,9 @@ impl fmt::Debug for ClientOptions {
             .field("enable_logs", &self.enable_logs)
             .field("before_send_log", &before_send_log);
 
+        #[cfg(feature = "metrics")]
+        debug_struct.field("enable_metrics", &self.enable_metrics);
+
         debug_struct.field("user_agent", &self.user_agent).finish()
     }
 }
@@ -317,6 +323,8 @@ impl Default for ClientOptions {
             enable_logs: true,
             #[cfg(feature = "logs")]
             before_send_log: None,
+            #[cfg(feature = "metrics")]
+            enable_metrics: false,
         }
     }
 }
