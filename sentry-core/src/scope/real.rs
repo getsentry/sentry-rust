@@ -6,6 +6,8 @@ use std::sync::Mutex;
 use std::sync::{Arc, PoisonError, RwLock};
 
 use crate::performance::TransactionOrSpan;
+#[cfg(feature = "metrics")]
+use crate::protocol::Metric;
 use crate::protocol::{
     Attachment, Breadcrumb, Context, Event, Level, TraceContext, Transaction, User, Value,
 };
@@ -397,6 +399,17 @@ impl Scope {
                 }
             }
         }
+    }
+
+    /// Applies the contained scoped data to a trace metric, setting the `trace_id` and `span_id`.
+    #[cfg(feature = "metrics")]
+    pub(crate) fn apply_to_metric(&self, metric: &mut Metric) {
+        metric.trace_id = self
+            .get_span()
+            .map(|span| span.get_trace_context().trace_id)
+            .unwrap_or(self.propagation_context.trace_id);
+
+        metric.span_id = self.get_span().map(|span| span.span_id());
     }
 
     /// Set the given [`TransactionOrSpan`] as the active span for this scope.

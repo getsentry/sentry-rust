@@ -524,15 +524,24 @@ impl Client {
 
     /// Captures a metric and sends it to Sentry.
     #[cfg(feature = "metrics")]
-    pub fn capture_metric(&self, metric: Metric, _: &Scope) {
-        if let Some(batcher) = self
-            .metrics_batcher
-            .read()
-            .expect("metrics batcher lock could not be acquired")
-            .as_ref()
-        {
-            batcher.enqueue(metric);
+    pub fn capture_metric(&self, metric: Metric, scope: &Scope) {
+        if let Some(metric) = self.prepare_metric(metric, scope) {
+            if let Some(batcher) = self
+                .metrics_batcher
+                .read()
+                .expect("metrics batcher lock could not be acquired")
+                .as_ref()
+            {
+                batcher.enqueue(metric);
+            }
         }
+    }
+
+    /// Prepares a metric to be sent, setting trace association data from the scope.
+    #[cfg(feature = "metrics")]
+    fn prepare_metric(&self, mut metric: Metric, scope: &Scope) -> Option<Metric> {
+        scope.apply_to_metric(&mut metric);
+        Some(metric)
     }
 }
 

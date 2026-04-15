@@ -8,7 +8,7 @@ use anyhow::{Context, Result};
 use sentry::protocol::MetricType;
 use sentry_core::protocol::{EnvelopeItem, ItemContainer};
 use sentry_core::test;
-use sentry_core::{ClientOptions, Hub};
+use sentry_core::{ClientOptions, Hub, TransactionContext};
 use sentry_types::protocol::v7::Metric;
 
 /// Test that metrics are sent when metrics are enabled.
@@ -202,6 +202,85 @@ fn test_metrics_batching_over_limit() {
         } if name == "metric.100"),
         "unexpected metric captured"
     )
+}
+
+/// Test that metrics in the same scope share the same trace_id when no span is active.
+///
+/// This tests that trace ID is set from the propagation context when there is no active span.
+#[test]
+fn metrics_share_trace_id_without_active_span() {
+    let options = ClientOptions {
+        enable_metrics: true,
+        ..Default::default()
+    };
+
+    let envelopes = test::with_captured_envelopes_options(
+        || {
+            capture_test_metric("test-1");
+            capture_test_metric("test-2");
+        },
+        options,
+    );
+    let envelope = envelopes
+        .try_into_only_item()
+        .expect("expected one envelope");
+    let item = envelope
+        .into_items()
+        .try_into_only_item()
+        .expect("expected one item");
+    let metrics = item.into_metrics().expect("expected metrics item");
+
+    let [metric1, metric2] = metrics.as_slice() else {
+        panic!("expected exactly two metrics");
+    };
+
+    assert_eq!(
+        metric1.trace_id, metric2.trace_id,
+        "metrics in the same scope should share the same trace_id"
+    );
+
+    assert!(metric1.span_id.is_none());
+    assert!(metric2.span_id.is_none());
+}
+
+/// Test that span_id is set from the active span when one is present.
+#[test]
+fn metrics_span_id_from_active_span() {
+    let options = ClientOptions {
+        enable_metrics: true,
+        ..Default::default()
+    };
+
+    let mut expected_span_id = None;
+    let envelopes = test::with_captured_envelopes_options(
+        || {
+            let transaction_ctx = TransactionContext::new("test transaction", "test");
+            expected_span_id = Some(transaction_ctx.span_id());
+            let transaction = sentry_core::start_transaction(transaction_ctx);
+            sentry_core::configure_scope(|scope| scope.set_span(Some(transaction.clone().into())));
+            capture_test_metric("test");
+            transaction.finish();
+        },
+        options,
+    );
+
+    let expected_span_id = expected_span_id.expect("expected_span_id did not get set");
+
+    let envelope = envelopes
+        .try_into_only_item()
+        .expect("expected one envelope");
+    let item = envelope
+        .into_items()
+        .try_into_only_item()
+        .expect("expected one item");
+    let mut metrics = item.into_metrics().expect("expected metrics item");
+    let metric = metrics.pop().expect("expected one metric");
+
+    assert_eq!(
+        metric.span_id,
+        Some(expected_span_id),
+        "span_id should be set from the active span"
+    );
 }
 
 /// Returns a [`Metric`] with [type `Counter`](MetricType),
