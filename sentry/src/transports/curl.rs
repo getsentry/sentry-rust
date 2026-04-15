@@ -18,15 +18,28 @@ pub struct CurlHttpTransport {
 impl CurlHttpTransport {
     /// Creates a new Transport.
     pub fn new(options: &ClientOptions) -> Self {
-        Self::new_internal(options, None)
+        Self::new_internal(options, None, 30)
     }
 
     /// Creates a new Transport that uses the specified [`CurlClient`].
     pub fn with_client(options: &ClientOptions, client: CurlClient) -> Self {
-        Self::new_internal(options, Some(client))
+        Self::new_internal(options, Some(client), 30)
     }
 
-    fn new_internal(options: &ClientOptions, client: Option<CurlClient>) -> Self {
+    /// Creates a new Transport with a custom transport channel capacity.
+    ///
+    /// The channel capacity bounds how many envelopes may be queued before
+    /// `send_envelope` blocks. A higher capacity reduces the chance of
+    /// dropped events in high-throughput scenarios at the cost of memory.
+    pub fn with_channel_capacity(options: &ClientOptions, channel_capacity: usize) -> Self {
+        Self::new_internal(options, None, channel_capacity)
+    }
+
+    fn new_internal(
+        options: &ClientOptions,
+        client: Option<CurlClient>,
+        channel_capacity: usize,
+    ) -> Self {
         let client = client.unwrap_or_else(CurlClient::new);
         let http_proxy = options.http_proxy.as_ref().map(ToString::to_string);
         let https_proxy = options.https_proxy.as_ref().map(ToString::to_string);
@@ -36,10 +49,9 @@ impl CurlHttpTransport {
         let url = dsn.envelope_api_url().to_string();
         let scheme = dsn.scheme();
         let accept_invalid_certs = options.accept_invalid_certs;
-        let channel_capacity = options.transport_channel_capacity;
 
         let mut handle = client;
-        let thread = TransportThread::new(
+        let thread = TransportThread::with_capacity(
             move |envelope, rl| {
                 handle.reset();
                 handle.url(&url).unwrap();

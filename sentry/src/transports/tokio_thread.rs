@@ -26,8 +26,23 @@ pub struct TransportThread {
 }
 
 impl TransportThread {
-    /// Spawn a new background thread.
-    pub fn new<SendFn, SendFuture>(mut send: SendFn, channel_capacity: usize) -> Self
+    /// Spawn a new background thread with the default channel capacity of 30.
+    pub fn new<SendFn, SendFuture>(send: SendFn) -> Self
+    where
+        SendFn: FnMut(Envelope, RateLimiter) -> SendFuture + Send + 'static,
+        // NOTE: returning RateLimiter here, otherwise we are in borrow hell
+        SendFuture: std::future::Future<Output = RateLimiter>,
+    {
+        Self::with_capacity(send, 30)
+    }
+
+    /// Spawn a new background thread with a custom channel capacity.
+    ///
+    /// The channel capacity bounds how many envelopes may be queued before
+    /// `send` blocks. `channel_capacity` is clamped to a minimum of 1 to
+    /// avoid a rendezvous channel, which would silently drop envelopes under
+    /// `try_send`.
+    pub fn with_capacity<SendFn, SendFuture>(mut send: SendFn, channel_capacity: usize) -> Self
     where
         SendFn: FnMut(Envelope, RateLimiter) -> SendFuture + Send + 'static,
         // NOTE: returning RateLimiter here, otherwise we are in borrow hell

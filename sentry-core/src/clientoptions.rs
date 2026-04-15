@@ -191,12 +191,6 @@ pub struct ClientOptions {
     pub session_mode: SessionMode,
     /// The user agent that should be reported.
     pub user_agent: Cow<'static, str>,
-    /// The capacity of the transport channel.
-    ///
-    /// This controls how many envelopes can be queued before the transport
-    /// starts dropping them. In high-throughput scenarios, increasing this
-    /// value can reduce the chance of losing events. Defaults to 30.
-    pub transport_channel_capacity: usize,
 }
 
 impl ClientOptions {
@@ -284,13 +278,7 @@ impl fmt::Debug for ClientOptions {
             .field("enable_logs", &self.enable_logs)
             .field("before_send_log", &before_send_log);
 
-        debug_struct
-            .field("user_agent", &self.user_agent)
-            .field(
-                "transport_channel_capacity",
-                &self.transport_channel_capacity,
-            )
-            .finish()
+        debug_struct.field("user_agent", &self.user_agent).finish()
     }
 }
 
@@ -325,7 +313,6 @@ impl Default for ClientOptions {
             session_mode: SessionMode::Application,
             user_agent: Cow::Borrowed(USER_AGENT),
             max_request_body_size: MaxRequestBodySize::Medium,
-            transport_channel_capacity: 30,
             #[cfg(feature = "logs")]
             enable_logs: true,
             #[cfg(feature = "logs")]

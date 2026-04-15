@@ -20,15 +20,28 @@ pub struct UreqHttpTransport {
 impl UreqHttpTransport {
     /// Creates a new Transport.
     pub fn new(options: &ClientOptions) -> Self {
-        Self::new_internal(options, None)
+        Self::new_internal(options, None, 30)
     }
 
     /// Creates a new Transport that uses the specified [`ureq::Agent`].
     pub fn with_agent(options: &ClientOptions, agent: Agent) -> Self {
-        Self::new_internal(options, Some(agent))
+        Self::new_internal(options, Some(agent), 30)
     }
 
-    fn new_internal(options: &ClientOptions, agent: Option<Agent>) -> Self {
+    /// Creates a new Transport with a custom transport channel capacity.
+    ///
+    /// The channel capacity bounds how many envelopes may be queued before
+    /// `send_envelope` blocks. A higher capacity reduces the chance of
+    /// dropped events in high-throughput scenarios at the cost of memory.
+    pub fn with_channel_capacity(options: &ClientOptions, channel_capacity: usize) -> Self {
+        Self::new_internal(options, None, channel_capacity)
+    }
+
+    fn new_internal(
+        options: &ClientOptions,
+        agent: Option<Agent>,
+        channel_capacity: usize,
+    ) -> Self {
         let dsn = options.dsn.as_ref().unwrap();
         let scheme = dsn.scheme();
         let agent = agent.unwrap_or_else(|| {
@@ -82,9 +95,8 @@ impl UreqHttpTransport {
         let user_agent = options.user_agent.clone();
         let auth = dsn.to_auth(Some(&user_agent)).to_string();
         let url = dsn.envelope_api_url().to_string();
-        let channel_capacity = options.transport_channel_capacity;
 
-        let thread = TransportThread::new(
+        let thread = TransportThread::with_capacity(
             move |envelope, rl| {
                 let mut body = Vec::new();
                 envelope.to_writer(&mut body).unwrap();
