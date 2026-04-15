@@ -586,6 +586,15 @@ impl TransactionOrSpan {
             TransactionOrSpan::Span(span) => span.finish(),
         }
     }
+
+    /// Get the span ID of this [`TransactionOrSpan`].
+    #[cfg(all(feature = "metrics", feature = "client"))]
+    pub(crate) fn span_id(&self) -> SpanId {
+        match self {
+            TransactionOrSpan::Transaction(transaction) => transaction.get_trace_context().span_id,
+            TransactionOrSpan::Span(span) => span.get_span_id(),
+        }
+    }
 }
 
 #[derive(Debug)]
