@@ -573,7 +573,7 @@ impl Client {
     /// Prepares a metric to be sent, setting trace association data and default attributes.
     #[cfg(feature = "metrics")]
     fn prepare_metric(&self, mut metric: Metric, scope: &Scope) -> Option<Metric> {
-        scope.apply_to_metric(&mut metric);
+        scope.apply_to_metric(&mut metric, self.options.send_default_pii);
 
         for (key, val) in &self.default_metric_attributes {
             metric.attributes.entry(key.clone()).or_insert(val.clone());

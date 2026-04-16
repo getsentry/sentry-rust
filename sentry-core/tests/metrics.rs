@@ -5,7 +5,7 @@ use std::time::SystemTime;
 
 use anyhow::{Context, Result};
 
-use sentry::protocol::{LogAttribute, MetricType};
+use sentry::protocol::{LogAttribute, MetricType, User};
 use sentry_core::protocol::{Envelope, EnvelopeItem, ItemContainer, Value};
 use sentry_core::test;
 use sentry_core::{ClientOptions, Hub, TransactionContext};
@@ -362,6 +362,130 @@ fn default_attributes_do_not_overwrite_explicit() {
         // The other default attributes also stay
         ("sentry.sdk.name", "sentry.rust"),
         ("sentry.sdk.version", env!("CARGO_PKG_VERSION")),
+    ]
+    .into_iter()
+    .map(|(attribute, value)| (attribute.into(), value.into()))
+    .collect();
+
+    assert_eq!(metric.attributes, expected_attributes);
+}
+
+/// Test that user attributes are NOT attached when `send_default_pii` is false.
+#[test]
+fn user_attributes_absent_without_send_default_pii() {
+    let options = ClientOptions {
+        enable_metrics: true,
+        send_default_pii: false,
+        ..Default::default()
+    };
+
+    let envelopes = test::with_captured_envelopes_options(
+        || {
+            sentry_core::configure_scope(|scope| {
+                scope.set_user(Some(User {
+                    id: Some("uid-123".into()),
+                    username: Some("testuser".into()),
+                    email: Some("test@example.com".into()),
+                    ..Default::default()
+                }));
+            });
+            capture_test_metric("test");
+        },
+        options,
+    );
+    let metric = extract_single_metric(envelopes).expect("expected a single-metric envelope");
+
+    let expected_attributes = [
+        // Note the lack of user attributes, despite setting them on the scope.
+        ("sentry.sdk.name", "sentry.rust"),
+        ("sentry.sdk.version", env!("CARGO_PKG_VERSION")),
+    ]
+    .into_iter()
+    .map(|(attribute, value)| (attribute.into(), value.into()))
+    .collect();
+
+    assert_eq!(metric.attributes, expected_attributes);
+}
+
+/// Test that scope user attributes are attached to metrics when
+/// `send_default_pii` is true.
+#[test]
+fn metric_user_attributes_from_scope_are_applied_with_send_default_pii() {
+    let options = ClientOptions {
+        enable_metrics: true,
+        send_default_pii: true,
+        ..Default::default()
+    };
+
+    let envelopes = test::with_captured_envelopes_options(
+        || {
+            sentry_core::configure_scope(|scope| {
+                scope.set_user(Some(User {
+                    id: Some("uid-123".into()),
+                    username: Some("testuser".into()),
+                    email: Some("test@example.com".into()),
+                    ..Default::default()
+                }));
+            });
+            capture_test_metric("test");
+        },
+        options,
+    );
+    let metric = extract_single_metric(envelopes).expect("expected a single-metric envelope");
+
+    let expected_attributes = [
+        ("sentry.sdk.name", "sentry.rust"),
+        ("sentry.sdk.version", env!("CARGO_PKG_VERSION")),
+        ("user.id", "uid-123"),
+        ("user.name", "testuser"),
+        ("user.email", "test@example.com"),
+    ]
+    .into_iter()
+    .map(|(attribute, value)| (attribute.into(), value.into()))
+    .collect();
+
+    assert_eq!(metric.attributes, expected_attributes);
+}
+
+/// Test that if a metric already has any user attribute set, scope user
+/// attributes are not merged in.
+#[test]
+fn metric_user_attributes_do_not_overwrite_explicit() {
+    let options = ClientOptions {
+        enable_metrics: true,
+        send_default_pii: true,
+        ..Default::default()
+    };
+
+    let envelopes = test::with_captured_envelopes_options(
+        || {
+            sentry_core::configure_scope(|scope| {
+                scope.set_user(Some(User {
+                    id: Some("scope-uid".into()),
+                    username: Some("scope-user".into()),
+                    email: Some("scope@example.com".into()),
+                    ..Default::default()
+                }));
+            });
+            let mut metric = test_metric("test");
+            metric
+                .attributes
+                .insert("user.id".into(), LogAttribute(Value::from("explicit-uid")));
+            metric.attributes.insert(
+                "user.name".into(),
+                LogAttribute(Value::from("explicit-user")),
+            );
+            Hub::current().capture_metric(metric);
+        },
+        options,
+    );
+    let metric = extract_single_metric(envelopes).expect("expected a single-metric envelope");
+
+    let expected_attributes = [
+        ("sentry.sdk.name", "sentry.rust"),
+        ("sentry.sdk.version", env!("CARGO_PKG_VERSION")),
+        ("user.id", "explicit-uid"),
+        ("user.name", "explicit-user"),
     ]
     .into_iter()
     .map(|(attribute, value)| (attribute.into(), value.into()))
