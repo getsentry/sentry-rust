@@ -570,13 +570,18 @@ impl Client {
         }
     }
 
-    /// Prepares a metric to be sent, setting trace association data and default attributes.
+    /// Prepares a metric to be sent, setting the `trace_id` and other default attributes, and
+    /// processing it through `before_send_metric`.
     #[cfg(feature = "metrics")]
     fn prepare_metric(&self, mut metric: Metric, scope: &Scope) -> Option<Metric> {
         scope.apply_to_metric(&mut metric, self.options.send_default_pii);
 
         for (key, val) in &self.default_metric_attributes {
             metric.attributes.entry(key.clone()).or_insert(val.clone());
+        }
+
+        if let Some(ref func) = self.options.before_send_metric {
+            metric = func(metric)?;
         }
 
         Some(metric)

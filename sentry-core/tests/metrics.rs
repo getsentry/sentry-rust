@@ -1,6 +1,7 @@
 #![cfg(all(feature = "test", feature = "metrics"))]
 
 use std::collections::HashSet;
+use std::sync::Arc;
 use std::time::SystemTime;
 
 use anyhow::{Context, Result};
@@ -492,6 +493,45 @@ fn metric_user_attributes_do_not_overwrite_explicit() {
     .collect();
 
     assert_eq!(metric.attributes, expected_attributes);
+}
+
+/// Test that `before_send_metric` can filter out metrics.
+#[test]
+fn before_send_metric_can_drop() {
+    let options = ClientOptions {
+        enable_metrics: true,
+        before_send_metric: Some(Arc::new(|_| None)),
+        ..Default::default()
+    };
+
+    let envelopes = test::with_captured_envelopes_options(|| capture_test_metric("test"), options);
+    assert!(
+        envelopes.is_empty(),
+        "metric should be dropped by before_send_metric"
+    );
+}
+
+/// Test that `before_send_metric` can modify metrics.
+#[test]
+fn before_send_metric_can_modify() {
+    let options = ClientOptions {
+        enable_metrics: true,
+        before_send_metric: Some(Arc::new(|mut metric| {
+            metric
+                .attributes
+                .insert("added_by_callback".into(), LogAttribute(Value::from("yes")));
+            Some(metric)
+        })),
+        ..Default::default()
+    };
+
+    let envelopes = test::with_captured_envelopes_options(|| capture_test_metric("test"), options);
+    let metric = extract_single_metric(envelopes).expect("expected a single-metric envelope");
+
+    assert_eq!(
+        metric.attributes.get("added_by_callback"),
+        Some(&LogAttribute(Value::from("yes"))),
+    );
 }
 
 /// Returns a [`Metric`] with [type `Counter`](MetricType),
