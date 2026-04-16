@@ -1,6 +1,7 @@
 #![cfg(all(feature = "test", feature = "metrics"))]
 
 use std::collections::HashSet;
+use std::sync::Arc;
 
 use anyhow::{Context, Result};
 
@@ -8,7 +9,7 @@ use sentry::protocol::{MetricType, Unit, Value};
 use sentry_core::protocol::{EnvelopeItem, ItemContainer};
 use sentry_core::{metrics, test};
 use sentry_core::{ClientOptions, TransactionContext};
-use sentry_types::protocol::v7::{Envelope, Metric, User};
+use sentry_types::protocol::v7::{Envelope, LogAttribute, Metric, User};
 
 /// Test that metrics are sent when metrics are enabled.
 #[test]
@@ -589,6 +590,49 @@ fn metric_user_attributes_do_not_overwrite_explicit() {
     assert_eq!(metric.attributes, expected_attributes);
 }
 
+/// Test that `before_send_metric` can filter out metrics.
+#[test]
+fn before_send_metric_can_drop() {
+    let options = ClientOptions {
+        enable_metrics: true,
+        before_send_metric: Some(Arc::new(|_| None)),
+        ..Default::default()
+    };
+
+    let envelopes =
+        test::with_captured_envelopes_options(|| metrics::counter("test", 1).capture(), options);
+    assert!(
+        envelopes.is_empty(),
+        "metric should be dropped by before_send_metric"
+    );
+}
+
+/// Test that `before_send_metric` can modify metrics.
+#[test]
+fn before_send_metric_can_modify() {
+    let options = ClientOptions {
+        enable_metrics: true,
+        before_send_metric: Some(Arc::new(|mut metric| {
+            metric
+                .attributes
+                .insert("added_by_callback".into(), LogAttribute(Value::from("yes")));
+            Some(metric)
+        })),
+        ..Default::default()
+    };
+
+    let envelopes =
+        test::with_captured_envelopes_options(|| metrics::counter("test", 1).capture(), options);
+    let metric = extract_single_metric(envelopes).expect("expected a single-metric envelope");
+
+    assert_eq!(
+        metric.attributes.get("added_by_callback"),
+        Some(&LogAttribute(Value::from("yes"))),
+    );
+}
+
+/// Returns a [`Metric`] with [type `Counter`](MetricType),
+/// the provided name, and a value of `1.0`.
 /// Helper to extract the single metric from a list of captured envelopes.
 ///
 /// Asserts that the envelope contains only a single item, which contains only
