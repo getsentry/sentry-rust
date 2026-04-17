@@ -1,5 +1,6 @@
 #![cfg(all(feature = "test", feature = "metrics"))]
 
+use std::borrow::Cow;
 use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::SystemTime;
@@ -7,7 +8,8 @@ use std::time::SystemTime;
 use anyhow::{Context, Result};
 
 use sentry::protocol::{LogAttribute, MetricType, User};
-use sentry_core::protocol::{Envelope, EnvelopeItem, ItemContainer, Value};
+use sentry::{metric_count, metric_distribution, metric_gauge};
+use sentry_core::protocol::{Envelope, EnvelopeItem, ItemContainer, Map, Value};
 use sentry_core::test;
 use sentry_core::{ClientOptions, Hub, TransactionContext};
 use sentry_types::protocol::v7::Metric;
@@ -532,6 +534,195 @@ fn before_send_metric_can_modify() {
         metric.attributes.get("added_by_callback"),
         Some(&LogAttribute(Value::from("yes"))),
     );
+}
+
+/// A test-only projection of [`Metric`] for comparing only the subset of
+/// fields with predictable values.
+#[derive(Debug, PartialEq)]
+struct TestMetric {
+    r#type: MetricType,
+    name: Cow<'static, str>,
+    value: f64,
+    unit: Option<Cow<'static, str>>,
+    attributes: Map<Cow<'static, str>, LogAttribute>,
+}
+
+impl From<Metric> for TestMetric {
+    fn from(metric: Metric) -> Self {
+        let Metric {
+            r#type,
+            name,
+            value,
+            timestamp: _,
+            trace_id: _,
+            span_id: _,
+            unit,
+            attributes,
+        } = metric;
+
+        Self {
+            r#type,
+            name,
+            value,
+            unit,
+            attributes,
+        }
+    }
+}
+
+#[test]
+fn metric_count_macro_without_attributes() {
+    assert_macro_metric(
+        || metric_count!("requests", 1),
+        TestMetric {
+            r#type: MetricType::Counter,
+            name: "requests".into(),
+            value: 1.0,
+            unit: None,
+            attributes: default_test_attributes(),
+        },
+    );
+}
+
+#[test]
+fn metric_count_macro_with_custom_attributes() {
+    assert_macro_metric(
+        || {
+            metric_count!(
+                "requests",
+                1,
+                unit = "request",
+                route = "/users",
+                "http.method" = "GET"
+            )
+        },
+        TestMetric {
+            r#type: MetricType::Counter,
+            name: "requests".into(),
+            value: 1.0,
+            unit: Some("request".into()),
+            attributes: default_test_attributes_with([
+                ("route", "/users".into()),
+                ("http.method", "GET".into()),
+            ]),
+        },
+    );
+}
+
+#[test]
+fn metric_gauge_macro_without_attributes() {
+    assert_macro_metric(
+        || metric_gauge!("memory.usage", 42.0),
+        TestMetric {
+            r#type: MetricType::Gauge,
+            name: "memory.usage".into(),
+            value: 42.0,
+            unit: None,
+            attributes: default_test_attributes(),
+        },
+    );
+}
+
+#[test]
+fn metric_gauge_macro_with_custom_attributes() {
+    assert_macro_metric(
+        || {
+            metric_gauge!(
+                "memory.usage",
+                42.0,
+                unit = "byte",
+                host = "web-1",
+                "cache.hit" = true
+            )
+        },
+        TestMetric {
+            r#type: MetricType::Gauge,
+            name: "memory.usage".into(),
+            value: 42.0,
+            unit: Some("byte".into()),
+            attributes: default_test_attributes_with([
+                ("host", "web-1".into()),
+                ("cache.hit", true.into()),
+            ]),
+        },
+    );
+}
+
+#[test]
+fn metric_distribution_macro_without_attributes() {
+    assert_macro_metric(
+        || metric_distribution!("response.time", 150.0),
+        TestMetric {
+            r#type: MetricType::Distribution,
+            name: "response.time".into(),
+            value: 150.0,
+            unit: None,
+            attributes: default_test_attributes(),
+        },
+    );
+}
+
+#[test]
+fn metric_distribution_macro_with_custom_attributes() {
+    assert_macro_metric(
+        || {
+            metric_distribution!(
+                "response.time",
+                150.0,
+                unit = "millisecond",
+                route = "/users",
+                "http.status_code" = 200
+            )
+        },
+        TestMetric {
+            r#type: MetricType::Distribution,
+            name: "response.time".into(),
+            value: 150.0,
+            unit: Some("millisecond".into()),
+            attributes: default_test_attributes_with([
+                ("route", "/users".into()),
+                ("http.status_code", 200.into()),
+            ]),
+        },
+    );
+}
+
+fn assert_macro_metric<F>(create_metric: F, expected_metric: TestMetric)
+where
+    F: FnOnce(),
+{
+    let envelopes = test::with_captured_envelopes_options(
+        create_metric,
+        ClientOptions {
+            enable_metrics: true,
+            ..Default::default()
+        },
+    );
+
+    let metric = extract_single_metric(envelopes).expect("expected a single-metric envelope");
+    assert_eq!(TestMetric::from(metric), expected_metric);
+}
+
+fn default_test_attributes() -> Map<Cow<'static, str>, LogAttribute> {
+    default_test_attributes_with([])
+}
+
+fn default_test_attributes_with<I>(custom_attributes: I) -> Map<Cow<'static, str>, LogAttribute>
+where
+    I: IntoIterator<Item = (&'static str, Value)>,
+{
+    let custom_attributes = custom_attributes
+        .into_iter()
+        .map(|(k, v)| (k.into(), v.into()));
+
+    let default_attributes = [
+        ("sentry.sdk.name", "sentry.rust"),
+        ("sentry.sdk.version", env!("CARGO_PKG_VERSION")),
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.into(), v.into()));
+
+    default_attributes.chain(custom_attributes).collect()
 }
 
 /// Returns a [`Metric`] with [type `Counter`](MetricType),

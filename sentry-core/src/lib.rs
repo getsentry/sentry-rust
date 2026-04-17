@@ -134,6 +134,8 @@ pub use crate::scope::{Scope, ScopeGuard};
 pub use crate::transport::{Transport, TransportFactory};
 #[cfg(feature = "logs")]
 mod logger; // structured logging macros exported with `#[macro_export]`
+#[cfg(feature = "metrics")]
+mod metrics; // trace metrics macros exported with `#[macro_export]`
 
 // client feature
 #[cfg(all(feature = "client", any(feature = "logs", feature = "metrics")))]
