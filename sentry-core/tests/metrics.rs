@@ -616,6 +616,37 @@ fn metric_gauge_macro_without_attributes() {
 }
 
 #[test]
+fn metric_gauge_macro_with_attributes_only() {
+    assert_macro_metric(
+        || metric_gauge!("memory.usage", 42.0, host = "web-1", cache.hit = true),
+        TestMetric {
+            r#type: MetricType::Gauge,
+            name: "memory.usage".into(),
+            value: 42.0,
+            unit: None,
+            attributes: default_test_attributes_with([
+                ("host", "web-1".into()),
+                ("cache.hit", true.into()),
+            ]),
+        },
+    );
+}
+
+#[test]
+fn metric_gauge_macro_with_unit_only() {
+    assert_macro_metric(
+        || metric_gauge!("memory.usage", 42.0, "byte"),
+        TestMetric {
+            r#type: MetricType::Gauge,
+            name: "memory.usage".into(),
+            value: 42.0,
+            unit: Some("byte".into()),
+            attributes: default_test_attributes(),
+        },
+    );
+}
+
+#[test]
 fn metric_gauge_macro_with_custom_attributes() {
     assert_macro_metric(
         || {
@@ -641,6 +672,20 @@ fn metric_gauge_macro_with_custom_attributes() {
 }
 
 #[test]
+fn metric_gauge_macro_treats_unit_key_as_attribute() {
+    assert_macro_metric(
+        || metric_gauge!("memory.usage", 42.0, unit = "attribute"),
+        TestMetric {
+            r#type: MetricType::Gauge,
+            name: "memory.usage".into(),
+            value: 42.0,
+            unit: None,
+            attributes: default_test_attributes_with([("unit", "attribute".into())]),
+        },
+    );
+}
+
+#[test]
 fn metric_distribution_macro_without_attributes() {
     assert_macro_metric(
         || metric_distribution!("response.time", 150.0),
@@ -649,6 +694,37 @@ fn metric_distribution_macro_without_attributes() {
             name: "response.time".into(),
             value: 150.0,
             unit: None,
+            attributes: default_test_attributes(),
+        },
+    );
+}
+
+#[test]
+fn metric_distribution_macro_with_attributes_only() {
+    assert_macro_metric(
+        || metric_distribution!("response.time", 150.0, route = "/users", http.status_code = 200),
+        TestMetric {
+            r#type: MetricType::Distribution,
+            name: "response.time".into(),
+            value: 150.0,
+            unit: None,
+            attributes: default_test_attributes_with([
+                ("route", "/users".into()),
+                ("http.status_code", 200.into()),
+            ]),
+        },
+    );
+}
+
+#[test]
+fn metric_distribution_macro_with_unit_only() {
+    assert_macro_metric(
+        || metric_distribution!("response.time", 150.0, "millisecond"),
+        TestMetric {
+            r#type: MetricType::Distribution,
+            name: "response.time".into(),
+            value: 150.0,
+            unit: Some("millisecond".into()),
             attributes: default_test_attributes(),
         },
     );
@@ -675,6 +751,20 @@ fn metric_distribution_macro_with_custom_attributes() {
                 ("route", "/users".into()),
                 ("http.status_code", 200.into()),
             ]),
+        },
+    );
+}
+
+#[test]
+fn metric_distribution_macro_treats_unit_key_as_attribute() {
+    assert_macro_metric(
+        || metric_distribution!("response.time", 150.0, unit = "attribute"),
+        TestMetric {
+            r#type: MetricType::Distribution,
+            name: "response.time".into(),
+            value: 150.0,
+            unit: None,
+            attributes: default_test_attributes_with([("unit", "attribute".into())]),
         },
     );
 }

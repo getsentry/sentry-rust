@@ -1,10 +1,20 @@
 //! Macros for Sentry [trace metrics](https://develop.sentry.dev/sdk/telemetry/metrics/).
 
-/// Internal helper for metric construction and emission. Not part of the public API.
+/// Internal macro support for metric emission. Not part of the public API.
 #[doc(hidden)]
 #[macro_export]
-macro_rules! __metric_capture {
-    ($type:expr, $name:expr, $value:expr, $unit:expr, $attributes:expr) => {{
+macro_rules! __metric_emit {
+    ($type:expr, $name:expr, $value:expr $(, $($rest:tt)+)?) => {{
+        let mut attributes = $crate::protocol::Map::new();
+        $crate::__metric_emit!(@parse attributes, $type, $name, $value, None, allow_unit $(, $($rest)+)?)
+    }};
+
+    (@attrs_only $type:expr, $name:expr, $value:expr $(, $($rest:tt)+)?) => {{
+        let mut attributes = $crate::protocol::Map::new();
+        $crate::__metric_emit!(@parse attributes, $type, $name, $value, None, no_unit $(, $($rest)+)?)
+    }};
+
+    (@parse $attrs:ident, $type:expr, $name:expr, $value:expr, $unit:expr, $allow_unit:tt) => {{
         let metric = $crate::protocol::Metric {
             r#type: $type,
             name: $name.to_owned().into(),
@@ -13,72 +23,29 @@ macro_rules! __metric_capture {
             trace_id: $crate::protocol::TraceId::default(),
             span_id: None,
             unit: $unit,
-            attributes: $attributes,
+            attributes: $attrs,
         };
         $crate::Hub::current().capture_metric(metric)
     }};
-}
 
-/// Internal macro support for metric emission. Not part of the public API.
-#[doc(hidden)]
-#[macro_export]
-macro_rules! __metric_emit {
-    ($type:expr, $name:expr, $value:expr $(, $($rest:tt)+)?) => {{
-        $crate::__metric_emit!(@dispatch $type, $name, $value $(, $($rest)+)?)
-    }};
-
-    (@no_unit $type:expr, $name:expr, $value:expr $(, $($rest:tt)+)?) => {{
-        let mut attributes = $crate::protocol::Map::new();
-        let unit = None;
-        $crate::__metric_emit!(@attrs attributes, unit, $type, $name, $value $(, $($rest)+)?)
-    }};
-
-    (@dispatch $type:expr, $name:expr, $value:expr) => {{
-        $crate::__metric_capture!(
-            $type,
-            $name,
-            $value,
-            None,
-            $crate::protocol::Map::new()
-        )
-    }};
-
-    (@dispatch $type:expr, $name:expr, $value:expr, $key:literal = $aval:expr $(, $($rest:tt)+)?) => {{
-        let mut attributes = $crate::protocol::Map::new();
-        let unit = None;
-        $crate::__metric_emit!(@attrs attributes, unit, $type, $name, $value, $key = $aval $(, $($rest)+)?)
-    }};
-
-    (@dispatch $type:expr, $name:expr, $value:expr, $($key:ident).+ = $aval:expr $(, $($rest:tt)+)?) => {{
-        let mut attributes = $crate::protocol::Map::new();
-        let unit = None;
-        $crate::__metric_emit!(@attrs attributes, unit, $type, $name, $value, $($key).+ = $aval $(, $($rest)+)?)
-    }};
-
-    (@dispatch $type:expr, $name:expr, $value:expr, $unit:expr $(, $($rest:tt)+)?) => {{
-        let mut attributes = $crate::protocol::Map::new();
-        let unit = Some(($unit).into());
-        $crate::__metric_emit!(@attrs attributes, unit, $type, $name, $value $(, $($rest)+)?)
-    }};
-
-    (@attrs $attrs:ident, $unit:ident, $type:expr, $name:expr, $value:expr) => {{
-        $crate::__metric_capture!($type, $name, $value, $unit, $attrs)
-    }};
-
-    (@attrs $attrs:ident, $unit:ident, $type:expr, $name:expr, $value:expr, $key:literal = $aval:expr $(, $($rest:tt)+)?) => {{
+    (@parse $attrs:ident, $type:expr, $name:expr, $value:expr, $unit:expr, $allow_unit:tt, $key:literal = $aval:expr $(, $($rest:tt)+)?) => {{
         $attrs.insert(
             $key.to_owned().into(),
             $crate::protocol::LogAttribute($crate::protocol::Value::from($aval))
         );
-        $crate::__metric_emit!(@attrs $attrs, $unit, $type, $name, $value $(, $($rest)+)?)
+        $crate::__metric_emit!(@parse $attrs, $type, $name, $value, $unit, $allow_unit $(, $($rest)+)?)
     }};
 
-    (@attrs $attrs:ident, $unit:ident, $type:expr, $name:expr, $value:expr, $($key:ident).+ = $aval:expr $(, $($rest:tt)+)?) => {{
+    (@parse $attrs:ident, $type:expr, $name:expr, $value:expr, $unit:expr, $allow_unit:tt, $($key:ident).+ = $aval:expr $(, $($rest:tt)+)?) => {{
         $attrs.insert(
             stringify!($($key).+).to_owned().into(),
             $crate::protocol::LogAttribute($crate::protocol::Value::from($aval))
         );
-        $crate::__metric_emit!(@attrs $attrs, $unit, $type, $name, $value $(, $($rest)+)?)
+        $crate::__metric_emit!(@parse $attrs, $type, $name, $value, $unit, $allow_unit $(, $($rest)+)?)
+    }};
+
+    (@parse $attrs:ident, $type:expr, $name:expr, $value:expr, None, allow_unit, $next:expr $(, $($rest:tt)+)?) => {{
+        $crate::__metric_emit!(@parse $attrs, $type, $name, $value, Some(($next).into()), no_unit $(, $($rest)+)?)
     }};
 }
 
@@ -98,7 +65,7 @@ macro_rules! __metric_emit {
 #[macro_export]
 macro_rules! metric_count {
     ($name:expr, $value:expr $(, $($rest:tt)+)?) => {
-        $crate::__metric_emit!(@no_unit $crate::protocol::MetricType::Counter, $name, $value $(, $($rest)+)?)
+        $crate::__metric_emit!(@attrs_only $crate::protocol::MetricType::Counter, $name, $value $(, $($rest)+)?)
     };
 }
 
