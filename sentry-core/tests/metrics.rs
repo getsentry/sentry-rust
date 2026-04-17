@@ -730,7 +730,14 @@ fn metric_distribution_macro_without_attributes() {
 #[test]
 fn metric_distribution_macro_with_attributes_only() {
     assert_macro_metric(
-        || metric_distribution!("response.time", 150.0, route = "/users", http.status_code = 200),
+        || {
+            metric_distribution!(
+                "response.time",
+                150.0,
+                route = "/users",
+                http.status_code = 200
+            )
+        },
         TestMetric {
             r#type: MetricType::Distribution,
             name: "response.time".into(),

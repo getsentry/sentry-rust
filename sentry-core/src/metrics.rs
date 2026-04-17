@@ -24,6 +24,15 @@ macro_rules! __metric_attrs {
         );
         $crate::__metric_attrs!($attrs $(, $($rest)+)?);
     }};
+
+    // Anything else is invalid once attribute parsing has started.
+    ($attrs:ident, $($rest:tt)+) => {
+        compile_error!(concat!(
+            "invalid metric attribute syntax near `",
+            stringify!($($rest)+),
+            "`; expected `\"key\" = value`, `foo = value`, or `foo.bar = value`"
+        ));
+    };
 }
 
 /// Internal macro support for parsing metric unit and attributes.
