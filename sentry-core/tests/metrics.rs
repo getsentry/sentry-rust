@@ -686,6 +686,34 @@ fn metric_gauge_macro_treats_unit_key_as_attribute() {
 }
 
 #[test]
+fn metric_gauge_macro_with_quoted_attribute_first() {
+    assert_macro_metric(
+        || metric_gauge!("memory.usage", 42.0, "http.status_code" = 200),
+        TestMetric {
+            r#type: MetricType::Gauge,
+            name: "memory.usage".into(),
+            value: 42.0,
+            unit: None,
+            attributes: default_test_attributes_with([("http.status_code", 200.into())]),
+        },
+    );
+}
+
+#[test]
+fn metric_gauge_macro_with_dotted_attribute_first() {
+    assert_macro_metric(
+        || metric_gauge!("memory.usage", 42.0, http.status_code = 200),
+        TestMetric {
+            r#type: MetricType::Gauge,
+            name: "memory.usage".into(),
+            value: 42.0,
+            unit: None,
+            attributes: default_test_attributes_with([("http.status_code", 200.into())]),
+        },
+    );
+}
+
+#[test]
 fn metric_distribution_macro_without_attributes() {
     assert_macro_metric(
         || metric_distribution!("response.time", 150.0),

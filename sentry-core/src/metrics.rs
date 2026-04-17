@@ -36,43 +36,55 @@ macro_rules! __metric_attrs {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __metric_unit_attrs {
+    // @no_unit override
+    ($attrs:ident, @no_unit $(, $($rest:tt)+)?) => {{
+        $crate::__metric_attrs!($attrs $(, $($rest)+)?);
+        None
+    }};
+
+    // `"key" = value` is not a positional unit. Treat it as an attribute list.
+    ($attrs:ident, $key:literal = $value:expr $(, $($rest:tt)+)?) => {{
+        $crate::__metric_unit_attrs!($attrs, @no_unit, $key = $value $(, $($rest)+)?)
+    }};
+
+    // `key = value` and `foo.bar = value` are valid expression forms, but
+    // should be treated as attributes, not as a positional unit.
+    ($attrs:ident, $($key:ident).+ = $value:expr $(, $($rest:tt)+)?) => {{
+        $crate::__metric_unit_attrs!($attrs, @no_unit, $($key).+ = $value $(, $($rest)+)?)
+    }};
+
     // Unit was passed
-    ($attrs:ident, $unit:expr, $(, $($rest:tt)+)?) => {
-        let unit = Some(($unit).into());
-        $crate::__metric_attrs!($attrs, $(, $($rest:tt)+)?);
-    };
+    ($attrs:ident, $unit:expr $(, $($rest:tt)+)?) => {{
+        $crate::__metric_attrs!($attrs $(, $($rest)+)?);
+        Some($unit.into())
+    }};
 
     // No unit passed
-    ($attrs:ident, $(, $($rest:tt)+)?) => {
-        let unit = None;
-        $crate::__metric_attrs!($attrs, $(, $($rest:tt)+)?);
-    };
+    ($attrs:ident $(, $($rest:tt)+)?) => {{
+        $crate::__metric_attrs!($attrs $(, $($rest)+)?);
+        None
+    }};
 }
 
 /// Internal macro support for metric emission. Not part of the public API.
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __metric_emit {
-    // Shared finish path: construct and emit the metric once parsing is complete.
-    (@capture $type:expr, $name:expr, $value:expr, $unit:expr, $attributes:expr) => {{
+    ($type:expr, $name:expr, $value:expr $(, $($rest:tt)+)?) => {{
+        let mut attributes = $crate::protocol::Map::new();
+        let unit = $crate::__metric_unit_attrs!(attributes $(, $($rest)+)?);
         let metric = $crate::protocol::Metric {
             r#type: $type,
-            name: $name.to_owned().into(),
+            name: $name.into(),
             value: $value as f64,
             timestamp: ::std::time::SystemTime::now(),
+            // trace_id and span_id are added when applying the scope
             trace_id: $crate::protocol::TraceId::default(),
             span_id: None,
-            unit: $unit,
-            attributes: $attributes,
+            unit,
+            attributes,
         };
         $crate::Hub::current().capture_metric(metric)
-    }};
-
-    // Public entry: the trailing tokens start with a literal-key attribute, so there is no unit.
-    ($type:expr, $name:expr, $value:expr, $(, $($rest:tt)+)?) => {{
-        let mut attributes = $crate::protocol::Map::new();
-        $crate::__metric_unit_attrs!($(, $($rest:tt)+)?);
-        $crate::__metric_emit!(@capture $type, $name, $value, unit, attributes)
     }};
 }
 
@@ -83,16 +95,21 @@ macro_rules! __metric_emit {
 /// # Examples
 ///
 /// ```
-/// use sentry::metric_count;
-///
+/// # use sentry::metric_count;
 /// metric_count!("api.requests", 1);
 /// metric_count!("api.requests", 1, route = "/users", method = "GET");
-/// metric_count!("api.requests", 1, "unit" = "request");
+/// ```
+///
+/// Positional units are not supported for counters:
+///
+/// ```compile_fail
+/// # use sentry::metric_count;
+/// metric_count!("api.requests", 1, "count");
 /// ```
 #[macro_export]
 macro_rules! metric_count {
     ($name:expr, $value:expr $(, $($rest:tt)+)?) => {
-        $crate::__metric_emit!($crate::protocol::MetricType::Counter, $name, $value, $(, $($rest)+)?)
+        $crate::__metric_emit!($crate::protocol::MetricType::Counter, $name, $value, @no_unit $(, $($rest)+)?)
     };
 }
 
