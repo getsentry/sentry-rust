@@ -587,20 +587,12 @@ fn metric_count_macro_without_attributes() {
 #[test]
 fn metric_count_macro_with_custom_attributes() {
     assert_macro_metric(
-        || {
-            metric_count!(
-                "requests",
-                1,
-                unit = "request",
-                route = "/users",
-                "http.method" = "GET"
-            )
-        },
+        || metric_count!("requests", 1, route = "/users", "http.method" = "GET"),
         TestMetric {
             r#type: MetricType::Counter,
             name: "requests".into(),
             value: 1.0,
-            unit: Some("request".into()),
+            unit: None,
             attributes: default_test_attributes_with([
                 ("route", "/users".into()),
                 ("http.method", "GET".into()),
@@ -630,7 +622,7 @@ fn metric_gauge_macro_with_custom_attributes() {
             metric_gauge!(
                 "memory.usage",
                 42.0,
-                unit = "byte",
+                "byte",
                 host = "web-1",
                 "cache.hit" = true
             )
@@ -669,7 +661,7 @@ fn metric_distribution_macro_with_custom_attributes() {
             metric_distribution!(
                 "response.time",
                 150.0,
-                unit = "millisecond",
+                "millisecond",
                 route = "/users",
                 "http.status_code" = 200
             )
