@@ -99,7 +99,22 @@ macro_rules! __metric_emit {
 
 /// Emits a counter metric. Counters track event frequency (e.g., requests, errors).
 ///
-/// Attributes can be passed with `key = value` or `"key" = value` syntax.
+/// # Format
+///
+/// `metric_count!(name, value[, key = value, ...])`
+///
+/// Arguments are comma-separated.
+///
+/// - `name: impl Into<Cow<'static, str>>`:
+///   The metric name. Names typically use dot-separated segments such as
+///   `"api.requests"`.
+/// - `value: expr`:
+///   A numeric expression for the counter increment. The value is cast to `f64`
+///   internally.
+/// - `key = value` or `"key" = value`:
+///   Optional metric attributes. Attribute keys are strings, and attribute values
+///   can be any type supported by [`sentry::protocol::Value`](crate::protocol::Value),
+///   such as strings, booleans, and numeric values.
 ///
 /// # Examples
 ///
@@ -124,10 +139,25 @@ macro_rules! metric_count {
 
 /// Emits a gauge metric. Gauges represent current state (e.g., memory usage, pool size).
 ///
-/// Units are optional and, when provided, are passed as a positional argument
-/// after the value and before any attributes.
+/// # Format
 ///
-/// Attributes can be passed with `key = value` or `"key" = value` syntax.
+/// `metric_gauge!(name, value[, unit][, key = value, ...])`
+///
+/// Arguments are comma-separated. If present, `unit` must come immediately after
+/// `value` and before any attributes.
+///
+/// - `name: impl Into<Cow<'static, str>>`:
+///   The metric name. Names typically use dot-separated segments such as
+///   `"memory.usage"`.
+/// - `value: expr`:
+///   A numeric expression for the gauge value to record. The value is cast to
+///   `f64` internally.
+/// - `unit: impl Into<Cow<'static, str>>`:
+///   An optional unit string, for example `"byte"`.
+/// - `key = value` or `"key" = value`:
+///   Optional metric attributes. Attribute keys are strings, and attribute values
+///   can be any type supported by [`sentry::protocol::Value`](crate::protocol::Value),
+///   such as strings, booleans, and numeric values.
 ///
 /// # Examples
 ///
@@ -148,10 +178,25 @@ macro_rules! metric_gauge {
 
 /// Emits a distribution metric. Distributions measure statistical spread (e.g., response times).
 ///
-/// Units are optional and, when provided, are passed as a positional argument
-/// after the value and before any attributes.
+/// # Format
 ///
-/// Attributes can be passed with `key = value` or `"key" = value` syntax.
+/// `metric_distribution!(name, value[, unit][, key = value, ...])`
+///
+/// Arguments are comma-separated. If present, `unit` must come immediately after
+/// `value` and before any attributes.
+///
+/// - `name: impl Into<Cow<'static, str>>`:
+///   The metric name. Names typically use dot-separated segments such as
+///   `"response.time"`.
+/// - `value: expr`:
+///   A numeric expression for the sampled value to add to the distribution. The
+///   value is cast to `f64` internally.
+/// - `unit: impl Into<Cow<'static, str>>`:
+///   An optional unit string, for example `"millisecond"`.
+/// - `key = value` or `"key" = value`:
+///   Optional metric attributes. Attribute keys are strings, and attribute values
+///   can be any type supported by [`sentry::protocol::Value`](crate::protocol::Value),
+///   such as strings, booleans, and numeric values.
 ///
 /// # Examples
 ///
