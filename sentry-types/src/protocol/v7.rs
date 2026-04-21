@@ -28,6 +28,7 @@ pub use super::attachment::*;
 pub use super::envelope::*;
 pub use super::monitor::*;
 pub use super::session::*;
+pub use super::unit::Unit;
 
 /// An arbitrary (JSON) value.
 pub mod value {
