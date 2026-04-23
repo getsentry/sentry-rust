@@ -1,10 +1,10 @@
-// NOTE: Most of the methods are noops without the `client` feature, and this will
-// silence all the "unused variable" warnings related to fn arguments.
-#![allow(unused)]
-
 use std::sync::{Arc, RwLock};
 
-use crate::protocol::{Event, Level, Log, LogAttribute, LogLevel, Map, SessionStatus};
+use crate::protocol::{Event, Level};
+#[cfg(feature = "logs")]
+use crate::protocol::Log;
+#[cfg(feature = "release-health")]
+use crate::protocol::SessionStatus;
 use crate::types::Uuid;
 use crate::{Integration, IntoBreadcrumbs, Scope, ScopeGuard};
 
@@ -47,7 +47,13 @@ impl Hub {
     /// This is useful for integrations that want to do efficiently nothing if there is no
     /// client bound.  Additionally this internally ensures that the client can be safely
     /// synchronized.  This prevents accidental recursive calls into the client.
-    pub fn with_active<F, R>(f: F) -> R
+    pub fn with_active<F, R>(
+        #[cfg_attr(
+            not(feature = "client"),
+            expect(unused, reason = "this callback is unused without the `client` feature")
+        )]
+        f: F,
+    ) -> R
     where
         F: FnOnce(&Arc<Hub>) -> R,
         R: Default,
@@ -70,7 +76,14 @@ impl Hub {
     ///
     /// See the global [`capture_event`](fn.capture_event.html)
     /// for more documentation.
-    pub fn with_integration<I, F, R>(&self, f: F) -> R
+    pub fn with_integration<I, F, R>(
+        &self,
+        #[cfg_attr(
+            not(feature = "client"),
+            expect(unused, reason = "this callback is unused without the `client` feature")
+        )]
+        f: F,
+    ) -> R
     where
         I: Integration,
         F: FnOnce(&I) -> R,
@@ -97,7 +110,14 @@ impl Hub {
     ///
     /// See the global [`capture_event`](fn.capture_event.html)
     /// for more documentation.
-    pub fn capture_event(&self, event: Event<'static>) -> Uuid {
+    pub fn capture_event(
+        &self,
+        #[cfg_attr(
+            not(feature = "client"),
+            expect(unused, reason = "the event is unused without the `client` feature")
+        )]
+        event: Event<'static>,
+    ) -> Uuid {
         with_client_impl! {{
             let top = self.inner.with(|stack| stack.top().clone());
             let Some(ref client) = top.client else { return Default::default() };
@@ -111,7 +131,19 @@ impl Hub {
     ///
     /// See the global [`capture_message`](fn.capture_message.html)
     /// for more documentation.
-    pub fn capture_message(&self, msg: &str, level: Level) -> Uuid {
+    pub fn capture_message(
+        &self,
+        #[cfg_attr(
+            not(feature = "client"),
+            expect(unused, reason = "the message is unused without the `client` feature")
+        )]
+        msg: &str,
+        #[cfg_attr(
+            not(feature = "client"),
+            expect(unused, reason = "the level is unused without the `client` feature")
+        )]
+        level: Level,
+    ) -> Uuid {
         with_client_impl! {{
             let event = Event {
                 message: Some(msg.to_string()),
@@ -134,7 +166,7 @@ impl Hub {
                 if let Some(session) = crate::session::Session::from_stack(top) {
                     // When creating a *new* session, we make sure it is unique,
                     // as to no inherit *backwards* to any parents.
-                    let mut scope = Arc::make_mut(&mut top.scope);
+                    let scope = Arc::make_mut(&mut top.scope);
                     scope.session = Arc::new(std::sync::Mutex::new(Some(session)));
                 }
             })
@@ -154,7 +186,14 @@ impl Hub {
     /// See the global [`end_session_with_status`](crate::end_session_with_status)
     /// for more documentation.
     #[cfg(feature = "release-health")]
-    pub fn end_session_with_status(&self, status: SessionStatus) {
+    pub fn end_session_with_status(
+        &self,
+        #[cfg_attr(
+            not(feature = "client"),
+            expect(unused, reason = "the status is unused without the `client` feature")
+        )]
+        status: SessionStatus,
+    ) {
         with_client_impl! {{
             self.inner.with_mut(|stack| {
                 let top = stack.top_mut();
@@ -182,7 +221,18 @@ impl Hub {
     ///
     /// See the global [`with_scope`](fn.with_scope.html)
     /// for more documentation.
-    pub fn with_scope<C, F, R>(&self, scope_config: C, callback: F) -> R
+    pub fn with_scope<C, F, R>(
+        &self,
+        #[cfg_attr(
+            not(feature = "client"),
+            expect(
+                unused,
+                reason = "the scope config callback is unused without the `client` feature"
+            )
+        )]
+        scope_config: C,
+        callback: F,
+    ) -> R
     where
         C: FnOnce(&mut Scope),
         F: FnOnce() -> R,
@@ -195,7 +245,6 @@ impl Hub {
         }
         #[cfg(not(feature = "client"))]
         {
-            let _scope_config = scope_config;
             callback()
         }
     }
@@ -204,7 +253,14 @@ impl Hub {
     ///
     /// See the global [`configure_scope`](fn.configure_scope.html)
     /// for more documentation.
-    pub fn configure_scope<F, R>(&self, f: F) -> R
+    pub fn configure_scope<F, R>(
+        &self,
+        #[cfg_attr(
+            not(feature = "client"),
+            expect(unused, reason = "this callback is unused without the `client` feature")
+        )]
+        f: F,
+    ) -> R
     where
         R: Default,
         F: FnOnce(&mut Scope) -> R,
@@ -221,7 +277,14 @@ impl Hub {
     ///
     /// See the global [`add_breadcrumb`](fn.add_breadcrumb.html)
     /// for more documentation.
-    pub fn add_breadcrumb<B: IntoBreadcrumbs>(&self, breadcrumb: B) {
+    pub fn add_breadcrumb<B: IntoBreadcrumbs>(
+        &self,
+        #[cfg_attr(
+            not(feature = "client"),
+            expect(unused, reason = "the breadcrumb is unused without the `client` feature")
+        )]
+        breadcrumb: B,
+    ) {
         with_client_impl! {{
             self.inner.with_mut(|stack| {
                 let top = stack.top_mut();
@@ -248,7 +311,14 @@ impl Hub {
 
     /// Captures a structured log.
     #[cfg(feature = "logs")]
-    pub fn capture_log(&self, log: Log) {
+    pub fn capture_log(
+        &self,
+        #[cfg_attr(
+            not(feature = "client"),
+            expect(unused, reason = "the log is unused without the `client` feature")
+        )]
+        log: Log,
+    ) {
         with_client_impl! {{
             let top = self.inner.with(|stack| stack.top().clone());
             let Some(ref client) = top.client else { return };
