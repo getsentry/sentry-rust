@@ -8,6 +8,8 @@ use crate::protocol::{Event, Level};
 use crate::types::Uuid;
 use crate::{Integration, IntoBreadcrumbs, Scope, ScopeGuard};
 
+/// Marks values as used in minimal builds where `with_client_impl!` turns many
+/// method bodies into no-ops and would otherwise leave their parameters unused.
 macro_rules! use_without_client {
     ($($value:expr),+ $(,)?) => {
         #[cfg(not(feature = "client"))]
