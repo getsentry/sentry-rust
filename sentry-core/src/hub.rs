@@ -1,10 +1,10 @@
 use std::sync::{Arc, RwLock};
 
-use crate::protocol::{Event, Level};
 #[cfg(feature = "logs")]
 use crate::protocol::Log;
 #[cfg(feature = "release-health")]
 use crate::protocol::SessionStatus;
+use crate::protocol::{Event, Level};
 use crate::types::Uuid;
 use crate::{Integration, IntoBreadcrumbs, Scope, ScopeGuard};
 
@@ -50,7 +50,10 @@ impl Hub {
     pub fn with_active<F, R>(
         #[cfg_attr(
             not(feature = "client"),
-            expect(unused, reason = "this callback is unused without the `client` feature")
+            expect(
+                unused,
+                reason = "this callback is unused without the `client` feature"
+            )
         )]
         f: F,
     ) -> R
@@ -80,7 +83,10 @@ impl Hub {
         &self,
         #[cfg_attr(
             not(feature = "client"),
-            expect(unused, reason = "this callback is unused without the `client` feature")
+            expect(
+                unused,
+                reason = "this callback is unused without the `client` feature"
+            )
         )]
         f: F,
     ) -> R
@@ -257,7 +263,10 @@ impl Hub {
         &self,
         #[cfg_attr(
             not(feature = "client"),
-            expect(unused, reason = "this callback is unused without the `client` feature")
+            expect(
+                unused,
+                reason = "this callback is unused without the `client` feature"
+            )
         )]
         f: F,
     ) -> R
@@ -281,7 +290,10 @@ impl Hub {
         &self,
         #[cfg_attr(
             not(feature = "client"),
-            expect(unused, reason = "the breadcrumb is unused without the `client` feature")
+            expect(
+                unused,
+                reason = "the breadcrumb is unused without the `client` feature"
+            )
         )]
         breadcrumb: B,
     ) {
