@@ -1,5 +1,47 @@
 # Changelog
 
+## Unreleased
+
+### Breaking Changes
+
+- Added the following metrics-related fields to the [`ClientOptions` struct in `sentry-core`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html). Both fields are no-ops, unless the `metrics` feature flag is enabled:
+  - [`enable_metrics`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html#structfield.enable_metrics), used to enable sending metrics to Sentry ([#1073](https://github.com/getsentry/sentry-rust/pull/1073)). 
+  - [`before_send_metric`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html#structfield.before_send_metric), used to define a callback for filtering/pre-processing metrics before sending to Sentry ([#1064](https://github.com/getsentry/sentry-rust/pull/1064)).
+
+### New Features
+
+📊📈💯 The Sentry-Rust SDK now supports emitting [Sentry Metrics](https://docs.sentry.io/product/explore/metrics/) ([#1073](https://github.com/getsentry/sentry-rust/pull/1073))! 
+
+To get started, you will need to add the `metrics` feature flag when compiling the `sentry` crate. You will also need to enable metrics when initializing the SDK, like so:
+
+```rust
+use sentry::ClientOptions;
+
+let _guard = sentry::init((
+    "(your DSN here)",
+    ClientOptions {
+        enable_metrics: true,
+        // ... other options ...
+        ..Default::default()
+    },
+));
+```
+
+You can then capture metrics as follows:
+
+```rust
+use sentry::metrics;
+use sentry::types::protocol::latest::Unit;
+
+// We support counter, gauge, and distribution metrics.
+metrics::counter("example.counter", 1).capture();
+metrics::gauge("connections", 20).capture();
+metrics::distribution("response.time", 123.4)
+    .unit(Unit::Millisecond) // units can also be set on gauges
+    .attribute("http.status", 200) // attributes can be set on all metric types
+    .capture();
+```
+
 ## 0.47.0
 
 ### Breaking Changes
