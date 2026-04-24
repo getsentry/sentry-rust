@@ -8,7 +8,7 @@ use sentry::protocol::{MetricType, Unit, Value};
 use sentry_core::protocol::{EnvelopeItem, ItemContainer};
 use sentry_core::{metrics, test};
 use sentry_core::{ClientOptions, TransactionContext};
-use sentry_types::protocol::v7::Metric;
+use sentry_types::protocol::v7::{Envelope, Metric};
 
 /// Test that metrics are sent when metrics are enabled.
 #[test]
@@ -250,7 +250,6 @@ fn metric_attributes_are_captured() {
     assert_eq!(value, 1.0);
     assert!(span_id.is_none());
     assert!(unit.is_none());
-    assert_eq!(attributes.len(), 2, "expected two attributes");
     assert_eq!(
         attributes.get("http.route").map(|value| &value.0),
         Some(&Value::from("/health")),
@@ -296,7 +295,7 @@ fn metric_unit_is_captured() {
         trace_id: _,
         span_id,
         unit,
-        attributes,
+        attributes: _,
     } = metric;
 
     assert_eq!(r#type, MetricType::Gauge);
@@ -304,7 +303,6 @@ fn metric_unit_is_captured() {
     assert_eq!(value, 42.0);
     assert!(span_id.is_none());
     assert_eq!(unit, Some(Unit::Millisecond));
-    assert!(attributes.is_empty(), "expected no attributes");
 }
 
 /// Test that metrics in the same scope share the same trace_id when no span is active.
@@ -384,6 +382,112 @@ fn metrics_span_id_from_active_span() {
         Some(expected_span_id),
         "span_id should be set from the active span"
     );
+}
+
+/// Test that default SDK attributes are attached to metrics.
+#[test]
+fn default_attributes_attached() {
+    let options = ClientOptions {
+        enable_metrics: true,
+        environment: Some("test-env".into()),
+        release: Some("1.0.0".into()),
+        server_name: Some("test-server".into()),
+        ..Default::default()
+    };
+
+    let envelopes =
+        test::with_captured_envelopes_options(|| metrics::counter("test", 1).capture(), options);
+    let metric = extract_single_metric(envelopes).expect("expected a single-metric envelope");
+
+    let expected_attributes = [
+        ("sentry.environment", "test-env"),
+        ("sentry.release", "1.0.0"),
+        ("sentry.sdk.name", "sentry.rust"),
+        ("sentry.sdk.version", env!("CARGO_PKG_VERSION")),
+        ("server.address", "test-server"),
+    ]
+    .into_iter()
+    .map(|(attribute, value)| (attribute.into(), value.into()))
+    .collect();
+
+    assert_eq!(metric.attributes, expected_attributes);
+}
+
+/// Test that optional default attributes are omitted when not configured.
+#[test]
+fn optional_default_attributes_omitted_when_not_configured() {
+    let options = ClientOptions {
+        enable_metrics: true,
+        ..Default::default()
+    };
+
+    let envelopes =
+        test::with_captured_envelopes_options(|| metrics::counter("test", 1).capture(), options);
+    let metric = extract_single_metric(envelopes).expect("expected a single-metric envelope");
+
+    let expected_attributes = [
+        // Importantly, no other attributes should be set.
+        ("sentry.sdk.name", "sentry.rust"),
+        ("sentry.sdk.version", env!("CARGO_PKG_VERSION")),
+    ]
+    .into_iter()
+    .map(|(attribute, value)| (attribute.into(), value.into()))
+    .collect();
+
+    assert_eq!(metric.attributes, expected_attributes);
+}
+
+/// Test that explicitly set metric attributes are not overwritten by defaults.
+#[test]
+fn default_attributes_do_not_overwrite_explicit() {
+    let options = ClientOptions {
+        enable_metrics: true,
+        environment: Some("default-env".into()),
+        ..Default::default()
+    };
+
+    let envelopes = test::with_captured_envelopes_options(
+        || {
+            metrics::counter("test", 1)
+                .attribute("sentry.environment", "custom-env")
+                .capture();
+        },
+        options,
+    );
+    let metric = extract_single_metric(envelopes).expect("expected a single-metric envelope");
+
+    let expected_attributes = [
+        // Check the environment is the one set directly on the metric
+        ("sentry.environment", "custom-env"),
+        // The other default attributes also stay
+        ("sentry.sdk.name", "sentry.rust"),
+        ("sentry.sdk.version", env!("CARGO_PKG_VERSION")),
+    ]
+    .into_iter()
+    .map(|(attribute, value)| (attribute.into(), value.into()))
+    .collect();
+
+    assert_eq!(metric.attributes, expected_attributes);
+}
+
+/// Helper to extract the single metric from a list of captured envelopes.
+///
+/// Asserts that the envelope contains only a single item, which contains only
+/// a single metrics item, and returns that metrics item, or an error if failed.
+fn extract_single_metric<I>(envelopes: I) -> Result<Metric>
+where
+    I: IntoIterator<Item = Envelope>,
+{
+    envelopes
+        .try_into_only_item()
+        .context("expected exactly one envelope")?
+        .into_items()
+        .try_into_only_item()
+        .context("expected exactly one item")?
+        .into_metrics()
+        .context("expected a metrics item")?
+        .try_into_only_item()
+        .context("expected exactly one metric")
 }
 
 /// Extension trait for iterators allowing conversion to only item.
