@@ -8,13 +8,15 @@ use std::sync::{Arc, PoisonError, RwLock};
 #[cfg(feature = "metrics")]
 use crate::metrics::{IntoProtocolMetric, MetricTraceInfo};
 use crate::performance::TransactionOrSpan;
+#[cfg(feature = "logs")]
+use crate::protocol::Log;
+#[cfg(any(feature = "logs", feature = "metrics"))]
+use crate::protocol::LogAttribute;
 #[cfg(feature = "metrics")]
 use crate::protocol::Metric;
 use crate::protocol::{
     Attachment, Breadcrumb, Context, Event, Level, TraceContext, Transaction, User, Value,
 };
-#[cfg(feature = "logs")]
-use crate::protocol::{Log, LogAttribute};
 #[cfg(feature = "release-health")]
 use crate::session::Session;
 use crate::{Client, SentryTrace, TraceHeader, TraceHeadersIter};
@@ -408,9 +410,13 @@ impl Scope {
     /// This function takes a user-facing metric type (which implements [`IntoProtocolMetric`]).
     /// The function computes the trace_id and span_id, then converts the user-facing metric into
     /// the protocol's [`Metric`] type with the [`trace_id`](Metric::trace_id) and the
-    /// [`span_id`](Metric::span_id) set appropriately.
+    /// [`span_id`](Metric::span_id) set appropriately. Also sets user attributes when
+    /// send_default_pii is true.
     #[cfg(feature = "metrics")]
-    pub(crate) fn apply_to_metric<M: IntoProtocolMetric>(&self, metric: M) -> Metric {
+    pub(crate) fn apply_to_metric<M>(&self, metric: M, send_default_pii: bool) -> Metric
+    where
+        M: IntoProtocolMetric,
+    {
         let (trace_id, span_id) = match self.get_span() {
             Some(span) => {
                 let trace_context = span.get_trace_context();
@@ -425,7 +431,17 @@ impl Scope {
         };
 
         let trace = MetricTraceInfo { trace_id, span_id };
-        metric.into_protocol_metric(trace)
+        let mut metric = metric.into_protocol_metric(trace);
+        let should_add_user_attributes = send_default_pii && !metric.has_any_user_attributes();
+
+        if let Some(user) = should_add_user_attributes
+            .then_some(self.user.as_deref())
+            .flatten()
+        {
+            metric.apply_user_attributes(user);
+        }
+
+        metric
     }
 
     /// Set the given [`TransactionOrSpan`] as the active span for this scope.
@@ -471,5 +487,50 @@ impl Scope {
             );
             TraceHeadersIter::new(data.to_string())
         }
+    }
+}
+
+#[cfg(feature = "metrics")]
+trait MetricExt {
+    fn insert_attribute<K, V>(&mut self, key: K, value: V)
+    where
+        K: Into<Cow<'static, str>>,
+        V: Into<Value>;
+
+    fn attribute(&self, key: &str) -> Option<&LogAttribute>;
+
+    /// Applies user attributes from provided [`User`].
+    fn apply_user_attributes(&mut self, user: &User) {
+        [
+            ("user.id", user.id.as_deref()),
+            ("user.name", user.username.as_deref()),
+            ("user.email", user.email.as_deref()),
+        ]
+        .into_iter()
+        .flat_map(|(attribute, value)| value.map(|v| (attribute, v)))
+        .for_each(|(attribute, value)| self.insert_attribute(attribute, value));
+    }
+
+    /// Checks if any user attributes are on this metric
+    fn has_any_user_attributes(&self) -> bool {
+        ["user.id", "user.name", "user.email"]
+            .into_iter()
+            .any(|key| self.attribute(key).is_some())
+    }
+}
+
+#[cfg(feature = "metrics")]
+impl MetricExt for Metric {
+    fn insert_attribute<K, V>(&mut self, key: K, value: V)
+    where
+        K: Into<Cow<'static, str>>,
+        V: Into<Value>,
+    {
+        self.attributes
+            .insert(key.into(), LogAttribute(value.into()));
+    }
+
+    fn attribute(&self, key: &str) -> Option<&LogAttribute> {
+        self.attributes.get(key)
     }
 }
