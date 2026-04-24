@@ -5,7 +5,11 @@ use std::fmt;
 use std::sync::Mutex;
 use std::sync::{Arc, PoisonError, RwLock};
 
+#[cfg(feature = "metrics")]
+use crate::metrics::{IntoProtocolMetric, MetricTraceInfo};
 use crate::performance::TransactionOrSpan;
+#[cfg(feature = "metrics")]
+use crate::protocol::Metric;
 use crate::protocol::{
     Attachment, Breadcrumb, Context, Event, Level, TraceContext, Transaction, User, Value,
 };
@@ -397,6 +401,31 @@ impl Scope {
                 }
             }
         }
+    }
+
+    /// Applies the contained scoped data to a metric, setting the `trace_id` and `span_id`.
+    ///
+    /// This function takes a user-facing metric type (which implements [`IntoProtocolMetric`]).
+    /// The function computes the trace_id and span_id, then converts the user-facing metric into
+    /// the protocol's [`Metric`] type with the [`trace_id`](Metric::trace_id) and the
+    /// [`span_id`](Metric::span_id) set appropriately.
+    #[cfg(feature = "metrics")]
+    pub(crate) fn apply_to_metric<M: IntoProtocolMetric>(&self, metric: M) -> Metric {
+        let (trace_id, span_id) = match self.get_span() {
+            Some(span) => {
+                let trace_context = span.get_trace_context();
+                let span_id = match span {
+                    TransactionOrSpan::Span(span) => span.get_span_id(),
+                    TransactionOrSpan::Transaction(_) => trace_context.span_id,
+                };
+
+                (trace_context.trace_id, Some(span_id))
+            }
+            None => (self.propagation_context.trace_id, None),
+        };
+
+        let trace = MetricTraceInfo { trace_id, span_id };
+        metric.into_protocol_metric(trace)
     }
 
     /// Set the given [`TransactionOrSpan`] as the active span for this scope.
