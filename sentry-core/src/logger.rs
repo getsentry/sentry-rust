@@ -10,7 +10,7 @@ macro_rules! logger_log {
             level: $level,
             body: $msg.to_owned(),
             trace_id: None,
-            timestamp: ::std::time::SystemTime::now(),
+            timestamp: $crate::now_system_time(),
             severity_number: None,
             attributes: $crate::protocol::Map::new(),
         };
@@ -39,7 +39,7 @@ macro_rules! logger_log {
             level: $level,
             body: format!($fmt, $($arg),*),
             trace_id: None,
-            timestamp: ::std::time::SystemTime::now(),
+            timestamp: $crate::now_system_time(),
             severity_number: None,
             attributes,
         };
@@ -58,7 +58,7 @@ macro_rules! logger_log {
             level: $level,
             body: $msg.to_owned(),
             trace_id: None,
-            timestamp: ::std::time::SystemTime::now(),
+            timestamp: $crate::now_system_time(),
             severity_number: None,
             #[allow(clippy::redundant_field_names)]
             attributes: $attrs,
@@ -86,7 +86,7 @@ macro_rules! logger_log {
             level: $level,
             body: format!($fmt, $($arg),*),
             trace_id: None,
-            timestamp: ::std::time::SystemTime::now(),
+            timestamp: $crate::now_system_time(),
             severity_number: None,
             #[allow(clippy::redundant_field_names)]
             attributes: $attrs,

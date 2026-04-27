@@ -34,6 +34,7 @@ serde = { version = "1.0.104", features = ["derive"] }
 serde_json = { version = "1.0.46" }
 url = { version = "2.1.1" }
 uuid = { version = "1.0.0", features = ["v4", "serde"], optional = true }
+chrono = { version = "0.4.44" }
 
 [dev-dependencies]
 # Because we re-export all the public API in `sentry`, we actually run all the

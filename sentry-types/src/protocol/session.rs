@@ -108,7 +108,7 @@ pub struct SessionUpdate<'a> {
     pub timestamp: Option<SystemTime>,
 
     /// The timestamp of when the session itself started.
-    #[serde(default = "SystemTime::now", with = "ts_rfc3339")]
+    #[serde(default = "crate::utils::now_system_time", with = "ts_rfc3339")]
     pub started: SystemTime,
 
     /// A flag that indicates that this is the initial transmission of the session.

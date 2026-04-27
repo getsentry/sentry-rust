@@ -9,7 +9,7 @@ use url::form_urlencoded;
 
 use crate::dsn::Dsn;
 use crate::protocol;
-use crate::utils::{datetime_to_timestamp, timestamp_to_datetime};
+use crate::utils::{datetime_to_timestamp, now_system_time, timestamp_to_datetime};
 
 /// Represents an auth header parsing error.
 #[derive(Debug, Error, Copy, Clone, Eq, PartialEq)]
@@ -175,7 +175,7 @@ impl FromStr for Auth {
 
 pub(crate) fn auth_from_dsn_and_client(dsn: &Dsn, client: Option<&str>) -> Auth {
     Auth {
-        timestamp: Some(SystemTime::now()),
+        timestamp: Some(now_system_time()),
         client: client.map(|x| x.to_string()),
         version: protocol::LATEST,
         key: dsn.public_key().to_string(),

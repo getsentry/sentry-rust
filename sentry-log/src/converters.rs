@@ -1,10 +1,11 @@
 use sentry_core::protocol::{Event, Value};
 #[cfg(feature = "logs")]
-use sentry_core::protocol::{Log, LogAttribute, LogLevel};
+use sentry_core::{
+    protocol::{Log, LogAttribute, LogLevel},
+    utils::now_system_time,
+};
 use sentry_core::{Breadcrumb, Level};
 use std::collections::BTreeMap;
-#[cfg(feature = "logs")]
-use std::time::SystemTime;
 
 /// Converts a [`log::Level`] to a Sentry [`Level`], used for [`Event`] and [`Breadcrumb`].
 pub fn convert_log_level(level: log::Level) -> Level {
@@ -160,7 +161,7 @@ pub fn log_from_record(record: &log::Record<'_>) -> Log {
         level: convert_log_level_to_sentry_log_level(record.level()),
         body: format!("{}", record.args()),
         trace_id: None,
-        timestamp: SystemTime::now(),
+        timestamp: now_system_time(),
         severity_number: None,
         attributes,
     }

@@ -22,7 +22,7 @@ use thiserror::Error;
 pub use url::Url;
 pub use uuid::Uuid;
 
-use crate::utils::{display_from_str_opt, ts_rfc3339_opt, ts_seconds_float};
+use crate::utils::{display_from_str_opt, now_system_time, ts_rfc3339_opt, ts_seconds_float};
 
 pub use super::attachment::*;
 pub use super::envelope::*;
@@ -739,7 +739,7 @@ mod breadcrumb {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Breadcrumb {
     /// The timestamp of the breadcrumb.  This is required.
-    #[serde(default = "SystemTime::now", with = "ts_seconds_float")]
+    #[serde(default = "crate::utils::now_system_time", with = "ts_seconds_float")]
     pub timestamp: SystemTime,
     /// The type of the breadcrumb.
     #[serde(
@@ -769,7 +769,7 @@ pub struct Breadcrumb {
 impl Default for Breadcrumb {
     fn default() -> Breadcrumb {
         Breadcrumb {
-            timestamp: SystemTime::now(),
+            timestamp: now_system_time(),
             ty: breadcrumb::default_type(),
             category: Default::default(),
             level: breadcrumb::default_level(),
@@ -1667,7 +1667,7 @@ pub struct Event<'a> {
     /// The timestamp of when the event was created.
     ///
     /// This can be set to `None` in which case the server will set a timestamp.
-    #[serde(default = "SystemTime::now", with = "ts_seconds_float")]
+    #[serde(default = "crate::utils::now_system_time", with = "ts_seconds_float")]
     pub timestamp: SystemTime,
     /// Optionally the server (or device) name of this event.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1736,7 +1736,7 @@ impl Default for Event<'_> {
             logger: Default::default(),
             modules: Default::default(),
             platform: event::default_platform(),
-            timestamp: SystemTime::now(),
+            timestamp: now_system_time(),
             server_name: Default::default(),
             release: Default::default(),
             dist: Default::default(),
@@ -1843,7 +1843,7 @@ pub struct Span {
     )]
     pub timestamp: Option<SystemTime>,
     /// The timestamp at the measuring of the span started.
-    #[serde(default = "SystemTime::now", with = "ts_seconds_float")]
+    #[serde(default = "crate::utils::now_system_time", with = "ts_seconds_float")]
     pub start_timestamp: SystemTime,
     /// Describes the status of the span (e.g. `ok`, `cancelled`, etc.)
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1863,7 +1863,7 @@ impl Default for Span {
             trace_id: Default::default(),
             timestamp: Default::default(),
             tags: Default::default(),
-            start_timestamp: SystemTime::now(),
+            start_timestamp: now_system_time(),
             description: Default::default(),
             status: Default::default(),
             parent_span_id: Default::default(),
@@ -1887,7 +1887,7 @@ impl Span {
 
     /// Finalizes the span.
     pub fn finish(&mut self) {
-        self.timestamp = Some(SystemTime::now());
+        self.timestamp = Some(now_system_time());
     }
 }
 
@@ -2060,7 +2060,7 @@ pub struct Transaction<'a> {
     )]
     pub timestamp: Option<SystemTime>,
     /// The start time of the transaction.
-    #[serde(default = "SystemTime::now", with = "ts_seconds_float")]
+    #[serde(default = "crate::utils::now_system_time", with = "ts_seconds_float")]
     pub start_timestamp: SystemTime,
     /// The collection of finished spans part of this transaction.
     pub spans: Vec<Span>,
@@ -2092,7 +2092,7 @@ impl Default for Transaction<'_> {
             sdk: Default::default(),
             platform: event::default_platform(),
             timestamp: Default::default(),
-            start_timestamp: SystemTime::now(),
+            start_timestamp: now_system_time(),
             spans: Default::default(),
             contexts: Default::default(),
             request: Default::default(),
@@ -2130,7 +2130,7 @@ impl<'a> Transaction<'a> {
 
     /// Finalizes the transaction to be dispatched.
     pub fn finish(&mut self) {
-        self.timestamp = Some(SystemTime::now());
+        self.timestamp = Some(now_system_time());
     }
 
     /// Finalizes the transaction to be dispatched with the given end timestamp.

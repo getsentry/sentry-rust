@@ -2,17 +2,17 @@
 
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::thread::JoinHandle;
-use std::time::{Duration, Instant};
 
 use crate::client::TransportArc;
 use crate::protocol::EnvelopeItem;
 use crate::Envelope;
+use chrono::{Duration, Utc};
 use sentry_types::protocol::v7::Log;
 
 // Flush when there's 100 items in the buffer
 const MAX_ITEMS: usize = 100;
 // Or when 5 seconds have passed from the last flush
-const FLUSH_INTERVAL: Duration = Duration::from_secs(5);
+const FLUSH_INTERVAL: Duration = Duration::seconds(5);
 
 #[derive(Debug)]
 struct BatchQueue<T> {
@@ -71,21 +71,24 @@ where
                 if *shutdown {
                     return;
                 }
-                let mut last_flush = Instant::now();
+                let mut last_flush = Utc::now();
                 loop {
+                    let elapsed = Utc::now() - last_flush;
                     let timeout = FLUSH_INTERVAL
-                        .checked_sub(last_flush.elapsed())
-                        .unwrap_or_else(|| Duration::from_secs(0));
+                        .checked_sub(&elapsed)
+                        .unwrap_or_else(|| Duration::seconds(0))
+                        .to_std()
+                        .unwrap_or_else(|_| std::time::Duration::from_secs(0));
                     shutdown = cvar.wait_timeout(shutdown, timeout).unwrap().0;
                     if *shutdown {
                         return;
                     }
-                    if last_flush.elapsed() >= FLUSH_INTERVAL {
+                    if Utc::now() - last_flush >= FLUSH_INTERVAL {
                         Batcher::flush_queue_internal(
                             worker_queue.lock().unwrap(),
                             &worker_transport,
                         );
-                        last_flush = Instant::now();
+                        last_flush = Utc::now();
                     }
                 }
             })

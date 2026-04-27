@@ -163,3 +163,6 @@ pub use sentry_types::protocol::v7::{Breadcrumb, Envelope, Level, User};
 
 // utilities reused across integrations
 pub mod utils;
+
+#[doc(hidden)]
+pub use crate::utils::now_system_time;
