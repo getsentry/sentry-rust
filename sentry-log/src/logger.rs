@@ -27,6 +27,7 @@ bitflags! {
 
 /// The type of Data Sentry should ingest for a [`log::Record`].
 #[derive(Debug)]
+#[non_exhaustive]
 #[allow(clippy::large_enum_variant)]
 pub enum RecordMapping {
     /// Ignore the [`Record`].
