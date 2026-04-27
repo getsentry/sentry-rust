@@ -21,7 +21,7 @@ pub struct Stack {
     layers: Vec<StackLayer>,
 }
 
-pub type EventProcessor = Arc<dyn Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync>;
+type EventProcessor = Arc<dyn Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync>;
 
 /// Holds contextual data for the current scope.
 ///
