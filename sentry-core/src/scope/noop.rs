@@ -1,4 +1,5 @@
 use std::fmt;
+use std::panic::RefUnwindSafe;
 
 #[cfg(feature = "logs")]
 use crate::protocol::Log;
@@ -101,7 +102,7 @@ impl Scope {
     /// Add an event processor to the scope.
     pub fn add_event_processor<F>(&mut self, f: F)
     where
-        F: Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync + 'static,
+        F: Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync + RefUnwindSafe + 'static,
     {
         let _f = f;
         minimal_unreachable!();

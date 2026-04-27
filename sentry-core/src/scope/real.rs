@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::collections::{HashMap, VecDeque};
 use std::fmt;
+use std::panic::RefUnwindSafe;
 #[cfg(feature = "release-health")]
 use std::sync::Mutex;
 use std::sync::{Arc, PoisonError, RwLock};
@@ -21,7 +22,8 @@ pub struct Stack {
     layers: Vec<StackLayer>,
 }
 
-type EventProcessor = Arc<dyn Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync>;
+type EventProcessor =
+    Arc<dyn Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync + RefUnwindSafe>;
 
 /// Holds contextual data for the current scope.
 ///
@@ -252,7 +254,7 @@ impl Scope {
     /// Add an event processor to the scope.
     pub fn add_event_processor<F>(&mut self, f: F)
     where
-        F: Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync + 'static,
+        F: Fn(Event<'static>) -> Option<Event<'static>> + Send + Sync + RefUnwindSafe + 'static,
     {
         Arc::make_mut(&mut self.event_processors).push(Arc::new(f));
     }
