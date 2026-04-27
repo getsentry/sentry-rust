@@ -4,6 +4,7 @@
 
 use std::time::SystemTime;
 
+use sentry_time::now_system_time;
 use serde::{Deserialize, Serialize};
 
 use self::list::ClientReportList;
@@ -21,7 +22,10 @@ mod relay_size;
 /// [client report]: https://develop.sentry.dev/sdk/telemetry/client-reports/
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Report {
-    #[serde(default = "SystemTime::now", with = "utils::ts_seconds_float")]
+    #[serde(
+        default = "sentry_time::now_system_time",
+        with = "utils::ts_seconds_float"
+    )]
     timestamp: SystemTime,
     discarded_events: ClientReportList,
 }
@@ -129,7 +133,7 @@ impl Report {
         I: IntoIterator,
         I::Item: Into<Item>,
     {
-        let timestamp = SystemTime::now();
+        let timestamp = now_system_time();
         let discarded_events = reports.into_iter().map(Into::into).collect();
 
         Self {

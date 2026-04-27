@@ -1,35 +1,29 @@
 [workspace]
 resolver = "2"
 members = [
-    "sentry",
-    "sentry-actix",
-    "sentry-anyhow",
-    "sentry-backtrace",
-    "sentry-contexts",
-    "sentry-core",
-    "sentry-debug-images",
-    "sentry-log",
-    "sentry-opentelemetry",
-    "sentry-panic",
-    "sentry-slog",
-    "sentry-tower",
-    "sentry-tracing",
-    "sentry-types",
+  "sentry",
+  "sentry-actix",
+  "sentry-anyhow",
+  "sentry-backtrace",
+  "sentry-contexts",
+  "sentry-core",
+  "sentry-debug-images",
+  "sentry-log",
+  "sentry-opentelemetry",
+  "sentry-panic",
+  "sentry-slog",
+  "sentry-time",
+  "sentry-tower",
+  "sentry-tracing",
+  "sentry-types",
 ]
 
 [workspace.package]
 authors = ["Sentry <hello@sentry.io>"]
-repository = "https://github.com/getsentry/sentry-rust"
-homepage = "https://sentry.io/welcome/"
 edition = "2021"
 rust-version = "1.88"
-
-[workspace.lints.clippy]
-arithmetic-side-effects.level = "warn"
-allow-attributes.level = "warn"
-
-[workspace.lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(doc_cfg)'] }
+homepage = "https://sentry.io/welcome/"
+repository = "https://github.com/getsentry/sentry-rust"
 
 [workspace.dependencies]
 actix-http = "3.12"
@@ -40,6 +34,7 @@ backtrace = "0.3.44"
 bitflags = "2.9.4"
 bytes = "1.11.1"
 cfg_aliases = "0.2.1"
+chrono = "0.4"
 criterion = "0.5"
 curl = "0.4.25"
 debugid = "0.8.0"
@@ -69,20 +64,75 @@ reqwest = { version = "0.13.2", default-features = false }
 rstest = "0.25.0"
 rustc_version = "0.4.0"
 rustls = { version = "0.23.18", default-features = false }
-sentry = { version = "0.49.1", path = "sentry", default-features = false }
-sentry-actix = { version = "0.49.1", path = "sentry-actix", default-features = false }
-sentry-anyhow = { version = "0.49.1", path = "sentry-anyhow", default-features = false, features = ["backtrace"] }
-sentry-backtrace = { version = "0.49.1", path = "sentry-backtrace", default-features = false }
-sentry-contexts = { version = "0.49.1", path = "sentry-contexts", default-features = false }
-sentry-core = { version = "0.49.1", path = "sentry-core", default-features = false }
-sentry-debug-images = { version = "0.49.1", path = "sentry-debug-images", default-features = false }
-sentry-log = { version = "0.49.1", path = "sentry-log", default-features = false }
-sentry-opentelemetry = { version = "0.49.1", path = "sentry-opentelemetry", default-features = false }
-sentry-panic = { version = "0.49.1", path = "sentry-panic", default-features = false }
-sentry-slog = { version = "0.49.1", path = "sentry-slog", default-features = false }
-sentry-tower = { version = "0.49.1", path = "sentry-tower", default-features = false }
-sentry-tracing = { version = "0.49.1", path = "sentry-tracing", default-features = false }
-sentry-types = { version = "0.49.1", path = "sentry-types", default-features = false, features = ["protocol"] }
+sentry = { path = "sentry", version = "0.49.1", default-features = false }
+sentry-actix = {
+  path = "sentry-actix",
+  version = "0.49.1",
+  default-features = false
+}
+sentry-anyhow = {
+  path = "sentry-anyhow",
+  version = "0.49.1",
+  default-features = false,
+  features = ["backtrace"]
+}
+sentry-backtrace = {
+  path = "sentry-backtrace",
+  version = "0.49.1",
+  default-features = false
+}
+sentry-contexts = {
+  path = "sentry-contexts",
+  version = "0.49.1",
+  default-features = false
+}
+sentry-core = {
+  path = "sentry-core",
+  version = "0.49.1",
+  default-features = false
+}
+sentry-debug-images = {
+  path = "sentry-debug-images",
+  version = "0.49.1",
+  default-features = false
+}
+sentry-log = {
+  path = "sentry-log",
+  version = "0.49.1",
+  default-features = false
+}
+sentry-opentelemetry = {
+  path = "sentry-opentelemetry",
+  version = "0.49.1",
+  default-features = false
+}
+sentry-panic = {
+  path = "sentry-panic",
+  version = "0.49.1",
+  default-features = false
+}
+sentry-slog = {
+  path = "sentry-slog",
+  version = "0.49.1",
+  default-features = false
+}
+sentry-time = { path = "sentry-time", version = "0.49.1" }
+sentry-tower = {
+  path = "sentry-tower",
+  version = "0.49.1",
+  default-features = false
+}
+sentry-tracing = {
+  path = "sentry-tracing",
+  version = "0.49.1",
+  default-features = false
+}
+sentry-types = {
+  path = "sentry-types",
+  version = "0.49.1",
+  default-features = false,
+  features = ["protocol"]
+}
 serde = "1.0.117"
 serde_json = "1.0.48"
 slog = "2.5.2"
@@ -100,3 +150,10 @@ uname = "0.1.1"
 ureq = { version = "3.0.11", default-features = false }
 url = "2.2.2"
 uuid = "1.0.0"
+
+[workspace.lints.clippy]
+allow-attributes.level = "warn"
+arithmetic-side-effects.level = "warn"
+
+[workspace.lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(doc_cfg)"] }

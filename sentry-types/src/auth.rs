@@ -3,6 +3,7 @@ use std::fmt;
 use std::str::FromStr;
 use std::time::SystemTime;
 
+use sentry_time::now_system_time;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use url::form_urlencoded;
@@ -175,7 +176,7 @@ impl FromStr for Auth {
 
 pub(crate) fn auth_from_dsn_and_client(dsn: &Dsn, client: Option<&str>) -> Auth {
     Auth {
-        timestamp: Some(SystemTime::now()),
+        timestamp: Some(now_system_time()),
         client: client.map(|x| x.to_string()),
         version: protocol::LATEST,
         key: dsn.public_key().to_string(),

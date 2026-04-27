@@ -1,0 +1,18 @@
+[package]
+name = "sentry-time"
+version = "0.49.1"
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = """
+Time based functions supporting all targets including WASM.
+"""
+readme = "README.md"
+homepage.workspace = true
+repository.workspace = true
+license = "MIT"
+
+[dependencies]
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+chrono.workspace = true

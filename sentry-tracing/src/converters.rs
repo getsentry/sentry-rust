@@ -6,7 +6,8 @@ use sentry_core::protocol::{Event, Exception, Mechanism, Value};
 use sentry_core::protocol::{Log, LogAttribute, LogLevel};
 use sentry_core::{event_from_error, Breadcrumb, Level, TransactionOrSpan};
 #[cfg(feature = "logs")]
-use std::time::SystemTime;
+use sentry_time::now_system_time;
+#[cfg(feature = "logs")]
 use tracing_core::field::{Field, Visit};
 use tracing_core::Subscriber;
 use tracing_subscriber::layer::Context;
@@ -381,7 +382,7 @@ where
         level: level_to_log_level(event.metadata().level()),
         body: message.unwrap_or_default(),
         trace_id: None,
-        timestamp: SystemTime::now(),
+        timestamp: now_system_time(),
         severity_number: None,
         attributes,
     }

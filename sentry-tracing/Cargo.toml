@@ -2,38 +2,39 @@
 name = "sentry-tracing"
 version = "0.49.1"
 authors = { workspace = true }
-license = "MIT"
-readme = "README.md"
-repository = { workspace = true }
-homepage = { workspace = true }
+edition = { workspace = true }
+rust-version = { workspace = true }
 description = """
 Sentry integration for the tracing and tracing-subscriber crates.
 """
-edition = { workspace = true }
-rust-version = { workspace = true }
-
-[lints]
-workspace = true
+readme = "README.md"
+homepage = { workspace = true }
+repository = { workspace = true }
+license = "MIT"
 
 [package.metadata.docs.rs]
 all-features = true
+
+[dependencies]
+bitflags = { workspace = true }
+sentry-backtrace = { workspace = true, optional = true }
+sentry-core = { workspace = true, features = ["client"] }
+sentry-time.workspace = true
+tracing-core = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["std"] }
+
+[dev-dependencies]
+log = { workspace = true }
+sentry = { workspace = true, features = ["test", "tracing"] }
+serde_json = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["fmt", "registry"] }
 
 [features]
 default = []
 backtrace = ["dep:sentry-backtrace"]
 logs = ["sentry-core/logs"]
 
-[dependencies]
-sentry-core = { workspace = true, features = ["client"] }
-tracing-core = { workspace = true }
-tracing-subscriber = { workspace = true, features = ["std"] }
-sentry-backtrace = { workspace = true, optional = true }
-bitflags = { workspace = true }
-
-[dev-dependencies]
-log = { workspace = true }
-sentry = { workspace = true, features = ["test", "tracing"] }
-serde_json = { workspace = true }
-tracing = { workspace = true }
-tracing-subscriber = { workspace = true, features = ["fmt", "registry"] }
-tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time"] }
+[lints]
+workspace = true
