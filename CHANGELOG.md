@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Breaking Changes
+
+- [`sentry_core::ClientOptions`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html) fields [`before_send_log`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html#structfield.before_send_log), [`enable_logs`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html#structfield.enable_logs), [`auto_session_tracking`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html#structfield.auto_session_tracking), and [`session_mode`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html#structfield.session_mode) are no longer gated behind the `logs` and `release-health` feature flags ([#1091](https://github.com/getsentry/sentry-rust/pull/1091)). Code that constructs `ClientOptions` with a full struct literal (without `..Default::default()`), or which exhaustively matches against it, must now include all four fields regardless of enabled features.
+
 ## 0.47.0
 
 ### Breaking Changes
