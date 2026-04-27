@@ -16,9 +16,11 @@ rust-version = { workspace = true }
 [dependencies]
 sentry-core = { version = "0.47.0", path = "../sentry-core" }
 libc = "0.2.66"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 hostname = "0.4"
 
-[target."cfg(not(windows))".dependencies]
+[target.'cfg(all(not(windows), not(target_arch = "wasm32")))'.dependencies]
 uname = "0.1.1"
 
 [target."cfg(windows)".dependencies]

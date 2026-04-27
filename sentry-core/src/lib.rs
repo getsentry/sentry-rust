@@ -158,6 +158,9 @@ pub mod test;
 // public api from other crates
 #[doc(inline)]
 pub use sentry_types as types;
+
+#[doc(hidden)]
+pub use sentry_time;
 pub use sentry_types::protocol::v7 as protocol;
 pub use sentry_types::protocol::v7::{Breadcrumb, Envelope, Level, User};
 

@@ -18,6 +18,7 @@ logs = ["sentry-core/logs"]
 
 [dependencies]
 sentry-core = { version = "0.47.0", path = "../sentry-core" }
+sentry-time = { path = "../sentry-time" }
 log = { version = "0.4.8", features = ["std", "kv"] }
 bitflags = "2.9.4"
 

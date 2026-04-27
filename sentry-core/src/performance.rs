@@ -4,6 +4,7 @@ use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::SystemTime;
 
+use sentry_time::now_system_time;
 use sentry_types::protocol::v7::SpanId;
 
 use crate::{protocol, Hub};
@@ -898,7 +899,7 @@ impl Transaction {
     /// This records the current timestamp as the end timestamp and sends the transaction together with
     /// all finished child spans to Sentry.
     pub fn finish(self) {
-        self.finish_with_timestamp(SystemTime::now());
+        self.finish_with_timestamp(now_system_time());
     }
 
     /// Starts a new child Span with the given `op` and `description`.
@@ -1149,7 +1150,7 @@ impl Span {
     /// This will record the current timestamp as the end timestamp and add the span to the
     /// transaction in which it was started.
     pub fn finish(self) {
-        self.finish_with_timestamp(SystemTime::now());
+        self.finish_with_timestamp(now_system_time());
     }
 
     /// Starts a new child Span with the given `op` and `description`.

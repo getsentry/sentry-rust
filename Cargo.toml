@@ -11,7 +11,7 @@ members = [
     "sentry-log",
     "sentry-opentelemetry",
     "sentry-panic",
-    "sentry-slog",
+    "sentry-slog", "sentry-time",
     "sentry-tower",
     "sentry-tracing",
     "sentry-types",
