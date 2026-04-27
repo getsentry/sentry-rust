@@ -22,6 +22,7 @@ impl fmt::Debug for ScopeGuard {
 /// In minimal API mode all modification functions are available as normally
 /// just that generally calling them is impossible.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct Scope;
 
 impl Scope {
