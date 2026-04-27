@@ -43,9 +43,10 @@
 //!     .capture();
 //! ```
 
+use std::borrow::Cow;
 use std::collections::BTreeMap;
-use std::{borrow::Cow, time::SystemTime};
 
+use sentry_time::now_system_time;
 use sentry_types::protocol::v7::{
     LogAttribute, Metric as ProtocolMetric, MetricType, SpanId, TraceId, Unit,
 };
@@ -275,7 +276,7 @@ impl MetricInner {
             value,
             attributes,
             span_id,
-            timestamp: SystemTime::now(),
+            timestamp: now_system_time(),
             unit: None,
         }
     }

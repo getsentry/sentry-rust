@@ -608,7 +608,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1aa79e62e7697b8e29b513a68abacf485adcd1fe8284a4316c5ae868e6633327"
 dependencies = [
  "iana-time-zone",
+ "js-sys",
  "num-traits",
+ "wasm-bindgen",
  "windows-link",
 ]
 
@@ -3426,12 +3428,14 @@ name = "sentry-core"
 version = "0.49.1"
 dependencies = [
  "anyhow",
+ "chrono",
  "criterion",
  "futures",
  "log",
  "rand 0.9.5",
  "rayon",
  "sentry",
+ "sentry-time",
  "sentry-types",
  "serde",
  "serde_json",
@@ -3458,6 +3462,7 @@ dependencies = [
  "pretty_env_logger",
  "sentry",
  "sentry-core",
+ "sentry-time",
 ]
 
 [[package]]
@@ -3468,6 +3473,7 @@ dependencies = [
  "opentelemetry_sdk",
  "sentry",
  "sentry-core",
+ "sentry-time",
 ]
 
 [[package]]
@@ -3489,6 +3495,13 @@ dependencies = [
  "serde",
  "serde_json",
  "slog",
+]
+
+[[package]]
+name = "sentry-time"
+version = "0.49.1"
+dependencies = [
+ "chrono",
 ]
 
 [[package]]
@@ -3520,6 +3533,7 @@ dependencies = [
  "sentry",
  "sentry-backtrace",
  "sentry-core",
+ "sentry-time",
  "serde_json",
  "tokio",
  "tracing",
@@ -3535,6 +3549,7 @@ dependencies = [
  "hex",
  "rand 0.9.5",
  "rstest",
+ "sentry-time",
  "serde",
  "serde_json",
  "thiserror 2.0.19",

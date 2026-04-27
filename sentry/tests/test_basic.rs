@@ -265,20 +265,20 @@ fn test_panic_scope_pop() {
 #[cfg(feature = "logs")]
 #[test]
 fn test_basic_capture_log() {
-    use std::time::SystemTime;
-
     use sentry::{protocol::Log, protocol::LogAttribute, protocol::Map, Hub};
 
     let options = sentry::ClientOptions::new().enable_logs(true);
     let envelopes = sentry::test::with_captured_envelopes_options(
         || {
+            use sentry::sentry_time::now_system_time;
+
             let mut attributes: Map<String, LogAttribute> = Map::new();
             attributes.insert("test".into(), "a string".into());
             let log = Log {
                 level: sentry::protocol::LogLevel::Warn,
                 body: "this is a test".into(),
                 trace_id: None,
-                timestamp: SystemTime::now(),
+                timestamp: now_system_time(),
                 severity_number: None,
                 attributes,
             };

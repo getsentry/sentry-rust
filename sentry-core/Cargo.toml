@@ -2,51 +2,53 @@
 name = "sentry-core"
 version = "0.49.1"
 authors = { workspace = true }
-license = "MIT"
-readme = "README.md"
-repository = { workspace = true }
-homepage = { workspace = true }
+edition = { workspace = true }
+rust-version = { workspace = true }
 description = """
 Core Sentry library used for instrumentation and integration development.
 """
-edition = { workspace = true }
-rust-version = { workspace = true }
-
-[lints]
-workspace = true
+readme = "README.md"
+homepage = { workspace = true }
+repository = { workspace = true }
+license = "MIT"
 
 [package.metadata.docs.rs]
 all-features = true
 
 [[bench]]
-name = "scope_benchmark"
 harness = false
-
-[features]
-default = []
-client = ["rand"]
-test = ["client", "release-health"]
-release-health = []
-logs = []
-metrics = []
+name = "scope_benchmark"
 
 [dependencies]
+chrono.workspace = true
 log = { workspace = true, features = ["std"], optional = true }
 rand = { workspace = true, optional = true }
+sentry-time = { workspace = true }
 sentry-types = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 url = { workspace = true }
-uuid = { workspace = true, features = ["v4", "serde"], optional = true }
+uuid = { workspace = true, features = ["serde", "v4"], optional = true }
 
 [dev-dependencies]
-# Because we re-export all the public API in `sentry`, we actually run all the
-# doctests using the `sentry` crate. This also takes care of the doctest
-# limitation documented in https://github.com/rust-lang/rust/issues/45599.
-sentry = { workspace = true, features = ["test", "transport", "metrics"] }
 anyhow = { workspace = true }
 criterion = { workspace = true }
 futures = { workspace = true }
 rayon = { workspace = true }
+# Because we re-export all the public API in `sentry`, we actually run all the
+# doctests using the `sentry` crate. This also takes care of the doctest
+# limitation documented in https://github.com/rust-lang/rust/issues/45599.
+sentry = { workspace = true, features = ["metrics", "test", "transport"] }
 thiserror = { workspace = true }
-tokio = { workspace = true, features = ["rt", "rt-multi-thread", "macros"] }
+tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread"] }
+
+[features]
+default = []
+client = ["rand"]
+logs = []
+metrics = []
+release-health = []
+test = ["client", "release-health"]
+
+[lints]
+workspace = true
