@@ -21,15 +21,28 @@ pub struct ReqwestHttpTransport {
 impl ReqwestHttpTransport {
     /// Creates a new Transport.
     pub fn new(options: &ClientOptions) -> Self {
-        Self::new_internal(options, None)
+        Self::new_internal(options, None, 30)
     }
 
     /// Creates a new Transport that uses the specified [`ReqwestClient`].
     pub fn with_client(options: &ClientOptions, client: ReqwestClient) -> Self {
-        Self::new_internal(options, Some(client))
+        Self::new_internal(options, Some(client), 30)
     }
 
-    fn new_internal(options: &ClientOptions, client: Option<ReqwestClient>) -> Self {
+    /// Creates a new Transport with a custom transport channel capacity.
+    ///
+    /// The channel capacity bounds how many envelopes may be queued before
+    /// `send_envelope` blocks. A higher capacity reduces the chance of
+    /// dropped events in high-throughput scenarios at the cost of memory.
+    pub fn with_channel_capacity(options: &ClientOptions, channel_capacity: usize) -> Self {
+        Self::new_internal(options, None, channel_capacity)
+    }
+
+    fn new_internal(
+        options: &ClientOptions,
+        client: Option<ReqwestClient>,
+        channel_capacity: usize,
+    ) -> Self {
         let client = client.unwrap_or_else(|| {
             let mut builder = reqwest::Client::builder();
             if options.accept_invalid_certs {
@@ -64,53 +77,56 @@ impl ReqwestHttpTransport {
         let auth = dsn.to_auth(Some(&user_agent)).to_string();
         let url = dsn.envelope_api_url().to_string();
 
-        let thread = TransportThread::new(move |envelope, mut rl| {
-            let mut body = Vec::new();
-            envelope.to_writer(&mut body).unwrap();
-            let request = client.post(&url).header("X-Sentry-Auth", &auth).body(body);
+        let thread = TransportThread::with_capacity(
+            move |envelope, mut rl| {
+                let mut body = Vec::new();
+                envelope.to_writer(&mut body).unwrap();
+                let request = client.post(&url).header("X-Sentry-Auth", &auth).body(body);
 
-            // NOTE: because of lifetime issues, building the request using the
-            // `client` has to happen outside of this async block.
-            async move {
-                match request.send().await {
-                    Ok(response) => {
-                        let headers = response.headers();
+                // NOTE: because of lifetime issues, building the request using the
+                // `client` has to happen outside of this async block.
+                async move {
+                    match request.send().await {
+                        Ok(response) => {
+                            let headers = response.headers();
 
-                        if let Some(sentry_header) = headers
-                            .get("x-sentry-rate-limits")
-                            .and_then(|x| x.to_str().ok())
-                        {
-                            rl.update_from_sentry_header(sentry_header);
-                        } else if let Some(retry_after) = headers
-                            .get(ReqwestHeaders::RETRY_AFTER)
-                            .and_then(|x| x.to_str().ok())
-                        {
-                            rl.update_from_retry_after(retry_after);
-                        } else if response.status() == StatusCode::TOO_MANY_REQUESTS {
-                            rl.update_from_429();
-                        }
-
-                        let is_payload_too_large =
-                            response.status().as_u16() == HTTP_PAYLOAD_TOO_LARGE;
-                        match response.text().await {
-                            Err(err) => {
-                                sentry_debug!("Failed to read sentry response: {}", err);
+                            if let Some(sentry_header) = headers
+                                .get("x-sentry-rate-limits")
+                                .and_then(|x| x.to_str().ok())
+                            {
+                                rl.update_from_sentry_header(sentry_header);
+                            } else if let Some(retry_after) = headers
+                                .get(ReqwestHeaders::RETRY_AFTER)
+                                .and_then(|x| x.to_str().ok())
+                            {
+                                rl.update_from_retry_after(retry_after);
+                            } else if response.status() == StatusCode::TOO_MANY_REQUESTS {
+                                rl.update_from_429();
                             }
-                            Ok(text) => {
-                                sentry_debug!("Get response: `{}`", text);
+
+                            let is_payload_too_large =
+                                response.status().as_u16() == HTTP_PAYLOAD_TOO_LARGE;
+                            match response.text().await {
+                                Err(err) => {
+                                    sentry_debug!("Failed to read sentry response: {}", err);
+                                }
+                                Ok(text) => {
+                                    sentry_debug!("Get response: `{}`", text);
+                                }
+                            }
+                            if is_payload_too_large {
+                                sentry_debug!("{HTTP_PAYLOAD_TOO_LARGE_MESSAGE}");
                             }
                         }
-                        if is_payload_too_large {
-                            sentry_debug!("{HTTP_PAYLOAD_TOO_LARGE_MESSAGE}");
+                        Err(err) => {
+                            sentry_debug!("Failed to send envelope: {}", err);
                         }
                     }
-                    Err(err) => {
-                        sentry_debug!("Failed to send envelope: {}", err);
-                    }
+                    rl
                 }
-                rl
-            }
-        });
+            },
+            channel_capacity,
+        );
         Self { thread }
     }
 }

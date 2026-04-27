@@ -26,12 +26,25 @@ pub struct TransportThread {
 }
 
 impl TransportThread {
-    /// Spawn a new background thread.
-    pub fn new<SendFn>(mut send: SendFn) -> Self
+    /// Spawn a new background thread with the default channel capacity of 30.
+    pub fn new<SendFn>(send: SendFn) -> Self
     where
         SendFn: FnMut(Envelope, &mut RateLimiter) + Send + 'static,
     {
-        let (sender, receiver) = sync_channel(30);
+        Self::with_capacity(send, 30)
+    }
+
+    /// Spawn a new background thread with a custom channel capacity.
+    ///
+    /// The channel capacity bounds how many envelopes may be queued before
+    /// `send` blocks. `channel_capacity` is clamped to a minimum of 1 to
+    /// avoid a rendezvous channel, which would silently drop envelopes under
+    /// `try_send`.
+    pub fn with_capacity<SendFn>(mut send: SendFn, channel_capacity: usize) -> Self
+    where
+        SendFn: FnMut(Envelope, &mut RateLimiter) + Send + 'static,
+    {
+        let (sender, receiver) = sync_channel(channel_capacity.max(1));
         let shutdown = Arc::new(AtomicBool::new(false));
         let shutdown_worker = shutdown.clone();
         let handle = thread::Builder::new()
