@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixes
+
+- Changed [`ClientOptions::enable_metrics`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html#structfield.enable_metrics) to default to `true`, aligning metrics behavior with other Sentry SDKs ([#1106](https://github.com/getsentry/sentry-rust/issues/1106)). Metric capture APIs still require the `metrics` feature flag at compile time.
+
 ## 0.48.0
 
 ### Breaking Changes

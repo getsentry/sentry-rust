@@ -174,15 +174,16 @@ pub struct ClientOptions {
     /// This setting has no effect unless the `logs` feature is enabled at compile-time, as the
     /// feature is a pre-requisite to sending logs.
     pub enable_logs: bool,
-    /// Determines whether captured metrics should be sent to Sentry (defaults to false).
+    /// Determines whether metric capture APIs should capture metrics (defaults to true).
     ///
-    /// This setting has no effect unless the `metrics` feature is enabled at compile-time,
-    /// as the feature is a prerequisite for sending metrics.
+    /// Metric capture APIs are only available when the `metrics` feature is enabled at compile
+    /// time. If the `metrics` feature is enabled, set this to `false` to prevent metrics from
+    /// being captured and sent at runtime.
     pub enable_metrics: bool,
     /// Callback that is executed for each Metric before sending.
     ///
     /// This setting has no effect unless the `metrics` feature is enabled at compile-time,
-    /// as the feature is a prerequisite for sending metrics.
+    /// as the feature is a prerequisite for capturing metrics.
     pub before_send_metric: Option<BeforeCallback<Metric>>,
     // Other options not documented in Unified API
     /// Disable SSL verification.
@@ -329,7 +330,7 @@ impl Default for ClientOptions {
             max_request_body_size: MaxRequestBodySize::Medium,
             enable_logs: true,
             before_send_log: None,
-            enable_metrics: false,
+            enable_metrics: true,
             before_send_metric: None,
         }
     }

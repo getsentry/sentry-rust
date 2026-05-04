@@ -48,12 +48,28 @@ fn sent_when_enabled() {
     } if name == "test"));
 }
 
+/// Test that metrics are sent by default.
+#[test]
+fn metrics_enabled_by_default() {
+    let options = ClientOptions::default();
+
+    let envelopes =
+        test::with_captured_envelopes_options(|| metrics::counter("test", 1).capture(), options);
+    assert_eq!(
+        envelopes.len(),
+        1,
+        "expected exactly one envelope when metrics are enabled by default"
+    )
+}
+
 /// Test that metrics are disabled (not sent) when disabled in the
 /// [`ClientOptions`].
 #[test]
-fn metrics_disabled_by_default() {
-    // Metrics are disabled by default.
-    let options: ClientOptions = Default::default();
+fn metrics_disabled_when_configured() {
+    let options = ClientOptions {
+        enable_metrics: false,
+        ..Default::default()
+    };
 
     let envelopes =
         test::with_captured_envelopes_options(|| metrics::counter("test", 1).capture(), options);
@@ -67,10 +83,7 @@ fn metrics_disabled_by_default() {
 /// metrics enabled
 #[test]
 fn noop_sends_nothing() {
-    let options = ClientOptions {
-        enable_metrics: true,
-        ..Default::default()
-    };
+    let options = ClientOptions::default();
 
     let envelopes = test::with_captured_envelopes_options(|| (), options);
 
@@ -80,10 +93,7 @@ fn noop_sends_nothing() {
 /// Test that 100 metrics are sent in a single envelope.
 #[test]
 fn test_metrics_batching_at_limit() {
-    let options = ClientOptions {
-        enable_metrics: true,
-        ..Default::default()
-    };
+    let options = ClientOptions::default();
 
     let envelopes = test::with_captured_envelopes_options(
         || {
@@ -133,10 +143,7 @@ fn test_metrics_batching_at_limit() {
 /// Test that 101 envelopes are sent in two separate envelopes
 #[test]
 fn test_metrics_batching_over_limit() {
-    let options = ClientOptions {
-        enable_metrics: true,
-        ..Default::default()
-    };
+    let options = ClientOptions::default();
 
     let mut envelopes = test::with_captured_envelopes_options(
         || {
@@ -207,10 +214,7 @@ fn test_metrics_batching_over_limit() {
 
 #[test]
 fn metric_attributes_are_captured() {
-    let options = ClientOptions {
-        enable_metrics: true,
-        ..Default::default()
-    };
+    let options = ClientOptions::default();
 
     let envelopes = test::with_captured_envelopes_options(
         || {
@@ -265,10 +269,7 @@ fn metric_attributes_are_captured() {
 
 #[test]
 fn metric_unit_is_captured() {
-    let options = ClientOptions {
-        enable_metrics: true,
-        ..Default::default()
-    };
+    let options = ClientOptions::default();
 
     let envelopes = test::with_captured_envelopes_options(
         || metrics::gauge("test", 42).unit(Unit::Millisecond).capture(),
@@ -311,10 +312,7 @@ fn metric_unit_is_captured() {
 /// This tests that trace ID is set from the propagation context when there is no active span.
 #[test]
 fn metrics_share_trace_id_without_active_span() {
-    let options = ClientOptions {
-        enable_metrics: true,
-        ..Default::default()
-    };
+    let options = ClientOptions::default();
 
     let envelopes = test::with_captured_envelopes_options(
         || {
@@ -348,10 +346,7 @@ fn metrics_share_trace_id_without_active_span() {
 /// Test that span_id is set from the active span when one is present.
 #[test]
 fn metrics_span_id_from_active_span() {
-    let options = ClientOptions {
-        enable_metrics: true,
-        ..Default::default()
-    };
+    let options = ClientOptions::default();
 
     let mut expected_span_id = None;
     let envelopes = test::with_captured_envelopes_options(
@@ -389,7 +384,6 @@ fn metrics_span_id_from_active_span() {
 #[test]
 fn default_attributes_attached() {
     let options = ClientOptions {
-        enable_metrics: true,
         environment: Some("test-env".into()),
         release: Some("1.0.0".into()),
         server_name: Some("test-server".into()),
@@ -417,10 +411,7 @@ fn default_attributes_attached() {
 /// Test that optional default attributes are omitted when not configured.
 #[test]
 fn optional_default_attributes_omitted_when_not_configured() {
-    let options = ClientOptions {
-        enable_metrics: true,
-        ..Default::default()
-    };
+    let options = ClientOptions::default();
 
     let envelopes =
         test::with_captured_envelopes_options(|| metrics::counter("test", 1).capture(), options);
@@ -442,7 +433,6 @@ fn optional_default_attributes_omitted_when_not_configured() {
 #[test]
 fn default_attributes_do_not_overwrite_explicit() {
     let options = ClientOptions {
-        enable_metrics: true,
         environment: Some("default-env".into()),
         ..Default::default()
     };
@@ -475,7 +465,6 @@ fn default_attributes_do_not_overwrite_explicit() {
 #[test]
 fn user_attributes_absent_without_send_default_pii() {
     let options = ClientOptions {
-        enable_metrics: true,
         send_default_pii: false,
         ..Default::default()
     };
@@ -513,7 +502,6 @@ fn user_attributes_absent_without_send_default_pii() {
 #[test]
 fn metric_user_attributes_from_scope_are_applied_with_send_default_pii() {
     let options = ClientOptions {
-        enable_metrics: true,
         send_default_pii: true,
         ..Default::default()
     };
@@ -553,7 +541,6 @@ fn metric_user_attributes_from_scope_are_applied_with_send_default_pii() {
 #[test]
 fn metric_user_attributes_do_not_overwrite_explicit() {
     let options = ClientOptions {
-        enable_metrics: true,
         send_default_pii: true,
         ..Default::default()
     };
@@ -594,7 +581,6 @@ fn metric_user_attributes_do_not_overwrite_explicit() {
 #[test]
 fn before_send_metric_can_drop() {
     let options = ClientOptions {
-        enable_metrics: true,
         before_send_metric: Some(Arc::new(|_| None)),
         ..Default::default()
     };
@@ -611,7 +597,6 @@ fn before_send_metric_can_drop() {
 #[test]
 fn before_send_metric_can_modify() {
     let options = ClientOptions {
-        enable_metrics: true,
         before_send_metric: Some(Arc::new(|mut metric| {
             metric
                 .attributes
