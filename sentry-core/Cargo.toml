@@ -43,6 +43,7 @@ uuid = { version = "1.0.0", features = ["v4", "serde"], optional = true }
 sentry = { path = "../sentry", default-features = false, features = [
     "test",
     "transport",
+    "metrics",
 ] }
 anyhow = "1.0.30"
 criterion = "0.5"

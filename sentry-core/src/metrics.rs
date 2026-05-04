@@ -1,4 +1,47 @@
 //! APIs for creating and capturing metrics.
+//!
+//! With [Sentry's Application Metrics], you can record [counters], [gauges], and
+//! [distributions] from application code. This module is available when the `metrics` feature is
+//! enabled. Captured metrics are sent through the current [`Hub`] and are associated with the
+//! current trace and active span when available. The SDK also attaches [default metric attributes].
+//!
+//! Counters are unitless. Gauges and distributions support units via `unit`.
+//!
+//! For more information, see the [Rust SDK metrics guide].
+//!
+//! [Sentry's Application Metrics]: https://docs.sentry.io/product/explore/metrics/
+//! [Application Metrics]: https://docs.sentry.io/product/explore/metrics/
+//! [counters]: https://docs.sentry.io/product/explore/metrics/#counters
+//! [gauges]: https://docs.sentry.io/product/explore/metrics/#gauges
+//! [distributions]: https://docs.sentry.io/product/explore/metrics/#distributions
+//! [default metric attributes]: https://docs.sentry.io/platforms/rust/metrics/#default-attributes
+//! [Rust SDK metrics guide]: https://docs.sentry.io/platforms/rust/metrics/
+//!
+//! # Examples
+//!
+//! Capture counters, gauges, and distributions:
+//!
+//! ```rust
+//! use sentry::metrics;
+//! use sentry::protocol::Unit;
+//!
+//! metrics::counter("http.requests", 1).capture();
+//! metrics::gauge("queue.depth", 42).capture();
+//! metrics::distribution("http.response_time", 187.5)
+//!     .unit(Unit::Millisecond)
+//!     .capture();
+//! ```
+//!
+//! Add attributes that can be used to filter and group metrics in Sentry:
+//!
+//! ```rust
+//! use sentry::metrics;
+//!
+//! metrics::counter("http.requests", 1)
+//!     .attribute("http.route", "/health")
+//!     .attribute("http.response.status_code", 200)
+//!     .capture();
+//! ```
 
 use std::collections::BTreeMap;
 use std::{borrow::Cow, time::SystemTime};
@@ -12,9 +55,18 @@ use crate::Hub;
 
 /// Creates a counter metric, with the given name and value.
 ///
-/// You may set attributes via [`CounterMetric::attribute`].
+/// Use counters for occurrences, such as handled requests or processed jobs. You may set
+/// attributes via [`CounterMetric::attribute`].
 ///
-/// Note that unlike [`gauge`] and [`distribution`] metrics, counters are always unitless.
+/// Unlike [`gauge`] and [`distribution`] metrics, counters are always unitless.
+///
+/// # Example
+///
+/// ```rust
+/// use sentry::metrics;
+///
+/// metrics::counter("http.requests", 1).capture();
+/// ```
 pub fn counter<N, V>(name: N, value: V) -> CounterMetric
 where
     N: Into<Cow<'static, str>>,
@@ -25,8 +77,17 @@ where
 
 /// Creates a gauge metric, with the given name and value.
 ///
-/// It is recommended to set the unit on the metric via [`GaugeMetric::unit`]. You may also set
-/// attributes with [`GaugeMetric::attribute`].
+/// Use gauges for current state, such as queue depth or active connections. Set the unit on the
+/// metric via [`GaugeMetric::unit`] where applicable. You may also set attributes with
+/// [`GaugeMetric::attribute`].
+///
+/// # Example
+///
+/// ```rust
+/// use sentry::metrics;
+///
+/// metrics::gauge("queue.depth", 42).capture();
+/// ```
 pub fn gauge<N, V>(name: N, value: V) -> GaugeMetric
 where
     N: Into<Cow<'static, str>>,
@@ -37,8 +98,20 @@ where
 
 /// Creates a distribution metric, with the given name and value.
 ///
-/// It is recommended to set the unit on the metric via [`DistributionMetric::unit`]. You may also set
-/// attributes with [`DistributionMetric::attribute`].
+/// Use distributions for values that need statistical analysis, such as response time or payload
+/// size. Set the unit on the metric via [`DistributionMetric::unit`] where applicable. You may also
+/// set attributes with [`DistributionMetric::attribute`].
+///
+/// # Example
+///
+/// ```rust
+/// use sentry::metrics;
+/// use sentry::protocol::Unit;
+///
+/// metrics::distribution("http.response_time", 187.5)
+///     .unit(Unit::Millisecond)
+///     .capture();
+/// ```
 pub fn distribution<N, V>(name: N, value: V) -> DistributionMetric
 where
     N: Into<Cow<'static, str>>,
@@ -78,6 +151,12 @@ macro_rules! implement_metric_common_methods {
     ($struct:ident, $metric_type:expr) => {
         impl $struct {
             /// Adds an attribute to the metric.
+            ///
+            /// Attributes are keys that can be used to filter and group metrics in Sentry. Multiple
+            /// attributes can be chained. We recommend using [Sentry semantic conventions] for key
+            /// values, where applicable.
+            ///
+            /// [Sentry semantic conventions]: https://getsentry.github.io/sentry-conventions/
             pub fn attribute<K, V>(self, key: K, value: V) -> Self
             where
                 K: Into<Cow<'static, str>>,
@@ -89,8 +168,8 @@ macro_rules! implement_metric_common_methods {
 
             /// Captures the metric on the current [`Hub`], sending it to Sentry.
             ///
-            /// If the current hub has no client, the metric is dropped. To capture on a different
-            /// hub, use [`Hub::capture_metric`].
+            /// If the current hub has no client bound, the metric is dropped. To capture on a
+            /// different hub, use [`Hub::capture_metric`].
             #[inline]
             pub fn capture(self) {
                 with_client_impl! {{

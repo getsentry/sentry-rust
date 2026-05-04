@@ -176,14 +176,32 @@ pub struct ClientOptions {
     pub enable_logs: bool,
     /// Determines whether metric capture APIs should capture metrics (defaults to true).
     ///
-    /// Metric capture APIs are only available when the `metrics` feature is enabled at compile
-    /// time. If the `metrics` feature is enabled, set this to `false` to prevent metrics from
-    /// being captured and sent at runtime.
+    /// The metrics APIs require the `metrics` feature at compile time. When that feature is
+    /// enabled, runtime metric capture is enabled by default. Set this to `false` to stop sending
+    /// metrics without removing metrics instrumentation from the application.
     pub enable_metrics: bool,
-    /// Callback that is executed for each Metric before sending.
+    /// Callback that is executed for each [`Metric`] before sending.
     ///
-    /// This setting has no effect unless the `metrics` feature is enabled at compile-time,
-    /// as the feature is a prerequisite for capturing metrics.
+    /// This callback can modify a metric or return `None` to drop it. It has no effect unless the
+    /// `metrics` feature is enabled at compile time, as the feature is a prerequisite for capturing
+    /// metrics.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use std::sync::Arc;
+    /// # use sentry::ClientOptions;
+    /// let _options = ClientOptions {
+    ///     before_send_metric: Some(Arc::new(|metric| {
+    ///         if metric.name == "debug.metric" {
+    ///             return None;
+    ///         }
+    ///
+    ///         Some(metric)
+    ///     })),
+    ///     ..Default::default()
+    /// };
+    /// ```
     pub before_send_metric: Option<BeforeCallback<Metric>>,
     // Other options not documented in Unified API
     /// Disable SSL verification.
