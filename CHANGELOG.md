@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixes
+
+- Serialize attachment envelope headers as JSON to correctly encode header values ([#1109](https://github.com/getsentry/sentry-rust/pull/1109)).
+
 ## 0.48.1
 
 ### Fixes
