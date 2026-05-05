@@ -3,7 +3,10 @@ use std::time::Duration;
 
 use curl::easy::Easy as CurlClient;
 
-use super::{thread::TransportThread, HTTP_PAYLOAD_TOO_LARGE, HTTP_PAYLOAD_TOO_LARGE_MESSAGE};
+use super::{
+    thread::TransportThread, DEFAULT_CHANNEL_CAPACITY, HTTP_PAYLOAD_TOO_LARGE,
+    HTTP_PAYLOAD_TOO_LARGE_MESSAGE,
+};
 
 use crate::{sentry_debug, types::Scheme, ClientOptions, Envelope, Transport};
 
@@ -18,12 +21,12 @@ pub struct CurlHttpTransport {
 impl CurlHttpTransport {
     /// Creates a new Transport.
     pub fn new(options: &ClientOptions) -> Self {
-        Self::new_internal(options, None, 30)
+        Self::new_internal(options, None, DEFAULT_CHANNEL_CAPACITY)
     }
 
     /// Creates a new Transport that uses the specified [`CurlClient`].
     pub fn with_client(options: &ClientOptions, client: CurlClient) -> Self {
-        Self::new_internal(options, Some(client), 30)
+        Self::new_internal(options, Some(client), DEFAULT_CHANNEL_CAPACITY)
     }
 
     /// Creates a new Transport with a custom transport channel capacity.

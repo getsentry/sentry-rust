@@ -5,6 +5,7 @@ use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
 use super::ratelimit::{RateLimiter, RateLimitingCategory};
+use super::DEFAULT_CHANNEL_CAPACITY;
 use crate::{sentry_debug, Envelope};
 
 #[expect(
@@ -33,7 +34,7 @@ impl TransportThread {
         // NOTE: returning RateLimiter here, otherwise we are in borrow hell
         SendFuture: std::future::Future<Output = RateLimiter>,
     {
-        Self::with_capacity(send, 30)
+        Self::with_capacity(send, DEFAULT_CHANNEL_CAPACITY)
     }
 
     /// Spawn a new background thread with a custom channel capacity.
@@ -42,7 +43,10 @@ impl TransportThread {
     /// `send` blocks. `channel_capacity` is clamped to a minimum of 1 to
     /// avoid a rendezvous channel, which would silently drop envelopes under
     /// `try_send`.
-    pub fn with_capacity<SendFn, SendFuture>(mut send: SendFn, channel_capacity: usize) -> Self
+    pub(crate) fn with_capacity<SendFn, SendFuture>(
+        mut send: SendFn,
+        channel_capacity: usize,
+    ) -> Self
     where
         SendFn: FnMut(Envelope, RateLimiter) -> SendFuture + Send + 'static,
         // NOTE: returning RateLimiter here, otherwise we are in borrow hell

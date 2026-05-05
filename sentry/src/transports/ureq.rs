@@ -5,7 +5,10 @@ use ureq::http::Response;
 use ureq::tls::{TlsConfig, TlsProvider};
 use ureq::{Agent, Proxy};
 
-use super::{thread::TransportThread, HTTP_PAYLOAD_TOO_LARGE, HTTP_PAYLOAD_TOO_LARGE_MESSAGE};
+use super::{
+    thread::TransportThread, DEFAULT_CHANNEL_CAPACITY, HTTP_PAYLOAD_TOO_LARGE,
+    HTTP_PAYLOAD_TOO_LARGE_MESSAGE,
+};
 
 use crate::{sentry_debug, types::Scheme, ClientOptions, Envelope, Transport};
 
@@ -20,12 +23,12 @@ pub struct UreqHttpTransport {
 impl UreqHttpTransport {
     /// Creates a new Transport.
     pub fn new(options: &ClientOptions) -> Self {
-        Self::new_internal(options, None, 30)
+        Self::new_internal(options, None, DEFAULT_CHANNEL_CAPACITY)
     }
 
     /// Creates a new Transport that uses the specified [`ureq::Agent`].
     pub fn with_agent(options: &ClientOptions, agent: Agent) -> Self {
-        Self::new_internal(options, Some(agent), 30)
+        Self::new_internal(options, Some(agent), DEFAULT_CHANNEL_CAPACITY)
     }
 
     /// Creates a new Transport with a custom transport channel capacity.

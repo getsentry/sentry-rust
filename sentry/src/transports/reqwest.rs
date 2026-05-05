@@ -3,7 +3,8 @@ use std::time::Duration;
 use reqwest::{header as ReqwestHeaders, Client as ReqwestClient, Proxy, StatusCode};
 
 use super::{
-    tokio_thread::TransportThread, HTTP_PAYLOAD_TOO_LARGE, HTTP_PAYLOAD_TOO_LARGE_MESSAGE,
+    tokio_thread::TransportThread, DEFAULT_CHANNEL_CAPACITY, HTTP_PAYLOAD_TOO_LARGE,
+    HTTP_PAYLOAD_TOO_LARGE_MESSAGE,
 };
 
 use crate::{sentry_debug, ClientOptions, Envelope, Transport};
@@ -21,12 +22,12 @@ pub struct ReqwestHttpTransport {
 impl ReqwestHttpTransport {
     /// Creates a new Transport.
     pub fn new(options: &ClientOptions) -> Self {
-        Self::new_internal(options, None, 30)
+        Self::new_internal(options, None, DEFAULT_CHANNEL_CAPACITY)
     }
 
     /// Creates a new Transport that uses the specified [`ReqwestClient`].
     pub fn with_client(options: &ClientOptions, client: ReqwestClient) -> Self {
-        Self::new_internal(options, Some(client), 30)
+        Self::new_internal(options, Some(client), DEFAULT_CHANNEL_CAPACITY)
     }
 
     /// Creates a new Transport with a custom transport channel capacity.
