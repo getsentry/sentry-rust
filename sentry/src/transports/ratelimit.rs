@@ -1,5 +1,3 @@
-#![expect(clippy::arithmetic_side_effects)] // https://github.com/getsentry/sentry-rust/issues/1115
-
 use httpdate::parse_http_date;
 use std::time::{Duration, SystemTime};
 
@@ -28,11 +26,11 @@ impl RateLimiter {
     /// Updates the RateLimiter with information from a `Retry-After` header.
     pub fn update_from_retry_after(&mut self, header: &str) {
         let new_time = if let Ok(value) = header.parse::<f64>() {
-            SystemTime::now() + Duration::from_secs(value.ceil() as u64)
+            time_after(Duration::from_secs(value.ceil() as u64))
         } else if let Ok(value) = parse_http_date(header) {
             value
         } else {
-            SystemTime::now() + Duration::from_secs(60)
+            time_after_default_delay()
         };
 
         self.global = Some(new_time);
@@ -49,7 +47,7 @@ impl RateLimiter {
             let categories = splits.next()?;
             let _scope = splits.next()?;
 
-            let new_time = Some(SystemTime::now() + Duration::from_secs(seconds.ceil() as u64));
+            let new_time = Some(time_after(Duration::from_secs(seconds.ceil() as u64)));
 
             if categories.is_empty() {
                 self.global = new_time;
@@ -76,7 +74,7 @@ impl RateLimiter {
 
     /// Updates the RateLimiter in response to a `429` status code.
     pub fn update_from_429(&mut self) {
-        self.global = Some(SystemTime::now() + Duration::from_secs(60));
+        self.global = Some(time_after_default_delay());
     }
 
     /// Query the RateLimiter if a certain category of event is currently rate limited.
@@ -150,6 +148,24 @@ pub enum RateLimitingCategory {
     LogItem,
     /// Rate Limit pertaining to Trace Metrics.
     TraceMetric,
+}
+
+/// Returns the [`SystemTime`] after the given duration has passed.
+/// If this would overflow [`SystemTime`], we fall back to [`time_after_default_delay`].
+fn time_after(duration: Duration) -> SystemTime {
+    SystemTime::now()
+        .checked_add(duration)
+        .unwrap_or_else(time_after_default_delay)
+}
+
+/// Returns the [`SystemTime`] after the default 1-minute delay has passed.
+/// If this would overflow [`SystemTime`] (very unlikely), we fall back to the current time.
+fn time_after_default_delay() -> SystemTime {
+    /// The default rate limit delay is 1 minute.
+    const DEFAULT_DELAY: Duration = Duration::from_secs(60);
+
+    let now = SystemTime::now();
+    now.checked_add(DEFAULT_DELAY).unwrap_or(now)
 }
 
 #[cfg(test)]
