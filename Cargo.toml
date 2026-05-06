@@ -24,5 +24,8 @@ homepage = "https://sentry.io/welcome/"
 edition = "2021"
 rust-version = "1.88"
 
+[workspace.lints.clippy]
+arithmetic-side-effects.level = "warn"
+
 [workspace.lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(doc_cfg)'] }

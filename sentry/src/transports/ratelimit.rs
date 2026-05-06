@@ -1,3 +1,5 @@
+#![expect(clippy::arithmetic_side_effects)] // https://github.com/getsentry/sentry-rust/issues/1115
+
 use httpdate::parse_http_date;
 use std::time::{Duration, SystemTime};
 

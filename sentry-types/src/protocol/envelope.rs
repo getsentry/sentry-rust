@@ -1,3 +1,5 @@
+#![expect(clippy::arithmetic_side_effects)] // https://github.com/getsentry/sentry-rust/issues/1118
+
 use std::{borrow::Cow, io::Write, path::Path, time::SystemTime};
 
 use serde::{Deserialize, Serialize};

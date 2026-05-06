@@ -2,6 +2,8 @@
 //!
 //! <https://develop.sentry.dev/sdk/sessions/>
 
+#![expect(clippy::arithmetic_side_effects)] // https://github.com/getsentry/sentry-rust/issues/1117
+
 #[cfg(feature = "release-health")]
 pub use session_impl::*;
 
