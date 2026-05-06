@@ -58,6 +58,7 @@ ureq = ["dep:ureq", "httpdate"]
 # transport settings
 native-tls = ["dep:native-tls", "reqwest?/native-tls", "ureq?/native-tls"]
 rustls = ["dep:rustls", "reqwest?/rustls", "ureq?/rustls"]
+rustls-no-provider = ["dep:rustls", "reqwest?/rustls-no-provider", "ureq?/rustls"]
 embedded-svc-http = ["dep:embedded-svc", "dep:esp-idf-svc"]
 
 [dependencies]

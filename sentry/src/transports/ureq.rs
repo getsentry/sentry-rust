@@ -1,7 +1,11 @@
 use std::time::Duration;
 
 use ureq::http::Response;
-#[cfg(any(feature = "rustls", feature = "native-tls"))]
+#[cfg(any(
+    feature = "rustls",
+    feature = "rustls-no-provider",
+    feature = "native-tls"
+))]
 use ureq::tls::{TlsConfig, TlsProvider};
 use ureq::{Agent, Proxy};
 
@@ -43,7 +47,7 @@ impl UreqHttpTransport {
                         .build(),
                 );
             }
-            #[cfg(feature = "rustls")]
+            #[cfg(any(feature = "rustls", feature = "rustls-no-provider"))]
             {
                 builder = builder.tls_config(
                     TlsConfig::builder()
