@@ -1,5 +1,69 @@
 # Changelog
 
+## Unreleased
+
+### Fixes
+
+- Serialize attachment envelope headers as JSON to correctly encode header values ([#1109](https://github.com/getsentry/sentry-rust/pull/1109)).
+
+## 0.48.1
+
+### Fixes
+
+- Changed [`ClientOptions::enable_metrics`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html#structfield.enable_metrics) to default to `true`, aligning metrics behavior with other Sentry SDKs ([#1106](https://github.com/getsentry/sentry-rust/issues/1106)). Metric capture APIs still require the `metrics` feature flag at compile time.
+
+## 0.48.0
+
+### Breaking Changes
+
+- Added the following metrics-related fields to the [`ClientOptions` struct in `sentry-core`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html). Both fields are no-ops, unless the `metrics` feature flag is enabled:
+  - [`enable_metrics`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html#structfield.enable_metrics), used to enable sending metrics to Sentry ([#1073](https://github.com/getsentry/sentry-rust/pull/1073)). 
+  - [`before_send_metric`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html#structfield.before_send_metric), used to define a callback for filtering/pre-processing metrics before sending to Sentry ([#1064](https://github.com/getsentry/sentry-rust/pull/1064)).
+- There are several breakages related to the [SemVer feature additivity bug fixes](#semver-additivity-bug-fixes-2026-04):
+  - [`sentry_core::ClientOptions`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html) fields [`before_send_log`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html#structfield.before_send_log), [`enable_logs`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html#structfield.enable_logs), [`auto_session_tracking`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html#structfield.auto_session_tracking), and [`session_mode`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html#structfield.session_mode) are no longer gated behind the `logs` and `release-health` feature flags ([#1091](https://github.com/getsentry/sentry-rust/pull/1091)). Code that constructs `ClientOptions` with a full struct literal (without `..Default::default()`), or which exhaustively matches against it, must now include all four fields regardless of enabled features.
+  - [`sentry_core::Scope`](https://docs.rs/sentry-core/latest/sentry_core/struct.Scope.html) can no longer be publicly constructed or exhaustively matched against, even when the `client` feature is disabled ([#1094](https://github.com/getsentry/sentry-rust/pull/1094)). Previously, both of these were possible when `client` was disabled.
+  - [`sentry_core::Scope::add_event_processor`](https://docs.rs/sentry-core/latest/sentry_core/struct.Scope.html#method.add_event_processor) now requires passed closures to be `RefUnwindSafe` ([#1093](https://github.com/getsentry/sentry-rust/pull/1093)). Thanks to this change, [`sentry_core::Scope`](https://docs.rs/sentry-core/latest/sentry_core/struct.Scope.html) is now [`UnwindSafe`](https://docs.rs/sentry-core/latest/sentry_core/struct.Scope.html#impl-UnwindSafe-for-Scope) regardless of feature flag configuration; previously, `Scope` was only `UnwindSafe` when the `client` feature was disabled.
+  - [`sentry_tracing::EventMapping`](https://docs.rs/sentry-tracing/latest/sentry_tracing/enum.EventMapping.html) is now ``#[non_exhaustive]`` ([#1097](https://github.com/getsentry/sentry-rust/pull/1097)).
+  - [`sentry_log::RecordMapping`](https://docs.rs/sentry-log/latest/sentry_log/enum.RecordMapping.html) is now ``#[non_exhaustive]`` ([#1098](https://github.com/getsentry/sentry-rust/pull/1098)).
+
+### New Features
+
+📊📈💯 The Sentry-Rust SDK now supports emitting [Sentry Metrics](https://docs.sentry.io/product/explore/metrics/) ([#1073](https://github.com/getsentry/sentry-rust/pull/1073))! 
+
+To get started, you will need to add the `metrics` feature flag when compiling the `sentry` crate. You will also need to enable metrics when initializing the SDK, like so:
+
+```rust
+use sentry::ClientOptions;
+
+let _guard = sentry::init((
+    "(your DSN here)",
+    ClientOptions {
+        enable_metrics: true,
+        // ... other options ...
+        ..Default::default()
+    },
+));
+```
+
+You can then capture metrics as follows:
+
+```rust
+use sentry::metrics;
+use sentry::types::protocol::latest::Unit;
+
+// We support counter, gauge, and distribution metrics.
+metrics::counter("example.counter", 1).capture();
+metrics::gauge("connections", 20).capture();
+metrics::distribution("response.time", 123.4)
+    .unit(Unit::Millisecond) // units can also be set on gauges
+    .attribute("http.status", 200) // attributes can be set on all metric types
+    .capture();
+```
+
+### Fixes
+
+- <a name="semver-additivity-bug-fixes-2026-04"></a> Fixed several [feature additivity SemVer violations](https://doc.rust-lang.org/cargo/reference/features.html#semver-compatibility), where enabling a feature flag could have introduced breaking changes. All known violations are fixed now, so simply enabling an additional feature flag in any Sentry SDK crate should no longer cause any public API breakages. Fixing these issues required us to break the public API in some places; those breakages are detailed above.
+
 ## 0.47.0
 
 ### Breaking Changes

@@ -1,9 +1,9 @@
 use std::fmt;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// The different types an attachment can have.
-#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Default)]
+#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize, Default)]
 pub enum AttachmentType {
     #[serde(rename = "event.attachment")]
     /// (default) A standard attachment without special meaning.
@@ -56,27 +56,51 @@ pub struct Attachment {
     pub ty: Option<AttachmentType>,
 }
 
+struct AttachmentHeaderType;
+
+impl Serialize for AttachmentHeaderType {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        "attachment".serialize(serializer)
+    }
+}
+
+#[derive(Serialize)]
+struct AttachmentHeader<'a> {
+    r#type: AttachmentHeaderType,
+    length: usize,
+    filename: &'a str,
+    attachment_type: &'a AttachmentType,
+    content_type: &'a str,
+}
+
 impl Attachment {
     /// Writes the attachment and its headers to the provided `Writer`.
     pub fn to_writer<W>(&self, writer: &mut W) -> std::io::Result<()>
     where
         W: std::io::Write,
     {
-        writeln!(
-            writer,
-            r#"{{"type":"attachment","length":{length},"filename":"{filename}","attachment_type":"{at}","content_type":"{ct}"}}"#,
-            filename = self.filename,
-            length = self.buffer.len(),
-            at = self
-                .ty
-                .as_ref()
-                .unwrap_or(&AttachmentType::default())
-                .as_str(),
-            ct = self
-                .content_type
-                .as_ref()
-                .unwrap_or(&"application/octet-stream".to_string())
-        )?;
+        let attachment_type = match self.ty.as_ref() {
+            Some(ty) => ty,
+            None => &Default::default(),
+        };
+
+        let content_type = self
+            .content_type
+            .as_deref()
+            .unwrap_or("application/octet-stream");
+        let header = AttachmentHeader {
+            r#type: AttachmentHeaderType,
+            length: self.buffer.len(),
+            filename: &self.filename,
+            attachment_type,
+            content_type,
+        };
+
+        serde_json::to_writer(&mut *writer, &header)?;
+        writeln!(writer)?;
 
         writer.write_all(&self.buffer)?;
         Ok(())
@@ -99,7 +123,7 @@ impl fmt::Debug for Attachment {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json;
+    use serde_json::{self, json};
 
     #[test]
     fn test_attachment_type_deserialize() {
@@ -108,5 +132,34 @@ mod tests {
 
         let result: AttachmentType = serde_json::from_str(r#""my.custom.type""#).unwrap();
         assert_eq!(result, AttachmentType::Custom("my.custom.type".to_string()));
+    }
+
+    #[test]
+    fn test_attachment_header_escapes_json_strings() {
+        let attachment = Attachment {
+            buffer: b"payload".to_vec(),
+            filename: "file \"name\"\npart.txt".to_string(),
+            content_type: Some("text/\"plain\nnext".to_string()),
+            ty: Some(AttachmentType::Custom("custom/\"type\nnext".to_string())),
+        };
+
+        let mut buf = Vec::new();
+        attachment.to_writer(&mut buf).unwrap();
+
+        let mut parts = buf.splitn(2, |&b| b == b'\n');
+        let header: serde_json::Value = serde_json::from_slice(parts.next().unwrap()).unwrap();
+        let payload = parts.next().unwrap();
+
+        assert_eq!(
+            header,
+            json!({
+                "type": "attachment",
+                "length": 7,
+                "filename": "file \"name\"\npart.txt",
+                "content_type": "text/\"plain\nnext",
+                "attachment_type": "custom/\"type\nnext",
+            })
+        );
+        assert_eq!(payload, b"payload");
     }
 }

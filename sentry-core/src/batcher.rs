@@ -8,6 +8,8 @@ use crate::client::TransportArc;
 use crate::protocol::EnvelopeItem;
 use crate::Envelope;
 use sentry_types::protocol::v7::Log;
+#[cfg(feature = "metrics")]
+use sentry_types::protocol::v7::Metric;
 
 // Flush when there's 100 items in the buffer
 const MAX_ITEMS: usize = 100;
@@ -38,6 +40,11 @@ pub(crate) trait Batch: IntoBatchEnvelopeItem {
 
 impl Batch for Log {
     const TYPE_NAME: &str = "logs";
+}
+
+#[cfg(feature = "metrics")]
+impl Batch for Metric {
+    const TYPE_NAME: &str = "metrics";
 }
 
 /// Accumulates items in the queue and submits them through the transport when one of the flushing
@@ -154,7 +161,7 @@ impl<T: Batch> Drop for Batcher<T> {
     }
 }
 
-#[cfg(all(test, feature = "test"))]
+#[cfg(all(test, feature = "test", feature = "logs"))]
 mod tests {
     use crate::logger_info;
     use crate::test;

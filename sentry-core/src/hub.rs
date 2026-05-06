@@ -1,12 +1,23 @@
-// NOTE: Most of the methods are noops without the `client` feature, and this will
-// silence all the "unused variable" warnings related to fn arguments.
-#![allow(unused)]
-
 use std::sync::{Arc, RwLock};
 
-use crate::protocol::{Event, Level, Log, LogAttribute, LogLevel, Map, SessionStatus};
+#[cfg(feature = "metrics")]
+use crate::metrics::IntoProtocolMetric;
+#[cfg(feature = "logs")]
+use crate::protocol::Log;
+#[cfg(feature = "release-health")]
+use crate::protocol::SessionStatus;
+use crate::protocol::{Event, Level};
 use crate::types::Uuid;
 use crate::{Integration, IntoBreadcrumbs, Scope, ScopeGuard};
+
+/// Marks values as used in minimal builds where `with_client_impl!` turns many
+/// method bodies into no-ops and would otherwise leave their parameters unused.
+macro_rules! use_without_client {
+    ($($value:expr),+ $(,)?) => {
+        #[cfg(not(feature = "client"))]
+        let _ = ($( &$value ),+,);
+    };
+}
 
 /// The central object that can manage scopes and clients.
 ///
@@ -52,6 +63,7 @@ impl Hub {
         F: FnOnce(&Arc<Hub>) -> R,
         R: Default,
     {
+        use_without_client!(f);
         with_client_impl! {{
             Hub::with(|hub| {
                 if hub.is_active_and_usage_safe() {
@@ -76,6 +88,7 @@ impl Hub {
         F: FnOnce(&I) -> R,
         R: Default,
     {
+        use_without_client!(f);
         with_client_impl! {{
             if let Some(client) = self.client() {
                 if let Some(integration) = client.get_integration::<I>() {
@@ -98,6 +111,7 @@ impl Hub {
     /// See the global [`capture_event`](fn.capture_event.html)
     /// for more documentation.
     pub fn capture_event(&self, event: Event<'static>) -> Uuid {
+        use_without_client!(event);
         with_client_impl! {{
             let top = self.inner.with(|stack| stack.top().clone());
             let Some(ref client) = top.client else { return Default::default() };
@@ -112,6 +126,7 @@ impl Hub {
     /// See the global [`capture_message`](fn.capture_message.html)
     /// for more documentation.
     pub fn capture_message(&self, msg: &str, level: Level) -> Uuid {
+        use_without_client!(msg, level);
         with_client_impl! {{
             let event = Event {
                 message: Some(msg.to_string()),
@@ -134,7 +149,7 @@ impl Hub {
                 if let Some(session) = crate::session::Session::from_stack(top) {
                     // When creating a *new* session, we make sure it is unique,
                     // as to no inherit *backwards* to any parents.
-                    let mut scope = Arc::make_mut(&mut top.scope);
+                    let scope = Arc::make_mut(&mut top.scope);
                     scope.session = Arc::new(std::sync::Mutex::new(Some(session)));
                 }
             })
@@ -155,6 +170,7 @@ impl Hub {
     /// for more documentation.
     #[cfg(feature = "release-health")]
     pub fn end_session_with_status(&self, status: SessionStatus) {
+        use_without_client!(status);
         with_client_impl! {{
             self.inner.with_mut(|stack| {
                 let top = stack.top_mut();
@@ -187,6 +203,7 @@ impl Hub {
         C: FnOnce(&mut Scope),
         F: FnOnce() -> R,
     {
+        use_without_client!(scope_config);
         #[cfg(feature = "client")]
         {
             let _guard = self.push_scope();
@@ -195,7 +212,6 @@ impl Hub {
         }
         #[cfg(not(feature = "client"))]
         {
-            let _scope_config = scope_config;
             callback()
         }
     }
@@ -209,6 +225,7 @@ impl Hub {
         R: Default,
         F: FnOnce(&mut Scope) -> R,
     {
+        use_without_client!(f);
         with_client_impl! {{
             let mut new_scope = self.with_current_scope(|scope| scope.clone());
             let rv = f(&mut new_scope);
@@ -222,6 +239,7 @@ impl Hub {
     /// See the global [`add_breadcrumb`](fn.add_breadcrumb.html)
     /// for more documentation.
     pub fn add_breadcrumb<B: IntoBreadcrumbs>(&self, breadcrumb: B) {
+        use_without_client!(breadcrumb);
         with_client_impl! {{
             self.inner.with_mut(|stack| {
                 let top = stack.top_mut();
@@ -249,10 +267,24 @@ impl Hub {
     /// Captures a structured log.
     #[cfg(feature = "logs")]
     pub fn capture_log(&self, log: Log) {
+        use_without_client!(log);
         with_client_impl! {{
             let top = self.inner.with(|stack| stack.top().clone());
             let Some(ref client) = top.client else { return };
             client.capture_log(log, &top.scope);
+        }}
+    }
+
+    /// Captures a metric on this hub, sending it to Sentry.
+    ///
+    /// If this hub has no client, the metric is dropped.
+    #[cfg(feature = "metrics")]
+    pub fn capture_metric<M: IntoProtocolMetric>(&self, metric: M) {
+        use_without_client!(metric);
+        with_client_impl! {{
+            let top = self.inner.with(|stack| stack.top().clone());
+            let Some(ref client) = top.client else { return };
+            client.capture_metric(metric, &top.scope);
         }}
     }
 }
