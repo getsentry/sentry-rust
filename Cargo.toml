@@ -23,3 +23,6 @@ repository = "https://github.com/getsentry/sentry-rust"
 homepage = "https://sentry.io/welcome/"
 edition = "2021"
 rust-version = "1.88"
+
+[workspace.lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(doc_cfg)'] }

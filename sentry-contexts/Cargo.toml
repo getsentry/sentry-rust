@@ -13,6 +13,9 @@ build = "build.rs"
 edition = { workspace = true }
 rust-version = { workspace = true }
 
+[lints]
+workspace = true
+
 [dependencies]
 sentry-core = { version = "0.48.1", path = "../sentry-core" }
 libc = "0.2.66"

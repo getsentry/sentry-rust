@@ -12,6 +12,9 @@ Core Sentry library used for instrumentation and integration development.
 edition = { workspace = true }
 rust-version = { workspace = true }
 
+[lints]
+workspace = true
+
 [package.metadata.docs.rs]
 all-features = true
 

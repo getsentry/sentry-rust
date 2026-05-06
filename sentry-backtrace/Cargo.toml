@@ -12,6 +12,9 @@ Sentry integration and utilities for dealing with stacktraces.
 edition = { workspace = true }
 rust-version = { workspace = true }
 
+[lints]
+workspace = true
+
 [dependencies]
 backtrace = "0.3.44"
 regex = { version = "1.5.5", default-features = false, features = [

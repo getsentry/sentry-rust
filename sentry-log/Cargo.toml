@@ -12,6 +12,9 @@ Sentry integration for the log and env_logger crates.
 edition = { workspace = true }
 rust-version = { workspace = true }
 
+[lints]
+workspace = true
+
 [features]
 default = []
 logs = ["sentry-core/logs"]

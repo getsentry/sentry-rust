@@ -12,6 +12,9 @@ Sentry integration for the slog crate.
 edition = { workspace = true }
 rust-version = { workspace = true }
 
+[lints]
+workspace = true
+
 [dependencies]
 sentry-core = { version = "0.48.1", path = "../sentry-core" }
 slog = { version = "2.5.2", features = ["nested-values"] }

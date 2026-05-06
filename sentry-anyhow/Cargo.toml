@@ -12,6 +12,9 @@ Sentry integration for anyhow.
 edition = { workspace = true }
 rust-version = { workspace = true }
 
+[lints]
+workspace = true
+
 [features]
 default = ["backtrace"]
 backtrace = []

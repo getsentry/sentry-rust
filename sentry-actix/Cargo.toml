@@ -12,6 +12,9 @@ Sentry integration for actix-web 4.
 edition = { workspace = true }
 rust-version = { workspace = true }
 
+[lints]
+workspace = true
+
 [features]
 default = ["release-health"]
 release-health = ["sentry-core/release-health"]

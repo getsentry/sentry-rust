@@ -12,6 +12,9 @@ Sentry integration that adds the list of loaded libraries to events.
 edition = { workspace = true }
 rust-version = { workspace = true }
 
+[lints]
+workspace = true
+
 [dependencies]
 findshlibs = "=0.10.2"
 sentry-core = { version = "0.48.1", path = "../sentry-core" }

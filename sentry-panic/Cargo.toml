@@ -12,6 +12,9 @@ Sentry integration for capturing panics.
 edition = { workspace = true }
 rust-version = { workspace = true }
 
+[lints]
+workspace = true
+
 [dependencies]
 sentry-core = { version = "0.48.1", path = "../sentry-core", features = ["client"] }
 sentry-backtrace = { version = "0.48.1", path = "../sentry-backtrace" }

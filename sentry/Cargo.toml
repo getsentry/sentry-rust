@@ -107,8 +107,8 @@ tower = { version = "0.5.2", features = ["util"] }
 tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["fmt", "tracing-log"] }
 
-[lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(doc_cfg)'] }
+[lints]
+workspace = true
 
 [build-dependencies]
 cfg_aliases = "0.2.1"
