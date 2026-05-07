@@ -40,9 +40,11 @@ impl TransportThread {
     /// Spawn a new background thread with a custom channel capacity.
     ///
     /// The channel capacity bounds how many envelopes may be queued before
-    /// `send` blocks. `channel_capacity` is clamped to a minimum of 1 to
-    /// avoid a rendezvous channel, which would silently drop envelopes under
-    /// `try_send`.
+    /// `send` blocks. A capacity of `0` creates a rendezvous channel:
+    /// because `send` uses `try_send`, an envelope is accepted only when the
+    /// transport thread is currently waiting on the receiver, otherwise it
+    /// is dropped. That is a no-buffer back-pressure policy, not a blanket
+    /// "drop everything" mode.
     pub(crate) fn with_capacity<SendFn, SendFuture>(
         mut send: SendFn,
         channel_capacity: usize,
@@ -52,7 +54,7 @@ impl TransportThread {
         // NOTE: returning RateLimiter here, otherwise we are in borrow hell
         SendFuture: std::future::Future<Output = RateLimiter>,
     {
-        let (sender, receiver) = sync_channel(channel_capacity.max(1));
+        let (sender, receiver) = sync_channel(channel_capacity);
         let shutdown = Arc::new(AtomicBool::new(false));
         let shutdown_worker = shutdown.clone();
         let handle = thread::Builder::new()
