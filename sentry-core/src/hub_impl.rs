@@ -2,21 +2,20 @@ use std::cell::{Cell, RefCell};
 use std::marker::PhantomData;
 use std::sync::{Arc, LazyLock, MutexGuard, PoisonError, RwLock};
 use std::thread;
+use std::thread::ThreadId;
 
 use crate::Scope;
 use crate::{scope::Stack, Client, Hub};
 
-static PROCESS_HUB: LazyLock<(Arc<Hub>, thread::ThreadId)> = LazyLock::new(|| {
-    (
-        Arc::new(Hub::new(None, Arc::new(Default::default()))),
-        thread::current().id(),
-    )
+static PROCESS_HUB: LazyLock<ProcessHub> = LazyLock::new(|| ProcessHub {
+    hub: Arc::new(Hub::new(None, Arc::new(Default::default()))),
+    thread: thread::current().id(),
 });
 
 thread_local! {
     static THREAD_HUB: (RefCell<Arc<Hub>>, Cell<bool>) = (
-        RefCell::new(Arc::new(Hub::new_from_top(&PROCESS_HUB.0))),
-        Cell::new(PROCESS_HUB.1 == thread::current().id())
+        RefCell::new(Arc::new(Hub::new_from_top(&PROCESS_HUB.hub))),
+        Cell::new(PROCESS_HUB.thread == thread::current().id())
     );
 }
 
@@ -154,7 +153,7 @@ impl Hub {
     /// This is similar to [`Hub::current`] but instead of picking the
     /// current thread's hub it returns the main thread's hub instead.
     pub fn main() -> Arc<Hub> {
-        PROCESS_HUB.0.clone()
+        PROCESS_HUB.hub.clone()
     }
 
     /// Invokes the callback with the default hub.
@@ -167,7 +166,7 @@ impl Hub {
     {
         THREAD_HUB.with(|(hub, is_process_hub)| {
             if is_process_hub.get() {
-                f(&PROCESS_HUB.0)
+                f(&PROCESS_HUB.hub)
             } else {
                 // Bind `hub` as `hub.borrow().clone()`.
                 // It is essential we drop `hub.borrow()` before the callback, otherwise we will
@@ -215,6 +214,14 @@ impl Hub {
         self.inner
             .with_mut(|stack| f(Arc::make_mut(&mut stack.top_mut().scope)))
     }
+}
+
+/// Helper struct for storing the [`PROCESS_HUB`].
+struct ProcessHub {
+    /// The process's main hub.
+    hub: Arc<Hub>,
+    /// The thread on which the main hub was initialized.
+    thread: ThreadId,
 }
 
 #[cfg(test)]
