@@ -1,4 +1,4 @@
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 use std::marker::PhantomData;
 use std::sync::{Arc, LazyLock, MutexGuard, PoisonError, RwLock};
 use std::thread;
@@ -13,10 +13,17 @@ static PROCESS_HUB: LazyLock<ProcessHub> = LazyLock::new(|| ProcessHub {
 });
 
 thread_local! {
-    static THREAD_HUB: (RefCell<Arc<Hub>>, Cell<bool>) = (
-        RefCell::new(Arc::new(Hub::new_from_top(&PROCESS_HUB.hub))),
-        Cell::new(PROCESS_HUB.thread == thread::current().id())
-    );
+    /// The [`Hub`] associated with this thread.
+    ///
+    /// On the thread on which the [`PROCESS_HUB`] is initialized, the [`THREAD_HUB`] and
+    /// [`PROCESS_HUB`] are identical, i.e. `Arc::ptr_eq(&PROCESS_HUB, &THREAD_HUB)` is true.
+    /// On any other thread, the [`THREAD_HUB`] is created as a new hub based off of the
+    /// [`PROCESS_HUB`].
+    static THREAD_HUB: RefCell<Arc<Hub>> = if thread::current().id() == PROCESS_HUB.thread {
+        PROCESS_HUB.hub.clone()
+    } else {
+        Hub::new_from_top(&PROCESS_HUB.hub).into()
+    }.into()
 }
 
 /// A guard that temporarily swaps the active hub in thread-local storage.
@@ -24,7 +31,7 @@ thread_local! {
 /// This type is `!Send` because it manages thread-local state and must be
 /// dropped on the same thread where it was created.
 pub struct SwitchGuard {
-    inner: Option<(Arc<Hub>, bool)>,
+    inner: Option<Arc<Hub>>,
     /// Makes this type `!Send` while keeping it `Sync`.
     ///
     /// ```rust
@@ -48,14 +55,13 @@ impl SwitchGuard {
     /// and returns a guard that, when dropped, replaces it
     /// to the previous one.
     pub fn new(mut hub: Arc<Hub>) -> Self {
-        let inner = THREAD_HUB.with(|(thread_hub, is_process_hub)| {
+        let inner = THREAD_HUB.with(|thread_hub| {
             let mut thread_hub = thread_hub.borrow_mut();
             if std::ptr::eq(thread_hub.as_ref(), hub.as_ref()) {
                 return None;
             }
             std::mem::swap(&mut *thread_hub, &mut hub);
-            let was_process_hub = is_process_hub.replace(false);
-            Some((hub, was_process_hub))
+            Some(hub)
         });
         SwitchGuard {
             inner,
@@ -64,18 +70,13 @@ impl SwitchGuard {
     }
 
     fn swap(&mut self) -> Option<Arc<Hub>> {
-        if let Some((mut hub, was_process_hub)) = self.inner.take() {
-            Some(THREAD_HUB.with(|(thread_hub, is_process_hub)| {
+        self.inner.take().map(|mut hub| {
+            THREAD_HUB.with(|thread_hub| {
                 let mut thread_hub = thread_hub.borrow_mut();
                 std::mem::swap(&mut *thread_hub, &mut hub);
-                if was_process_hub {
-                    is_process_hub.set(true);
-                }
                 hub
-            }))
-        } else {
-            None
-        }
+            })
+        })
     }
 }
 
@@ -164,16 +165,12 @@ impl Hub {
     where
         F: FnOnce(&Arc<Hub>) -> R,
     {
-        THREAD_HUB.with(|(hub, is_process_hub)| {
-            if is_process_hub.get() {
-                f(&PROCESS_HUB.hub)
-            } else {
-                // Bind `hub` as `hub.borrow().clone()`.
-                // It is essential we drop `hub.borrow()` before the callback, otherwise we will
-                // panic if the callback calls `Hub::run`, so we need the binding.
-                let hub = hub.borrow().clone();
-                f(&hub)
-            }
+        THREAD_HUB.with(|hub| {
+            // Bind `hub` as `hub.borrow().clone()`.
+            // It is essential we drop `hub.borrow()` before the callback, otherwise we will
+            // panic if the callback calls `Hub::run`, so we need the binding.
+            let hub = hub.borrow().clone();
+            f(&hub)
         })
     }
 
