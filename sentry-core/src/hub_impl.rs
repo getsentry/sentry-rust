@@ -1,4 +1,4 @@
-use std::cell::{Cell, UnsafeCell};
+use std::cell::{Cell, RefCell};
 use std::marker::PhantomData;
 use std::sync::{Arc, LazyLock, MutexGuard, PoisonError, RwLock};
 use std::thread;
@@ -14,8 +14,8 @@ static PROCESS_HUB: LazyLock<(Arc<Hub>, thread::ThreadId)> = LazyLock::new(|| {
 });
 
 thread_local! {
-    static THREAD_HUB: (UnsafeCell<Arc<Hub>>, Cell<bool>) = (
-        UnsafeCell::new(Arc::new(Hub::new_from_top(&PROCESS_HUB.0))),
+    static THREAD_HUB: (RefCell<Arc<Hub>>, Cell<bool>) = (
+        RefCell::new(Arc::new(Hub::new_from_top(&PROCESS_HUB.0))),
         Cell::new(PROCESS_HUB.1 == thread::current().id())
     );
 }
@@ -50,13 +50,11 @@ impl SwitchGuard {
     /// to the previous one.
     pub fn new(mut hub: Arc<Hub>) -> Self {
         let inner = THREAD_HUB.with(|(thread_hub, is_process_hub)| {
-            // SAFETY: `thread_hub` will always be a valid thread local hub,
-            // by definition not shared between threads.
-            let thread_hub = unsafe { &mut *thread_hub.get() };
+            let mut thread_hub = thread_hub.borrow_mut();
             if std::ptr::eq(thread_hub.as_ref(), hub.as_ref()) {
                 return None;
             }
-            std::mem::swap(thread_hub, &mut hub);
+            std::mem::swap(&mut *thread_hub, &mut hub);
             let was_process_hub = is_process_hub.replace(false);
             Some((hub, was_process_hub))
         });
@@ -69,8 +67,8 @@ impl SwitchGuard {
     fn swap(&mut self) -> Option<Arc<Hub>> {
         if let Some((mut hub, was_process_hub)) = self.inner.take() {
             Some(THREAD_HUB.with(|(thread_hub, is_process_hub)| {
-                let thread_hub = unsafe { &mut *thread_hub.get() };
-                std::mem::swap(thread_hub, &mut hub);
+                let mut thread_hub = thread_hub.borrow_mut();
+                std::mem::swap(&mut *thread_hub, &mut hub);
                 if was_process_hub {
                     is_process_hub.set(true);
                 }
@@ -171,7 +169,11 @@ impl Hub {
             if is_process_hub.get() {
                 f(&PROCESS_HUB.0)
             } else {
-                f(unsafe { &*hub.get() })
+                // Bind `hub` as `hub.borrow().clone()`.
+                // It is essential we drop `hub.borrow()` before the callback, otherwise we will
+                // panic if the callback calls `Hub::run`, so we need the binding.
+                let hub = hub.borrow().clone();
+                f(&hub)
             }
         })
     }
@@ -212,5 +214,23 @@ impl Hub {
     pub(crate) fn with_current_scope_mut<F: FnOnce(&mut Scope) -> R, R>(&self, f: F) -> R {
         self.inner
             .with_mut(|stack| f(Arc::make_mut(&mut stack.top_mut().scope)))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Regression test for [`Hub::with`], ensuring that the `RefCell` borrow is not held during the callback.
+    ///
+    /// If we hold the `RefCell` borrow during the callback, this would panic.
+    #[test]
+    fn hub_run_inside_with_scope() {
+        let outer_hub = Arc::new(Hub::new(None, Default::default()));
+        let inner_hub = Arc::new(Hub::new(None, Default::default()));
+
+        Hub::run(outer_hub, || {
+            Hub::with(|_| Hub::run(inner_hub, || {}));
+        });
     }
 }
