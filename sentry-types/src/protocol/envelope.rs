@@ -1,5 +1,3 @@
-#![expect(clippy::arithmetic_side_effects)] // https://github.com/getsentry/sentry-rust/issues/1118
-
 use std::{borrow::Cow, io::Write, path::Path, time::SystemTime};
 
 use serde::{Deserialize, Serialize};
@@ -626,7 +624,13 @@ impl Envelope {
         let offset = first_line.len();
         Self::require_termination(slice, offset)?;
 
-        Ok((headers, offset + 1))
+        // Valid slices cannot be larger than `isize::MAX` bytes:
+        // https://doc.rust-lang.org/std/slice/fn.from_raw_parts.html#safety
+        let byte_after_header = offset
+            .checked_add(1)
+            .expect("offset is at most isize::MAX; adding 1 cannot overflow usize");
+
+        Ok((headers, byte_after_header))
     }
 
     fn parse_items(slice: &[u8], mut offset: usize) -> Result<Vec<EnvelopeItem>, EnvelopeError> {
@@ -636,14 +640,26 @@ impl Envelope {
             let bytes = slice
                 .get(offset..)
                 .ok_or(EnvelopeError::MissingItemHeader)?;
-            let (item, item_size) = Self::parse_item(bytes)?;
-            offset += item_size;
+            let (item, item_offset) = Self::parse_item(bytes)?;
+            // `bytes` is `slice[offset..]`, so `bytes.len() == slice.len() - offset`.
+            // Since `item_offset <= bytes.len() + 1`, `offset + item_offset <= slice.len() + 1`.
+            // Valid slices cannot exceed `isize::MAX` bytes, so `slice.len() + 1` cannot overflow `usize`.
+            offset = offset
+                .checked_add(item_offset)
+                .expect("offset + item_offset is at most slice.len() + 1");
             items.push(item);
         }
 
         Ok(items)
     }
 
+    /// Parses one envelope item from the beginning of `slice`.
+    ///
+    /// Returns the parsed item and the offset at which parsing should continue.
+    ///
+    /// The offset is relative to `slice`. It points just after the payload terminator if one is
+    /// present, or one byte past the end of `slice` if the payload ends at the end of `slice`.
+    /// The offset therefore satisfies `1 <= offset <= slice.len() + 1`.
     fn parse_item(slice: &[u8]) -> Result<(EnvelopeItem, usize), EnvelopeError> {
         let mut stream = serde_json::Deserializer::from_slice(slice).into_iter();
 
@@ -659,10 +675,14 @@ impl Envelope {
 
         // The last header does not require a trailing newline, so `payload_start` may point
         // past the end of the buffer.
-        let payload_start = std::cmp::min(header_end + 1, slice.len());
+        // The checked_add never overflows since slices cannot exceed isize::MAX bytes:
+        // https://doc.rust-lang.org/std/slice/fn.from_raw_parts.html#safety
+        let payload_start = std::cmp::min(header_end, slice.len().saturating_sub(1))
+            .checked_add(1)
+            .expect("&[u8] length is at most isize::MAX; adding one cannot overflow usize");
         let payload_end = match header.length {
             Some(len) => {
-                let payload_end = payload_start + len;
+                let payload_end = payload_start.saturating_add(len);
                 if slice.len() < payload_end {
                     return Err(EnvelopeError::UnexpectedEof);
                 }
@@ -673,7 +693,10 @@ impl Envelope {
             }
             None => match slice.get(payload_start..) {
                 Some(range) => match range.iter().position(|&b| b == b'\n') {
-                    Some(relative_end) => payload_start + relative_end,
+                    Some(relative_end) => payload_start.checked_add(relative_end).expect(
+                        "relative_end is an index into slice[payload_start..]; \
+                        so the sum is within slice and cannot overflow usize",
+                    ),
                     None => slice.len(),
                 },
                 None => slice.len(),
@@ -713,7 +736,13 @@ impl Envelope {
         }
         .map_err(EnvelopeError::InvalidItemPayload)?;
 
-        Ok((item, payload_end + 1))
+        // Valid slices cannot be larger than `isize::MAX` bytes:
+        // https://doc.rust-lang.org/std/slice/fn.from_raw_parts.html#safety
+        let byte_after_payload = payload_end
+            .checked_add(1)
+            .expect("payload_end <= slice.len() <= isize::MAX, so adding 1 cannot overflow usize");
+
+        Ok((item, byte_after_payload))
     }
 
     fn require_termination(slice: &[u8], offset: usize) -> Result<(), EnvelopeError> {
