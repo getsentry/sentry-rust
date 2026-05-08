@@ -65,13 +65,13 @@ impl Hub {
     {
         use_without_client!(f);
         with_client_impl! {{
-            Hub::with(|hub| {
-                if hub.is_active_and_usage_safe() {
-                    f(hub)
-                } else {
-                    Default::default()
-                }
-            })
+            let hub = Hub::current();
+            if hub.is_active_and_usage_safe() {
+                f(&hub)
+            } else {
+                Default::default()
+            }
+
         }}
     }
 

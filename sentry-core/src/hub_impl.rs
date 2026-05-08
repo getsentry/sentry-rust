@@ -146,7 +146,7 @@ impl Hub {
     /// This method is unavailable if the client implementation is disabled.
     /// When using the minimal API set use [`Hub::with_active`] instead.
     pub fn current() -> Arc<Hub> {
-        Hub::with(Arc::clone)
+        THREAD_HUB.with_borrow(Arc::clone)
     }
 
     /// Returns the main thread's hub.
@@ -158,20 +158,29 @@ impl Hub {
     }
 
     /// Invokes the callback with the default hub.
-    ///
-    /// This is a slightly more efficient version than [`Hub::current`] and
-    /// also unavailable in minimal mode.
+    #[deprecated = "Use `Hub::current` instead; this function offers no performance benefit."]
     pub fn with<F, R>(f: F) -> R
     where
         F: FnOnce(&Arc<Hub>) -> R,
     {
-        THREAD_HUB.with(|hub| {
-            // Bind `hub` as `hub.borrow().clone()`.
-            // It is essential we drop `hub.borrow()` before the callback, otherwise we will
-            // panic if the callback calls `Hub::run`, so we need the binding.
-            let hub = hub.borrow().clone();
-            f(&hub)
-        })
+        f(&Hub::current())
+    }
+
+    /// Invokes the callback with a reference to the thread hub.
+    ///
+    /// This is potentially more performant than [`Hub::current`] as we avoid an [`Arc::clone`],
+    /// but it holds a borrow to the [`THREAD_HUB`]'s `RefCell` for the duration of the callback.
+    /// It is therefore essential to avoid calling [`Hub::run`], [`SwitchGuard::new`], or anything
+    /// else that mutably borrows the [`THREAD_HUB`] during the callback, e.g. any user-supplied
+    /// callbacks.
+    ///
+    /// # Panics
+    /// Panics if the [`THREAD_HUB`] is mutably borrowed at any point during the callback.
+    pub(crate) fn with_current<F, R>(f: F) -> R
+    where
+        F: FnOnce(&Hub) -> R,
+    {
+        THREAD_HUB.with_borrow(|hub| f(hub))
     }
 
     /// Binds a hub to the current thread for the duration of the call.
@@ -234,6 +243,7 @@ mod tests {
         let inner_hub = Arc::new(Hub::new(None, Default::default()));
 
         Hub::run(outer_hub, || {
+            #[expect(deprecated)] // We are intentionally testing deprecated functionality
             Hub::with(|_| Hub::run(inner_hub, || {}));
         });
     }
