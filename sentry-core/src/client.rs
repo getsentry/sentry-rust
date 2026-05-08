@@ -159,7 +159,7 @@ impl Client {
     pub fn with_options(mut options: ClientOptions) -> Client {
         // Create the main hub eagerly to avoid problems with the background thread
         // See https://github.com/getsentry/sentry-rust/issues/237
-        Hub::with(|_| {});
+        Hub::with_current(|_| {});
 
         let create_transport = || {
             options.dsn.as_ref()?;
