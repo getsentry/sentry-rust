@@ -9,7 +9,10 @@ use ureq::http::Response;
 use ureq::tls::{TlsConfig, TlsProvider};
 use ureq::{Agent, Proxy};
 
-use super::{thread::TransportThread, HTTP_PAYLOAD_TOO_LARGE, HTTP_PAYLOAD_TOO_LARGE_MESSAGE};
+use super::{
+    thread::TransportThread, DEFAULT_CHANNEL_CAPACITY, HTTP_PAYLOAD_TOO_LARGE,
+    HTTP_PAYLOAD_TOO_LARGE_MESSAGE,
+};
 
 use crate::{sentry_debug, types::Scheme, ClientOptions, Envelope, Transport};
 
@@ -24,15 +27,28 @@ pub struct UreqHttpTransport {
 impl UreqHttpTransport {
     /// Creates a new Transport.
     pub fn new(options: &ClientOptions) -> Self {
-        Self::new_internal(options, None)
+        Self::new_internal(options, None, DEFAULT_CHANNEL_CAPACITY)
     }
 
     /// Creates a new Transport that uses the specified [`ureq::Agent`].
     pub fn with_agent(options: &ClientOptions, agent: Agent) -> Self {
-        Self::new_internal(options, Some(agent))
+        Self::new_internal(options, Some(agent), DEFAULT_CHANNEL_CAPACITY)
     }
 
-    fn new_internal(options: &ClientOptions, agent: Option<Agent>) -> Self {
+    /// Creates a new Transport with a custom transport channel capacity.
+    ///
+    /// The channel capacity bounds how many envelopes may be queued before
+    /// `send_envelope` blocks. A higher capacity reduces the chance of
+    /// dropped events in high-throughput scenarios at the cost of memory.
+    pub fn with_channel_capacity(options: &ClientOptions, channel_capacity: usize) -> Self {
+        Self::new_internal(options, None, channel_capacity)
+    }
+
+    fn new_internal(
+        options: &ClientOptions,
+        agent: Option<Agent>,
+        channel_capacity: usize,
+    ) -> Self {
         let dsn = options.dsn.as_ref().unwrap();
         let scheme = dsn.scheme();
         let agent = agent.unwrap_or_else(|| {
@@ -87,42 +103,48 @@ impl UreqHttpTransport {
         let auth = dsn.to_auth(Some(&user_agent)).to_string();
         let url = dsn.envelope_api_url().to_string();
 
-        let thread = TransportThread::new(move |envelope, rl| {
-            let mut body = Vec::new();
-            envelope.to_writer(&mut body).unwrap();
-            let request = agent.post(&url).header("X-Sentry-Auth", &auth).send(&body);
+        let thread = TransportThread::with_capacity(
+            move |envelope, rl| {
+                let mut body = Vec::new();
+                envelope.to_writer(&mut body).unwrap();
+                let request = agent.post(&url).header("X-Sentry-Auth", &auth).send(&body);
 
-            match request {
-                Ok(mut response) => {
-                    fn header_str<'a, B>(response: &'a Response<B>, key: &str) -> Option<&'a str> {
-                        response.headers().get(key)?.to_str().ok()
-                    }
-
-                    if let Some(sentry_header) = header_str(&response, "x-sentry-rate-limits") {
-                        rl.update_from_sentry_header(sentry_header);
-                    } else if let Some(retry_after) = header_str(&response, "retry-after") {
-                        rl.update_from_retry_after(retry_after);
-                    } else if response.status() == 429 {
-                        rl.update_from_429();
-                    }
-
-                    match response.body_mut().read_to_string() {
-                        Err(err) => {
-                            sentry_debug!("Failed to read sentry response: {}", err);
+                match request {
+                    Ok(mut response) => {
+                        fn header_str<'a, B>(
+                            response: &'a Response<B>,
+                            key: &str,
+                        ) -> Option<&'a str> {
+                            response.headers().get(key)?.to_str().ok()
                         }
-                        Ok(text) => {
-                            sentry_debug!("Get response: `{}`", text);
+
+                        if let Some(sentry_header) = header_str(&response, "x-sentry-rate-limits") {
+                            rl.update_from_sentry_header(sentry_header);
+                        } else if let Some(retry_after) = header_str(&response, "retry-after") {
+                            rl.update_from_retry_after(retry_after);
+                        } else if response.status() == 429 {
+                            rl.update_from_429();
+                        }
+
+                        match response.body_mut().read_to_string() {
+                            Err(err) => {
+                                sentry_debug!("Failed to read sentry response: {}", err);
+                            }
+                            Ok(text) => {
+                                sentry_debug!("Get response: `{}`", text);
+                            }
+                        }
+                        if response.status() == HTTP_PAYLOAD_TOO_LARGE {
+                            sentry_debug!("{HTTP_PAYLOAD_TOO_LARGE_MESSAGE}");
                         }
                     }
-                    if response.status() == HTTP_PAYLOAD_TOO_LARGE {
-                        sentry_debug!("{HTTP_PAYLOAD_TOO_LARGE_MESSAGE}");
+                    Err(err) => {
+                        sentry_debug!("Failed to send envelope: {}", err);
                     }
                 }
-                Err(err) => {
-                    sentry_debug!("Failed to send envelope: {}", err);
-                }
-            }
-        });
+            },
+            channel_capacity,
+        );
         Self { thread }
     }
 }
