@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.49.2
+- Added `override_sampling_rate` to `ClientOptions` to allow user defined function to override sampling rate when capturing an event. ([#1128](https://github.com/getsentry/sentry-rust/pull/1128)).
+
 ## 0.49.1
 
 ### Fixes
