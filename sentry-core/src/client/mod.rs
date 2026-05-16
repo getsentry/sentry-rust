@@ -397,8 +397,15 @@ impl Client {
             scope.update_session_from_event(&event);
         }
 
-        let sample_rate = event_sample_rate(&self.options.event_sampling_strategy);
-        if !self.sample_should_send(sample_rate) {
+        let sampling_rate = self
+            .options()
+            .override_sampling_rate
+            .as_ref()
+            .and_then(|f| f(&event))
+            .filter(|sampling_rate| !sampling_rate.is_nan())
+            .unwrap_or_else(|| event_sample_rate(&self.options.event_sampling_strategy));
+
+        if !self.sample_should_send(sampling_rate) {
             self.record_lost_event(ClientReportReason::SampleRate);
             None
         } else {

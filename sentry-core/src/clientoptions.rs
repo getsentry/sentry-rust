@@ -12,6 +12,9 @@ use crate::{Integration, IntoDsn, TransportFactory};
 /// Type alias for before event/breadcrumb handlers.
 pub type BeforeCallback<T> = Arc<dyn Fn(T) -> Option<T> + Send + Sync>;
 
+/// Type alias for override sample rate callback.
+pub type OverrideSamplingRateCallback = Arc<dyn Fn(&Event<'static>) -> Option<f32> + Send + Sync>;
+
 /// The Session Mode of the SDK.
 ///
 /// Depending on the use-case, the SDK can be set to two different session modes:
@@ -220,6 +223,8 @@ pub struct ClientOptions {
     ///
     /// See [`before_breadcrumb`](method@ClientOptions::before_breadcrumb) for details.
     pub before_breadcrumb: Option<BeforeCallback<Breadcrumb>>,
+    /// Callback allowing for setting sampling rate based on user defined function.
+    pub override_sampling_rate: Option<OverrideSamplingRateCallback>,
     /// Callback that is executed for each Log being added.
     ///
     /// See [`before_send_log`](method@ClientOptions::before_send_log) for details.
@@ -580,6 +585,24 @@ impl ClientOptions {
         }
     }
 
+    /// Sets the [callback](field@ClientOptions::override_sampling_rate) that is used to override the
+    /// sampling rate.
+    ///
+    /// The callback receives the event and returns the sampling rate to use for it, in the
+    /// range `[0.0, 1.0]`. Returning `None` or `NaN` falls back to the rate from
+    /// [`event_sampling_strategy`](field@ClientOptions::event_sampling_strategy). Values
+    /// outside the range are treated as `0.0` (never send) or `1.0` (always send).
+    #[inline]
+    pub fn override_sampling_rate(
+        self,
+        override_func: impl Fn(&Event<'static>) -> Option<f32> + Send + Sync + 'static,
+    ) -> Self {
+        Self {
+            override_sampling_rate: Some(Arc::new(override_func)),
+            ..self
+        }
+    }
+
     /// Sets the [callback](field@ClientOptions::before_send_log) that is executed before sending
     /// each log.
     #[cfg(feature = "logs")]
@@ -773,6 +796,12 @@ impl fmt::Debug for ClientOptions {
         struct BeforeSend;
         let before_send = self.before_send.as_ref().map(|_| BeforeSend);
         #[derive(Debug)]
+        struct OverrideSamplingRate;
+        let override_sampling_rate = self
+            .override_sampling_rate
+            .as_ref()
+            .map(|_| OverrideSamplingRate);
+        #[derive(Debug)]
         struct BeforeBreadcrumb;
         let before_breadcrumb = self.before_breadcrumb.as_ref().map(|_| BeforeBreadcrumb);
         let before_send_log = {
@@ -807,6 +836,7 @@ impl fmt::Debug for ClientOptions {
             .field("integrations", &integrations)
             .field("default_integrations", &self.default_integrations)
             .field("before_send", &before_send)
+            .field("override_sampling_rate", &override_sampling_rate)
             .field("before_breadcrumb", &before_breadcrumb)
             .field("transport", &TransportFactory)
             .field("http_proxy", &self.http_proxy)
@@ -860,6 +890,7 @@ impl Default for ClientOptions {
             before_send_log: None,
             enable_metrics: true,
             before_send_metric: None,
+            override_sampling_rate: None,
         }
     }
 }
