@@ -57,7 +57,7 @@ os_info = "3.5.0"
 pin-project = "1.0.10"
 pretty_env_logger = "0.5.0"
 prost = "0.13.3"
-rand = "0.9.3"
+rand = "0.9"
 rayon = "1.5.3"
 regex = { version = "1.5.5", default-features = false }
 reqwest = { version = "0.13.2", default-features = false }
