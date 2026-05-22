@@ -1,0 +1,8 @@
+repos:
+  - repo: local
+    hooks:
+      - id: expand-github-linear-footer
+        name: Expand GitHub/Linear commit footer
+        entry: scripts/commit-msg-expand-issues.py
+        language: script
+        stages: [commit-msg]
