@@ -246,3 +246,129 @@ mod hex_tests {
         );
     }
 }
+
+/// A macro which can wrap any number of enum definitions to make them "indexed."
+///
+/// Specifically, the macro adds an implementation to each enum, which contains the following:
+///     - `const VARIANT_COUNT: usize`: the total number of variants in the enum.
+///     - `const fn as_index(&self) -> usize`: the unique zero-based index of the enum variant.
+///       This is implemented without relying on `as`-casting.
+///     - `fn iter_variants() -> impl Iterator<Item = Self>`: An iterator over all enum variants in
+///       the index order.
+///
+/// Both of the added items have the same visibility as the enum itself.
+///
+/// This is super useful, for example, if you want to store something for each variant. Rather
+/// than using a `HashMap`, it is possible to allocate a fixed-length array of length
+/// `VARIANT_COUNT`, indexed by `as_index`.
+macro_rules! indexed_enum {
+    () => {};
+
+    {
+        $(#[$meta:meta])*
+        $vis:vis enum $name:ident {
+            $(
+                $(#[$variant_meta:meta])*
+                $variant:ident
+            ),* $(,)?
+        }
+        $($rest:tt)*
+    } => {
+        $(#[$meta])*
+        $vis enum $name {
+            $(
+                $(#[$variant_meta])*
+                $variant,
+            )*
+        }
+
+        impl $crate::IndexedEnum for $name {
+            /// The number of variants in this enum.
+            const VARIANT_COUNT: usize = indexed_enum!(@count $($variant),*);
+
+            indexed_enum!(@methods [] [] 0usize; $($variant),*);
+        }
+
+        impl $crate::indexed_enum::private::Sealed for $name {}
+
+        indexed_enum! {
+            $($rest)*
+        }
+    };
+
+    (@methods [$($as_index_arms:tt)*] [$($variants_array:expr),*] $idx:expr;) => {
+        fn as_index(&self) -> usize {
+            match *self {
+                $($as_index_arms)*
+            }
+        }
+
+        fn iter_variants() -> impl ::std::iter::Iterator<Item = Self> {
+            <_ as ::std::iter::IntoIterator>::into_iter([$($variants_array),*])
+        }
+    };
+
+    (@methods [$($as_index_arms:tt)*] [$($variants_array:expr),*] $idx:expr; $variant:ident $(, $rest:ident)*) => {
+        indexed_enum!(
+            @methods
+            [$($as_index_arms)* Self::$variant => $idx,]
+            [$($variants_array,)* Self::$variant]
+            $idx + 1usize;
+            $($rest),*
+        );
+    };
+
+    (@count) => { 0usize };
+
+    (@count $variant:ident $(, $rest:ident)*) => {
+        1usize + indexed_enum!(@count $($rest),*)
+    };
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::indexed_enum::IndexedEnum as _;
+
+    indexed_enum! {
+        /// A test enum to test the `indexed_enum!` macro.
+        enum IndexedEnumTest {
+            V0,
+            V1,
+            V2,
+            V3,
+        }
+    }
+
+    #[test]
+    fn variant_count_is_accurate() {
+        assert_eq!(IndexedEnumTest::VARIANT_COUNT, 4);
+    }
+
+    #[test]
+    fn as_index_returns_unique_index() {
+        let mut indexes_seen = [false; IndexedEnumTest::VARIANT_COUNT];
+
+        for variant in [
+            IndexedEnumTest::V0,
+            IndexedEnumTest::V1,
+            IndexedEnumTest::V2,
+            IndexedEnumTest::V3,
+        ] {
+            let index = variant.as_index();
+            assert!(!indexes_seen[index]);
+            indexes_seen[index] = true;
+        }
+
+        assert!(indexes_seen.into_iter().all(|seen| seen))
+    }
+
+    #[test]
+    fn variant_iter_is_in_index_order() {
+        let iter_length = IndexedEnumTest::iter_variants()
+            .enumerate()
+            .map(|(index, variant)| assert_eq!(index, variant.as_index()))
+            .count();
+
+        assert_eq!(iter_length, IndexedEnumTest::VARIANT_COUNT)
+    }
+}

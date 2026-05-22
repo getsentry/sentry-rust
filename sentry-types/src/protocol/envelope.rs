@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
 
-use crate::utils::ts_rfc3339_opt;
 use crate::Dsn;
+use crate::{protocol::v7::ClientReport, utils::ts_rfc3339_opt};
 
 use super::v7 as protocol;
 
@@ -180,6 +180,8 @@ pub enum EnvelopeItem {
     Attachment(Attachment),
     /// A MonitorCheckIn item.
     MonitorCheckIn(MonitorCheckIn),
+    /// An aggregated client report
+    ClientReport(ClientReport),
     /// A container for a list of multiple items.
     ItemContainer(ItemContainer),
     /// This is a sentinel item used to `filter` raw envelopes.
@@ -301,6 +303,12 @@ impl From<Vec<Log>> for EnvelopeItem {
 impl From<Vec<Metric>> for EnvelopeItem {
     fn from(metrics: Vec<Metric>) -> Self {
         EnvelopeItem::ItemContainer(metrics.into())
+    }
+}
+
+impl From<ClientReport> for EnvelopeItem {
+    fn from(value: ClientReport) -> Self {
+        EnvelopeItem::ClientReport(value)
     }
 }
 
@@ -522,6 +530,9 @@ impl Envelope {
                 EnvelopeItem::MonitorCheckIn(check_in) => {
                     serde_json::to_writer(&mut item_buf, check_in)?
                 }
+                EnvelopeItem::ClientReport(client_report) => {
+                    serde_json::to_writer(&mut item_buf, client_report)?
+                }
                 EnvelopeItem::ItemContainer(container) => match container {
                     ItemContainer::Logs(logs) => {
                         let wrapper = ItemsSerdeWrapper { items: logs.into() };
@@ -544,6 +555,7 @@ impl Envelope {
                 EnvelopeItem::SessionAggregates(_) => "sessions",
                 EnvelopeItem::Transaction(_) => "transaction",
                 EnvelopeItem::MonitorCheckIn(_) => "check_in",
+                EnvelopeItem::ClientReport(_) => "client_report",
                 EnvelopeItem::ItemContainer(container) => container.ty(),
                 EnvelopeItem::Attachment(_) | EnvelopeItem::Raw => unreachable!(),
             };
