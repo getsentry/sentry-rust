@@ -42,12 +42,14 @@ mod macros;
 mod auth;
 mod crontab_validator;
 mod dsn;
+mod indexed_enum;
 mod project_id;
 pub mod protocol;
 pub(crate) mod utils;
 
 pub use crate::auth::*;
 pub use crate::dsn::*;
+pub use crate::indexed_enum::IndexedEnum;
 pub use crate::project_id::*;
 
 // Re-export external types and traits for convenience
