@@ -104,7 +104,9 @@ where
 
     let client = Arc::new(Client::from(opts));
 
-    Hub::with(|hub| hub.bind_client(Some(client.clone())));
+    let hub = Hub::current();
+    hub.bind_client(Some(client.clone()));
+
     if let Some(dsn) = client.dsn() {
         sentry_debug!("enabled sentry client for DSN {}", dsn);
     } else {
