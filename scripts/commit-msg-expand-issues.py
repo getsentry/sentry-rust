@@ -12,9 +12,9 @@ from pathlib import Path
 from typing import Any
 
 FOOTER_RE = re.compile(
-    r"^(?P<prefix>\s*)(?P<keyword>\w+)\s+"
-    r"(?P<display>(?:(?P<owner>[A-Za-z0-9_.-]+)/)?(?:(?P<repo>[A-Za-z0-9_.-]+))?#(?P<issue>[1-9][0-9]*))"
-    r"(?P<suffix>\s*)$"
+    r"^(?P<prefix>\s*)(?P<keyword>\w+(?:\s+to)?)\s+"
+    r"(?P<display>(?:(?P<owner>[A-Za-z0-9_.-]+)/)?(?:(?P<repo>[A-Za-z0-9_.-]+))?#(?P<issue>[1-9]\d*))"
+    r"(?P<suffix>\.?\s*)$"
 )
 LINEAR_LINKBACK_AUTHORS = {"linear", "linear-code"}
 LINEAR_LINKBACK_MARKERS = ("linear-linkback", "linear linkback")
@@ -107,7 +107,10 @@ def current_repo() -> tuple[str, str] | None:
 
 def is_linear_linkback_comment(comment: dict[str, Any]) -> bool:
     author = comment.get("author")
-    if not isinstance(author, dict) or author.get("login") not in LINEAR_LINKBACK_AUTHORS:
+    if (
+        not isinstance(author, dict)
+        or author.get("login") not in LINEAR_LINKBACK_AUTHORS
+    ):
         return False
 
     body = comment.get("body")
@@ -138,7 +141,15 @@ def find_linear_link(issue: dict[str, Any]) -> tuple[str, str] | None:
 
 def fetch_issue(owner_repo: str, issue_number: str) -> IssueInfo | None:
     result, error = run_gh(
-        ["issue", "view", issue_number, "-R", owner_repo, "--json", "number,url,comments"]
+        [
+            "issue",
+            "view",
+            issue_number,
+            "-R",
+            owner_repo,
+            "--json",
+            "number,url,comments",
+        ]
     )
     if error is not None:
         warn(f"could not fetch {owner_repo}#{issue_number}: {error}")
@@ -215,7 +226,9 @@ def process_message(path: Path) -> None:
 
         replacement = f"{match.prefix}{match.keyword} [{match.display}]({issue.url}){match.suffix}\n"
         if issue.linear_id is not None and issue.linear_url is not None:
-            next_line = lines[match.line_index + 1] if match.line_index + 1 < len(lines) else ""
+            next_line = (
+                lines[match.line_index + 1] if match.line_index + 1 < len(lines) else ""
+            )
             linear_line = f"{match.prefix}{match.keyword} [{issue.linear_id}]({issue.linear_url})\n"
             if next_line != linear_line:
                 replacement += linear_line
