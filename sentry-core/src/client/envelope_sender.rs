@@ -8,9 +8,14 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use self::slot::TransportSlot;
+use super::client_reports::ClientReportAggregator;
 use crate::{Envelope, Transport};
 
-/// Sends envelopes through the client's transport.
+/// Sends envelopes through the client's transport and tracks lost data.
+///
+/// This type wraps a [`Transport`] and a [`ClientReportAggregator`]. The transport is used for
+/// sending data to Sentry, while the aggregator tracks information about lost Sentry data. We
+/// attach any pending client reports to all outgoing envelopes sent with this type.
 ///
 /// Cloning this sender has `Arc`-like semantics: clones share the same transport
 /// slot and send to the same underlying transport until it is shut down.
@@ -20,19 +25,29 @@ use crate::{Envelope, Transport};
 #[derive(Clone, Default)]
 pub(crate) struct EnvelopeSender {
     transport_slot: TransportSlot<dyn Transport>,
+    client_report_aggregator: ClientReportAggregator,
 }
 
 impl EnvelopeSender {
     /// Sends an envelope if the transport is still available.
-    pub(crate) fn send_envelope(&self, envelope: Envelope) {
+    ///
+    /// If there are any pending clinet reports, we attach and send them, too.
+    pub(crate) fn send_envelope(&self, mut envelope: Envelope) {
+        if let Some(client_report) = self.client_report_aggregator.take_pending_report() {
+            envelope.add_item(client_report);
+        }
         self.transport_slot.send_envelope(envelope);
     }
 
     /// Creates a sender from a shared transport slot.
     pub(super) fn new(transport: Arc<dyn Transport>) -> Self {
         let transport_slot = TransportSlot::new(transport);
+        let client_report_aggregator = ClientReportAggregator::new();
 
-        Self { transport_slot }
+        Self {
+            transport_slot,
+            client_report_aggregator,
+        }
     }
 
     /// Flushes the transport if it is still available.
@@ -47,7 +62,10 @@ impl EnvelopeSender {
 
     pub(super) fn clone_with_new_transport_slot(&self) -> Self {
         let transport_slot = self.transport_slot.clone_into_new_slot();
-        Self { transport_slot }
+        Self {
+            transport_slot,
+            ..self.clone()
+        }
     }
 
     /// Returns whether this sender currently has an available transport.
