@@ -7,10 +7,17 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use sentry_types::protocol::v7::EnvelopeItem;
+
 use self::slot::TransportSlot;
+use super::client_reports::ClientReportAggregator;
 use crate::{Envelope, Transport};
 
-/// Sends envelopes through the client's transport.
+/// Sends envelopes through the client's transport and tracks lost data.
+///
+/// This type wraps a [`Transport`] and a [`ClientReportAggregator`]. The transport is used for
+/// sending data to Sentry, while the aggregator tracks information about lost Sentry data. We
+/// attach any pending client reports to all outgoing envelopes sent with this type.
 ///
 /// Cloning this sender has `Arc`-like semantics: clones share the same transport
 /// slot and send to the same underlying transport until it is shut down.
@@ -20,10 +27,13 @@ use crate::{Envelope, Transport};
 #[derive(Clone, Default)]
 pub(crate) struct EnvelopeSender {
     transport_slot: TransportSlot<dyn Transport>,
+    client_report_aggregator: ClientReportAggregator,
 }
 
 impl EnvelopeSender {
     /// Sends an envelope if the transport is still available.
+    ///
+    /// If there are any pending client reports, we attach and send them, too.
     pub(crate) fn send_envelope(&self, envelope: Envelope) {
         // This forwards to `send_envelope_with`; any envelope pre-processing should be
         // centralized in the `send_envelope_with` function!
@@ -35,11 +45,21 @@ impl EnvelopeSender {
     /// The builder is only executed if this sender is still active. This allows skipping over
     /// logic that constructs the envelope when it cannot be sent. The builder can also return
     /// [`None`], in which case, we don't send anything.
+    ///
+    /// If there are any pending client reports, and we are sending an envelope, we attach and
+    /// send them, too.
     pub(super) fn send_envelope_with<F>(&self, builder: F)
     where
         F: FnOnce() -> Option<Envelope>,
     {
-        self.transport_slot.send_envelope_with(builder)
+        self.transport_slot.send_envelope_with(|| {
+            builder().map(
+                |envelope| match self.client_report_aggregator.take_pending_report() {
+                    Some(client_report) => with_item(envelope, client_report),
+                    None => envelope,
+                },
+            )
+        })
     }
 
     /// Creates a sender using the transport returned by the provided builder callback.
@@ -47,8 +67,13 @@ impl EnvelopeSender {
     where
         F: FnOnce() -> Arc<dyn Transport>,
     {
+        let client_report_aggregator = ClientReportAggregator::new();
         let transport_slot = TransportSlot::new(transport_builder());
-        Self { transport_slot }
+
+        Self {
+            transport_slot,
+            client_report_aggregator,
+        }
     }
 
     /// Flushes the transport if it is still available.
@@ -63,7 +88,10 @@ impl EnvelopeSender {
 
     pub(super) fn clone_with_new_transport_slot(&self) -> Self {
         let transport_slot = self.transport_slot.clone_into_new_slot();
-        Self { transport_slot }
+        Self {
+            transport_slot,
+            ..self.clone()
+        }
     }
 
     /// Returns whether this sender currently has an available transport.
@@ -184,4 +212,13 @@ mod slot {
             }
         }
     }
+}
+
+/// A little helper to return a new [`Envelope`] with the given `item` added.
+fn with_item<I>(mut envelope: Envelope, item: I) -> Envelope
+where
+    I: Into<EnvelopeItem>,
+{
+    envelope.add_item(item);
+    envelope
 }
