@@ -139,8 +139,6 @@ mod logger; // structured logging macros exported with `#[macro_export]`
 pub mod metrics;
 
 // client feature
-#[cfg(all(feature = "client", any(feature = "logs", feature = "metrics")))]
-mod batcher;
 #[cfg(feature = "client")]
 mod client;
 #[cfg(feature = "client")]

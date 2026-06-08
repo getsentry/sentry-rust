@@ -17,7 +17,7 @@ use rand::random;
 use sentry_types::random_uuid;
 
 #[cfg(any(feature = "logs", feature = "metrics"))]
-use crate::batcher::Batcher;
+use self::batcher::Batcher;
 use crate::constants::SDK_INFO;
 use crate::protocol::{ClientSdkInfo, Event};
 #[cfg(feature = "release-health")]
@@ -36,6 +36,7 @@ use sentry_types::protocol::v7::LogAttribute;
 #[cfg(feature = "metrics")]
 use sentry_types::protocol::v7::Metric;
 
+mod batcher;
 mod envelope_sender;
 
 pub(crate) use self::envelope_sender::EnvelopeSender;
