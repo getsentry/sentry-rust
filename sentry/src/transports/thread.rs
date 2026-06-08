@@ -5,6 +5,7 @@ use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
 use super::ratelimit::{RateLimiter, RateLimitingCategory};
+use super::DEFAULT_CHANNEL_CAPACITY;
 use crate::{sentry_debug, Envelope};
 
 #[expect(
@@ -26,12 +27,27 @@ pub struct TransportThread {
 }
 
 impl TransportThread {
-    /// Spawn a new background thread.
-    pub fn new<SendFn>(mut send: SendFn) -> Self
+    /// Spawn a new background thread with the default channel capacity of 30.
+    pub fn new<SendFn>(send: SendFn) -> Self
     where
         SendFn: FnMut(Envelope, &mut RateLimiter) + Send + 'static,
     {
-        let (sender, receiver) = sync_channel(30);
+        Self::with_capacity(send, DEFAULT_CHANNEL_CAPACITY)
+    }
+
+    /// Spawn a new background thread with a custom channel capacity.
+    ///
+    /// The channel capacity bounds how many envelopes may be queued before
+    /// `send` blocks. A capacity of `0` creates a rendezvous channel:
+    /// because `send` uses `try_send`, an envelope is accepted only when the
+    /// transport thread is currently waiting on the receiver, otherwise it
+    /// is dropped. That is a no-buffer back-pressure policy, not a blanket
+    /// "drop everything" mode.
+    pub(crate) fn with_capacity<SendFn>(mut send: SendFn, channel_capacity: usize) -> Self
+    where
+        SendFn: FnMut(Envelope, &mut RateLimiter) + Send + 'static,
+    {
+        let (sender, receiver) = sync_channel(channel_capacity);
         let shutdown = Arc::new(AtomicBool::new(false));
         let shutdown_worker = shutdown.clone();
         let handle = thread::Builder::new()
