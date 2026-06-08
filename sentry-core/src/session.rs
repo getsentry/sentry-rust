@@ -15,7 +15,7 @@ mod session_impl {
     use std::thread::JoinHandle;
     use std::time::{Duration, Instant, SystemTime};
 
-    use crate::client::TransportArc;
+    use crate::client::EnvelopeSender;
     use crate::clientoptions::SessionMode;
     use crate::protocol::{
         EnvelopeItem, Event, Level, SessionAggregateItem, SessionAggregates, SessionAttributes,
@@ -190,7 +190,7 @@ mod session_impl {
     /// It has its own background thread that will flush its queue once every
     /// `FLUSH_INTERVAL`.
     pub(crate) struct SessionFlusher {
-        transport: TransportArc,
+        envelope_sender: EnvelopeSender,
         mode: SessionMode,
         queue: Arc<Mutex<SessionQueue>>,
         shutdown: Arc<(Mutex<bool>, Condvar)>,
@@ -198,13 +198,13 @@ mod session_impl {
     }
 
     impl SessionFlusher {
-        /// Creates a new Flusher that will submit envelopes to the given `transport`.
-        pub fn new(transport: TransportArc, mode: SessionMode) -> Self {
+        /// Creates a new Flusher that will submit envelopes to the transport.
+        pub fn new(envelope_sender: EnvelopeSender, mode: SessionMode) -> Self {
             let queue = Arc::new(Mutex::new(Default::default()));
             #[allow(clippy::mutex_atomic)]
             let shutdown = Arc::new((Mutex::new(false), Condvar::new()));
 
-            let worker_transport = transport.clone();
+            let worker_envelope_sender = envelope_sender.clone();
             let worker_queue = queue.clone();
             let worker_shutdown = shutdown.clone();
             let worker = std::thread::Builder::new()
@@ -230,7 +230,7 @@ mod session_impl {
                         }
                         SessionFlusher::flush_queue_internal(
                             worker_queue.lock().unwrap(),
-                            &worker_transport,
+                            &worker_envelope_sender,
                         );
                         last_flush = Instant::now();
                     }
@@ -238,7 +238,7 @@ mod session_impl {
                 .unwrap();
 
             Self {
-                transport,
+                envelope_sender,
                 mode,
                 queue,
                 shutdown,
@@ -255,7 +255,7 @@ mod session_impl {
             if self.mode == SessionMode::Application || !session_update.init {
                 queue.individual.push(session_update);
                 if queue.individual.len() >= MAX_SESSION_ITEMS {
-                    SessionFlusher::flush_queue_internal(queue, &self.transport);
+                    SessionFlusher::flush_queue_internal(queue, &self.envelope_sender);
                 }
                 return;
             }
@@ -304,7 +304,7 @@ mod session_impl {
         /// Flushes the queue to the transport.
         pub fn flush(&self) {
             let queue = self.queue.lock().unwrap();
-            SessionFlusher::flush_queue_internal(queue, &self.transport);
+            SessionFlusher::flush_queue_internal(queue, &self.envelope_sender);
         }
 
         /// Flushes the queue to the transport.
@@ -313,7 +313,7 @@ mod session_impl {
         /// thread and the main thread on drop.
         fn flush_queue_internal(
             mut queue_lock: MutexGuard<SessionQueue>,
-            transport: &TransportArc,
+            envelope_sender: &EnvelopeSender,
         ) {
             let queue = std::mem::take(&mut queue_lock.individual);
             let aggregate = queue_lock.aggregated.take();
@@ -321,11 +321,9 @@ mod session_impl {
 
             // send aggregates
             if let Some(aggregate) = aggregate {
-                if let Some(ref transport) = *transport.read().unwrap() {
-                    let mut envelope = Envelope::new();
-                    envelope.add_item(aggregate);
-                    transport.send_envelope(envelope);
-                }
+                let mut envelope = Envelope::new();
+                envelope.add_item(aggregate);
+                envelope_sender.send_envelope(envelope);
             }
 
             // send individual items
@@ -338,9 +336,7 @@ mod session_impl {
 
             for session_update in queue {
                 if items >= MAX_SESSION_ITEMS {
-                    if let Some(ref transport) = *transport.read().unwrap() {
-                        transport.send_envelope(envelope);
-                    }
+                    envelope_sender.send_envelope(envelope);
                     envelope = Envelope::new();
                     items = 0;
                 }
@@ -349,9 +345,7 @@ mod session_impl {
                 items += 1;
             }
 
-            if let Some(ref transport) = *transport.read().unwrap() {
-                transport.send_envelope(envelope);
-            }
+            envelope_sender.send_envelope(envelope);
         }
     }
 
@@ -364,7 +358,7 @@ mod session_impl {
             if let Some(worker) = self.worker.take() {
                 worker.join().ok();
             }
-            SessionFlusher::flush_queue_internal(self.queue.lock().unwrap(), &self.transport);
+            SessionFlusher::flush_queue_internal(self.queue.lock().unwrap(), &self.envelope_sender);
         }
     }
 
