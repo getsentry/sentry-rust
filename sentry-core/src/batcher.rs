@@ -4,7 +4,7 @@ use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
-use crate::client::TransportArc;
+use crate::client::EnvelopeSender;
 use crate::protocol::EnvelopeItem;
 use crate::Envelope;
 use sentry_types::protocol::v7::Log;
@@ -50,7 +50,7 @@ impl Batch for Metric {
 /// Accumulates items in the queue and submits them through the transport when one of the flushing
 /// conditions is met.
 pub(crate) struct Batcher<T: Batch> {
-    transport: TransportArc,
+    envelope_sender: EnvelopeSender,
     queue: Arc<Mutex<BatchQueue<T>>>,
     shutdown: Arc<(Mutex<bool>, Condvar)>,
     worker: Option<JoinHandle<()>>,
@@ -60,13 +60,13 @@ impl<T> Batcher<T>
 where
     T: Batch + Send + 'static,
 {
-    /// Creates a new Batcher that will submit envelopes to the given `transport`.
-    pub(crate) fn new(transport: TransportArc) -> Self {
+    /// Creates a new Batcher that will submit envelopes to the transport.
+    pub(crate) fn new(envelope_sender: EnvelopeSender) -> Self {
         let queue = Arc::new(Mutex::new(BatchQueue { items: Vec::new() }));
         #[allow(clippy::mutex_atomic)]
         let shutdown = Arc::new((Mutex::new(false), Condvar::new()));
 
-        let worker_transport = transport.clone();
+        let worker_envelope_sender = envelope_sender.clone();
         let worker_queue = queue.clone();
         let worker_shutdown = shutdown.clone();
         let worker = std::thread::Builder::new()
@@ -90,7 +90,7 @@ where
                     if last_flush.elapsed() >= FLUSH_INTERVAL {
                         Batcher::flush_queue_internal(
                             worker_queue.lock().unwrap(),
-                            &worker_transport,
+                            &worker_envelope_sender,
                         );
                         last_flush = Instant::now();
                     }
@@ -99,7 +99,7 @@ where
             .unwrap();
 
         Self {
-            transport,
+            envelope_sender,
             queue,
             shutdown,
             worker: Some(worker),
@@ -115,21 +115,24 @@ impl<T: Batch> Batcher<T> {
         let mut queue = self.queue.lock().unwrap();
         queue.items.push(item);
         if queue.items.len() >= MAX_ITEMS {
-            Batcher::flush_queue_internal(queue, &self.transport);
+            Batcher::flush_queue_internal(queue, &self.envelope_sender);
         }
     }
 
     /// Flushes the queue to the transport.
     pub(crate) fn flush(&self) {
         let queue = self.queue.lock().unwrap();
-        Batcher::flush_queue_internal(queue, &self.transport);
+        Batcher::flush_queue_internal(queue, &self.envelope_sender);
     }
 
     /// Flushes the queue to the transport.
     ///
     /// This is a static method as it will be called from both the background
     /// thread and the main thread on drop.
-    fn flush_queue_internal(mut queue_lock: MutexGuard<BatchQueue<T>>, transport: &TransportArc) {
+    fn flush_queue_internal(
+        mut queue_lock: MutexGuard<BatchQueue<T>>,
+        envelope_sender: &EnvelopeSender,
+    ) {
         let items = std::mem::take(&mut queue_lock.items);
         drop(queue_lock);
 
@@ -139,12 +142,10 @@ impl<T: Batch> Batcher<T> {
 
         sentry_debug!("[Batcher({})] Flushing {} items", T::TYPE_NAME, items.len());
 
-        if let Some(ref transport) = *transport.read().unwrap() {
-            let mut envelope = Envelope::new();
-            let envelope_item = T::into_envelope_item(items);
-            envelope.add_item(envelope_item);
-            transport.send_envelope(envelope);
-        }
+        let mut envelope = Envelope::new();
+        let envelope_item = T::into_envelope_item(items);
+        envelope.add_item(envelope_item);
+        envelope_sender.send_envelope(envelope);
     }
 }
 
@@ -157,7 +158,7 @@ impl<T: Batch> Drop for Batcher<T> {
         if let Some(worker) = self.worker.take() {
             worker.join().ok();
         }
-        Batcher::flush_queue_internal(self.queue.lock().unwrap(), &self.transport);
+        Batcher::flush_queue_internal(self.queue.lock().unwrap(), &self.envelope_sender);
     }
 }
 
