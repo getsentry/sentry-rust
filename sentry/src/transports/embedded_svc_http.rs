@@ -1,3 +1,5 @@
+use sentry_core::TransportOptions;
+
 use super::{HTTP_PAYLOAD_TOO_LARGE, HTTP_PAYLOAD_TOO_LARGE_MESSAGE};
 use crate::{sentry_debug, ClientOptions, Transport};
 use embedded_svc::http::client::Client as HttpClient;
@@ -5,14 +7,38 @@ use esp_idf_svc::{http::client::EspHttpConnection, io::Write};
 
 /// Transport using the embedded-svc http client
 pub struct EmbeddedSVCHttpTransport {
-    options: ClientOptions,
+    /// The transport options.
+    ///
+    /// For backwards-compatibility, this is an [`Option`]. A value of [`None`] only occurs when
+    /// the transport is constructed with [`Self::new`] without a `dsn` in the [`ClientOptions`].
+    options: Option<TransportOptions>,
+}
+
+/// Options for constructing an [`EmbeddedSVCHttpTransport`] via its [`with_options`] method.
+///
+/// Currently, this is a wrapper around a [`TransportOptions`], and must be created with the
+/// `From<TransportOptions>` implementation.
+///
+/// [`with_options`]: EmbeddedSVCHttpTransport::with_options
+pub struct EmbeddedSVCHttpTransportOptions {
+    general_options: TransportOptions,
 }
 
 impl EmbeddedSVCHttpTransport {
-    /// Creates a new transport
+    /// Creates a new [`EmbeddedSVCHttpTransport`] with the given `options`.
+    pub fn with_options(options: EmbeddedSVCHttpTransportOptions) -> Self {
+        Self {
+            options: Some(options.general_options),
+        }
+    }
+
+    /// Backwards-compatible method for creating an [`EmbeddedSVCHttpTransport`].
+    ///
+    /// Please use [`Self::with_options`] instead.
+    #[deprecated = "use `with_options` instead"]
     pub fn new(options: &ClientOptions) -> Self {
         Self {
-            options: options.clone(),
+            options: TransportOptions::try_from_client_options(options),
         }
     }
 }
@@ -22,12 +48,9 @@ impl EmbeddedSVCHttpTransport {
         &self,
         envelope: sentry_core::Envelope,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let dsn = self
-            .options
-            .dsn
-            .as_ref()
-            .ok_or_else(|| "No DSN specified")?;
-        let user_agent = &self.options.user_agent;
+        let TransportOptions {
+            dsn, user_agent, ..
+        } = self.options.as_ref().ok_or_else(|| "No DSN specified")?;
         let auth = dsn.to_auth(Some(user_agent)).to_string();
         let headers = [("X-Sentry-Auth", auth.as_str())];
         let url = dsn.envelope_api_url();
@@ -64,6 +87,14 @@ impl Transport for EmbeddedSVCHttpTransport {
     fn send_envelope(&self, envelope: sentry_core::Envelope) {
         if let Err(err) = self.send_envelope(envelope) {
             sentry_debug!("Failed to send envelope: {}", err);
+        }
+    }
+}
+
+impl From<TransportOptions> for EmbeddedSVCHttpTransportOptions {
+    fn from(value: TransportOptions) -> Self {
+        Self {
+            general_options: value,
         }
     }
 }

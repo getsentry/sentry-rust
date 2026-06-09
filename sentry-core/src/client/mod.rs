@@ -13,6 +13,7 @@ use std::time::Duration;
 use crate::metrics::IntoProtocolMetric;
 #[cfg(feature = "release-health")]
 use crate::protocol::SessionUpdate;
+use crate::transport::TransportOptions;
 use rand::random;
 use sentry_types::random_uuid;
 
@@ -168,9 +169,18 @@ impl Client {
         Hub::with_current(|_| {});
 
         let create_transport = || {
-            options.dsn.as_ref()?;
-            let factory = options.transport.as_ref()?;
-            Some(factory.create_transport(&options))
+            let dsn = options.dsn.clone()?;
+            let factory = options.transport.clone()?;
+
+            let transport_options = TransportOptions {
+                dsn,
+                user_agent: options.user_agent.clone(),
+                http_proxy: options.http_proxy.clone(),
+                https_proxy: options.https_proxy.clone(),
+                accept_invalid_certs: options.accept_invalid_certs,
+            };
+
+            Some(factory.create_transport_with_options(transport_options))
         };
 
         let envelope_sender = create_transport()

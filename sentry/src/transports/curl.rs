@@ -2,6 +2,7 @@ use std::io::{Cursor, Read};
 use std::time::Duration;
 
 use curl::easy::Easy as CurlClient;
+use sentry_core::TransportOptions;
 
 use super::{thread::TransportThread, HTTP_PAYLOAD_TOO_LARGE, HTTP_PAYLOAD_TOO_LARGE_MESSAGE};
 
@@ -15,27 +16,78 @@ pub struct CurlHttpTransport {
     thread: TransportThread,
 }
 
+/// Options for constructing a [`CurlHttpTransport`] via its [`with_options`] method.
+///
+/// Currently, this is primarily a wrapper around a [`TransportOptions`], and must be created with
+/// the `From<TransportOptions>` implementation. Optionally, a [`curl::easy::Easy`] client for the
+/// transport may be provided with [`Self::with_client`].
+///
+/// [`with_options`]: CurlHttpTransport::with_options
+pub struct CurlHttpTransportOptions {
+    general_options: TransportOptions,
+    client: Option<CurlClient>,
+}
+
 impl CurlHttpTransport {
-    /// Creates a new Transport.
+    /// Creates a new [`CurlHttpTransport`] with the given `options`.
+    #[inline]
+    pub fn with_options(options: CurlHttpTransportOptions) -> Self {
+        Self::new_internal(options)
+    }
+
+    /// Backwards-compatible method for creating a [`CurlHttpTransport`].
+    ///
+    /// Please use [`Self::with_options`] instead.
+    ///
+    /// ### Panics
+    ///
+    /// Panics if called with `options` that lack a DSN.
+    #[inline]
+    #[deprecated = "use `with_options` instead"]
     pub fn new(options: &ClientOptions) -> Self {
-        Self::new_internal(options, None)
+        Self::with_options(
+            TransportOptions::try_from_client_options(options)
+                .expect("this method should only be called when options has a DSN")
+                .into(),
+        )
     }
 
-    /// Creates a new Transport that uses the specified [`CurlClient`].
+    /// Backwards-compatible method for creating a [`CurlHttpTransport`] that uses the specified
+    /// [`CurlClient`].
+    ///
+    /// Please use [`Self::with_options`] instead.
+    ///
+    /// ### Panics
+    ///
+    /// Panics if called with `options` that lack a DSN.
+    #[inline]
+    #[deprecated = "use `with_options` instead"]
     pub fn with_client(options: &ClientOptions, client: CurlClient) -> Self {
-        Self::new_internal(options, Some(client))
+        let general_options = TransportOptions::try_from_client_options(options)
+            .expect("this method should only be called when options has a DSN");
+        let options = CurlHttpTransportOptions::from(general_options).with_client(client);
+
+        Self::new_internal(options)
     }
 
-    fn new_internal(options: &ClientOptions, client: Option<CurlClient>) -> Self {
+    fn new_internal(options: CurlHttpTransportOptions) -> Self {
+        let CurlHttpTransportOptions {
+            general_options:
+                TransportOptions {
+                    dsn,
+                    user_agent,
+                    http_proxy,
+                    https_proxy,
+                    accept_invalid_certs,
+                    ..
+                },
+            client,
+        } = options;
+
         let client = client.unwrap_or_else(CurlClient::new);
-        let http_proxy = options.http_proxy.as_ref().map(ToString::to_string);
-        let https_proxy = options.https_proxy.as_ref().map(ToString::to_string);
-        let dsn = options.dsn.as_ref().unwrap();
-        let user_agent = options.user_agent.clone();
         let auth = dsn.to_auth(Some(&user_agent)).to_string();
         let url = dsn.envelope_api_url().to_string();
         let scheme = dsn.scheme();
-        let accept_invalid_certs = options.accept_invalid_certs;
 
         let mut handle = client;
         let thread = TransportThread::new(move |envelope, rl| {
@@ -145,5 +197,22 @@ impl Transport for CurlHttpTransport {
 
     fn shutdown(&self, timeout: Duration) -> bool {
         self.flush(timeout)
+    }
+}
+
+impl From<TransportOptions> for CurlHttpTransportOptions {
+    fn from(value: TransportOptions) -> Self {
+        Self {
+            general_options: value,
+            client: None,
+        }
+    }
+}
+
+impl CurlHttpTransportOptions {
+    /// Specify the [`CurlClient`] for the [`CurlHttpTransport`].
+    pub fn with_client(self, client: CurlClient) -> Self {
+        let client = Some(client);
+        Self { client, ..self }
     }
 }
