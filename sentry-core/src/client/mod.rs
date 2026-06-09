@@ -13,6 +13,7 @@ use std::time::Duration;
 use crate::metrics::IntoProtocolMetric;
 #[cfg(feature = "release-health")]
 use crate::protocol::SessionUpdate;
+use crate::transport::TransportOptions;
 use rand::random;
 use sentry_types::random_uuid;
 
@@ -594,13 +595,25 @@ fn build_envelope_sender(client_options: &ClientOptions) -> EnvelopeSender {
     let ClientOptions {
         dsn,
         transport: transport_factory,
+        user_agent,
+        http_proxy,
+        https_proxy,
+        accept_invalid_certs,
         ..
     } = client_options;
 
     match (dsn.as_ref(), transport_factory.as_ref()) {
-        (Some(_), Some(transport_factory)) => {
-            EnvelopeSender::new(|| transport_factory.create_transport(client_options))
-        }
+        (Some(dsn), Some(transport_factory)) => EnvelopeSender::new(|| {
+            let options = TransportOptions {
+                dsn: dsn.clone(),
+                user_agent: user_agent.clone(),
+                http_proxy: http_proxy.clone(),
+                https_proxy: https_proxy.clone(),
+                accept_invalid_certs: *accept_invalid_certs,
+            };
+
+            transport_factory.create_transport_with_options(options)
+        }),
         _ => Default::default(),
     }
 }
