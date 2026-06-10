@@ -417,9 +417,10 @@ impl Client {
 
     /// Captures an event and sends it to sentry.
     pub fn capture_event(&self, event: Event<'static>, scope: Option<&Scope>) -> Uuid {
-        if self.envelope_sender.is_enabled() {
-            if let Some(event) = self.prepare_event(event, scope) {
-                let event_id = event.event_id;
+        let mut event_id = Default::default();
+        self.envelope_sender.send_envelope_with(|| {
+            self.prepare_event(event, scope).map(|event| {
+                event_id = event.event_id;
                 let mut envelope: Envelope = event.into();
                 // For request-mode sessions, we aggregate them all instead of
                 // flushing them out early.
@@ -444,11 +445,10 @@ impl Client {
                     }
                 }
 
-                self.envelope_sender.send_envelope(envelope);
-                return event_id;
-            }
-        }
-        Default::default()
+                envelope
+            })
+        });
+        event_id
     }
 
     /// Sends the specified [`Envelope`] to sentry.
