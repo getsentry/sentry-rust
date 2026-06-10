@@ -41,6 +41,7 @@ mod batcher;
 mod client_reports;
 mod envelope_sender;
 
+pub use self::client_reports::ClientReportRecorder;
 pub(crate) use self::envelope_sender::EnvelopeSender;
 
 impl<T: Into<ClientOptions>> From<T> for Client {
@@ -604,13 +605,14 @@ fn build_envelope_sender(client_options: &ClientOptions) -> EnvelopeSender {
     } = client_options;
 
     match (dsn.as_ref(), transport_factory.as_ref()) {
-        (Some(dsn), Some(transport_factory)) => EnvelopeSender::new(|| {
+        (Some(dsn), Some(transport_factory)) => EnvelopeSender::new(|client_report_recorder| {
             let options = TransportOptions {
                 dsn: dsn.clone(),
                 user_agent: user_agent.clone(),
                 http_proxy: http_proxy.clone(),
                 https_proxy: https_proxy.clone(),
                 accept_invalid_certs: *accept_invalid_certs,
+                client_report_recorder,
             };
 
             transport_factory.create_transport_with_options(options)
