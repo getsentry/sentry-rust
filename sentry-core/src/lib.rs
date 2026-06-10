@@ -152,6 +152,9 @@ pub use crate::clientoptions::MaxRequestBodySize;
 #[cfg(feature = "client")]
 pub use crate::{client::Client, hub_impl::SwitchGuard as HubSwitchGuard};
 
+#[cfg(feature = "client")]
+pub use crate::client::ClientReportRecorder;
+
 // test utilities
 #[cfg(feature = "test")]
 pub mod test;

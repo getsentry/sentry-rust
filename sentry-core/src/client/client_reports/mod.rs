@@ -16,6 +16,9 @@ use sentry_types::protocol::v7::EnvelopeItem;
 use self::inner::ClientReportAggregatorInner;
 
 mod inner;
+mod recorder;
+
+pub use self::recorder::ClientReportRecorder;
 
 /// Aggregates counts for lost data that should be reported in client reports.
 ///
@@ -50,7 +53,6 @@ impl ClientReportAggregator {
     /// This method updates aggregate counters only. The loss is not sent until a later call to
     /// [`Self::take_pending_report`] drains the counters and returns a [`ClientReport`] for an
     /// outgoing envelope. A `quantity` of zero is ignored.
-    #[expect(dead_code, reason = "we will add calls in a follow-up PR")]
     pub(crate) fn record_loss(&self, category: Category, reason: Reason, quantity: u64) {
         #[cfg(all(target_has_atomic = "64", target_has_atomic = "8"))]
         self.inner.record_loss(category, reason, quantity);
@@ -74,5 +76,10 @@ impl ClientReportAggregator {
         {
             None
         }
+    }
+
+    /// Creates a [`ClientReportRecorder`] which records into this aggregator.
+    pub(super) fn recorder(&self) -> ClientReportRecorder {
+        ClientReportRecorder::new(self)
     }
 }
