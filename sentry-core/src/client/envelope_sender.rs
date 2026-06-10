@@ -25,7 +25,21 @@ pub(crate) struct EnvelopeSender {
 impl EnvelopeSender {
     /// Sends an envelope if the transport is still available.
     pub(crate) fn send_envelope(&self, envelope: Envelope) {
-        self.transport_slot.send_envelope(envelope);
+        // This forwards to `send_envelope_with`; any envelope pre-processing should be
+        // centralized in the `send_envelope_with` function!
+        self.send_envelope_with(|| Some(envelope));
+    }
+
+    /// Builds and sends an envelope if the transport is still available.
+    ///
+    /// The builder is only executed if this sender is still active. This allows skipping over
+    /// logic that constructs the envelope when it cannot be sent. The builder can also return
+    /// [`None`], in which case, we don't send anything.
+    pub(super) fn send_envelope_with<F>(&self, builder: F)
+    where
+        F: FnOnce() -> Option<Envelope>,
+    {
+        self.transport_slot.send_envelope_with(builder)
     }
 
     /// Creates a sender using the transport returned by the provided builder callback.
@@ -114,17 +128,26 @@ mod slot {
         }
     }
 
-    impl<T> Transport for TransportSlot<T>
+    impl<T> TransportSlot<T>
     where
         T: Transport + ?Sized,
     {
-        fn send_envelope(&self, envelope: Envelope) {
-            if let Some(transport) = self.inner.read().expect(READ_EXPECT_MSG).as_deref() {
+        pub(super) fn send_envelope_with<F>(&self, builder: F)
+        where
+            F: FnOnce() -> Option<Envelope>,
+        {
+            if let Some((transport, envelope)) = self
+                .inner
+                .read()
+                .expect(READ_EXPECT_MSG)
+                .as_deref()
+                .and_then(|transport| Some((transport, builder()?)))
+            {
                 transport.send_envelope(envelope);
             }
         }
 
-        fn flush(&self, timeout: Duration) -> bool {
+        pub(super) fn flush(&self, timeout: Duration) -> bool {
             self.inner
                 .read()
                 .expect(READ_EXPECT_MSG)
@@ -133,7 +156,7 @@ mod slot {
                 .unwrap_or(true)
         }
 
-        fn shutdown(&self, timeout: Duration) -> bool {
+        pub(super) fn shutdown(&self, timeout: Duration) -> bool {
             let transport_opt = self.inner.write().expect(WRITE_EXPECT_MSG).take();
             if let Some(transport) = transport_opt {
                 sentry_debug!("client close; request transport to shut down");
