@@ -8,6 +8,7 @@ use crate::ClientOptions;
 
 /// Options for a transport.
 #[derive(Debug)]
+#[must_use]
 #[non_exhaustive]
 pub struct TransportOptions {
     /// The transport's Sentry DSN.

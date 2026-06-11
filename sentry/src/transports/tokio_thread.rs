@@ -5,6 +5,8 @@ use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
 use super::ratelimit::{RateLimiter, RateLimitingCategory};
+#[cfg(doc)]
+use super::{TokioTransportThread, TokioTransportThreadOptions}; // so we can use pub re-exports in docs
 use crate::{sentry_debug, Envelope};
 
 #[expect(
@@ -25,14 +27,53 @@ pub struct TransportThread {
     handle: Option<JoinHandle<()>>,
 }
 
+/// Options for constructing a [`TokioTransportThread`].
+#[must_use]
+pub struct TransportThreadOptions<F> {
+    send_fn: F,
+}
+
+impl<F> TransportThreadOptions<F> {
+    /// Creates options with the function used to send envelopes.
+    pub fn new(send_fn: F) -> Self {
+        Self { send_fn }
+    }
+}
+
+impl<F, SendFuture> TransportThreadOptions<F>
+where
+    F: FnMut(Envelope, RateLimiter) -> SendFuture + Send + 'static,
+    // NOTE: return RateLimiter to avoid lifetime issues with mutable borrowing across await.
+    SendFuture: std::future::Future<Output = RateLimiter>,
+{
+    /// Spawn a [`TokioTransportThread`], configured per these options.
+    pub fn spawn_thread(self) -> TransportThread {
+        TransportThread::with_options(self)
+    }
+}
+
 impl TransportThread {
-    /// Spawn a new background thread.
-    pub fn new<SendFn, SendFuture>(mut send: SendFn) -> Self
+    /// Backwards-compatible method to spawn a new background thread.
+    ///
+    /// Please construct this type via [`TokioTransportThreadOptions`] instead.
+    #[deprecated(note = "construct via `TransportThreadOptions` instead")]
+    pub fn new<SendFn, SendFuture>(send: SendFn) -> Self
     where
         SendFn: FnMut(Envelope, RateLimiter) -> SendFuture + Send + 'static,
-        // NOTE: returning RateLimiter here, otherwise we are in borrow hell
+        // NOTE: return RateLimiter to avoid lifetime issues with mutable borrowing across await.
         SendFuture: std::future::Future<Output = RateLimiter>,
     {
+        Self::with_options(TransportThreadOptions::new(send))
+    }
+
+    /// Spawn a new background thread with options.
+    fn with_options<SendFn, SendFuture>(options: TransportThreadOptions<SendFn>) -> Self
+    where
+        SendFn: FnMut(Envelope, RateLimiter) -> SendFuture + Send + 'static,
+        // NOTE: return RateLimiter to avoid lifetime issues with mutable borrowing across await.
+        SendFuture: std::future::Future<Output = RateLimiter>,
+    {
+        let TransportThreadOptions { send_fn: mut send } = options;
         let (sender, receiver) = sync_channel(30);
         let shutdown = Arc::new(AtomicBool::new(false));
         let shutdown_worker = shutdown.clone();

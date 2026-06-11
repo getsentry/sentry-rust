@@ -6,6 +6,7 @@
 
 - Added [`TransportFactory::create_transport_with_options`](https://docs.rs/sentry-core/latest/sentry_core/trait.TransportFactory.html#method.create_transport_with_options), which constructs transports from [`TransportOptions`](https://docs.rs/sentry-core/latest/sentry_core/struct.TransportOptions.html) instead of full [`ClientOptions`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html) ([#1142](https://github.com/getsentry/sentry-rust/pull/1142)).
 - Added transport-specific options types and `with_options` constructors for built-in HTTP transports, including `ReqwestHttpTransportOptions`, `CurlHttpTransportOptions`, `UreqHttpTransportOptions`, and `EmbeddedSVCHttpTransportOptions` ([#1142](https://github.com/getsentry/sentry-rust/pull/1142)).
+- Added transport worker options types and deprecated the legacy constructors for built-in background transport workers, including `StdTransportThreadOptions` and `TokioTransportThreadOptions` ([#1142](https://github.com/getsentry/sentry-rust/pull/1142)).
 
 ### Behavior Changes
 

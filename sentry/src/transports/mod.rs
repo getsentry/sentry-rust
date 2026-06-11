@@ -16,12 +16,16 @@ pub use self::ratelimit::{RateLimiter, RateLimitingCategory};
 #[cfg(any(feature = "curl", feature = "ureq"))]
 mod thread;
 #[cfg(any(feature = "curl", feature = "ureq"))]
-pub use self::thread::TransportThread as StdTransportThread;
+pub use self::thread::{
+    TransportThread as StdTransportThread, TransportThreadOptions as StdTransportThreadOptions,
+};
 
 #[cfg(feature = "reqwest")]
 mod tokio_thread;
 #[cfg(feature = "reqwest")]
-pub use self::tokio_thread::TransportThread as TokioTransportThread;
+pub use self::tokio_thread::{
+    TransportThread as TokioTransportThread, TransportThreadOptions as TokioTransportThreadOptions,
+};
 
 #[cfg(feature = "reqwest")]
 mod reqwest;
