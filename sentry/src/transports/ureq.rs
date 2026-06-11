@@ -10,7 +10,10 @@ use ureq::http::Response;
 use ureq::tls::{TlsConfig, TlsProvider};
 use ureq::{Agent, Proxy};
 
-use super::{thread::TransportThread, HTTP_PAYLOAD_TOO_LARGE, HTTP_PAYLOAD_TOO_LARGE_MESSAGE};
+use super::{
+    thread::{TransportThread, TransportThreadOptions},
+    RateLimiter, HTTP_PAYLOAD_TOO_LARGE, HTTP_PAYLOAD_TOO_LARGE_MESSAGE,
+};
 
 use crate::{sentry_debug, types::Scheme, ClientOptions, Envelope, Transport};
 
@@ -28,6 +31,7 @@ pub struct UreqHttpTransport {
 /// the `From<TransportOptions>` implementation. Optionally, a [`ureq::Agent`] for the transport may
 /// be provided with [`Self::with_agent`].
 #[derive(Debug)]
+#[must_use]
 pub struct UreqHttpTransportOptions {
     general_options: TransportOptions,
     agent: Option<Agent>,
@@ -136,7 +140,7 @@ impl UreqHttpTransport {
         let auth = dsn.to_auth(Some(&user_agent)).to_string();
         let url = dsn.envelope_api_url().to_string();
 
-        let thread = TransportThread::new(move |envelope, rl| {
+        let send_fn = move |envelope: Envelope, rl: &mut RateLimiter| {
             let mut body = Vec::new();
             envelope.to_writer(&mut body).unwrap();
             let request = agent
@@ -177,7 +181,9 @@ impl UreqHttpTransport {
                     sentry_debug!("Failed to send envelope: {}", err);
                 }
             }
-        });
+        };
+
+        let thread = TransportThreadOptions::new(send_fn).spawn_thread();
         Self { thread }
     }
 }

@@ -19,6 +19,7 @@ pub struct EmbeddedSVCHttpTransport {
 /// Currently, this is a wrapper around a [`TransportOptions`], and must be created with the
 /// `From<TransportOptions>` implementation.
 #[derive(Debug)]
+#[must_use]
 pub struct EmbeddedSVCHttpTransportOptions {
     general_options: TransportOptions,
 }

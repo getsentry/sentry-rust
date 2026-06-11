@@ -4,7 +4,10 @@ use std::time::Duration;
 use curl::easy::Easy as CurlClient;
 use sentry_core::TransportOptions;
 
-use super::{thread::TransportThread, HTTP_PAYLOAD_TOO_LARGE, HTTP_PAYLOAD_TOO_LARGE_MESSAGE};
+use super::{
+    thread::{TransportThread, TransportThreadOptions},
+    RateLimiter, HTTP_PAYLOAD_TOO_LARGE, HTTP_PAYLOAD_TOO_LARGE_MESSAGE,
+};
 
 use crate::{sentry_debug, types::Scheme, ClientOptions, Envelope, Transport};
 
@@ -22,6 +25,7 @@ pub struct CurlHttpTransport {
 /// the `From<TransportOptions>` implementation. Optionally, a [`curl::easy::Easy`] client for the
 /// transport may be provided with [`Self::with_client`].
 #[derive(Debug)]
+#[must_use]
 pub struct CurlHttpTransportOptions {
     general_options: TransportOptions,
     client: Option<CurlClient>,
@@ -85,7 +89,8 @@ impl CurlHttpTransport {
         let scheme = dsn.scheme();
 
         let mut handle = client;
-        let thread = TransportThread::new(move |envelope, rl| {
+
+        let send_fn = move |envelope: Envelope, rl: &mut RateLimiter| {
             handle.reset();
             handle.url(&url).unwrap();
             handle.custom_request("POST").unwrap();
@@ -177,7 +182,9 @@ impl CurlHttpTransport {
                     sentry_debug!("Failed to send envelope: {}", err);
                 }
             }
-        });
+        };
+
+        let thread = TransportThreadOptions::new(send_fn).spawn_thread();
         Self { thread }
     }
 }

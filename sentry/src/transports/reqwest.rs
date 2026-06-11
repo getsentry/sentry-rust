@@ -4,7 +4,8 @@ use reqwest::{header as ReqwestHeaders, Client as ReqwestClient, Proxy, StatusCo
 use sentry_core::TransportOptions;
 
 use super::{
-    tokio_thread::TransportThread, HTTP_PAYLOAD_TOO_LARGE, HTTP_PAYLOAD_TOO_LARGE_MESSAGE,
+    tokio_thread::{TransportThread, TransportThreadOptions},
+    RateLimiter, HTTP_PAYLOAD_TOO_LARGE, HTTP_PAYLOAD_TOO_LARGE_MESSAGE,
 };
 
 use crate::{sentry_debug, ClientOptions, Envelope, Transport};
@@ -25,6 +26,7 @@ pub struct ReqwestHttpTransport {
 /// the `From<TransportOptions>` implementation. Optionally, a [`reqwest::Client`] for the
 /// transport may be provided with [`Self::with_client`].
 #[derive(Debug)]
+#[must_use]
 pub struct ReqwestHttpTransportOptions {
     general_options: TransportOptions,
     client: Option<ReqwestClient>,
@@ -115,7 +117,7 @@ impl ReqwestHttpTransport {
         let auth = dsn.to_auth(Some(&user_agent)).to_string();
         let url = dsn.envelope_api_url().to_string();
 
-        let thread = TransportThread::new(move |envelope, mut rl| {
+        let send_fn = move |envelope: Envelope, mut rl: RateLimiter| {
             let mut body = Vec::new();
             envelope.to_writer(&mut body).unwrap();
             let request = client.post(&url).header("X-Sentry-Auth", &auth).body(body);
@@ -161,7 +163,9 @@ impl ReqwestHttpTransport {
                 }
                 rl
             }
-        });
+        };
+
+        let thread = TransportThreadOptions::new(send_fn).spawn_thread();
         Self { thread }
     }
 }
