@@ -103,7 +103,7 @@ impl EnvelopeHeaders {
 }
 
 /// An Envelope Item Type.
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
 #[non_exhaustive]
 enum EnvelopeItemType {
     /// An Event Item type.
@@ -247,6 +247,30 @@ struct ItemsSerdeWrapper<'a, T: Clone> {
 impl From<Vec<Metric>> for ItemContainer {
     fn from(metrics: Vec<Metric>) -> Self {
         Self::Metrics(metrics)
+    }
+}
+
+impl ItemContainer {
+    fn item_type(&self) -> EnvelopeItemType {
+        match self {
+            Self::Logs(_) => EnvelopeItemType::LogsContainer,
+            Self::Metrics(_) => EnvelopeItemType::MetricsContainer,
+        }
+    }
+}
+
+impl EnvelopeItem {
+    fn item_type(&self) -> Option<EnvelopeItemType> {
+        match self {
+            Self::Event(_) => Some(EnvelopeItemType::Event),
+            Self::SessionUpdate(_) => Some(EnvelopeItemType::SessionUpdate),
+            Self::SessionAggregates(_) => Some(EnvelopeItemType::SessionAggregates),
+            Self::Transaction(_) => Some(EnvelopeItemType::Transaction),
+            Self::Attachment(_) => Some(EnvelopeItemType::Attachment),
+            Self::MonitorCheckIn(_) => Some(EnvelopeItemType::MonitorCheckIn),
+            Self::ItemContainer(container) => Some(container.item_type()),
+            Self::Raw => None,
+        }
     }
 }
 
@@ -538,20 +562,15 @@ impl Envelope {
                     continue;
                 }
             }
-            let item_type = match item {
-                EnvelopeItem::Event(_) => "event",
-                EnvelopeItem::SessionUpdate(_) => "session",
-                EnvelopeItem::SessionAggregates(_) => "sessions",
-                EnvelopeItem::Transaction(_) => "transaction",
-                EnvelopeItem::MonitorCheckIn(_) => "check_in",
-                EnvelopeItem::ItemContainer(container) => container.ty(),
-                EnvelopeItem::Attachment(_) | EnvelopeItem::Raw => unreachable!(),
-            };
+            let item_type = item
+                .item_type()
+                .expect("raw envelope items are skipped during serialization");
+            let item_type = serde_json::to_string(&item_type)?;
 
             if let EnvelopeItem::ItemContainer(container) = item {
                 writeln!(
                     writer,
-                    r#"{{"type":"{}","item_count":{},"content_type":"{}"}}"#,
+                    r#"{{"type":{},"item_count":{},"content_type":"{}"}}"#,
                     item_type,
                     container.len(),
                     container.content_type()
@@ -559,7 +578,7 @@ impl Envelope {
             } else {
                 writeln!(
                     writer,
-                    r#"{{"type":"{}","length":{}}}"#,
+                    r#"{{"type":{},"length":{}}}"#,
                     item_type,
                     item_buf.len()
                 )?;
