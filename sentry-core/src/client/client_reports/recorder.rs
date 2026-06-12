@@ -63,7 +63,6 @@ impl ClientReportRecorder {
 
     /// Create a new [`ClientReportRecorder`] which records into the given
     /// [`ClientReportAggregator`].
-    #[cfg(all(target_has_atomic = "8", target_has_atomic = "64"))]
     pub(super) fn new(aggregator: &ClientReportAggregator) -> Self {
         #[cfg(all(target_has_atomic = "8", target_has_atomic = "64"))]
         {
