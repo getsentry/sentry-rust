@@ -19,6 +19,7 @@ pub struct Item {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(transparent)]
 pub(super) struct ClientReportList(Vec<Item>);
 
 impl ClientReportList {
