@@ -256,6 +256,8 @@ mod hex_tests {
 /// This is super useful, for example, if you want to store something for each variant. Rather
 /// than using a `HashMap`, it is possible to allocate a fixed-length array of length
 /// `VARIANTS.len()`, indexed by `as_index`.
+///
+/// [`IndexedEnum`]: crate::IndexedEnum
 macro_rules! indexed_enum {
     () => {};
 
