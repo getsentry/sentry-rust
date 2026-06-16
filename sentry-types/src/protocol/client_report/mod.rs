@@ -48,7 +48,7 @@ indexed_enum! {
 }
 
 impl Report {
-    /// Create a new [`ClientReport`] with the current timestamp, containing the provided client
+    /// Create a new [`Report`] with the current timestamp, containing the provided client
     /// report items.
     ///
     /// No aggregation is performed on the items; therefore, the calling code should aggregate the
