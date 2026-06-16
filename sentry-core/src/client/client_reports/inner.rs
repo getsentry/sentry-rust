@@ -7,9 +7,9 @@
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 use sentry_types::protocol::v7::client_report::{Category, Item, Reason, Report};
-use sentry_types::IndexedEnum as _;
+use sentry_types::IndexedEnum;
 
-const ARRAY_SIZE: usize = Reason::VARIANT_COUNT * Category::VARIANT_COUNT;
+const ARRAY_SIZE: usize = Reason::VARIANTS.len() * Category::VARIANTS.len();
 
 #[derive(Debug, Default)]
 pub(super) struct ClientReportAggregatorInner {
@@ -70,7 +70,7 @@ struct CategoryReason {
 fn index(category: Category, reason: Reason) -> usize {
     category
         .as_index()
-        .checked_mul(Reason::VARIANT_COUNT)
+        .checked_mul(Reason::VARIANTS.len())
         .and_then(|product| product.checked_add(reason.as_index()))
         .expect("should not overflow usize")
 }
@@ -78,7 +78,9 @@ fn index(category: Category, reason: Reason) -> usize {
 /// Iterates the category-reason pairs. The zero-indexed n-th item returned from this category
 /// is the category-reason that the n-th item in the array corresponds to.
 fn iter_reason_categories() -> impl Iterator<Item = CategoryReason> {
-    Category::iter_variants().flat_map(|category| {
-        Reason::iter_variants().map(move |reason| CategoryReason { category, reason })
+    Category::VARIANTS.iter().flat_map(|&category| {
+        Reason::VARIANTS
+            .iter()
+            .map(move |&reason| CategoryReason { category, reason })
     })
 }
