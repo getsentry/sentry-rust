@@ -8,9 +8,10 @@
 #[cfg(all(target_has_atomic = "64", target_has_atomic = "8"))]
 use std::sync::Arc;
 
+use sentry_types::protocol::v7::client_report::{Category, Reason};
+use sentry_types::protocol::v7::ClientReport;
 #[cfg(doc)]
 use sentry_types::protocol::v7::EnvelopeItem;
-use sentry_types::protocol::v7::{ClientReport, DataCategory, DiscardReason};
 
 use self::inner::ClientReportAggregatorInner;
 
@@ -18,7 +19,7 @@ mod inner;
 
 /// Aggregates counts for lost data that should be reported in client reports.
 ///
-/// The aggregator records losses by [`DataCategory`] and [`DiscardReason`]. Recording a loss only
+/// The aggregator records losses by [`Category`] and [`Reason`]. Recording a loss only
 /// increments counters; no envelope is created at record time. Callers that are about to send an
 /// envelope can call [`Self::take_pending_report`] to drain the current counters into a
 /// [`ClientReport`] item and attach the report to the outgoing envelope.
@@ -50,7 +51,7 @@ impl ClientReportAggregator {
     /// [`Self::take_pending_report`] drains the counters and returns a [`ClientReport`] for an
     /// outgoing envelope. A `quantity` of zero is ignored.
     #[expect(dead_code, reason = "we will add calls in a follow-up PR")]
-    pub(crate) fn record_loss(&self, category: DataCategory, reason: DiscardReason, quantity: u64) {
+    pub(crate) fn record_loss(&self, category: Category, reason: Reason, quantity: u64) {
         #[cfg(all(target_has_atomic = "64", target_has_atomic = "8"))]
         self.inner.record_loss(category, reason, quantity);
 
