@@ -249,18 +249,13 @@ mod hex_tests {
 
 /// A macro which can wrap any number of enum definitions to make them "indexed."
 ///
-/// Specifically, the macro adds an implementation to each enum, which contains the following:
-///     - `const VARIANT_COUNT: usize`: the total number of variants in the enum.
-///     - `const fn as_index(&self) -> usize`: the unique zero-based index of the enum variant.
-///       This is implemented without relying on `as`-casting.
-///     - `fn iter_variants() -> impl Iterator<Item = Self>`: An iterator over all enum variants in
-///       the index order.
-///
-/// Both of the added items have the same visibility as the enum itself.
+/// Specifically, the macro implements [`IndexedEnum`] for each enum. The implementation provides
+/// all variants in index order through `VARIANTS` and maps each variant to its unique zero-based
+/// index through `as_index` without relying on `as`-casting.
 ///
 /// This is super useful, for example, if you want to store something for each variant. Rather
 /// than using a `HashMap`, it is possible to allocate a fixed-length array of length
-/// `VARIANT_COUNT`, indexed by `as_index`.
+/// `VARIANTS.len()`, indexed by `as_index`.
 macro_rules! indexed_enum {
     () => {};
 
