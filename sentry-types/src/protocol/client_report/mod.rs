@@ -18,7 +18,7 @@ mod list;
 /// [client report]: https://develop.sentry.dev/sdk/telemetry/client-reports/
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Report {
-    #[serde(with = "utils::ts_seconds_float")]
+    #[serde(default = "SystemTime::now", with = "utils::ts_seconds_float")]
     timestamp: SystemTime,
     discarded_events: ClientReportList,
 }
