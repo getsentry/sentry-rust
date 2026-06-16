@@ -9,7 +9,7 @@ pub trait IndexedEnum: private::Sealed + Sized + 'static {
 
     /// Returns this variant's unique zero-based index.
     ///
-    /// The index satisfies `0 <= self.as_index() < Self::VARIANT_COUNT`.
+    /// The index satisfies `0 <= self.as_index() < Self::VARIANTS.len()`.
     fn as_index(&self) -> usize;
 }
 
