@@ -283,10 +283,7 @@ macro_rules! indexed_enum {
         }
 
         impl $crate::IndexedEnum for $name {
-            /// The number of variants in this enum.
-            const VARIANT_COUNT: usize = indexed_enum!(@count $($variant),*);
-
-            indexed_enum!(@methods [] [] 0usize; $($variant),*);
+            indexed_enum!(@impl_body [] [] 0usize; $($variant),*);
         }
 
         impl $crate::indexed_enum::private::Sealed for $name {}
@@ -296,21 +293,19 @@ macro_rules! indexed_enum {
         }
     };
 
-    (@methods [$($as_index_arms:tt)*] [$($variants_array:expr),*] $idx:expr;) => {
+    (@impl_body [$($as_index_arms:tt)*] [$($variants_array:expr),*] $idx:expr;) => {
+        const VARIANTS: &[Self] = &[$($variants_array),*];
+
         fn as_index(&self) -> usize {
             match *self {
                 $($as_index_arms)*
             }
         }
-
-        fn iter_variants() -> impl ::std::iter::Iterator<Item = Self> {
-            <_ as ::std::iter::IntoIterator>::into_iter([$($variants_array),*])
-        }
     };
 
-    (@methods [$($as_index_arms:tt)*] [$($variants_array:expr),*] $idx:expr; $variant:ident $(, $rest:ident)*) => {
+    (@impl_body [$($as_index_arms:tt)*] [$($variants_array:expr),*] $idx:expr; $variant:ident $(, $rest:ident)*) => {
         indexed_enum!(
-            @methods
+            @impl_body
             [$($as_index_arms)* Self::$variant => $idx,]
             [$($variants_array,)* Self::$variant]
             $idx + 1usize;
@@ -327,7 +322,7 @@ macro_rules! indexed_enum {
 
 #[cfg(test)]
 mod tests {
-    use crate::indexed_enum::IndexedEnum as _;
+    use crate::IndexedEnum;
 
     indexed_enum! {
         /// A test enum to test the `indexed_enum!` macro.
@@ -341,12 +336,12 @@ mod tests {
 
     #[test]
     fn variant_count_is_accurate() {
-        assert_eq!(IndexedEnumTest::VARIANT_COUNT, 4);
+        assert_eq!(IndexedEnumTest::VARIANTS.len(), 4);
     }
 
     #[test]
     fn as_index_returns_unique_index() {
-        let mut indexes_seen = [false; IndexedEnumTest::VARIANT_COUNT];
+        let mut indexes_seen = [false; IndexedEnumTest::VARIANTS.len()];
 
         for variant in [
             IndexedEnumTest::V0,
@@ -364,11 +359,8 @@ mod tests {
 
     #[test]
     fn variant_iter_is_in_index_order() {
-        let iter_length = IndexedEnumTest::iter_variants()
-            .enumerate()
-            .map(|(index, variant)| assert_eq!(index, variant.as_index()))
-            .count();
-
-        assert_eq!(iter_length, IndexedEnumTest::VARIANT_COUNT)
+        for (index, variant) in IndexedEnumTest::VARIANTS.iter().enumerate() {
+            assert_eq!(index, variant.as_index())
+        }
     }
 }
