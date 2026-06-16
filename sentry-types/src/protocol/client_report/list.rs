@@ -52,7 +52,7 @@ impl ClientReportList {
 }
 
 impl Item {
-    /// Create a new [`ClientReportItem`].
+    /// Create a new [`Item`].
     pub fn new(category: Category, reason: Reason, quantity: u64) -> Self {
         Self {
             category,
