@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
 
+use crate::protocol::client_report;
+use crate::protocol::client_report::{EnvelopeLossIter, ItemLossIter};
 use crate::Dsn;
 use crate::{protocol::v7::ClientReport, utils::ts_rfc3339_opt};
 
@@ -266,6 +268,10 @@ impl ItemContainer {
 }
 
 impl EnvelopeItem {
+    pub(crate) fn losses_on_drop(&self) -> ItemLossIter {
+        client_report::envelope_item_losses(self)
+    }
+
     fn item_type(&self) -> Option<EnvelopeItemType> {
         match self {
             Self::Event(_) => Some(EnvelopeItemType::Event),
@@ -700,6 +706,11 @@ impl Envelope {
         Self::from_bytes_raw(bytes)
     }
 
+    /// Returns an iterator over the [`ItemLoss`] that would result if the envelope is dropped.
+    pub fn losses_on_drop(&self) -> EnvelopeLossIter<'_> {
+        EnvelopeLossIter::new(self.items().flat_map(EnvelopeItem::losses_on_drop))
+    }
+
     fn parse_headers(slice: &[u8]) -> Result<(EnvelopeHeaders, usize), EnvelopeError> {
         let first_line = slice
             .split(|b| *b == b'\n')
@@ -895,6 +906,7 @@ mod private {
 
 #[cfg(test)]
 mod test {
+    use std::borrow::Cow;
     use std::str::FromStr;
     use std::time::{Duration, SystemTime};
 
@@ -902,11 +914,14 @@ mod test {
     use serde_json::Value;
     use time::format_description::well_known::Rfc3339;
     use time::OffsetDateTime;
+    use uuid::Uuid;
 
     use super::*;
+    use crate::protocol::client_report::Item;
+    use crate::protocol::v7::client_report::Category;
     use crate::protocol::v7::{
-        Level, MonitorCheckInStatus, MonitorConfig, MonitorSchedule, SampleRand, SessionAttributes,
-        SessionStatus, Span,
+        ClientReport, Level, LogLevel, MetricType, MonitorCheckInStatus, MonitorConfig,
+        MonitorSchedule, SampleRand, SessionAggregateItem, SessionAttributes, SessionStatus, Span,
     };
 
     fn to_str(envelope: Envelope) -> String {
@@ -921,6 +936,22 @@ mod test {
         let nanos = dt.nanosecond();
         let duration = Duration::new(secs, nanos);
         SystemTime::UNIX_EPOCH.checked_add(duration).unwrap()
+    }
+
+    fn session_attributes() -> SessionAttributes<'static> {
+        SessionAttributes {
+            release: Cow::Borrowed("release@1.0.0"),
+            environment: Some(Cow::Borrowed("production")),
+            ip_address: None,
+            user_agent: None,
+        }
+    }
+
+    fn collect_losses(envelope: &Envelope) -> Vec<(Category, u64)> {
+        envelope
+            .losses_on_drop()
+            .map(|loss| (loss.category, loss.quantity))
+            .collect()
     }
 
     #[test]
@@ -1457,5 +1488,215 @@ some content
         let serialized = to_str(envelope);
         let deserialized = Envelope::from_slice(serialized.as_bytes()).unwrap();
         assert_eq!(serialized, to_str(deserialized))
+    }
+
+    #[test]
+    fn losses_on_drop_maps_event_to_error() {
+        let envelope: Envelope = Event::default().into();
+
+        assert_eq!(collect_losses(&envelope), vec![(Category::Error, 1)]);
+    }
+
+    #[test]
+    fn losses_on_drop_maps_session_update_to_session() {
+        let envelope: Envelope = SessionUpdate {
+            session_id: Uuid::nil(),
+            distinct_id: None,
+            sequence: None,
+            timestamp: None,
+            started: SystemTime::UNIX_EPOCH,
+            init: false,
+            duration: None,
+            status: SessionStatus::Ok,
+            errors: 0,
+            attributes: session_attributes(),
+        }
+        .into();
+
+        assert_eq!(collect_losses(&envelope), vec![(Category::Session, 1)]);
+    }
+
+    #[test]
+    fn losses_on_drop_maps_attachment_to_buffer_bytes() {
+        let envelope: Envelope = Attachment {
+            buffer: b"attachment".to_vec(),
+            filename: "attachment.bin".to_owned(),
+            ..Default::default()
+        }
+        .into();
+
+        assert_eq!(collect_losses(&envelope), vec![(Category::Attachment, 10)]);
+    }
+
+    #[test]
+    fn losses_on_drop_maps_monitor_check_in_to_monitor() {
+        let envelope: Envelope = MonitorCheckIn {
+            check_in_id: Uuid::nil(),
+            monitor_slug: "monitor".to_owned(),
+            status: MonitorCheckInStatus::Ok,
+            environment: None,
+            duration: None,
+            monitor_config: None,
+        }
+        .into();
+
+        assert_eq!(collect_losses(&envelope), vec![(Category::Monitor, 1)]);
+    }
+
+    #[test]
+    fn losses_on_drop_sums_session_aggregate_status_counts() {
+        let envelope: Envelope = SessionAggregates {
+            aggregates: vec![
+                SessionAggregateItem {
+                    started: SystemTime::UNIX_EPOCH,
+                    distinct_id: None,
+                    exited: 2,
+                    errored: 3,
+                    abnormal: 5,
+                    crashed: 7,
+                },
+                SessionAggregateItem {
+                    started: SystemTime::UNIX_EPOCH,
+                    distinct_id: None,
+                    exited: 11,
+                    errored: 13,
+                    abnormal: 17,
+                    crashed: 19,
+                },
+            ],
+            attributes: session_attributes(),
+        }
+        .into();
+
+        assert_eq!(collect_losses(&envelope), vec![(Category::Session, 77)]);
+    }
+
+    #[test]
+    fn losses_on_drop_counts_transaction_root_span() {
+        let envelope: Envelope = Transaction {
+            spans: vec![],
+            ..Default::default()
+        }
+        .into();
+
+        assert_eq!(
+            collect_losses(&envelope),
+            vec![(Category::Transaction, 1), (Category::Span, 1)]
+        );
+    }
+
+    #[test]
+    fn losses_on_drop_counts_transaction_child_spans() {
+        let envelope: Envelope = Transaction {
+            spans: vec![Span::default(), Span::default(), Span::default()],
+            ..Default::default()
+        }
+        .into();
+
+        assert_eq!(
+            collect_losses(&envelope),
+            vec![(Category::Transaction, 1), (Category::Span, 4)]
+        );
+    }
+
+    #[test]
+    fn losses_on_drop_maps_logs_to_item_count_and_serialized_bytes() {
+        let logs = vec![
+            Log {
+                level: LogLevel::Info,
+                body: "first log".to_owned(),
+                trace_id: None,
+                timestamp: SystemTime::UNIX_EPOCH,
+                severity_number: None,
+                attributes: Map::new(),
+            },
+            Log {
+                level: LogLevel::Error,
+                body: "second log".to_owned(),
+                trace_id: None,
+                timestamp: SystemTime::UNIX_EPOCH,
+                severity_number: Some(10.try_into().unwrap()),
+                attributes: Map::new(),
+            },
+        ];
+        let envelope: Envelope = logs.into();
+
+        assert_eq!(
+            collect_losses(&envelope),
+            vec![(Category::LogItem, 2), (Category::LogByte, 121)]
+        );
+    }
+
+    #[test]
+    fn losses_on_drop_maps_metrics_to_metric_count() {
+        let envelope: Envelope = vec![
+            Metric {
+                r#type: MetricType::Counter,
+                name: Cow::Borrowed("metric.one"),
+                value: 1.0,
+                timestamp: SystemTime::UNIX_EPOCH,
+                trace_id: Default::default(),
+                span_id: None,
+                unit: None,
+                attributes: Map::new(),
+            },
+            Metric {
+                r#type: MetricType::Distribution,
+                name: Cow::Borrowed("metric.two"),
+                value: 2.0,
+                timestamp: SystemTime::UNIX_EPOCH,
+                trace_id: Default::default(),
+                span_id: None,
+                unit: None,
+                attributes: Map::new(),
+            },
+        ]
+        .into();
+
+        assert_eq!(collect_losses(&envelope), vec![(Category::TraceMetric, 2)]);
+    }
+
+    #[test]
+    fn losses_on_drop_skips_client_reports() {
+        let envelope: Envelope = ClientReport::new(<[Item; 0]>::default()).into();
+
+        assert!(collect_losses(&envelope).is_empty());
+    }
+
+    #[test]
+    fn losses_on_drop_skips_raw_envelopes() {
+        let envelope = Envelope::from_bytes_raw(b"not parsed".to_vec()).unwrap();
+
+        assert!(collect_losses(&envelope).is_empty());
+    }
+
+    #[test]
+    fn losses_on_drop_flattens_losses_from_all_envelope_items() {
+        let log = Log {
+            level: LogLevel::Warn,
+            body: "flattened".to_owned(),
+            trace_id: None,
+            timestamp: SystemTime::UNIX_EPOCH,
+            severity_number: None,
+            attributes: Map::new(),
+        };
+        let mut envelope = Envelope::new();
+        envelope.add_item(Event::default());
+        envelope.add_item(Transaction {
+            spans: vec![Span::default(), Span::default()],
+            ..Default::default()
+        });
+        envelope.add_item(vec![log]);
+
+        assert_eq!(
+            collect_losses(&envelope),
+            vec![
+                (Category::Error, 1),
+                (Category::Transaction, 1),
+                (Category::Span, 3),
+                (Category::LogItem, 1),
+                (Category::LogByte, 49),
+            ]
+        );
     }
 }

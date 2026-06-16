@@ -9,8 +9,11 @@ use serde::{Deserialize, Serialize};
 use self::list::ClientReportList;
 use crate::utils;
 
+pub(crate) use self::envelope_losses::{envelope_item_losses, ItemLossIter};
+pub use self::envelope_losses::{EnvelopeLossIter, ItemLoss};
 pub use self::list::Item;
 
+mod envelope_losses;
 mod list;
 
 /// A [client report].
@@ -44,7 +47,44 @@ indexed_enum! {
     #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Copy)]
     #[serde(rename_all = "snake_case")]
     #[non_exhaustive]
-    pub enum Category {}
+    pub enum Category {
+        /// An error event.
+        Error,
+        /// A session update or quantity of session outcomes contained in a session aggregate.
+        Session,
+        /// A transaction event.
+        ///
+        /// Dropped transactions should also be counted as dropped [`Span`]s: one for the
+        /// transaction root span extracted by Relay, plus one for each child span.
+        ///
+        /// [`Span`]: Category::Span
+        Transaction,
+        /// A span.
+        ///
+        /// When counting spans for a dropped transaction, the quantity includes all child spans
+        /// plus one for the transaction root span extracted by Relay.
+        Span,
+        /// A quantity of attachment bytes.
+        Attachment,
+        /// A monitor check-in.
+        Monitor,
+        /// A log item.
+        ///
+        /// Dropped logs should also be counted as dropped [`LogByte`]s so client reports include
+        /// the approximate volume of dropped log data.
+        ///
+        /// [`LogByte`]: Category::LogByte
+        LogItem,
+        /// A quantity of log bytes.
+        ///
+        /// This complements [`LogItem`]: `log_item` counts dropped logs, while `log_byte` counts
+        /// their serialized size.
+        ///
+        /// [`LogItem`]: Category::LogItem
+        LogByte,
+        /// A trace metric item.
+        TraceMetric,
+    }
 }
 
 impl Report {
