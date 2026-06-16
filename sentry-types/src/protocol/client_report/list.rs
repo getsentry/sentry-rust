@@ -2,24 +2,24 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{DataCategory, DiscardReason};
+use super::{Category, Reason};
 use crate::IndexedEnum as _;
 
 /// The number of possible data-category/discard-reason combinations.
-const POSSIBLE_CATEGORY_REASONS: usize = DataCategory::VARIANT_COUNT * DiscardReason::VARIANT_COUNT;
+const POSSIBLE_CATEGORY_REASONS: usize = Category::VARIANT_COUNT * Reason::VARIANT_COUNT;
 
 /// An entry in a client report.
 ///
 /// Contains the quantity dropped for a certain category and reason.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ClientReportItem {
-    category: DataCategory,
-    reason: DiscardReason,
+pub struct Item {
+    category: Category,
+    reason: Reason,
     quantity: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(super) struct ClientReportList(Vec<ClientReportItem>);
+pub(super) struct ClientReportList(Vec<Item>);
 
 impl ClientReportList {
     /// Private helper used in [`PartialEq`] implementation to make comparisions order-insensitive.
@@ -32,7 +32,7 @@ impl ClientReportList {
         self.0
             .iter()
             .map(|item| {
-                let &ClientReportItem {
+                let &Item {
                     category,
                     reason,
                     quantity,
@@ -50,9 +50,9 @@ impl ClientReportList {
     }
 }
 
-impl ClientReportItem {
+impl Item {
     /// Create a new [`ClientReportItem`].
-    pub fn new(category: DataCategory, reason: DiscardReason, quantity: u64) -> Self {
+    pub fn new(category: Category, reason: Reason, quantity: u64) -> Self {
         Self {
             category,
             reason,
@@ -61,10 +61,10 @@ impl ClientReportItem {
     }
 }
 
-impl FromIterator<ClientReportItem> for ClientReportList {
+impl FromIterator<Item> for ClientReportList {
     fn from_iter<I>(iter: I) -> Self
     where
-        I: IntoIterator<Item = ClientReportItem>,
+        I: IntoIterator<Item = Item>,
     {
         Self(iter.into_iter().collect())
     }
@@ -76,10 +76,10 @@ impl PartialEq for ClientReportList {
     }
 }
 
-fn aggregate_index(category: DataCategory, reason: DiscardReason) -> usize {
+fn aggregate_index(category: Category, reason: Reason) -> usize {
     category
         .as_index()
-        .checked_mul(DiscardReason::VARIANT_COUNT)
+        .checked_mul(Reason::VARIANT_COUNT)
         .and_then(|product| product.checked_add(reason.as_index()))
         .expect("index should not overflow usize")
 }

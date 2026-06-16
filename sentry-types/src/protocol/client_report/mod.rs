@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use self::list::ClientReportList;
 use crate::utils;
 
-pub use self::list::ClientReportItem;
+pub use self::list::Item;
 
 mod list;
 
@@ -17,7 +17,7 @@ mod list;
 ///
 /// [client report]: https://develop.sentry.dev/sdk/telemetry/client-reports/
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct ClientReport {
+pub struct Report {
     #[serde(with = "utils::ts_seconds_float")]
     timestamp: SystemTime,
     discarded_events: ClientReportList,
@@ -33,7 +33,7 @@ indexed_enum! {
     #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Copy)]
     #[serde(rename_all = "snake_case")]
     #[non_exhaustive]
-    pub enum DiscardReason {}
+    pub enum Reason {}
 
     /// The category of data which was dropped.
     ///
@@ -44,10 +44,10 @@ indexed_enum! {
     #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Copy)]
     #[serde(rename_all = "snake_case")]
     #[non_exhaustive]
-    pub enum DataCategory {}
+    pub enum Category {}
 }
 
-impl ClientReport {
+impl Report {
     /// Create a new [`ClientReport`] with the current timestamp, containing the provided client
     /// report items.
     ///
@@ -56,7 +56,7 @@ impl ClientReport {
     pub fn new<I>(reports: I) -> Self
     where
         I: IntoIterator,
-        I::Item: Into<ClientReportItem>,
+        I::Item: Into<Item>,
     {
         let timestamp = SystemTime::now();
         let discarded_events = reports.into_iter().map(Into::into).collect();
