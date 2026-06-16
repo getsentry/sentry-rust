@@ -312,12 +312,6 @@ macro_rules! indexed_enum {
             $($rest),*
         );
     };
-
-    (@count) => { 0usize };
-
-    (@count $variant:ident $(, $rest:ident)*) => {
-        1usize + indexed_enum!(@count $($rest),*)
-    };
 }
 
 #[cfg(test)]
