@@ -6,7 +6,7 @@ use super::{Category, Reason};
 use crate::IndexedEnum as _;
 
 /// The number of possible data-category/discard-reason combinations.
-const POSSIBLE_CATEGORY_REASONS: usize = Category::VARIANT_COUNT * Reason::VARIANT_COUNT;
+const POSSIBLE_CATEGORY_REASONS: usize = Category::VARIANTS.len() * Reason::VARIANTS.len();
 
 /// An entry in a client report.
 ///
@@ -80,7 +80,7 @@ impl PartialEq for ClientReportList {
 fn aggregate_index(category: Category, reason: Reason) -> usize {
     category
         .as_index()
-        .checked_mul(Reason::VARIANT_COUNT)
+        .checked_mul(Reason::VARIANTS.len())
         .and_then(|product| product.checked_add(reason.as_index()))
         .expect("index should not overflow usize")
 }
