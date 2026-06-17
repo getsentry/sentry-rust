@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use reqwest::{header as ReqwestHeaders, Client as ReqwestClient, Proxy, StatusCode};
+use sentry_core::client_report::Reason as LossReason;
 use sentry_core::TransportOptions;
 
 use super::{
@@ -9,6 +10,9 @@ use super::{
 };
 
 use crate::{sentry_debug, ClientOptions, Envelope, Transport};
+
+/// The status code returned for rate-limited envelopes.
+const HTTP_RATE_LIMIT_STATUS: u16 = 429;
 
 /// A [`Transport`] that sends events via the [`reqwest`] library.
 ///
@@ -79,6 +83,7 @@ impl ReqwestHttpTransport {
                     http_proxy,
                     https_proxy,
                     accept_invalid_certs,
+                    client_report_recorder,
                     ..
                 },
             client,
@@ -119,8 +124,16 @@ impl ReqwestHttpTransport {
 
         let send_fn = move |envelope: Envelope, mut rl: RateLimiter| {
             let mut body = Vec::new();
-            envelope.to_writer(&mut body).unwrap();
+            envelope
+                .to_writer(&mut body)
+                .inspect_err(|_| {
+                    client_report_recorder
+                        .record_lost_envelope(&envelope, LossReason::InternalError)
+                })
+                .expect("envelope should serialize successfully");
             let request = client.post(&url).header("X-Sentry-Auth", &auth).body(body);
+
+            let client_report_recorder = client_report_recorder.clone();
 
             // NOTE: because of lifetime issues, building the request using the
             // `client` has to happen outside of this async block.
@@ -143,8 +156,9 @@ impl ReqwestHttpTransport {
                             rl.update_from_429();
                         }
 
-                        let is_payload_too_large =
-                            response.status().as_u16() == HTTP_PAYLOAD_TOO_LARGE;
+                        let response_status = response.status().as_u16();
+
+                        let is_payload_too_large = response_status == HTTP_PAYLOAD_TOO_LARGE;
                         match response.text().await {
                             Err(err) => {
                                 sentry_debug!("Failed to read sentry response: {}", err);
@@ -156,9 +170,18 @@ impl ReqwestHttpTransport {
                         if is_payload_too_large {
                             sentry_debug!("{HTTP_PAYLOAD_TOO_LARGE_MESSAGE}");
                         }
+
+                        if (400..=599).contains(&response_status)
+                            && response_status != HTTP_RATE_LIMIT_STATUS
+                        {
+                            client_report_recorder
+                                .record_lost_envelope(&envelope, LossReason::SendError);
+                        }
                     }
                     Err(err) => {
                         sentry_debug!("Failed to send envelope: {}", err);
+                        client_report_recorder
+                            .record_lost_envelope(&envelope, LossReason::NetworkError);
                     }
                 }
                 rl
