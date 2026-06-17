@@ -50,7 +50,6 @@ impl ClientReportAggregator {
     /// Record lost Sentry data.
     ///
     /// Records the given Sentry telemetry item as discarded for the provided `reason`.
-    #[expect(dead_code, reason = "we will add calls in a follow-up PR")]
     pub(crate) fn record_lost_data<L: LossSource>(&self, data: &L, reason: Reason) {
         data.losses().for_each(|loss| {
             let ItemLoss {
