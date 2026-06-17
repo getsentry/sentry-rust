@@ -5,7 +5,8 @@
 
 use std::sync::{Arc, Weak};
 
-use sentry_types::protocol::v7::client_report::{Category, Reason};
+use sentry_types::protocol::v7::client_report::Reason;
+use sentry_types::protocol::v7::Envelope;
 
 use super::{ClientReportAggregator, ClientReportAggregatorInner};
 
@@ -38,14 +39,14 @@ pub struct ClientReportRecorder {
 }
 
 impl ClientReportRecorder {
-    /// Record `quantity` lost items, of the given `category`, discarded for the given `reason`.
-    pub fn record_loss(&self, category: Category, reason: Reason, quantity: u64) {
+    /// Record an envelope lost for a given reason.
+    pub fn record_lost_envelope(&self, envelope: &Envelope, reason: Reason) {
         #[cfg(all(target_has_atomic = "8", target_has_atomic = "64"))]
         if let Some(aggregator) = self.aggregator() {
-            aggregator.record_loss(category, reason, quantity);
+            aggregator.record_lost_envelope(envelope, reason);
         }
         #[cfg(not(all(target_has_atomic = "8", target_has_atomic = "64")))]
-        let _ = (category, reason, quantity);
+        let _ = (envelope, reason);
     }
 
     /// Creates a new no-op [`ClientReportRecorder`].

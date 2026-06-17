@@ -51,7 +51,6 @@ impl ClientReportAggregator {
     ///
     /// This records losses for all the data we would lose when dropping the envelope item, for the
     /// given reason.
-    #[expect(dead_code, reason = "we will add calls in a follow-up PR")]
     pub(crate) fn record_lost_envelope_item(&self, envelope_item: &EnvelopeItem, reason: Reason) {
         envelope_item.losses_on_drop().for_each(|loss| {
             let ItemLoss {
