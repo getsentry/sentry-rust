@@ -36,7 +36,14 @@ indexed_enum! {
     #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Copy)]
     #[serde(rename_all = "snake_case")]
     #[non_exhaustive]
-    pub enum Reason {}
+    pub enum Reason {
+        /// Error when sending the envelope (e.g. non-`2xx` HTTP response).
+        SendError,
+        /// An internal error in the SDK, which does not fit under any other category.
+        InternalSdkError,
+        /// A network error occurred while sending the envelope.
+        NetworkError,
+    }
 
     /// The category of data which was dropped.
     ///
