@@ -10,7 +10,7 @@ use sentry_types::protocol::v7::Envelope;
 
 use super::{ClientReportAggregator, ClientReportAggregatorInner};
 
-/// A handle for recording lost Sentry data.
+/// A handle for a transport to record lost Sentry data.
 ///
 /// Lost items recorded here will be aggregated into a [client report] and eventually sent to
 /// Sentry. We attempt to send client reports with a future envelope, so recording lost events
@@ -24,7 +24,7 @@ use super::{ClientReportAggregator, ClientReportAggregatorInner};
 ///
 /// [client report]: https://develop.sentry.dev/sdk/telemetry/client-reports/
 #[derive(Debug, Clone)]
-pub struct ClientReportRecorder {
+pub struct Recorder {
     /// The inner aggregator.
     ///
     /// As the recorder only records losses, but cannot retrieve them, it does not make sense for
@@ -38,12 +38,19 @@ pub struct ClientReportRecorder {
     inner: Weak<ClientReportAggregatorInner>,
 }
 
-impl ClientReportRecorder {
+/// Reasons for which a transport might drop data.
+///
+/// This is a subset of [`Reason`], as defined in [`sentry_types`] because only some of those
+/// reasons may be applicable to transports.
+#[non_exhaustive]
+pub enum TransportLossReason {}
+
+impl Recorder {
     /// Record an envelope lost for a given reason.
-    pub fn record_lost_envelope(&self, envelope: &Envelope, reason: Reason) {
+    pub fn record_lost_envelope(&self, envelope: &Envelope, reason: TransportLossReason) {
         #[cfg(all(target_has_atomic = "8", target_has_atomic = "64"))]
         if let Some(aggregator) = self.aggregator() {
-            aggregator.record_lost_envelope(envelope, reason);
+            aggregator.record_lost_envelope(envelope, reason.into_reason());
         }
         #[cfg(not(all(target_has_atomic = "8", target_has_atomic = "64")))]
         let _ = (envelope, reason);
@@ -90,5 +97,12 @@ impl ClientReportRecorder {
         self.inner
             .upgrade()
             .map(|inner| ClientReportAggregator { inner })
+    }
+}
+
+impl TransportLossReason {
+    /// Convert to the corresponding [`Reason`].
+    fn into_reason(self) -> Reason {
+        match self {}
     }
 }

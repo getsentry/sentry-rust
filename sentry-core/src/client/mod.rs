@@ -38,10 +38,10 @@ use sentry_types::protocol::v7::LogAttribute;
 use sentry_types::protocol::v7::Metric;
 
 mod batcher;
-mod client_reports;
 mod envelope_sender;
 
-pub use self::client_reports::ClientReportRecorder;
+pub(crate) mod client_reports;
+
 pub(crate) use self::envelope_sender::EnvelopeSender;
 
 impl<T: Into<ClientOptions>> From<T> for Client {

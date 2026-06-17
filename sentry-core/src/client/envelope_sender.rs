@@ -10,7 +10,7 @@ use std::time::Duration;
 use sentry_types::protocol::v7::EnvelopeItem;
 
 use self::slot::TransportSlot;
-use super::client_reports::{ClientReportAggregator, ClientReportRecorder};
+use super::client_reports::{ClientReportAggregator, Recorder};
 use crate::{Envelope, Transport};
 
 /// Sends envelopes through the client's transport and tracks lost data.
@@ -65,7 +65,7 @@ impl EnvelopeSender {
     /// Creates a sender using the transport returned by the provided builder callback.
     pub(super) fn new<F>(transport_builder: F) -> Self
     where
-        F: FnOnce(ClientReportRecorder) -> Arc<dyn Transport>,
+        F: FnOnce(Recorder) -> Arc<dyn Transport>,
     {
         let client_report_aggregator = ClientReportAggregator::new();
         let recorder = client_report_aggregator.recorder();

@@ -4,9 +4,9 @@ use std::borrow::Cow;
 
 use sentry_types::Dsn;
 
-use crate::ClientOptions;
 #[cfg(feature = "client")]
-use crate::ClientReportRecorder;
+use crate::client_report::Recorder as ClientReportRecorder;
+use crate::ClientOptions;
 
 /// Options for a transport.
 #[derive(Debug)]
