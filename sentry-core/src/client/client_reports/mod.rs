@@ -8,10 +8,10 @@
 #[cfg(all(target_has_atomic = "64", target_has_atomic = "8"))]
 use std::sync::Arc;
 
-use sentry_types::protocol::v7::client_report::{Category, Reason};
-use sentry_types::protocol::v7::ClientReport;
+use sentry_types::protocol::v7::client_report::{Category, ItemLoss, Reason};
 #[cfg(doc)]
 use sentry_types::protocol::v7::EnvelopeItem;
+use sentry_types::protocol::v7::{ClientReport, Envelope};
 
 use self::inner::ClientReportAggregatorInner;
 
@@ -45,12 +45,25 @@ impl ClientReportAggregator {
         Self::default()
     }
 
+    /// Record a lost envelope.
+    ///
+    /// This records losses for all the data we would lose when dropping the envelope, for the
+    /// given reason.
+    #[expect(dead_code, reason = "we will add calls in a follow-up PR")]
+    pub(crate) fn record_lost_envelope(&self, envelope: &Envelope, reason: Reason) {
+        envelope.losses_on_drop().for_each(|loss| {
+            let ItemLoss {
+                category, quantity, ..
+            } = loss;
+            self.record_loss(category, reason, quantity)
+        });
+    }
+
     /// Records `quantity` lost items for `category` and `reason`.
     ///
     /// This method updates aggregate counters only. The loss is not sent until a later call to
     /// [`Self::take_pending_report`] drains the counters and returns a [`ClientReport`] for an
     /// outgoing envelope. A `quantity` of zero is ignored.
-    #[expect(dead_code, reason = "we will add calls in a follow-up PR")]
     pub(crate) fn record_loss(&self, category: Category, reason: Reason, quantity: u64) {
         #[cfg(all(target_has_atomic = "64", target_has_atomic = "8"))]
         self.inner.record_loss(category, reason, quantity);
