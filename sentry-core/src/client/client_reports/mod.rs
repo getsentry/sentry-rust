@@ -19,7 +19,7 @@ use self::inner::ClientReportAggregatorInner;
 mod inner;
 mod recorder;
 
-pub use self::recorder::ClientReportRecorder;
+pub use self::recorder::{Recorder, TransportLossReason};
 
 /// Aggregates counts for lost data that should be reported in client reports.
 ///
@@ -93,7 +93,7 @@ impl ClientReportAggregator {
     }
 
     /// Creates a [`ClientReportRecorder`] which records into this aggregator.
-    pub(super) fn recorder(&self) -> ClientReportRecorder {
-        ClientReportRecorder::new(self)
+    pub(super) fn recorder(&self) -> Recorder {
+        Recorder::new(self)
     }
 }

@@ -152,8 +152,13 @@ pub use crate::clientoptions::MaxRequestBodySize;
 #[cfg(feature = "client")]
 pub use crate::{client::Client, hub_impl::SwitchGuard as HubSwitchGuard};
 
+/// Types which enable transports to capture [client reports] to report lost data to Sentry.
+///
+/// [client reports]: https://develop.sentry.dev/sdk/telemetry/client-reports/
 #[cfg(feature = "client")]
-pub use crate::client::ClientReportRecorder;
+pub mod client_report {
+    pub use crate::client::client_reports::{Recorder, TransportLossReason as Reason};
+}
 
 // test utilities
 #[cfg(feature = "test")]
