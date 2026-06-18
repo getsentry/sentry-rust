@@ -6,6 +6,8 @@ use thiserror::Error;
 use uuid::Uuid;
 
 use crate::protocol::client_report;
+#[cfg(doc)]
+use crate::protocol::client_report::ItemLoss;
 use crate::protocol::client_report::{EnvelopeLossIter, ItemLossIter};
 use crate::Dsn;
 use crate::{protocol::v7::ClientReport, utils::ts_rfc3339_opt};
