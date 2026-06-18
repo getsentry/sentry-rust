@@ -92,7 +92,7 @@ impl ClientReportAggregator {
         }
     }
 
-    /// Creates a [`ClientReportRecorder`] which records into this aggregator.
+    /// Creates a [`Recorder`] which records into this aggregator.
     pub(super) fn recorder(&self) -> Recorder {
         Recorder::new(self)
     }
