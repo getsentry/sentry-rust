@@ -1,4 +1,4 @@
-//! Contains the [`ClientReportRecorder`] type, which allows recording data losses.
+//! Contains the [`Recorder`] type, which allows recording data losses.
 //!
 //! This type is `pub` to allow transports, which are defined outside the `sentry-core` crate, to
 //! record lost events, without giving full access to the underlying [`ClientReportAggregator`].
@@ -56,12 +56,12 @@ impl Recorder {
         let _ = (envelope, reason);
     }
 
-    /// Creates a new no-op [`ClientReportRecorder`].
+    /// Creates a new no-op [`Recorder`].
     ///
     /// This is used in backwards-compatibility code to handle the case where we might not have an
     /// aggregator.
     ///
-    /// To get a useful [`ClientReportRecorder`], use [`ClientReportAggregator::recorder`].
+    /// To get a useful [`Recorder`], use [`ClientReportAggregator::recorder`].
     pub(crate) fn new_no_op() -> Self {
         Self {
             #[cfg(all(target_has_atomic = "8", target_has_atomic = "64"))]
@@ -69,7 +69,7 @@ impl Recorder {
         }
     }
 
-    /// Create a new [`ClientReportRecorder`] which records into the given
+    /// Create a new [`Recorder`] which records into the given
     /// [`ClientReportAggregator`].
     pub(super) fn new(aggregator: &ClientReportAggregator) -> Self {
         #[cfg(all(target_has_atomic = "8", target_has_atomic = "64"))]
