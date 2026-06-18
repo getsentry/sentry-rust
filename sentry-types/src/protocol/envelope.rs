@@ -1630,7 +1630,7 @@ some content
     }
 
     #[test]
-    fn losses_on_drop_maps_metrics_to_metric_count() {
+    fn losses_on_drop_maps_metrics_to_item_count_and_serialized_bytes() {
         let envelope: Envelope = vec![
             Metric {
                 r#type: MetricType::Counter,
@@ -1655,7 +1655,10 @@ some content
         ]
         .into();
 
-        assert_eq!(collect_losses(&envelope), vec![(Category::TraceMetric, 2)]);
+        assert_eq!(
+            collect_losses(&envelope),
+            vec![(Category::TraceMetric, 2), (Category::TraceMetricByte, 225)]
+        );
     }
 
     #[test]
@@ -1689,6 +1692,16 @@ some content
             ..Default::default()
         });
         envelope.add_item(vec![log]);
+        envelope.add_item(vec![Metric {
+            r#type: MetricType::Counter,
+            name: Cow::Borrowed("flattened.metric"),
+            value: 1.0,
+            timestamp: SystemTime::UNIX_EPOCH,
+            trace_id: Default::default(),
+            span_id: None,
+            unit: None,
+            attributes: Map::new(),
+        }]);
 
         assert_eq!(
             collect_losses(&envelope),
@@ -1698,6 +1711,8 @@ some content
                 (Category::Span, 3),
                 (Category::LogItem, 1),
                 (Category::LogByte, 49),
+                (Category::TraceMetric, 1),
+                (Category::TraceMetricByte, 116),
             ]
         );
     }
