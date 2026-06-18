@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use sentry_core::client_report::Reason as LossReason;
 use sentry_core::TransportOptions;
 use ureq::http::Response;
 #[cfg(any(
@@ -16,6 +17,9 @@ use super::{
 };
 
 use crate::{sentry_debug, types::Scheme, ClientOptions, Envelope, Transport};
+
+/// The status code returned for rate-limited envelopes.
+const HTTP_RATE_LIMIT_STATUS: u16 = 429;
 
 /// A [`Transport`] that sends events via the [`ureq`] library.
 ///
@@ -84,6 +88,7 @@ impl UreqHttpTransport {
                     http_proxy,
                     https_proxy,
                     accept_invalid_certs,
+                    client_report_recorder,
                     ..
                 },
             agent,
@@ -142,7 +147,13 @@ impl UreqHttpTransport {
 
         let send_fn = move |envelope: Envelope, rl: &mut RateLimiter| {
             let mut body = Vec::new();
-            envelope.to_writer(&mut body).unwrap();
+            envelope
+                .to_writer(&mut body)
+                .inspect_err(|_| {
+                    client_report_recorder
+                        .record_lost_envelope(&envelope, LossReason::InternalError)
+                })
+                .expect("envelope should serialize successfully");
             let request = agent
                 .post(&url)
                 .header("X-Sentry-Auth", &auth)
@@ -161,9 +172,11 @@ impl UreqHttpTransport {
                         rl.update_from_sentry_header(sentry_header);
                     } else if let Some(retry_after) = header_str(&response, "retry-after") {
                         rl.update_from_retry_after(retry_after);
-                    } else if response.status() == 429 {
+                    } else if response.status() == HTTP_RATE_LIMIT_STATUS {
                         rl.update_from_429();
                     }
+
+                    let response_status = response.status().as_u16();
 
                     match response.body_mut().read_to_string() {
                         Err(err) => {
@@ -173,12 +186,21 @@ impl UreqHttpTransport {
                             sentry_debug!("Get response: `{}`", text);
                         }
                     }
-                    if response.status() == HTTP_PAYLOAD_TOO_LARGE {
+                    if response_status == HTTP_PAYLOAD_TOO_LARGE {
                         sentry_debug!("{HTTP_PAYLOAD_TOO_LARGE_MESSAGE}");
+                    }
+
+                    if (400..=599).contains(&response_status)
+                        && response_status != HTTP_RATE_LIMIT_STATUS
+                    {
+                        client_report_recorder
+                            .record_lost_envelope(&envelope, LossReason::SendError);
                     }
                 }
                 Err(err) => {
                     sentry_debug!("Failed to send envelope: {}", err);
+                    client_report_recorder
+                        .record_lost_envelope(&envelope, LossReason::NetworkError);
                 }
             }
         };
