@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixes
+
+- Fixed `ureq` transport handling for HTTP error statuses so `429` rate limits and `413` payload-too-large responses are processed correctly ([#1177](https://github.com/getsentry/sentry-rust/pull/1177)).
+
 ## 0.48.2
 
 ### New Features
