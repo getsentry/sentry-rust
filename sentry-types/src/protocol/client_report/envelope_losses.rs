@@ -139,7 +139,7 @@ fn item_container_losses(item_container: &ItemContainer) -> ItemLossIter {
 /// Returns log losses measured by item count and serialized bytes.
 /// Logs that fail serialization contribute zero bytes because they could not be sent.
 fn log_losses(logs: &[Log]) -> ItemLossIter {
-    let item_quantity = u64::try_from(logs.len()).unwrap_or(u64::MAX);
+    let item_quantity = logs.len().try_into().unwrap_or(u64::MAX);
     let byte_quantity = logs
         .iter()
         .map(|log| {
@@ -161,13 +161,29 @@ fn log_losses(logs: &[Log]) -> ItemLossIter {
     ])
 }
 
-/// Returns trace metric losses measured by metric item count.
-/// The quantity is saturated to `u64::MAX`.
+/// Returns trace metric losses measured by item count and serialized bytes.
+/// Metrics that fail serialization contribute zero bytes because they could not be sent.
 fn metric_losses(metrics: &[Metric]) -> ItemLossIter {
-    ItemLossIter::new([ItemLoss::new(
-        Category::TraceMetric,
-        u64::try_from(metrics.len()).unwrap_or(u64::MAX),
-    )])
+    let item_quantity = metrics.len().try_into().unwrap_or(u64::MAX);
+    let byte_quantity = metrics
+        .iter()
+        .map(|metric| {
+            let mut sink = CountingSink::default();
+            serde_json::to_writer(&mut sink, metric)
+                .map(|()| sink.bytes_written)
+                // If serialization fails, then we wouldn't have been able to send the metric.
+                // So, nothing is lost.
+                .unwrap_or_default()
+                .try_into()
+                .unwrap_or(u64::MAX)
+        })
+        .reduce(|sum, v| sum.saturating_add(v))
+        .unwrap_or_default();
+
+    ItemLossIter::new([
+        ItemLoss::new(Category::TraceMetric, item_quantity),
+        ItemLoss::new(Category::TraceMetricByte, byte_quantity),
+    ])
 }
 
 impl<'a> EnvelopeLossIter<'a> {
