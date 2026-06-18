@@ -83,7 +83,19 @@ indexed_enum! {
         /// [`LogItem`]: Category::LogItem
         LogByte,
         /// A trace metric item.
+        ///
+        /// Dropped trace metrics should also be counted as dropped [`TraceMetricByte`]s so client
+        /// reports include the approximate volume of dropped metric data.
+        ///
+        /// [`TraceMetricByte`]: Category::TraceMetricByte
         TraceMetric,
+        /// A quantity of trace metric bytes.
+        ///
+        /// This complements [`TraceMetric`]: `trace_metric` counts dropped trace metrics, while
+        /// `trace_metric_byte` counts their serialized size.
+        ///
+        /// [`TraceMetric`]: Category::TraceMetric
+        TraceMetricByte,
     }
 }
 
