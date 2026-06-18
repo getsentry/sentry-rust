@@ -90,7 +90,13 @@ impl UreqHttpTransport {
         let thread = TransportThread::new(move |envelope, rl| {
             let mut body = Vec::new();
             envelope.to_writer(&mut body).unwrap();
-            let request = agent.post(&url).header("X-Sentry-Auth", &auth).send(&body);
+            let request = agent
+                .post(&url)
+                .header("X-Sentry-Auth", &auth)
+                .config()
+                .http_status_as_error(false)
+                .build()
+                .send(&body);
 
             match request {
                 Ok(mut response) => {
