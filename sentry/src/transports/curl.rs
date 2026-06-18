@@ -2,6 +2,7 @@ use std::io::{Cursor, Read};
 use std::time::Duration;
 
 use curl::easy::Easy as CurlClient;
+use sentry_core::client_report::Reason as LossReason;
 use sentry_core::TransportOptions;
 
 use super::{
@@ -10,6 +11,9 @@ use super::{
 };
 
 use crate::{sentry_debug, types::Scheme, ClientOptions, Envelope, Transport};
+
+/// The status code returned for rate-limited envelopes.
+const HTTP_RATE_LIMIT_STATUS: u32 = 429;
 
 /// A [`Transport`] that sends events via the [`curl`] library.
 ///
@@ -78,6 +82,7 @@ impl CurlHttpTransport {
                     http_proxy,
                     https_proxy,
                     accept_invalid_certs,
+                    client_report_recorder,
                     ..
                 },
             client,
@@ -115,7 +120,13 @@ impl CurlHttpTransport {
             }
 
             let mut body = Vec::new();
-            envelope.to_writer(&mut body).unwrap();
+            envelope
+                .to_writer(&mut body)
+                .inspect_err(|_| {
+                    client_report_recorder
+                        .record_lost_envelope(&envelope, LossReason::InternalError)
+                })
+                .expect("envelope should serialize successfully");
             let mut body = Cursor::new(body);
 
             let mut retry_after = None;
@@ -142,7 +153,7 @@ impl CurlHttpTransport {
                 })
                 .unwrap();
 
-            {
+            let perform_result = {
                 let mut handle = handle.transfer();
                 let retry_after_setter = &mut retry_after;
                 let sentry_header_setter = &mut sentry_header;
@@ -162,8 +173,10 @@ impl CurlHttpTransport {
                         true
                     })
                     .unwrap();
-                handle.perform().ok();
-            }
+                handle.perform()
+            };
+
+            let perform_failed = perform_result.is_err();
 
             match handle.response_code() {
                 Ok(response_code) => {
@@ -171,15 +184,38 @@ impl CurlHttpTransport {
                         rl.update_from_sentry_header(&sentry_header);
                     } else if let Some(retry_after) = retry_after {
                         rl.update_from_retry_after(&retry_after);
-                    } else if response_code == 429 {
+                    } else if response_code == HTTP_RATE_LIMIT_STATUS {
                         rl.update_from_429();
                     }
                     if response_code == HTTP_PAYLOAD_TOO_LARGE as u32 {
                         sentry_debug!("{HTTP_PAYLOAD_TOO_LARGE_MESSAGE}");
                     }
+
+                    if (400..=599).contains(&response_code)
+                        && response_code != HTTP_RATE_LIMIT_STATUS
+                    {
+                        // The server returned an HTTP error response, so the envelope was rejected
+                        // at the HTTP layer even if curl also reported a transfer error.
+                        client_report_recorder
+                            .record_lost_envelope(&envelope, LossReason::SendError);
+                    } else if perform_failed && response_code == 0 {
+                        // curl documents `CURLINFO_RESPONSE_CODE` as zero when no server response
+                        // code has been received. If `perform` also failed, this means the send
+                        // failed before an HTTP status was available, which is a network error.
+                        client_report_recorder
+                            .record_lost_envelope(&envelope, LossReason::NetworkError);
+                    }
                 }
                 Err(err) => {
                     sentry_debug!("Failed to send envelope: {}", err);
+                    let reason = if perform_failed {
+                        // `response_code` only errors when `CURLINFO_RESPONSE_CODE` is not
+                        // supported. If `perform` failed too, treat the loss as the transfer error.
+                        LossReason::NetworkError
+                    } else {
+                        LossReason::SendError
+                    };
+                    client_report_recorder.record_lost_envelope(&envelope, reason);
                 }
             }
         };
