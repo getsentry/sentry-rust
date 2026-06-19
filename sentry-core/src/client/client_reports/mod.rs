@@ -13,6 +13,7 @@ use sentry_types::protocol::v7::client_report::{Category, ItemLoss, Reason};
 use sentry_types::protocol::v7::EnvelopeItem;
 use sentry_types::protocol::v7::{ClientReport, Envelope};
 
+#[cfg(all(target_has_atomic = "64", target_has_atomic = "8"))]
 use self::inner::ClientReportAggregatorInner;
 
 mod inner;
