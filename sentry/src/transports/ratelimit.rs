@@ -111,7 +111,7 @@ impl RateLimiter {
     ///
     /// Returns [`None`] if all the envelope items were filtered out.
     pub fn filter_envelope(&self, envelope: Envelope) -> Option<Envelope> {
-        envelope.filter(|item| {
+        envelope.filter(|item: &_| {
             self.is_enabled(match item {
                 EnvelopeItem::Event(_) => RateLimitingCategory::Error,
                 EnvelopeItem::SessionUpdate(_) | EnvelopeItem::SessionAggregates(_) => {
