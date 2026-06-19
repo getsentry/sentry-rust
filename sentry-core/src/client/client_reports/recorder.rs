@@ -3,12 +3,15 @@
 //! This type is `pub` to allow transports, which are defined outside the `sentry-core` crate, to
 //! record lost events, without giving full access to the underlying [`ClientReportAggregator`].
 
+#[cfg(all(target_has_atomic = "8", target_has_atomic = "64"))]
 use std::sync::{Arc, Weak};
 
 use sentry_types::protocol::v7::client_report::Reason;
 use sentry_types::protocol::v7::Envelope;
 
-use super::{ClientReportAggregator, ClientReportAggregatorInner};
+use super::ClientReportAggregator;
+#[cfg(all(target_has_atomic = "8", target_has_atomic = "64"))]
+use super::ClientReportAggregatorInner;
 
 /// A handle for a transport to record lost Sentry data.
 ///
