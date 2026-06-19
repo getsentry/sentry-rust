@@ -1,10 +1,12 @@
+#![cfg(any(feature = "logs", feature = "metrics"))]
+
 //! Generic batching for Sentry envelope items.
 
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
-use crate::client::EnvelopeSender;
+use super::EnvelopeSender;
 use crate::protocol::EnvelopeItem;
 use crate::Envelope;
 use sentry_types::protocol::v7::Log;
@@ -21,7 +23,7 @@ struct BatchQueue<T> {
     items: Vec<T>,
 }
 
-pub(crate) trait IntoBatchEnvelopeItem: Sized {
+pub(super) trait IntoBatchEnvelopeItem: Sized {
     fn into_envelope_item(items: Vec<Self>) -> EnvelopeItem;
 }
 
@@ -34,7 +36,7 @@ where
     }
 }
 
-pub(crate) trait Batch: IntoBatchEnvelopeItem {
+pub(super) trait Batch: IntoBatchEnvelopeItem {
     const TYPE_NAME: &str;
 }
 
@@ -49,7 +51,7 @@ impl Batch for Metric {
 
 /// Accumulates items in the queue and submits them through the transport when one of the flushing
 /// conditions is met.
-pub(crate) struct Batcher<T: Batch> {
+pub(super) struct Batcher<T: Batch> {
     envelope_sender: EnvelopeSender,
     queue: Arc<Mutex<BatchQueue<T>>>,
     shutdown: Arc<(Mutex<bool>, Condvar)>,
@@ -61,7 +63,7 @@ where
     T: Batch + Send + 'static,
 {
     /// Creates a new Batcher that will submit envelopes to the transport.
-    pub(crate) fn new(envelope_sender: EnvelopeSender) -> Self {
+    pub(super) fn new(envelope_sender: EnvelopeSender) -> Self {
         let queue = Arc::new(Mutex::new(BatchQueue { items: Vec::new() }));
         #[allow(clippy::mutex_atomic)]
         let shutdown = Arc::new((Mutex::new(false), Condvar::new()));
@@ -111,7 +113,7 @@ impl<T: Batch> Batcher<T> {
     /// Enqueues an item for delayed sending.
     ///
     /// This will automatically flush the queue if it reaches a size of `MAX_ITEMS`.
-    pub(crate) fn enqueue(&self, item: T) {
+    pub(super) fn enqueue(&self, item: T) {
         let mut queue = self.queue.lock().unwrap();
         queue.items.push(item);
         if queue.items.len() >= MAX_ITEMS {
@@ -120,7 +122,7 @@ impl<T: Batch> Batcher<T> {
     }
 
     /// Flushes the queue to the transport.
-    pub(crate) fn flush(&self) {
+    pub(super) fn flush(&self) {
         let queue = self.queue.lock().unwrap();
         Batcher::flush_queue_internal(queue, &self.envelope_sender);
     }
