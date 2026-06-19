@@ -1,3 +1,4 @@
+use std::mem;
 use std::{borrow::Cow, io::Write, path::Path, time::SystemTime};
 
 use serde::{Deserialize, Serialize};
@@ -367,6 +368,46 @@ impl Items {
     }
 }
 
+/// A trait for types which can filter items in envelopes.
+///
+/// This trait is used by [`Envelope::filter`].
+pub trait EnvelopeFilter: private::Sealed {
+    /// The function used to filter the envelopes.
+    ///
+    /// A return value of `true` indicates that the item should be kept in the envelope, `false`
+    /// will filter the value out.
+    ///
+    /// A value of `true` does not guarantee the item is kept; in particular, [`Envelope::filter`]
+    /// removes attachments if the corresponding event or transaction item is removed from the
+    /// envelope, as it no longer makes sense to send them in this case.
+    fn filter(&mut self, item: &EnvelopeItem) -> bool;
+
+    /// A callback which is called with all items removed by filtering, including items for which
+    /// [`Self::filter`] had returned `true`, such as no-longer-applicable attachments.
+    fn on_filtered(&mut self, item: EnvelopeItem) {
+        let _ = item;
+    }
+}
+
+/// A container for callbacks that can be passed to [`Envelope::filter`].
+pub struct EnvelopeFilterCallbacks<F, C> {
+    filter: F,
+    on_filtered: C,
+}
+
+impl<F, C> EnvelopeFilterCallbacks<F, C> {
+    /// Create a new [`EnvelopeFilterCallbacks`].
+    ///
+    /// `filter` will be called to determine whether the envelope should be kept. `on_filtered`
+    /// will be called on all envelopes which are then dropped.
+    pub fn new(filter: F, on_filtered: C) -> Self {
+        Self {
+            filter,
+            on_filtered,
+        }
+    }
+}
+
 /// A Sentry Envelope.
 ///
 /// An Envelope is the data format that Sentry uses for Ingestion. It can contain
@@ -473,22 +514,25 @@ impl Envelope {
     /// contains an [`EnvelopeItem::Event`] or [`EnvelopeItem::Transaction`].
     ///
     /// [`None`] is returned if no items remain in the Envelope after filtering.
-    pub fn filter<P>(self, mut predicate: P) -> Option<Self>
+    pub fn filter<F>(self, mut filter: F) -> Option<Self>
     where
-        P: FnMut(&EnvelopeItem) -> bool,
+        F: EnvelopeFilter,
     {
         let Items::EnvelopeItems(items) = self.items else {
-            return if predicate(&EnvelopeItem::Raw) {
+            return if filter.filter(&EnvelopeItem::Raw) {
                 Some(self)
             } else {
+                filter.on_filtered(EnvelopeItem::Raw);
                 None
             };
         };
 
         let mut filtered = Envelope::new();
         for item in items {
-            if predicate(&item) {
+            if filter.filter(&item) {
                 filtered.add_item(item);
+            } else {
+                filter.on_filtered(item);
             }
         }
 
@@ -496,7 +540,17 @@ impl Envelope {
         // an event/transaction
         if filtered.uuid().is_none() {
             if let Items::EnvelopeItems(ref mut items) = filtered.items {
-                items.retain(|item| !matches!(item, EnvelopeItem::Attachment(..)))
+                let old_items = mem::take(items);
+                *items = old_items
+                    .into_iter()
+                    .filter_map(|item| match item {
+                        EnvelopeItem::Attachment(..) => {
+                            filter.on_filtered(item);
+                            None
+                        }
+                        _ => Some(item),
+                    })
+                    .collect();
             }
         }
 
@@ -781,6 +835,44 @@ where
         envelope.add_item(item.into());
         envelope
     }
+}
+
+impl<F, C> EnvelopeFilter for EnvelopeFilterCallbacks<F, C>
+where
+    F: FnMut(&EnvelopeItem) -> bool,
+    C: FnMut(EnvelopeItem),
+{
+    fn filter(&mut self, item: &EnvelopeItem) -> bool {
+        (self.filter)(item)
+    }
+
+    fn on_filtered(&mut self, item: EnvelopeItem) {
+        (self.on_filtered)(item);
+    }
+}
+
+impl<F> EnvelopeFilter for F
+where
+    F: FnMut(&EnvelopeItem) -> bool,
+{
+    fn filter(&mut self, item: &EnvelopeItem) -> bool {
+        self(item)
+    }
+}
+
+mod private {
+    use super::*;
+
+    pub trait Sealed {}
+
+    impl<F, C> Sealed for EnvelopeFilterCallbacks<F, C>
+    where
+        F: FnMut(&EnvelopeItem) -> bool,
+        C: FnMut(EnvelopeItem),
+    {
+    }
+
+    impl<F> Sealed for F where F: FnMut(&EnvelopeItem) -> bool {}
 }
 
 #[cfg(test)]
