@@ -4,7 +4,9 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::fmt;
 use std::panic::RefUnwindSafe;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
+#[cfg(any(feature = "logs", feature = "metrics", feature = "release-health"))]
+use std::sync::RwLock;
 use std::time::Duration;
 
 #[cfg(feature = "metrics")]
@@ -23,7 +25,8 @@ use crate::session::SessionFlusher;
 use crate::types::{Dsn, Uuid};
 #[cfg(feature = "release-health")]
 use crate::SessionMode;
-use crate::{ClientOptions, Envelope, Hub, Integration, Scope, Transport};
+use crate::{ClientOptions, Envelope, Hub, Integration, Scope};
+
 #[cfg(feature = "logs")]
 use sentry_types::protocol::v7::Context;
 #[cfg(feature = "logs")]
@@ -33,13 +36,15 @@ use sentry_types::protocol::v7::LogAttribute;
 #[cfg(feature = "metrics")]
 use sentry_types::protocol::v7::Metric;
 
+mod envelope_sender;
+
+pub(crate) use self::envelope_sender::EnvelopeSender;
+
 impl<T: Into<ClientOptions>> From<T> for Client {
     fn from(o: T) -> Client {
         Client::with_options(o.into())
     }
 }
-
-pub(crate) type TransportArc = Arc<RwLock<Option<Arc<dyn Transport>>>>;
 
 /// The Sentry Client.
 ///
@@ -60,7 +65,7 @@ pub(crate) type TransportArc = Arc<RwLock<Option<Arc<dyn Transport>>>>;
 /// [Unified API]: https://develop.sentry.dev/sdk/unified-api/
 pub struct Client {
     options: ClientOptions,
-    transport: TransportArc,
+    envelope_sender: EnvelopeSender,
     #[cfg(feature = "release-health")]
     session_flusher: RwLock<Option<SessionFlusher>>,
     #[cfg(feature = "logs")]
@@ -86,17 +91,17 @@ impl fmt::Debug for Client {
 
 impl Clone for Client {
     fn clone(&self) -> Client {
-        let transport = Arc::new(RwLock::new(self.transport.read().unwrap().clone()));
+        let envelope_sender = self.envelope_sender.clone_with_new_transport_slot();
 
         #[cfg(feature = "release-health")]
         let session_flusher = RwLock::new(Some(SessionFlusher::new(
-            transport.clone(),
+            envelope_sender.clone(),
             self.options.session_mode,
         )));
 
         #[cfg(feature = "logs")]
         let logs_batcher = RwLock::new(if self.options.enable_logs {
-            Some(Batcher::new(transport.clone()))
+            Some(Batcher::new(envelope_sender.clone()))
         } else {
             None
         });
@@ -105,12 +110,12 @@ impl Clone for Client {
         let metrics_batcher = RwLock::new(
             self.options
                 .enable_metrics
-                .then(|| Batcher::new(transport.clone())),
+                .then(|| Batcher::new(envelope_sender.clone())),
         );
 
         Client {
             options: self.options.clone(),
-            transport,
+            envelope_sender,
             #[cfg(feature = "release-health")]
             session_flusher,
             #[cfg(feature = "logs")]
@@ -161,14 +166,7 @@ impl Client {
         // See https://github.com/getsentry/sentry-rust/issues/237
         Hub::with_current(|_| {});
 
-        let create_transport = || {
-            options.dsn.as_ref()?;
-            let factory = options.transport.as_ref()?;
-            Some(factory.create_transport(&options))
-        };
-
-        let transport = Arc::new(RwLock::new(create_transport()));
-
+        let envelope_sender = build_envelope_sender(&options);
         let mut sdk_info = SDK_INFO.clone();
 
         // NOTE: We do not filter out duplicate integrations based on their
@@ -186,13 +184,13 @@ impl Client {
 
         #[cfg(feature = "release-health")]
         let session_flusher = RwLock::new(Some(SessionFlusher::new(
-            transport.clone(),
+            envelope_sender.clone(),
             options.session_mode,
         )));
 
         #[cfg(feature = "logs")]
         let logs_batcher = RwLock::new(if options.enable_logs {
-            Some(Batcher::new(transport.clone()))
+            Some(Batcher::new(envelope_sender.clone()))
         } else {
             None
         });
@@ -201,13 +199,13 @@ impl Client {
         let metrics_batcher = RwLock::new(
             options
                 .enable_metrics
-                .then(|| Batcher::new(transport.clone())),
+                .then(|| Batcher::new(envelope_sender.clone())),
         );
 
         #[allow(unused_mut)]
         let mut client = Client {
             options,
-            transport,
+            envelope_sender,
             #[cfg(feature = "release-health")]
             session_flusher,
             #[cfg(feature = "logs")]
@@ -414,14 +412,15 @@ impl Client {
     /// assert!(client.is_enabled());
     /// ```
     pub fn is_enabled(&self) -> bool {
-        self.options.dsn.is_some() && self.transport.read().unwrap().is_some()
+        self.options.dsn.is_some() && self.envelope_sender.is_enabled()
     }
 
     /// Captures an event and sends it to sentry.
     pub fn capture_event(&self, event: Event<'static>, scope: Option<&Scope>) -> Uuid {
-        if let Some(ref transport) = *self.transport.read().unwrap() {
-            if let Some(event) = self.prepare_event(event, scope) {
-                let event_id = event.event_id;
+        let mut event_id = Default::default();
+        self.envelope_sender.send_envelope_with(|| {
+            self.prepare_event(event, scope).map(|event| {
+                event_id = event.event_id;
                 let mut envelope: Envelope = event.into();
                 // For request-mode sessions, we aggregate them all instead of
                 // flushing them out early.
@@ -446,18 +445,15 @@ impl Client {
                     }
                 }
 
-                transport.send_envelope(envelope);
-                return event_id;
-            }
-        }
-        Default::default()
+                envelope
+            })
+        });
+        event_id
     }
 
     /// Sends the specified [`Envelope`] to sentry.
     pub fn send_envelope(&self, envelope: Envelope) {
-        if let Some(ref transport) = *self.transport.read().unwrap() {
-            transport.send_envelope(envelope);
-        }
+        self.envelope_sender.send_envelope(envelope);
     }
 
     #[cfg(feature = "release-health")]
@@ -481,11 +477,8 @@ impl Client {
         if let Some(ref batcher) = *self.metrics_batcher.read().unwrap() {
             batcher.flush();
         }
-        if let Some(ref transport) = *self.transport.read().unwrap() {
-            transport.flush(timeout.unwrap_or(self.options.shutdown_timeout))
-        } else {
-            true
-        }
+        self.envelope_sender
+            .flush(timeout.unwrap_or(self.options.shutdown_timeout))
     }
 
     /// Drains all pending events and shuts down the transport behind the
@@ -502,14 +495,8 @@ impl Client {
         drop(self.logs_batcher.write().unwrap().take());
         #[cfg(feature = "metrics")]
         drop(self.metrics_batcher.write().unwrap().take());
-        let transport_opt = self.transport.write().unwrap().take();
-        if let Some(transport) = transport_opt {
-            sentry_debug!("client close; request transport to shut down");
-            transport.shutdown(timeout.unwrap_or(self.options.shutdown_timeout))
-        } else {
-            sentry_debug!("client close; no transport to shut down");
-            true
-        }
+        self.envelope_sender
+            .shutdown(timeout.unwrap_or(self.options.shutdown_timeout))
     }
 
     /// Returns a random boolean with a probability defined
@@ -598,3 +585,21 @@ impl Client {
 // Make this unwind safe. It's not out of the box because of the
 // `BeforeCallback`s inside `ClientOptions`, and the contained Integrations
 impl RefUnwindSafe for Client {}
+
+/// Build an [`EnvelopeSender`] from the given [`ClientOptions`].
+///
+/// If either the `dsn` or the `transport` are `None`, a no-op [`EnvelopeSender`] is returned.
+fn build_envelope_sender(client_options: &ClientOptions) -> EnvelopeSender {
+    let ClientOptions {
+        dsn,
+        transport: transport_factory,
+        ..
+    } = client_options;
+
+    match (dsn.as_ref(), transport_factory.as_ref()) {
+        (Some(_), Some(transport_factory)) => {
+            EnvelopeSender::new(|| transport_factory.create_transport(client_options))
+        }
+        _ => Default::default(),
+    }
+}
