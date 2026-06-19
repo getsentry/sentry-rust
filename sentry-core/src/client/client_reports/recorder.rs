@@ -6,6 +6,7 @@
 #[cfg(all(target_has_atomic = "8", target_has_atomic = "64"))]
 use std::sync::{Arc, Weak};
 
+#[cfg(all(target_has_atomic = "8", target_has_atomic = "64"))]
 use sentry_types::protocol::v7::client_report::Reason;
 use sentry_types::protocol::v7::Envelope;
 
@@ -105,6 +106,7 @@ impl Recorder {
 
 impl TransportLossReason {
     /// Convert to the corresponding [`Reason`].
+    #[cfg(all(target_has_atomic = "8", target_has_atomic = "64"))]
     fn into_reason(self) -> Reason {
         match self {}
     }

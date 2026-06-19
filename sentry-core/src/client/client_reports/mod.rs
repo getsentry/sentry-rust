@@ -8,10 +8,13 @@
 #[cfg(all(target_has_atomic = "64", target_has_atomic = "8"))]
 use std::sync::Arc;
 
+#[cfg(all(target_has_atomic = "64", target_has_atomic = "8"))]
 use sentry_types::protocol::v7::client_report::{Category, ItemLoss, Reason};
+use sentry_types::protocol::v7::ClientReport;
+#[cfg(all(target_has_atomic = "64", target_has_atomic = "8"))]
+use sentry_types::protocol::v7::Envelope;
 #[cfg(doc)]
 use sentry_types::protocol::v7::EnvelopeItem;
-use sentry_types::protocol::v7::{ClientReport, Envelope};
 
 #[cfg(all(target_has_atomic = "64", target_has_atomic = "8"))]
 use self::inner::ClientReportAggregatorInner;
@@ -53,6 +56,7 @@ impl ClientReportAggregator {
     ///
     /// This records losses for all the data we would lose when dropping the envelope, for the
     /// given reason.
+    #[cfg(all(target_has_atomic = "64", target_has_atomic = "8"))]
     pub(crate) fn record_lost_envelope(&self, envelope: &Envelope, reason: Reason) {
         envelope.losses_on_drop().for_each(|loss| {
             let ItemLoss {
@@ -67,12 +71,9 @@ impl ClientReportAggregator {
     /// This method updates aggregate counters only. The loss is not sent until a later call to
     /// [`Self::take_pending_report`] drains the counters and returns a [`ClientReport`] for an
     /// outgoing envelope. A `quantity` of zero is ignored.
+    #[cfg(all(target_has_atomic = "64", target_has_atomic = "8"))]
     pub(crate) fn record_loss(&self, category: Category, reason: Reason, quantity: u64) {
-        #[cfg(all(target_has_atomic = "64", target_has_atomic = "8"))]
         self.inner.record_loss(category, reason, quantity);
-
-        #[cfg(not(all(target_has_atomic = "64", target_has_atomic = "8")))]
-        let _ = (category, reason, quantity);
     }
 
     /// Drains recorded losses into a [`ClientReport`].
