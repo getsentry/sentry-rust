@@ -8,6 +8,8 @@ use sentry_core::TransportOptions;
 use crate::{Transport, TransportFactory};
 use std::sync::Arc;
 
+mod client_report;
+
 #[cfg(feature = "httpdate")]
 mod ratelimit;
 #[cfg(feature = "httpdate")]

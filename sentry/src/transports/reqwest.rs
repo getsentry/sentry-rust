@@ -5,6 +5,7 @@ use sentry_core::client_report::Reason as LossReason;
 use sentry_core::TransportOptions;
 
 use super::{
+    client_report,
     tokio_thread::{TransportThread, TransportThreadOptions},
     RateLimiter, HTTP_PAYLOAD_TOO_LARGE, HTTP_PAYLOAD_TOO_LARGE_MESSAGE,
 };
@@ -127,8 +128,11 @@ impl ReqwestHttpTransport {
             envelope
                 .to_writer(&mut body)
                 .inspect_err(|_| {
-                    client_report_recorder
-                        .record_lost_envelope(&envelope, LossReason::InternalError)
+                    client_report::record_lost_envelope(
+                        &client_report_recorder,
+                        &envelope,
+                        LossReason::InternalError,
+                    );
                 })
                 .expect("envelope should serialize successfully");
             let request = client.post(&url).header("X-Sentry-Auth", &auth).body(body);
@@ -174,14 +178,20 @@ impl ReqwestHttpTransport {
                         if (400..=599).contains(&response_status)
                             && response_status != HTTP_RATE_LIMIT_STATUS
                         {
-                            client_report_recorder
-                                .record_lost_envelope(&envelope, LossReason::SendError);
+                            client_report::record_lost_envelope(
+                                &client_report_recorder,
+                                &envelope,
+                                LossReason::SendError,
+                            );
                         }
                     }
                     Err(err) => {
                         sentry_debug!("Failed to send envelope: {}", err);
-                        client_report_recorder
-                            .record_lost_envelope(&envelope, LossReason::NetworkError);
+                        client_report::record_lost_envelope(
+                            &client_report_recorder,
+                            &envelope,
+                            LossReason::NetworkError,
+                        );
                     }
                 }
                 rl
