@@ -46,6 +46,7 @@ pub struct Recorder {
 ///
 /// This is a subset of [`Reason`], as defined in [`sentry_types`] because only some of those
 /// reasons may be applicable to transports.
+#[derive(Debug, Clone, Copy)]
 #[non_exhaustive]
 pub enum TransportLossReason {}
 
