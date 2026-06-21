@@ -27,7 +27,7 @@ use super::ClientReportAggregatorInner;
 /// platforms which lack support for 8-bit and/or 64-bit atomic operations.
 ///
 /// [client report]: https://develop.sentry.dev/sdk/telemetry/client-reports/
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Recorder {
     /// The inner aggregator.
     ///
@@ -71,6 +71,14 @@ pub enum TransportLossReason {
     ///
     /// Converts to [`Reason::NetworkError`].
     NetworkError,
+    /// Used when the SDK is backing off due to a rate limit.
+    ///
+    /// Converts to [`Reason::RatelimitBackoff`]
+    RatelimitBackoff,
+    /// Used when the transport queue overflows.
+    ///
+    /// Converts to [`Reason::QueueOverflow`]
+    QueueOverflow,
 }
 
 impl Recorder {
@@ -136,6 +144,8 @@ impl TransportLossReason {
             Self::SendError => Reason::SendError,
             Self::InternalError => Reason::InternalSdkError,
             Self::NetworkError => Reason::NetworkError,
+            Self::RatelimitBackoff => Reason::RatelimitBackoff,
+            Self::QueueOverflow => Reason::QueueOverflow,
         }
     }
 }

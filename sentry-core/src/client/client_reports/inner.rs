@@ -11,7 +11,7 @@ use sentry_types::IndexedEnum;
 
 const ARRAY_SIZE: usize = Reason::VARIANTS.len() * Category::VARIANTS.len();
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub(super) struct ClientReportAggregatorInner {
     inner: [AtomicU64; ARRAY_SIZE],
     has_reports: AtomicBool,
@@ -83,4 +83,13 @@ fn iter_reason_categories() -> impl Iterator<Item = CategoryReason> {
             .iter()
             .map(move |&reason| CategoryReason { category, reason })
     })
+}
+
+impl Default for ClientReportAggregatorInner {
+    fn default() -> Self {
+        Self {
+            inner: [const { AtomicU64::new(0) }; ARRAY_SIZE],
+            has_reports: Default::default(),
+        }
+    }
 }

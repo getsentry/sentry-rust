@@ -112,6 +112,7 @@ impl TransportThread {
                             );
                             continue;
                         }
+                        #[expect(deprecated, reason = "will fix in future PR")]
                         match rl.filter_envelope(envelope) {
                             Some(envelope) => {
                                 rl = send(envelope, rl).await;
