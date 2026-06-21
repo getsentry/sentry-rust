@@ -9,9 +9,7 @@
 use std::sync::Arc;
 
 use sentry_types::protocol::v7::client_report::{Category, ItemLoss, Reason};
-#[cfg(doc)]
-use sentry_types::protocol::v7::EnvelopeItem;
-use sentry_types::protocol::v7::{ClientReport, Envelope};
+use sentry_types::protocol::v7::{ClientReport, EnvelopeItem};
 
 #[cfg(all(target_has_atomic = "64", target_has_atomic = "8"))]
 use self::inner::ClientReportAggregatorInner;
@@ -46,13 +44,13 @@ impl ClientReportAggregator {
         Self::default()
     }
 
-    /// Record a lost envelope.
+    /// Record a lost envelope item.
     ///
-    /// This records losses for all the data we would lose when dropping the envelope, for the
+    /// This records losses for all the data we would lose when dropping the envelope item, for the
     /// given reason.
     #[expect(dead_code, reason = "we will add calls in a follow-up PR")]
-    pub(crate) fn record_lost_envelope(&self, envelope: &Envelope, reason: Reason) {
-        envelope.losses_on_drop().for_each(|loss| {
+    pub(crate) fn record_lost_envelope_item(&self, envelope_item: &EnvelopeItem, reason: Reason) {
+        envelope_item.losses_on_drop().for_each(|loss| {
             let ItemLoss {
                 category, quantity, ..
             } = loss;
