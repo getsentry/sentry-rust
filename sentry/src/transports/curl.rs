@@ -96,6 +96,8 @@ impl CurlHttpTransport {
 
         let mut handle = client;
 
+        let send_fn_client_report_recorder = client_report_recorder.clone();
+
         let send_fn = move |envelope: Envelope, rl: &mut RateLimiter| {
             handle.reset();
             handle.url(&url).unwrap();
@@ -125,7 +127,7 @@ impl CurlHttpTransport {
                 .to_writer(&mut body)
                 .inspect_err(|_| {
                     client_report::record_lost_envelope(
-                        &client_report_recorder,
+                        &send_fn_client_report_recorder,
                         &envelope,
                         LossReason::InternalError,
                     );
@@ -201,7 +203,7 @@ impl CurlHttpTransport {
                         // The server returned an HTTP error response, so the envelope was rejected
                         // at the HTTP layer even if curl also reported a transfer error.
                         client_report::record_lost_envelope(
-                            &client_report_recorder,
+                            &send_fn_client_report_recorder,
                             &envelope,
                             LossReason::SendError,
                         );
@@ -210,7 +212,7 @@ impl CurlHttpTransport {
                         // code has been received. If `perform` also failed, this means the send
                         // failed before an HTTP status was available, which is a network error.
                         client_report::record_lost_envelope(
-                            &client_report_recorder,
+                            &send_fn_client_report_recorder,
                             &envelope,
                             LossReason::NetworkError,
                         );
@@ -225,12 +227,18 @@ impl CurlHttpTransport {
                     } else {
                         LossReason::SendError
                     };
-                    client_report::record_lost_envelope(&client_report_recorder, &envelope, reason);
+                    client_report::record_lost_envelope(
+                        &send_fn_client_report_recorder,
+                        &envelope,
+                        reason,
+                    );
                 }
             }
         };
 
-        let thread = TransportThreadOptions::new(send_fn).spawn_thread();
+        let thread = TransportThreadOptions::new(send_fn)
+            .with_client_report_recorder(client_report_recorder)
+            .spawn_thread();
         Self { thread }
     }
 }

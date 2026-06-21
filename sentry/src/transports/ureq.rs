@@ -146,13 +146,15 @@ impl UreqHttpTransport {
         let auth = dsn.to_auth(Some(&user_agent)).to_string();
         let url = dsn.envelope_api_url().to_string();
 
+        let send_fn_client_report_recorder = client_report_recorder.clone();
+
         let send_fn = move |envelope: Envelope, rl: &mut RateLimiter| {
             let mut body = Vec::new();
             envelope
                 .to_writer(&mut body)
                 .inspect_err(|_| {
                     client_report::record_lost_envelope(
-                        &client_report_recorder,
+                        &send_fn_client_report_recorder,
                         &envelope,
                         LossReason::InternalError,
                     );
@@ -198,7 +200,7 @@ impl UreqHttpTransport {
                         && response_status != HTTP_RATE_LIMIT_STATUS
                     {
                         client_report::record_lost_envelope(
-                            &client_report_recorder,
+                            &send_fn_client_report_recorder,
                             &envelope,
                             LossReason::SendError,
                         );
@@ -207,7 +209,7 @@ impl UreqHttpTransport {
                 Err(err) => {
                     sentry_debug!("Failed to send envelope: {}", err);
                     client_report::record_lost_envelope(
-                        &client_report_recorder,
+                        &send_fn_client_report_recorder,
                         &envelope,
                         LossReason::NetworkError,
                     );
@@ -215,7 +217,9 @@ impl UreqHttpTransport {
             }
         };
 
-        let thread = TransportThreadOptions::new(send_fn).spawn_thread();
+        let thread = TransportThreadOptions::new(send_fn)
+            .with_client_report_recorder(client_report_recorder)
+            .spawn_thread();
         Self { thread }
     }
 }

@@ -43,6 +43,10 @@ indexed_enum! {
         InternalSdkError,
         /// A network error occurred while sending the envelope.
         NetworkError,
+        /// The SDK is backing off due to a rate limit.
+        RatelimitBackoff,
+        /// An internal queue overflowed (e.g. the transport queue).
+        QueueOverflow,
     }
 
     /// The category of data which was dropped.
