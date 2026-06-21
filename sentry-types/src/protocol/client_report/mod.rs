@@ -9,8 +9,8 @@ use serde::{Deserialize, Serialize};
 use self::list::ClientReportList;
 use crate::utils;
 
-pub(crate) use self::envelope_losses::{envelope_item_losses, ItemLossIter};
-pub use self::envelope_losses::{EnvelopeLossIter, ItemLoss};
+pub(crate) use self::envelope_losses::envelope_item_losses;
+pub use self::envelope_losses::ItemLoss;
 pub use self::list::Item;
 
 mod envelope_losses;

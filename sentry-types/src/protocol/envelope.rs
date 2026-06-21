@@ -5,10 +5,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
 
-use crate::protocol::client_report;
-#[cfg(doc)]
-use crate::protocol::client_report::ItemLoss;
-use crate::protocol::client_report::{EnvelopeLossIter, ItemLossIter};
+use crate::protocol::client_report::{self, ItemLoss};
 use crate::Dsn;
 use crate::{protocol::v7::ClientReport, utils::ts_rfc3339_opt};
 
@@ -270,7 +267,8 @@ impl ItemContainer {
 }
 
 impl EnvelopeItem {
-    pub(crate) fn losses_on_drop(&self) -> ItemLossIter {
+    /// Returns an iterator over the [`ItemLoss`] values that would result if this item is dropped.
+    pub fn losses_on_drop(&self) -> impl Iterator<Item = ItemLoss> + '_ {
         client_report::envelope_item_losses(self)
     }
 
@@ -708,11 +706,6 @@ impl Envelope {
         Self::from_bytes_raw(bytes)
     }
 
-    /// Returns an iterator over the [`ItemLoss`] that would result if the envelope is dropped.
-    pub fn losses_on_drop(&self) -> EnvelopeLossIter<'_> {
-        EnvelopeLossIter::new(self.items().flat_map(EnvelopeItem::losses_on_drop))
-    }
-
     fn parse_headers(slice: &[u8]) -> Result<(EnvelopeHeaders, usize), EnvelopeError> {
         let first_line = slice
             .split(|b| *b == b'\n')
@@ -951,7 +944,8 @@ mod test {
 
     fn collect_losses(envelope: &Envelope) -> Vec<(Category, u64)> {
         envelope
-            .losses_on_drop()
+            .items()
+            .flat_map(EnvelopeItem::losses_on_drop)
             .map(|loss| (loss.category, loss.quantity))
             .collect()
     }

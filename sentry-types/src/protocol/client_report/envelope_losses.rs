@@ -1,18 +1,14 @@
 //! Computes client report loss categories and quantities for dropped envelope items.
 
 use std::io::{Result as IoResult, Write};
-use std::iter::FlatMap;
 use std::mem;
 
 use crate::protocol::v7::{
-    Attachment, EnvelopeItem, EnvelopeItemIter, ItemContainer, Log, Metric, SessionAggregateItem,
-    SessionAggregates, Transaction,
+    Attachment, EnvelopeItem, ItemContainer, Log, Metric, SessionAggregateItem, SessionAggregates,
+    Transaction,
 };
 
 use super::Category;
-
-type EnvelopeLossIterInner<'a> =
-    FlatMap<EnvelopeItemIter<'a>, ItemLossIter, fn(&'a EnvelopeItem) -> ItemLossIter>;
 
 /// Information about a lost item.
 ///
@@ -28,22 +24,9 @@ pub struct ItemLoss {
     pub quantity: u64,
 }
 
-/// An iterator over [`ItemLoss`] values for a dropped envelope.
-pub struct EnvelopeLossIter<'a> {
-    inner: EnvelopeLossIterInner<'a>,
-}
-
-/// An iterator over [`ItemLoss`].
-pub(crate) struct ItemLossIter {
+/// An iterator over [`ItemLoss`] values for a dropped envelope item.
+struct ItemLossIter {
     inner: ItemLossIterInner,
-}
-
-impl Iterator for EnvelopeLossIter<'_> {
-    type Item = ItemLoss;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.inner.next()
-    }
 }
 
 impl Iterator for ItemLossIter {
@@ -62,7 +45,7 @@ impl Iterator for ItemLossIter {
 }
 
 /// Returns an iterator over the lost items in an envelope item, if it is dropped.
-pub(crate) fn envelope_item_losses(envelope_item: &EnvelopeItem) -> ItemLossIter {
+pub(crate) fn envelope_item_losses(envelope_item: &EnvelopeItem) -> impl Iterator<Item = ItemLoss> {
     match envelope_item {
         EnvelopeItem::Event(_) => ItemLossIter::new([ItemLoss::new(Category::Error, 1)]),
         EnvelopeItem::SessionUpdate(_) => ItemLossIter::new([ItemLoss::new(Category::Session, 1)]),
@@ -184,12 +167,6 @@ fn metric_losses(metrics: &[Metric]) -> ItemLossIter {
         ItemLoss::new(Category::TraceMetric, item_quantity),
         ItemLoss::new(Category::TraceMetricByte, byte_quantity),
     ])
-}
-
-impl<'a> EnvelopeLossIter<'a> {
-    pub(crate) fn new(inner: EnvelopeLossIterInner<'a>) -> Self {
-        Self { inner }
-    }
 }
 
 #[derive(Default)]
