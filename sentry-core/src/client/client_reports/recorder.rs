@@ -62,7 +62,7 @@ impl Recorder {
             aggregator.record_lost_envelope_item(envelope_item, reason.into_reason());
         }
         #[cfg(not(all(target_has_atomic = "8", target_has_atomic = "64")))]
-        let _ = (envelope, reason);
+        let _ = (envelope_item, reason);
     }
 
     /// Creates a new no-op [`Recorder`].
