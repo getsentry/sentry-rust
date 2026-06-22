@@ -1,4 +1,4 @@
-#![cfg(sentry_any_http_transport)]
+#![cfg(feature = "reqwest")]
 
 //! Utilities for working with client reports.
 
