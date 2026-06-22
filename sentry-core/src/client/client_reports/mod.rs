@@ -8,8 +8,9 @@
 #[cfg(all(target_has_atomic = "64", target_has_atomic = "8"))]
 use std::sync::Arc;
 
+use sentry_types::protocol::v7::client_report::{Category, Reason};
 #[cfg(all(target_has_atomic = "64", target_has_atomic = "8"))]
-use sentry_types::protocol::v7::client_report::{Category, ItemLoss, LossSource, Reason};
+use sentry_types::protocol::v7::client_report::{ItemLoss, LossSource};
 use sentry_types::protocol::v7::ClientReport;
 
 #[cfg(all(target_has_atomic = "64", target_has_atomic = "8"))]
