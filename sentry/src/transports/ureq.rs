@@ -83,7 +83,11 @@ impl UreqHttpTransport {
                     user_agent,
                     http_proxy,
                     https_proxy,
-                    #[cfg(feature = "native-tls")]
+                    #[cfg(any(
+                        feature = "native-tls",
+                        feature = "rustls",
+                        feature = "rustls-no-provider"
+                    ))]
                     accept_invalid_certs,
                     ..
                 },
