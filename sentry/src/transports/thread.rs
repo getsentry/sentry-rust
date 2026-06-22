@@ -6,7 +6,6 @@ use std::time::Duration;
 
 use sentry_core::client_report::{Reason as ClientReportReason, Recorder as ClientReportRecorder};
 
-use super::client_report;
 use super::ratelimit::{RateLimiter, RateLimitingCategory};
 #[cfg(doc)]
 use super::{StdTransportThread, StdTransportThreadOptions}; // so we can use pub re-exports in docs
@@ -116,11 +115,8 @@ impl TransportThread {
                             "Skipping event send because we're disabled due to rate limits for {}s",
                             time_left.as_secs()
                         );
-                        client_report::record_lost_envelope(
-                            &handle_client_report_recorder,
-                            &envelope,
-                            ClientReportReason::RatelimitBackoff,
-                        );
+                        handle_client_report_recorder
+                            .record_lost_data(&envelope, ClientReportReason::RatelimitBackoff);
                         continue;
                     }
                     match rl.filter(envelope, &handle_client_report_recorder) {
@@ -162,7 +158,8 @@ impl TransportThread {
                 unreachable!("we sent a `SendEnvelope` task");
             };
 
-            client_report::record_lost_envelope(&self.client_report_recorder, &envelope, reason);
+            self.client_report_recorder
+                .record_lost_data(&envelope, reason);
         }
     }
 

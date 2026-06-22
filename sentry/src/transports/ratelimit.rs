@@ -146,7 +146,7 @@ impl RateLimiter {
             },
             |item| {
                 client_report_recorder
-                    .record_lost_envelope_item(&item, ClientReportReason::RatelimitBackoff);
+                    .record_lost_data(&item, ClientReportReason::RatelimitBackoff);
             },
         ))
     }
