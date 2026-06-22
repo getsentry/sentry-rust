@@ -8,7 +8,7 @@
 #[cfg(all(target_has_atomic = "64", target_has_atomic = "8"))]
 use std::sync::Arc;
 
-use sentry_types::protocol::v7::client_report::{Category, ItemLoss, Reason};
+use sentry_types::protocol::v7::client_report::{Category, ItemLoss, LossSource, Reason};
 use sentry_types::protocol::v7::{ClientReport, EnvelopeItem};
 
 #[cfg(all(target_has_atomic = "64", target_has_atomic = "8"))]
@@ -44,13 +44,12 @@ impl ClientReportAggregator {
         Self::default()
     }
 
-    /// Record a lost envelope item.
+    /// Record lost Sentry data.
     ///
-    /// This records losses for all the data we would lose when dropping the envelope item, for the
-    /// given reason.
+    /// Records the given Sentry telemetry item as discarded for the provided `reason`.
     #[expect(dead_code, reason = "we will add calls in a follow-up PR")]
-    pub(crate) fn record_lost_envelope_item(&self, envelope_item: &EnvelopeItem, reason: Reason) {
-        envelope_item.losses_on_drop().for_each(|loss| {
+    pub(crate) fn record_lost_data<L: LossSource>(&self, data: &L, reason: Reason) {
+        data.losses().for_each(|loss| {
             let ItemLoss {
                 category, quantity, ..
             } = loss;
