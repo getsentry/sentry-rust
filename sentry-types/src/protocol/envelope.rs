@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
 
-use crate::protocol::client_report::{self, ItemLoss};
 use crate::Dsn;
 use crate::{protocol::v7::ClientReport, utils::ts_rfc3339_opt};
 
@@ -267,11 +266,6 @@ impl ItemContainer {
 }
 
 impl EnvelopeItem {
-    /// Returns an iterator over the [`ItemLoss`] values that would result if this item is dropped.
-    pub fn losses_on_drop(&self) -> impl Iterator<Item = ItemLoss> + '_ {
-        client_report::envelope_item_losses(self)
-    }
-
     fn item_type(&self) -> Option<EnvelopeItemType> {
         match self {
             Self::Event(_) => Some(EnvelopeItemType::Event),
@@ -912,7 +906,7 @@ mod test {
     use uuid::Uuid;
 
     use super::*;
-    use crate::protocol::client_report::Item;
+    use crate::protocol::client_report::{Item, LossSource};
     use crate::protocol::v7::client_report::Category;
     use crate::protocol::v7::{
         ClientReport, Level, LogLevel, MetricType, MonitorCheckInStatus, MonitorConfig,
@@ -944,8 +938,7 @@ mod test {
 
     fn collect_losses(envelope: &Envelope) -> Vec<(Category, u64)> {
         envelope
-            .items()
-            .flat_map(EnvelopeItem::losses_on_drop)
+            .losses()
             .map(|loss| (loss.category, loss.quantity))
             .collect()
     }

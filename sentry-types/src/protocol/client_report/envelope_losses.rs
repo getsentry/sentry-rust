@@ -4,11 +4,17 @@ use std::io::{Result as IoResult, Write};
 use std::mem;
 
 use crate::protocol::v7::{
-    Attachment, EnvelopeItem, ItemContainer, Log, Metric, SessionAggregateItem, SessionAggregates,
-    Transaction,
+    Attachment, ClientReport, Envelope, EnvelopeItem, Event, ItemContainer, Log, Metric,
+    MonitorCheckIn, SessionAggregateItem, SessionAggregates, SessionUpdate, Transaction,
 };
 
 use super::Category;
+
+/// A trait for protocol types which can be a source of lost Sentry data if discarded.
+pub trait LossSource: private::Sealed {
+    /// Returns an iterator over the [`ItemLoss`] values to record if this value is discarded.
+    fn losses(&self) -> impl Iterator<Item = ItemLoss> + '_;
+}
 
 /// Information about a lost item.
 ///
@@ -24,41 +30,115 @@ pub struct ItemLoss {
     pub quantity: u64,
 }
 
-/// An iterator over [`ItemLoss`] values for a dropped envelope item.
-struct ItemLossIter {
-    inner: ItemLossIterInner,
+impl LossSource for Envelope {
+    fn losses(&self) -> impl Iterator<Item = ItemLoss> + '_ {
+        self.items().flat_map(EnvelopeItem::losses)
+    }
+}
+
+/// An iterator over up to two [`ItemLoss`] values for a discarded protocol item.
+#[derive(Default)]
+enum ItemLossIter {
+    #[default]
+    Empty,
+    One(ItemLoss),
+    Two(ItemLoss, ItemLoss),
 }
 
 impl Iterator for ItemLossIter {
     type Item = ItemLoss;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let (rv, new_inner) = match mem::take(&mut self.inner) {
-            ItemLossIterInner::Empty => (None, ItemLossIterInner::Empty),
-            ItemLossIterInner::One(info) => (Some(info), ItemLossIterInner::Empty),
-            ItemLossIterInner::Two(info1, info2) => (Some(info1), ItemLossIterInner::One(info2)),
+        let (rv, next) = match mem::take(self) {
+            Self::Empty => (None, Self::Empty),
+            Self::One(info) => (Some(info), Self::Empty),
+            Self::Two(info1, info2) => (Some(info1), Self::One(info2)),
         };
 
-        self.inner = new_inner;
+        *self = next;
         rv
     }
 }
 
+impl LossSource for EnvelopeItem {
+    fn losses(&self) -> impl Iterator<Item = ItemLoss> + '_ {
+        envelope_item_losses(self)
+    }
+}
+
+impl LossSource for Event<'_> {
+    fn losses(&self) -> impl Iterator<Item = ItemLoss> + '_ {
+        event_losses(self)
+    }
+}
+
+impl LossSource for SessionUpdate<'_> {
+    fn losses(&self) -> impl Iterator<Item = ItemLoss> + '_ {
+        session_update_losses(self)
+    }
+}
+
+impl LossSource for SessionAggregates<'_> {
+    fn losses(&self) -> impl Iterator<Item = ItemLoss> + '_ {
+        session_aggregate_losses(self)
+    }
+}
+
+impl LossSource for Transaction<'_> {
+    fn losses(&self) -> impl Iterator<Item = ItemLoss> + '_ {
+        transaction_losses(self)
+    }
+}
+
+impl LossSource for Attachment {
+    fn losses(&self) -> impl Iterator<Item = ItemLoss> + '_ {
+        attachment_losses(self)
+    }
+}
+
+impl LossSource for MonitorCheckIn {
+    fn losses(&self) -> impl Iterator<Item = ItemLoss> + '_ {
+        monitor_check_in_losses(self)
+    }
+}
+
+impl LossSource for ClientReport {
+    fn losses(&self) -> impl Iterator<Item = ItemLoss> + '_ {
+        client_report_losses(self)
+    }
+}
+
+impl LossSource for ItemContainer {
+    fn losses(&self) -> impl Iterator<Item = ItemLoss> + '_ {
+        item_container_losses(self)
+    }
+}
+
 /// Returns an iterator over the lost items in an envelope item, if it is dropped.
-pub(crate) fn envelope_item_losses(envelope_item: &EnvelopeItem) -> impl Iterator<Item = ItemLoss> {
+fn envelope_item_losses(envelope_item: &EnvelopeItem) -> ItemLossIter {
     match envelope_item {
-        EnvelopeItem::Event(_) => ItemLossIter::new([ItemLoss::new(Category::Error, 1)]),
-        EnvelopeItem::SessionUpdate(_) => ItemLossIter::new([ItemLoss::new(Category::Session, 1)]),
+        EnvelopeItem::Event(event) => event_losses(event),
+        EnvelopeItem::SessionUpdate(update) => session_update_losses(update),
         EnvelopeItem::SessionAggregates(session_aggregates) => {
             session_aggregate_losses(session_aggregates)
         }
         EnvelopeItem::Transaction(transaction) => transaction_losses(transaction),
         EnvelopeItem::Attachment(attachment) => attachment_losses(attachment),
-        EnvelopeItem::MonitorCheckIn(_) => ItemLossIter::new([ItemLoss::new(Category::Monitor, 1)]),
-        EnvelopeItem::ClientReport(_) => ItemLossIter::new([]),
+        EnvelopeItem::MonitorCheckIn(check_in) => monitor_check_in_losses(check_in),
+        EnvelopeItem::ClientReport(client_report) => client_report_losses(client_report),
         EnvelopeItem::ItemContainer(item_container) => item_container_losses(item_container),
         EnvelopeItem::Raw => ItemLossIter::new([]),
     }
+}
+
+/// Returns error-event losses for a discarded event.
+fn event_losses(_event: &Event<'_>) -> ItemLossIter {
+    ItemLossIter::new([ItemLoss::new(Category::Error, 1)])
+}
+
+/// Returns session losses for a discarded session update.
+fn session_update_losses(_update: &SessionUpdate<'_>) -> ItemLossIter {
+    ItemLossIter::new([ItemLoss::new(Category::Session, 1)])
 }
 
 /// Returns session losses from aggregate bucket status counts.
@@ -108,6 +188,18 @@ fn attachment_losses(attachment: &Attachment) -> ItemLossIter {
         Category::Attachment,
         attachment.buffer.len().try_into().unwrap_or(u64::MAX),
     )])
+}
+
+/// Returns monitor losses for a discarded check-in.
+fn monitor_check_in_losses(_check_in: &MonitorCheckIn) -> ItemLossIter {
+    ItemLossIter::new([ItemLoss::new(Category::Monitor, 1)])
+}
+
+/// Returns no losses for a discarded client report.
+///
+/// Client reports are never themselves recorded as losses.
+fn client_report_losses(_client_report: &ClientReport) -> ItemLossIter {
+    ItemLossIter::new([])
 }
 
 /// Returns losses for the container's item kind.
@@ -169,14 +261,6 @@ fn metric_losses(metrics: &[Metric]) -> ItemLossIter {
     ])
 }
 
-#[derive(Default)]
-enum ItemLossIterInner {
-    #[default]
-    Empty,
-    One(ItemLoss),
-    Two(ItemLoss, ItemLoss),
-}
-
 /// A sink which counts bytes written to it, without storing them anywhere.
 #[derive(Default)]
 struct CountingSink {
@@ -184,35 +268,36 @@ struct CountingSink {
 }
 
 impl ItemLossIter {
+    /// Creates an iterator from zero, one, or two [`ItemLoss`] values.
     fn new<T>(value: T) -> Self
     where
-        T: Into<ItemLossIterInner>,
+        T: Into<Self>,
     {
-        let inner = value.into();
-        Self { inner }
+        value.into()
     }
 }
 
 impl ItemLoss {
+    /// Creates a new item loss with the given category and quantity.
     fn new(category: Category, quantity: u64) -> Self {
         Self { category, quantity }
     }
 }
 
-impl From<[ItemLoss; 0]> for ItemLossIterInner {
+impl From<[ItemLoss; 0]> for ItemLossIter {
     fn from(_: [ItemLoss; 0]) -> Self {
         Self::Empty
     }
 }
 
-impl From<[ItemLoss; 1]> for ItemLossIterInner {
+impl From<[ItemLoss; 1]> for ItemLossIter {
     fn from(value: [ItemLoss; 1]) -> Self {
         let [info] = value;
         Self::One(info)
     }
 }
 
-impl From<[ItemLoss; 2]> for ItemLossIterInner {
+impl From<[ItemLoss; 2]> for ItemLossIter {
     fn from(value: [ItemLoss; 2]) -> Self {
         let [info1, info2] = value;
         Self::Two(info1, info2)
@@ -228,4 +313,25 @@ impl Write for CountingSink {
     fn flush(&mut self) -> IoResult<()> {
         Ok(())
     }
+}
+
+mod private {
+    use super::{
+        Attachment, ClientReport, Envelope, EnvelopeItem, Event, ItemContainer, MonitorCheckIn,
+        SessionAggregates, SessionUpdate, Transaction,
+    };
+
+    /// Prevents downstream implementations of [`LossSource`](super::LossSource).
+    pub trait Sealed {}
+
+    impl Sealed for EnvelopeItem {}
+    impl Sealed for Event<'_> {}
+    impl Sealed for SessionUpdate<'_> {}
+    impl Sealed for Envelope {}
+    impl Sealed for SessionAggregates<'_> {}
+    impl Sealed for Transaction<'_> {}
+    impl Sealed for Attachment {}
+    impl Sealed for MonitorCheckIn {}
+    impl Sealed for ClientReport {}
+    impl Sealed for ItemContainer {}
 }
