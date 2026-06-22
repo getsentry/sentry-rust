@@ -6,7 +6,6 @@ use sentry_core::client_report::Reason as LossReason;
 use sentry_core::TransportOptions;
 
 use super::{
-    client_report,
     thread::{TransportThread, TransportThreadOptions},
     RateLimiter, HTTP_PAYLOAD_TOO_LARGE, HTTP_PAYLOAD_TOO_LARGE_MESSAGE,
 };
@@ -124,11 +123,7 @@ impl CurlHttpTransport {
             envelope
                 .to_writer(&mut body)
                 .inspect_err(|_| {
-                    client_report::record_lost_envelope(
-                        &client_report_recorder,
-                        &envelope,
-                        LossReason::InternalError,
-                    );
+                    client_report_recorder.record_lost_data(&envelope, LossReason::InternalError);
                 })
                 .expect("envelope should serialize successfully");
             let mut body = Cursor::new(body);
@@ -200,20 +195,13 @@ impl CurlHttpTransport {
                     {
                         // The server returned an HTTP error response, so the envelope was rejected
                         // at the HTTP layer even if curl also reported a transfer error.
-                        client_report::record_lost_envelope(
-                            &client_report_recorder,
-                            &envelope,
-                            LossReason::SendError,
-                        );
+                        client_report_recorder.record_lost_data(&envelope, LossReason::SendError);
                     } else if perform_failed && response_code == 0 {
                         // curl documents `CURLINFO_RESPONSE_CODE` as zero when no server response
                         // code has been received. If `perform` also failed, this means the send
                         // failed before an HTTP status was available, which is a network error.
-                        client_report::record_lost_envelope(
-                            &client_report_recorder,
-                            &envelope,
-                            LossReason::NetworkError,
-                        );
+                        client_report_recorder
+                            .record_lost_data(&envelope, LossReason::NetworkError);
                     }
                 }
                 Err(err) => {
@@ -225,7 +213,7 @@ impl CurlHttpTransport {
                     } else {
                         LossReason::SendError
                     };
-                    client_report::record_lost_envelope(&client_report_recorder, &envelope, reason);
+                    client_report_recorder.record_lost_data(&envelope, reason);
                 }
             }
         };
