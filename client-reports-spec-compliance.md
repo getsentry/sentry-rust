@@ -1,96 +1,119 @@
-# Client Reports Spec Compliance Findings
+# Client Reports Missing Drop Coverage
 
 Date: 2026-06-22
 
 Spec: <https://develop.sentry.dev/sdk/telemetry/client-reports/>
 
-Scope: Sentry Rust SDK client reports across `sentry-types`, `sentry-core`, and the built-in `sentry` transports.
+Scope: Sentry Rust SDK client reports across `sentry-types`, `sentry-core`, built-in `sentry` transports, and bundled integrations.
 
 Explicit exclusion: loss tracking in the tokio transport `Thread` is intentionally not listed below. This excludes tokio-thread queue overflow, tokio-thread per-item rate-limit filtering, and tokio-thread global rate-limit drops. Other reqwest HTTP-send behavior is still in scope because it is outside the tokio thread itself.
 
-## Remaining items
+This document focuses on drop paths that are not currently covered by the implementation. It does not list the lack of a `send_client_reports` option as remaining work, and it does not treat unused discard reasons as a problem by itself.
 
-### 1. Add a `send_client_reports` configuration option
+## Drops not currently covered
 
-The spec says SDKs should provide a `send_client_reports` / `sendClientReports` option and should use a no-op implementation when client reports are disabled. `ClientOptions` currently has no such field (`sentry-core/src/clientoptions.rs`), and `EnvelopeSender::new` always creates a `ClientReportAggregator` and live recorder whenever a transport is built (`sentry-core/src/client/envelope_sender.rs`).
+### 1. Events dropped by `before_send`
 
-### 2. Wire client-report recording into the SDK pipeline, not only transports
+`Client::prepare_event` returns `None` when `before_send` drops an event, but no client-report loss is recorded (`sentry-core/src/client/mod.rs`). This is a concrete SDK-side `error` drop path.
 
-The current recorder is explicitly transport-facing: `Recorder` is documented as a handle for transports and exposes only `record_lost_envelope_item` (`sentry-core/src/client/client_reports/recorder.rs`). `Client` owns only an `EnvelopeSender` and has no direct recorder or internal API for recording losses before an envelope exists (`sentry-core/src/client/mod.rs`). Full compliance requires SDK components that drop telemetry before transport to be able to record into the per-client aggregator.
+### 2. Events dropped by scope event processors
 
-### 3. Model all spec discard reasons that the SDK needs to emit
+`Scope::apply_to_event` returns `None` when an event processor drops an event, but no client-report loss is recorded (`sentry-core/src/scope/real.rs`). Because this happens before an envelope exists, the current transport-facing recorder never sees the dropped `error`.
 
-`sentry-types::protocol::client_report::Reason` currently includes only `send_error`, `internal_sdk_error`, `network_error`, `ratelimit_backoff`, and `queue_overflow` (`sentry-types/src/protocol/client_report/mod.rs`). The spec also defines `cache_overflow`, `sample_rate`, `before_send`, `event_processor`, `insufficient_data`, `backpressure`, `buffer_overflow`, `ignored`, `invalid`, and `no_parent_span`. Those missing reasons prevent SDK-side drops from being reported with spec-defined reason strings.
+### 3. Events dropped by integrations
 
-### 4. Record events dropped by `before_send`
+`Client::prepare_event` lets integrations drop events by returning `None` from `process_event`, but no client-report loss is recorded (`sentry-core/src/client/mod.rs`). These are SDK-side `error` drops and are separate from scope event processors.
 
-`Client::prepare_event` returns `None` when `before_send` drops an event, but it does not record a client report with reason `before_send` and category `error` (`sentry-core/src/client/mod.rs`). This is a direct spec recording point.
+### 4. Error events dropped by `sample_rate`
 
-### 5. Record events dropped by event processors and integrations
+`Client::prepare_event` silently returns `None` when `sample_should_send(self.options.sample_rate)` rejects an event (`sentry-core/src/client/mod.rs`). This drops an `error` before envelope construction and is not covered by the current transport loss mapping.
 
-Scope event processors can drop events in `Scope::apply_to_event` without recording (`sentry-core/src/scope/real.rs`). Integrations can also drop events in `Client::prepare_event` without recording (`sentry-core/src/client/mod.rs`). These should be reported with the spec's `event_processor` reason, or another spec-defined reason if a specific processor/integration has a better mapping.
+### 5. Unsampled transactions dropped at finish time
 
-### 6. Record error events dropped by `sample_rate`
+`Transaction::finish_with_timestamp` returns immediately when `inner.sampled` is false (`sentry-core/src/performance.rs`). No `transaction` loss is recorded.
 
-`Client::prepare_event` silently returns `None` when `sample_should_send(self.options.sample_rate)` rejects an event (`sentry-core/src/client/mod.rs`). This should record reason `sample_rate` for category `error`.
+### 6. Span outcomes for unsampled transactions
 
-### 7. Record unsampled transactions and their span outcomes
+The same unsampled transaction path also drops the transaction's span outcome. Per spec, a dropped transaction should also produce a `span` loss with child-span count plus one. The current early return in `Transaction::finish_with_timestamp` records neither the transaction nor span quantities (`sentry-core/src/performance.rs`).
 
-`Transaction::finish_with_timestamp` returns immediately when `inner.sampled` is false (`sentry-core/src/performance.rs`). The spec requires a dropped transaction to record both a `transaction` outcome and an additional `span` outcome with child span count plus one. Unsampled transactions should therefore record reason `sample_rate` for both categories.
+### 7. Finished spans dropped by the transaction span cap
 
-### 8. Record spans dropped from the transaction span cap
+`Span::finish_with_timestamp` only pushes the finished span into the transaction while the transaction span vector remains under the cap; once the cap is exceeded, the span is silently omitted (`sentry-core/src/performance.rs`). This is a direct `span` drop before transport.
 
-`Span::finish_with_timestamp` only pushes a finished span into the transaction while `transaction.spans.len() <= MAX_SPANS`; once the cap is exceeded, the span is silently omitted (`sentry-core/src/performance.rs`). The spec requires SDKs to report spans that are dropped before a transaction is sent.
+### 8. `sentry-tracing` spans dropped by `span_filter`
 
-### 9. Record breadcrumbs dropped by `before_breadcrumb`
+`SentryLayer::on_new_span` returns immediately when the configured `span_filter` rejects a tracing span (`sentry-tracing/src/layer/mod.rs`). That rejected span is not recorded as a client-report `span` loss.
 
-`Hub::add_breadcrumb` calls `before_breadcrumb` and drops the breadcrumb when the callback returns `None`, without recording any outcome (`sentry-core/src/hub.rs`). To fully cover SDK-side discard points, this needs a spec-defined reason/category mapping; implementing it may require adding currently missing reason support such as `ignored` or `before_send`.
+### 9. `sentry-tracing` event mappings ignored by the layer
 
-### 10. Record breadcrumb buffer overflow
+`SentryLayer::on_event` drops `EventMapping::Ignore` entries and ignores nested `EventMapping::Combined` values without recording a loss (`sentry-tracing/src/layer/mod.rs`). Depending on what the mapper suppressed, these can correspond to dropped Sentry events, logs, or breadcrumbs.
 
-`Hub::add_breadcrumb` enforces `max_breadcrumbs` by popping old breadcrumbs from the front of the scope buffer with no client-report recording (`sentry-core/src/hub.rs`). The spec defines `buffer_overflow` for SDK internal buffers, explicitly including breadcrumb buffers as an example.
+### 10. Breadcrumbs dropped by `before_breadcrumb`
 
-### 11. Record logs dropped because log capture is disabled
+`Hub::add_breadcrumb` calls `before_breadcrumb` and drops the breadcrumb when the callback returns `None`, without recording any outcome (`sentry-core/src/hub.rs`). If breadcrumbs should be represented in client reports for this SDK, this drop path is currently uncovered.
 
-`Client::capture_log` returns early when `options.enable_logs` is false, without recording a dropped log item or dropped log bytes (`sentry-core/src/client/mod.rs`). If this is considered a drop rather than a non-capturing mode, compliance requires `log_item` and `log_byte` outcomes.
+### 11. Breadcrumbs dropped by `max_breadcrumbs`
 
-### 12. Record logs dropped by `before_send_log`
+`Hub::add_breadcrumb` enforces `max_breadcrumbs` by popping old breadcrumbs from the front of the scope buffer with no client-report recording (`sentry-core/src/hub.rs`). This is an internal buffer-overflow style drop.
 
-`Client::prepare_log` applies `before_send_log` with `func(log)?`, so a returned `None` drops the log without recording (`sentry-core/src/client/mod.rs`). The spec requires dropped logs to produce both `log_item` and `log_byte` outcomes.
+### 12. Logs dropped by `before_send_log`
 
-### 13. Record metrics dropped because metric capture is disabled
+`Client::prepare_log` applies `before_send_log` with `func(log)?`; when the callback returns `None`, the log is dropped without recording (`sentry-core/src/client/mod.rs`). A covered drop would need both `log_item` and `log_byte` quantities.
 
-`Client::capture_metric` returns early when `options.enable_metrics` is false, without recording outcomes (`sentry-core/src/client/mod.rs`). The existing envelope-loss mapping already has `trace_metric` and `trace_metric_byte` categories for transport-side metric drops; SDK-side metric drops need equivalent reporting if disabled capture is treated as a drop.
+### 13. Logs dropped when `enable_logs` is false
 
-### 14. Record metrics dropped by `before_send_metric`
+`Client::capture_log` returns early when `options.enable_logs` is false, without recording a dropped log item or dropped log bytes (`sentry-core/src/client/mod.rs`). If the SDK treats an explicit `capture_log` call in this mode as a discard rather than as non-capture, this path is currently uncovered.
 
-`Client::prepare_metric` applies `before_send_metric` with `func(metric)?`, so a returned `None` drops the metric without recording (`sentry-core/src/client/mod.rs`). SDK-side metric filtering should record `trace_metric` and `trace_metric_byte` outcomes, using the appropriate spec discard reason.
+### 14. Metrics dropped by `before_send_metric`
 
-### 15. Flush or send pending client reports when there is no later envelope
+`Client::prepare_metric` applies `before_send_metric` with `func(metric)?`; when the callback returns `None`, the metric is dropped without recording (`sentry-core/src/client/mod.rs`). The transport-side envelope loss mapping already knows how to count `trace_metric` and `trace_metric_byte`, but this SDK-side drop path does not use it.
 
-`EnvelopeSender::send_envelope_with` only attaches a pending client report when another envelope is about to be sent (`sentry-core/src/client/envelope_sender.rs`). `Client::flush` only flushes the transport, and `Client::close` removes/shuts down the transport without draining the `ClientReportAggregator` into a final report-only envelope (`sentry-core/src/client/mod.rs`, `sentry-core/src/client/envelope_sender.rs`). Losses recorded near shutdown, or losses in an otherwise idle application, can remain unsent indefinitely.
+### 15. Metrics dropped when `enable_metrics` is false
 
-### 16. Record queued-envelope losses during std transport shutdown
+`Client::capture_metric` returns early when `options.enable_metrics` is false, without recording a metric loss (`sentry-core/src/client/mod.rs`). As with disabled logs, this only needs coverage if an explicit capture call in disabled mode is considered a discard.
 
-The std `TransportThread` worker exits as soon as its shutdown flag is set, before processing any remaining queued tasks (`sentry/src/transports/thread.rs`). `Drop` sets that flag before sending `Task::Shutdown`. Any queued `SendEnvelope` tasks abandoned by this path are not recorded as lost. This is separate from the excluded tokio transport thread.
+### 16. Queued envelopes abandoned during std transport shutdown
 
-### 17. Add client-report recording to `EmbeddedSVCHttpTransport`
+The std `TransportThread` worker exits as soon as its shutdown flag is set, before processing remaining queued tasks (`sentry/src/transports/thread.rs`). `Drop` sets that flag before sending `Task::Shutdown`. Any queued `SendEnvelope` tasks abandoned by this path are not recorded as lost. This is separate from the excluded tokio transport thread.
 
-`EmbeddedSVCHttpTransport` stores `TransportOptions`, but `send_envelope` destructures only the DSN and user agent and never uses `client_report_recorder` (`sentry/src/transports/embedded_svc_http.rs`). Serialization, network, and HTTP error losses are only returned/logged and are not recorded. It also logs HTTP 413 but otherwise treats HTTP statuses as success, so 4xx/5xx send-error recording is missing for this transport.
+### 17. Embedded HTTP transport serialization failures
 
-### 18. Avoid no-op recorders in deprecated built-in transport constructors
+`EmbeddedSVCHttpTransport::send_envelope` serializes the envelope with `envelope.to_writer(&mut body)?`, and `Transport::send_envelope` only logs the returned error (`sentry/src/transports/embedded_svc_http.rs`). The dropped envelope is not recorded as `internal_sdk_error`.
 
-`TransportOptions::try_from_client_options` creates `client_report_recorder: ClientReportRecorder::new_no_op()` for backward-compatible construction from `ClientOptions` (`sentry-core/src/transport/options.rs`). Deprecated constructors such as `ReqwestHttpTransport::new(&ClientOptions)` use that path (`sentry/src/transports/reqwest.rs`). Built-in transports created this way cannot emit client reports even for losses they otherwise know how to record.
+### 18. Embedded HTTP transport network/request failures
 
-### 19. Discard serialization/processing failures without panicking the worker
+The embedded transport uses fallible HTTP construction, write, flush, submit, and response-read operations, but failures only propagate to a debug log (`sentry/src/transports/embedded_svc_http.rs`). The envelope is discarded without `network_error` or another suitable transport loss being recorded.
 
-The reqwest, ureq, and curl transports record `internal_sdk_error` if `Envelope::to_writer` fails, but then call `expect("envelope should serialize successfully")` (`sentry/src/transports/reqwest.rs`, `sentry/src/transports/ureq.rs`, `sentry/src/transports/curl.rs`). The spec says SDK processing failures should discard the envelope and record `internal_sdk_error`; panicking the worker can prevent the recorded report from ever being sent and can break future transport processing.
+### 19. Embedded HTTP transport HTTP 4xx/5xx responses
 
-### 20. Enforce or verify the 4 KiB client-report item size limit
+`EmbeddedSVCHttpTransport` logs HTTP 413 but otherwise returns `Ok(())` regardless of HTTP status (`sentry/src/transports/embedded_svc_http.rs`). HTTP 4xx/5xx responses therefore discard the envelope without `send_error` recording, with the normal exception that HTTP 429 should not be double-counted.
 
-The spec states that a `client_report` envelope item has a 4 KiB size limit. `Report::new` accepts all provided items, `ClientReportAggregatorInner::take_pending_report` drains every nonzero reason/category counter, and `EnvelopeSender` attaches the result without checking serialized size (`sentry-types/src/protocol/client_report/mod.rs`, `sentry-core/src/client/client_reports/inner.rs`, `sentry-core/src/client/envelope_sender.rs`). There is no guard or test proving that generated reports remain under the limit.
+### 20. Built-in transports constructed through deprecated constructors lose reporting
 
-### 21. Add client-report aggregation, wire-format, and end-to-end tests
+`TransportOptions::try_from_client_options` installs a no-op client-report recorder for backward-compatible construction from `ClientOptions` (`sentry-core/src/transport/options.rs`). Deprecated built-in constructors such as `ReqwestHttpTransport::new(&ClientOptions)` use that path (`sentry/src/transports/reqwest.rs`). The transport may still drop envelopes for queue overflow, rate limiting, network errors, or send errors, but those drops are not reported because the recorder is no-op.
 
-Current tests cover envelope-item loss mapping in `sentry-types/src/protocol/envelope.rs`, but there are no tests covering `ClientReportAggregator`, `take_pending_report`, attachment to outgoing envelopes, the `discarded_events` JSON wire format, shutdown behavior, or SDK-side discard recording. Full compliance should be protected by tests across `sentry-types`, `sentry-core`, and built-in transports.
+## Cross-cutting problems affecting drop coverage
+
+### 1. SDK-side drops cannot currently record into the per-client aggregator
+
+Most uncovered drops above happen before an envelope item exists. Today the live `Recorder` is created in `EnvelopeSender::new` and passed to the transport factory (`sentry-core/src/client/envelope_sender.rs`, `sentry-core/src/client/mod.rs`). `Client`, `Scope`, tracing integrations, log preparation, and metric preparation do not have a recording handle. Covering SDK-side drops requires exposing an internal per-client recording path, not only adding calls at each drop site.
+
+### 2. Pending client reports can remain unsent if no later envelope is sent
+
+`EnvelopeSender::send_envelope_with` only attaches pending reports to a normal outgoing envelope (`sentry-core/src/client/envelope_sender.rs`). `Client::flush` flushes the transport, and `Client::close` shuts down/removes the transport without draining the aggregator into a final report-only envelope (`sentry-core/src/client/mod.rs`). Even correctly recorded drops can therefore be lost if they occur near shutdown or in an otherwise idle process.
+
+### 3. Serialization failures in some transports are recorded but then panic the worker
+
+The reqwest, ureq, and curl transports record `internal_sdk_error` when `Envelope::to_writer` fails, but then call `expect("envelope should serialize successfully")` (`sentry/src/transports/reqwest.rs`, `sentry/src/transports/ureq.rs`, `sentry/src/transports/curl.rs`). That means the original drop is nominally covered, but the panic can prevent the client report from being delivered and can break later transport processing.
+
+## Already covered drop paths
+
+The current implementation already covers several transport-side drops outside the excluded tokio thread:
+
+- Envelope item category/quantity mapping, including transaction-to-span and log/metric byte outcomes (`sentry-types/src/protocol/client_report/envelope_losses.rs`).
+- Std transport queue overflow and disconnected-channel drops (`sentry/src/transports/thread.rs`).
+- Std transport global rate-limit drops and per-item rate-limit filtering (`sentry/src/transports/thread.rs`, `sentry/src/transports/ratelimit.rs`).
+- Reqwest, ureq, and curl HTTP 4xx/5xx send errors excluding HTTP 429 (`sentry/src/transports/reqwest.rs`, `sentry/src/transports/ureq.rs`, `sentry/src/transports/curl.rs`).
+- Reqwest, ureq, and curl network errors (`sentry/src/transports/reqwest.rs`, `sentry/src/transports/ureq.rs`, `sentry/src/transports/curl.rs`).
+- Reqwest, ureq, and curl envelope serialization failures are at least recorded as `internal_sdk_error`, subject to the panic problem above.
 
