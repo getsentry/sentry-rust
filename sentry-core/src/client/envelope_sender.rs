@@ -8,7 +8,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use sentry_types::protocol::v7::client_report::{
-    Category as ClientReportCategory, Reason as ClientReportReason,
+    Category as ClientReportCategory, LossSource, Reason as ClientReportReason,
 };
 use sentry_types::protocol::v7::EnvelopeItem;
 
@@ -78,6 +78,10 @@ impl EnvelopeSender {
             transport_slot,
             client_report_aggregator,
         }
+    }
+
+    pub(super) fn record_lost_data<L: LossSource>(&self, data: &L, reason: ClientReportReason) {
+        self.client_report_aggregator.record_lost_data(data, reason);
     }
 
     /// Records `quantity` lost items for `category` and `reason`.

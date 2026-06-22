@@ -16,7 +16,7 @@ use crate::protocol::SessionUpdate;
 use crate::transport::TransportOptions;
 use rand::random;
 use sentry_types::protocol::v7::client_report::{
-    Category as ClientReportCategory, Reason as ClientReportReason,
+    Category as ClientReportCategory, LossSource, Reason as ClientReportReason,
 };
 use sentry_types::random_uuid;
 
@@ -465,6 +465,10 @@ impl Client {
             })
         });
         event_id
+    }
+
+    pub(crate) fn record_lost_data<L: LossSource>(&self, data: &L, reason: ClientReportReason) {
+        self.envelope_sender.record_lost_data(data, reason);
     }
 
     /// Records `quantity` lost items for `category` and `reason`.

@@ -4,7 +4,7 @@ use std::mem;
 
 use crate::protocol::v7::{
     Attachment, ClientReport, Envelope, EnvelopeItem, Event, ItemContainer, Log, Metric,
-    MonitorCheckIn, SessionAggregateItem, SessionAggregates, SessionUpdate, Transaction,
+    MonitorCheckIn, SessionAggregateItem, SessionAggregates, SessionUpdate, Span, Transaction,
 };
 
 use super::{relay_size, Category};
@@ -110,6 +110,12 @@ impl LossSource for ClientReport {
 impl LossSource for ItemContainer {
     fn losses(&self) -> impl Iterator<Item = ItemLoss> + '_ {
         item_container_losses(self)
+    }
+}
+
+impl LossSource for Span {
+    fn losses(&self) -> impl Iterator<Item = ItemLoss> + '_ {
+        span_losses(self)
     }
 }
 
@@ -236,6 +242,11 @@ fn metric_losses(metrics: &[Metric]) -> ItemLossIter {
     ])
 }
 
+/// A span always results in a loss of a single span.
+fn span_losses(_span: &Span) -> ItemLossIter {
+    ItemLossIter::new([ItemLoss::new(Category::Span, 1)])
+}
+
 impl ItemLossIter {
     /// Creates an iterator from zero, one, or two [`ItemLoss`] values.
     fn new<T>(value: T) -> Self
@@ -276,7 +287,7 @@ impl From<[ItemLoss; 2]> for ItemLossIter {
 mod private {
     use super::{
         Attachment, ClientReport, Envelope, EnvelopeItem, Event, ItemContainer, MonitorCheckIn,
-        SessionAggregates, SessionUpdate, Transaction,
+        SessionAggregates, SessionUpdate, Span, Transaction,
     };
 
     /// Prevents downstream implementations of [`LossSource`](super::LossSource).
@@ -292,4 +303,5 @@ mod private {
     impl Sealed for MonitorCheckIn {}
     impl Sealed for ClientReport {}
     impl Sealed for ItemContainer {}
+    impl Sealed for Span {}
 }
