@@ -484,7 +484,9 @@ mod session_impl {
             } else {
                 panic!("expected session");
             }
-            assert_eq!(items.next(), None);
+            // A client report gets captured for the dropped event.
+            assert!(matches!(items.next(), Some(EnvelopeItem::ClientReport(_))));
+            assert!(items.next().is_none());
         }
 
         #[test]
@@ -566,7 +568,12 @@ mod session_impl {
             } else {
                 panic!("expected session");
             }
-            assert_eq!(items.next(), None);
+            // The envelope may or may not contain a client report.
+            assert!(matches!(
+                items.next(),
+                None | Some(EnvelopeItem::ClientReport(_))
+            ));
+            assert!(items.next().is_none());
         }
 
         /// For _user-mode_ sessions, we want to inherit the session for any _new_

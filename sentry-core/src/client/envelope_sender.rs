@@ -7,6 +7,9 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use sentry_types::protocol::v7::client_report::{
+    Category as ClientReportCategory, Reason as ClientReportReason,
+};
 use sentry_types::protocol::v7::EnvelopeItem;
 
 use self::slot::TransportSlot;
@@ -75,6 +78,17 @@ impl EnvelopeSender {
             transport_slot,
             client_report_aggregator,
         }
+    }
+
+    /// Records `quantity` lost items for `category` and `reason`.
+    pub(super) fn record_loss(
+        &self,
+        category: ClientReportCategory,
+        reason: ClientReportReason,
+        quantity: u64,
+    ) {
+        self.client_report_aggregator
+            .record_loss(category, reason, quantity);
     }
 
     /// Flushes the transport if it is still available.
