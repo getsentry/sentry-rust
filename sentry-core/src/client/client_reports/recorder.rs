@@ -6,9 +6,9 @@
 #[cfg(all(target_has_atomic = "8", target_has_atomic = "64"))]
 use std::sync::{Arc, Weak};
 
+use sentry_types::protocol::v7::client_report::LossSource;
 #[cfg(all(target_has_atomic = "8", target_has_atomic = "64"))]
 use sentry_types::protocol::v7::client_report::Reason;
-use sentry_types::protocol::v7::EnvelopeItem;
 
 use super::ClientReportAggregator;
 #[cfg(all(target_has_atomic = "8", target_has_atomic = "64"))]
@@ -52,17 +52,13 @@ pub enum TransportLossReason {}
 
 impl Recorder {
     /// Record an envelope item lost for a given reason.
-    pub fn record_lost_envelope_item(
-        &self,
-        envelope_item: &EnvelopeItem,
-        reason: TransportLossReason,
-    ) {
+    pub fn record_lost_data<L: LossSource>(&self, data: &L, reason: TransportLossReason) {
         #[cfg(all(target_has_atomic = "8", target_has_atomic = "64"))]
         if let Some(aggregator) = self.aggregator() {
-            aggregator.record_lost_envelope_item(envelope_item, reason.into_reason());
+            aggregator.record_lost_data(data, reason.into_reason());
         }
         #[cfg(not(all(target_has_atomic = "8", target_has_atomic = "64")))]
-        let _ = (envelope_item, reason);
+        let _ = (data, reason);
     }
 
     /// Creates a new no-op [`Recorder`].
