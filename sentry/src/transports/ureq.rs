@@ -12,7 +12,6 @@ use ureq::tls::{TlsConfig, TlsProvider};
 use ureq::{Agent, Proxy};
 
 use super::{
-    client_report,
     thread::{TransportThread, TransportThreadOptions},
     RateLimiter, HTTP_PAYLOAD_TOO_LARGE, HTTP_PAYLOAD_TOO_LARGE_MESSAGE,
 };
@@ -156,11 +155,7 @@ impl UreqHttpTransport {
             envelope
                 .to_writer(&mut body)
                 .inspect_err(|_| {
-                    client_report::record_lost_envelope(
-                        &client_report_recorder,
-                        &envelope,
-                        LossReason::InternalError,
-                    );
+                    client_report_recorder.record_lost_data(&envelope, LossReason::InternalError);
                 })
                 .expect("envelope should serialize successfully");
             let request = agent
@@ -202,20 +197,12 @@ impl UreqHttpTransport {
                     if (400..=599).contains(&response_status)
                         && response_status != HTTP_RATE_LIMIT_STATUS
                     {
-                        client_report::record_lost_envelope(
-                            &client_report_recorder,
-                            &envelope,
-                            LossReason::SendError,
-                        );
+                        client_report_recorder.record_lost_data(&envelope, LossReason::SendError);
                     }
                 }
                 Err(err) => {
                     sentry_debug!("Failed to send envelope: {}", err);
-                    client_report::record_lost_envelope(
-                        &client_report_recorder,
-                        &envelope,
-                        LossReason::NetworkError,
-                    );
+                    client_report_recorder.record_lost_data(&envelope, LossReason::NetworkError);
                 }
             }
         };
