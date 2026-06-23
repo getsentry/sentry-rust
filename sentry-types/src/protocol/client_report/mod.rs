@@ -14,6 +14,7 @@ pub use self::list::Item;
 
 mod envelope_losses;
 mod list;
+mod relay_size;
 
 /// A [client report].
 ///
@@ -77,7 +78,7 @@ indexed_enum! {
         /// A quantity of log bytes.
         ///
         /// This complements [`LogItem`]: `log_item` counts dropped logs, while `log_byte` counts
-        /// their serialized size.
+        /// their estimated byte size.
         ///
         /// [`LogItem`]: Category::LogItem
         LogByte,
@@ -91,7 +92,7 @@ indexed_enum! {
         /// A quantity of trace metric bytes.
         ///
         /// This complements [`TraceMetric`]: `trace_metric` counts dropped trace metrics, while
-        /// `trace_metric_byte` counts their serialized size.
+        /// `trace_metric_byte` counts their estimated byte size.
         ///
         /// [`TraceMetric`]: Category::TraceMetric
         TraceMetricByte,

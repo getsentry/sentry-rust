@@ -1,6 +1,5 @@
 //! Computes client report loss categories and quantities for dropped envelope items.
 
-use std::io::{Result as IoResult, Write};
 use std::mem;
 
 use crate::protocol::v7::{
@@ -8,7 +7,7 @@ use crate::protocol::v7::{
     MonitorCheckIn, SessionAggregateItem, SessionAggregates, SessionUpdate, Transaction,
 };
 
-use super::Category;
+use super::{relay_size, Category};
 
 /// A trait for protocol types which can be a source of lost Sentry data if discarded.
 pub trait LossSource: private::Sealed {
@@ -211,24 +210,12 @@ fn item_container_losses(item_container: &ItemContainer) -> ItemLossIter {
     }
 }
 
-/// Returns log losses measured by item count and serialized bytes.
-/// Logs that fail serialization contribute zero bytes because they could not be sent.
+/// Returns log losses measured by item count and Relay-compatible content size.
 fn log_losses(logs: &[Log]) -> ItemLossIter {
     let item_quantity = logs.len().try_into().unwrap_or(u64::MAX);
-    let byte_quantity = logs
-        .iter()
-        .map(|log| {
-            let mut sink = CountingSink::default();
-            serde_json::to_writer(&mut sink, log)
-                .map(|()| sink.bytes_written)
-                // If serialization fails, then we wouldn't have been able to send the log.
-                // So, nothing is lost.
-                .unwrap_or_default()
-                .try_into()
-                .unwrap_or(u64::MAX)
-        })
-        .reduce(|sum, v| sum.saturating_add(v))
-        .unwrap_or_default();
+    let byte_quantity = logs.iter().fold(0u64, |sum, log| {
+        sum.saturating_add(relay_size::log_byte_size(log))
+    });
 
     ItemLossIter::new([
         ItemLoss::new(Category::LogItem, item_quantity),
@@ -236,35 +223,17 @@ fn log_losses(logs: &[Log]) -> ItemLossIter {
     ])
 }
 
-/// Returns trace metric losses measured by item count and serialized bytes.
-/// Metrics that fail serialization contribute zero bytes because they could not be sent.
+/// Returns trace metric losses measured by item count and Relay-compatible content size.
 fn metric_losses(metrics: &[Metric]) -> ItemLossIter {
     let item_quantity = metrics.len().try_into().unwrap_or(u64::MAX);
-    let byte_quantity = metrics
-        .iter()
-        .map(|metric| {
-            let mut sink = CountingSink::default();
-            serde_json::to_writer(&mut sink, metric)
-                .map(|()| sink.bytes_written)
-                // If serialization fails, then we wouldn't have been able to send the metric.
-                // So, nothing is lost.
-                .unwrap_or_default()
-                .try_into()
-                .unwrap_or(u64::MAX)
-        })
-        .reduce(|sum, v| sum.saturating_add(v))
-        .unwrap_or_default();
+    let byte_quantity = metrics.iter().fold(0u64, |sum, metric| {
+        sum.saturating_add(relay_size::metric_byte_size(metric))
+    });
 
     ItemLossIter::new([
         ItemLoss::new(Category::TraceMetric, item_quantity),
         ItemLoss::new(Category::TraceMetricByte, byte_quantity),
     ])
-}
-
-/// A sink which counts bytes written to it, without storing them anywhere.
-#[derive(Default)]
-struct CountingSink {
-    bytes_written: usize,
 }
 
 impl ItemLossIter {
@@ -301,17 +270,6 @@ impl From<[ItemLoss; 2]> for ItemLossIter {
     fn from(value: [ItemLoss; 2]) -> Self {
         let [info1, info2] = value;
         Self::Two(info1, info2)
-    }
-}
-
-impl Write for CountingSink {
-    fn write(&mut self, buf: &[u8]) -> IoResult<usize> {
-        self.bytes_written = self.bytes_written.saturating_add(buf.len());
-        Ok(buf.len())
-    }
-
-    fn flush(&mut self) -> IoResult<()> {
-        Ok(())
     }
 }
 

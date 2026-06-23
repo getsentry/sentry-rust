@@ -1589,62 +1589,97 @@ some content
     }
 
     #[test]
-    fn losses_on_drop_maps_logs_to_item_count_and_serialized_bytes() {
-        let logs = vec![
-            Log {
-                level: LogLevel::Info,
-                body: "first log".to_owned(),
-                trace_id: None,
-                timestamp: SystemTime::UNIX_EPOCH,
-                severity_number: None,
-                attributes: Map::new(),
-            },
-            Log {
-                level: LogLevel::Error,
-                body: "second log".to_owned(),
-                trace_id: None,
-                timestamp: SystemTime::UNIX_EPOCH,
-                severity_number: Some(10.try_into().unwrap()),
-                attributes: Map::new(),
-            },
-        ];
-        let envelope: Envelope = logs.into();
-
-        assert_eq!(
-            collect_losses(&envelope),
-            vec![(Category::LogItem, 2), (Category::LogByte, 121)]
-        );
-    }
-
-    #[test]
-    fn losses_on_drop_maps_metrics_to_item_count_and_serialized_bytes() {
-        let envelope: Envelope = vec![
-            Metric {
-                r#type: MetricType::Counter,
-                name: Cow::Borrowed("metric.one"),
-                value: 1.0,
-                timestamp: SystemTime::UNIX_EPOCH,
-                trace_id: Default::default(),
-                span_id: None,
-                unit: None,
-                attributes: Map::new(),
-            },
-            Metric {
-                r#type: MetricType::Distribution,
-                name: Cow::Borrowed("metric.two"),
-                value: 2.0,
-                timestamp: SystemTime::UNIX_EPOCH,
-                trace_id: Default::default(),
-                span_id: None,
-                unit: None,
-                attributes: Map::new(),
-            },
-        ]
+    fn losses_on_drop_counts_minimal_log_bytes() {
+        let envelope: Envelope = vec![Log {
+            level: LogLevel::Info,
+            body: String::new(),
+            trace_id: None,
+            timestamp: SystemTime::UNIX_EPOCH,
+            severity_number: None,
+            attributes: Map::new(),
+        }]
         .into();
 
         assert_eq!(
             collect_losses(&envelope),
-            vec![(Category::TraceMetric, 2), (Category::TraceMetricByte, 225)]
+            vec![(Category::LogItem, 1), (Category::LogByte, 1)]
+        );
+    }
+
+    #[test]
+    fn losses_on_drop_counts_complex_log_bytes() {
+        let mut attributes = Map::new();
+        attributes.insert("k1".to_owned(), "string value".into());
+        attributes.insert("k2".to_owned(), u64::MAX.into());
+        attributes.insert("k3".to_owned(), 42.0.into());
+        attributes.insert("k4".to_owned(), false.into());
+        attributes.insert(
+            "k5".to_owned(),
+            serde_json::json!({
+                "nested": {
+                    "array": [1.0, 2, -12, "7 bytes", false]
+                }
+            })
+            .into(),
+        );
+        let envelope: Envelope = vec![Log {
+            level: LogLevel::Info,
+            body: "7 bytes".to_owned(),
+            trace_id: None,
+            timestamp: SystemTime::UNIX_EPOCH,
+            severity_number: None,
+            attributes,
+        }]
+        .into();
+
+        assert_eq!(
+            collect_losses(&envelope),
+            vec![(Category::LogItem, 1), (Category::LogByte, 89)]
+        );
+    }
+
+    #[test]
+    fn losses_on_drop_counts_minimal_metric_bytes() {
+        let envelope: Envelope = vec![Metric {
+            r#type: MetricType::Counter,
+            name: Cow::Borrowed(""),
+            value: 1.0,
+            timestamp: SystemTime::UNIX_EPOCH,
+            trace_id: Default::default(),
+            span_id: None,
+            unit: None,
+            attributes: Map::new(),
+        }]
+        .into();
+
+        assert_eq!(
+            collect_losses(&envelope),
+            vec![(Category::TraceMetric, 1), (Category::TraceMetricByte, 8)]
+        );
+    }
+
+    #[test]
+    fn losses_on_drop_counts_complex_metric_bytes() {
+        let mut attributes = Map::new();
+        attributes.insert(
+            Cow::Borrowed("foo"),
+            "ඞ and some more equals 33 bytes".into(),
+        );
+        let envelope: Envelope = vec![Metric {
+            r#type: MetricType::Counter,
+            name: Cow::Borrowed("counter"),
+            value: 1.0,
+            timestamp: SystemTime::UNIX_EPOCH,
+            trace_id: Default::default(),
+            span_id: None,
+            unit: None,
+            attributes,
+        }]
+        .into();
+
+        assert_eq!(
+            collect_losses(&envelope),
+            vec![(Category::TraceMetric, 1), (Category::TraceMetricByte, 51)]
         );
     }
 
@@ -1697,9 +1732,9 @@ some content
                 (Category::Transaction, 1),
                 (Category::Span, 3),
                 (Category::LogItem, 1),
-                (Category::LogByte, 49),
+                (Category::LogByte, 9),
                 (Category::TraceMetric, 1),
-                (Category::TraceMetricByte, 116),
+                (Category::TraceMetricByte, 24),
             ]
         );
     }
