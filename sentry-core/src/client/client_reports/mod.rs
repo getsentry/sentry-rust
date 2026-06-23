@@ -52,7 +52,10 @@ impl ClientReportAggregator {
     /// Record lost Sentry data.
     ///
     /// Records the given Sentry telemetry item as discarded for the provided `reason`.
-    pub(crate) fn record_lost_data<L: LossSource>(&self, data: &L, reason: Reason) {
+    pub(crate) fn record_lost_data<L>(&self, data: &L, reason: Reason)
+    where
+        L: LossSource + ?Sized,
+    {
         #[cfg(all(target_has_atomic = "64", target_has_atomic = "8"))]
         data.losses().for_each(|loss| {
             let ItemLoss {

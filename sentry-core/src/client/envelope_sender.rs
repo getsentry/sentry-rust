@@ -80,7 +80,10 @@ impl EnvelopeSender {
         }
     }
 
-    pub(super) fn record_lost_data<L: LossSource>(&self, data: &L, reason: ClientReportReason) {
+    pub(super) fn record_lost_data<L>(&self, data: &L, reason: ClientReportReason)
+    where
+        L: LossSource + ?Sized,
+    {
         self.client_report_aggregator.record_lost_data(data, reason);
     }
 

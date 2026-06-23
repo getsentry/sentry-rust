@@ -22,6 +22,7 @@ pub trait LossSource: private::Sealed {
 ///
 /// [`Report`]: super::Report
 #[non_exhaustive]
+#[derive(Debug, Clone)]
 pub struct ItemLoss {
     /// The client report data category of the lost item.
     pub category: Category,
@@ -116,6 +117,33 @@ impl LossSource for ItemContainer {
 impl LossSource for Span {
     fn losses(&self) -> impl Iterator<Item = ItemLoss> + '_ {
         span_losses(self)
+    }
+}
+
+impl LossSource for Log {
+    fn losses(&self) -> impl Iterator<Item = ItemLoss> + '_ {
+        ItemLossIter::new([
+            ItemLoss::new(Category::LogItem, 1),
+            ItemLoss::new(Category::LogByte, relay_size::log_byte_size(self)),
+        ])
+    }
+}
+
+impl LossSource for Metric {
+    fn losses(&self) -> impl Iterator<Item = ItemLoss> + '_ {
+        ItemLossIter::new([
+            ItemLoss::new(Category::TraceMetric, 1),
+            ItemLoss::new(
+                Category::TraceMetricByte,
+                relay_size::metric_byte_size(self),
+            ),
+        ])
+    }
+}
+
+impl LossSource for [ItemLoss] {
+    fn losses(&self) -> impl Iterator<Item = ItemLoss> + '_ {
+        self.iter().cloned()
     }
 }
 
@@ -286,8 +314,8 @@ impl From<[ItemLoss; 2]> for ItemLossIter {
 
 mod private {
     use super::{
-        Attachment, ClientReport, Envelope, EnvelopeItem, Event, ItemContainer, MonitorCheckIn,
-        SessionAggregates, SessionUpdate, Span, Transaction,
+        Attachment, ClientReport, Envelope, EnvelopeItem, Event, ItemContainer, ItemLoss, Log,
+        Metric, MonitorCheckIn, SessionAggregates, SessionUpdate, Span, Transaction,
     };
 
     /// Prevents downstream implementations of [`LossSource`](super::LossSource).
@@ -304,4 +332,7 @@ mod private {
     impl Sealed for ClientReport {}
     impl Sealed for ItemContainer {}
     impl Sealed for Span {}
+    impl Sealed for Log {}
+    impl Sealed for Metric {}
+    impl Sealed for [ItemLoss] {}
 }

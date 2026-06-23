@@ -467,7 +467,10 @@ impl Client {
         event_id
     }
 
-    pub(crate) fn record_lost_data<L: LossSource>(&self, data: &L, reason: ClientReportReason) {
+    pub(crate) fn record_lost_data<L>(&self, data: &L, reason: ClientReportReason)
+    where
+        L: LossSource + ?Sized,
+    {
         self.envelope_sender.record_lost_data(data, reason);
     }
 
@@ -573,7 +576,14 @@ impl Client {
         }
 
         if let Some(ref func) = self.options.before_send_log {
-            log = func(log)?;
+            let losses: Vec<_> = log.losses().collect();
+            log = match func(log) {
+                Some(log) => log,
+                None => {
+                    self.record_lost_data(losses.as_slice(), ClientReportReason::BeforeSend);
+                    return None;
+                }
+            };
         }
 
         Some(log)
@@ -610,7 +620,14 @@ impl Client {
         }
 
         if let Some(ref func) = self.options.before_send_metric {
-            metric = func(metric)?;
+            let losses: Vec<_> = metric.losses().collect();
+            metric = match func(metric) {
+                Some(metric) => metric,
+                None => {
+                    self.record_lost_data(losses.as_slice(), ClientReportReason::BeforeSend);
+                    return None;
+                }
+            };
         }
 
         Some(metric)
