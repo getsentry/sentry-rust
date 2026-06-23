@@ -398,8 +398,8 @@ pub struct EnvelopeFilterCallbacks<F, C> {
 impl<F, C> EnvelopeFilterCallbacks<F, C> {
     /// Create a new [`EnvelopeFilterCallbacks`].
     ///
-    /// `filter` will be called to determine whether the envelope should be kept. `on_filtered`
-    /// will be called on all envelopes which are then dropped.
+    /// `filter` will be called to determine whether the envelope items should be kept.
+    /// `on_filtered` will be called on all envelope items which are then dropped.
     pub fn new(filter: F, on_filtered: C) -> Self {
         Self {
             filter,
