@@ -8,9 +8,9 @@
 #[cfg(all(target_has_atomic = "64", target_has_atomic = "8"))]
 use std::sync::Arc;
 
-use sentry_types::protocol::v7::client_report::{Category, Reason};
 #[cfg(all(target_has_atomic = "64", target_has_atomic = "8"))]
-use sentry_types::protocol::v7::client_report::{ItemLoss, LossSource};
+use sentry_types::protocol::v7::client_report::ItemLoss;
+use sentry_types::protocol::v7::client_report::{Category, LossSource, Reason};
 use sentry_types::protocol::v7::ClientReport;
 
 #[cfg(all(target_has_atomic = "64", target_has_atomic = "8"))]
@@ -52,14 +52,16 @@ impl ClientReportAggregator {
     /// Record lost Sentry data.
     ///
     /// Records the given Sentry telemetry item as discarded for the provided `reason`.
-    #[cfg(all(target_has_atomic = "64", target_has_atomic = "8"))]
     pub(crate) fn record_lost_data<L: LossSource>(&self, data: &L, reason: Reason) {
+        #[cfg(all(target_has_atomic = "64", target_has_atomic = "8"))]
         data.losses().for_each(|loss| {
             let ItemLoss {
                 category, quantity, ..
             } = loss;
             self.record_loss(category, reason, quantity)
         });
+        #[cfg(not(all(target_has_atomic = "64", target_has_atomic = "8")))]
+        let _ = (data, reason);
     }
 
     /// Records `quantity` lost items for `category` and `reason`.
