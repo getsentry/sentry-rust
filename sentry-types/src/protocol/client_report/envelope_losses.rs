@@ -22,7 +22,7 @@ pub trait LossSource: private::Sealed {
 ///
 /// [`Report`]: super::Report
 #[non_exhaustive]
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct ItemLoss {
     /// The client report data category of the lost item.
     pub category: Category,
@@ -143,7 +143,7 @@ impl LossSource for Metric {
 
 impl LossSource for [ItemLoss] {
     fn losses(&self) -> impl Iterator<Item = ItemLoss> + '_ {
-        self.iter().cloned()
+        self.iter().copied()
     }
 }
 
