@@ -2,8 +2,12 @@ use std::io::{Cursor, Read};
 use std::time::Duration;
 
 use curl::easy::Easy as CurlClient;
+use sentry_core::TransportOptions;
 
-use super::{thread::TransportThread, HTTP_PAYLOAD_TOO_LARGE, HTTP_PAYLOAD_TOO_LARGE_MESSAGE};
+use super::{
+    thread::{TransportThread, TransportThreadOptions},
+    RateLimiter, HTTP_PAYLOAD_TOO_LARGE, HTTP_PAYLOAD_TOO_LARGE_MESSAGE,
+};
 
 use crate::{sentry_debug, types::Scheme, ClientOptions, Envelope, Transport};
 
@@ -15,30 +19,78 @@ pub struct CurlHttpTransport {
     thread: TransportThread,
 }
 
+/// Options for constructing a [`CurlHttpTransport`].
+///
+/// Currently, this is primarily a wrapper around a [`TransportOptions`], and must be created with
+/// the `From<TransportOptions>` implementation. Optionally, a [`curl::easy::Easy`] client for the
+/// transport may be provided with [`Self::with_client`].
+#[derive(Debug)]
+#[must_use]
+pub struct CurlHttpTransportOptions {
+    general_options: TransportOptions,
+    client: Option<CurlClient>,
+}
+
 impl CurlHttpTransport {
-    /// Creates a new Transport.
+    /// Backwards-compatible method for creating a [`CurlHttpTransport`].
+    ///
+    /// Please use [`CurlHttpTransportOptions::build`] instead.
+    ///
+    /// ### Panics
+    ///
+    /// Panics if called with `options` that lack a DSN.
+    #[inline]
+    #[deprecated = "use `CurlHttpTransportOptions::build` instead"]
     pub fn new(options: &ClientOptions) -> Self {
-        Self::new_internal(options, None)
+        let general_options = TransportOptions::try_from_client_options(options)
+            .expect("this method should only be called when options has a DSN");
+
+        CurlHttpTransportOptions::from(general_options).build()
     }
 
-    /// Creates a new Transport that uses the specified [`CurlClient`].
+    /// Backwards-compatible method for creating a [`CurlHttpTransport`] that uses the specified
+    /// [`CurlClient`].
+    ///
+    /// Please use [`CurlHttpTransportOptions::build`] instead.
+    ///
+    /// ### Panics
+    ///
+    /// Panics if called with `options` that lack a DSN.
+    #[inline]
+    #[deprecated = "use `CurlHttpTransportOptions::build` instead"]
     pub fn with_client(options: &ClientOptions, client: CurlClient) -> Self {
-        Self::new_internal(options, Some(client))
+        let general_options = TransportOptions::try_from_client_options(options)
+            .expect("this method should only be called when options has a DSN");
+
+        CurlHttpTransportOptions::from(general_options)
+            .with_client(client)
+            .build()
     }
 
-    fn new_internal(options: &ClientOptions, client: Option<CurlClient>) -> Self {
+    /// Creates a new [`CurlHttpTransport`] with the given `options`.
+    #[inline]
+    pub(super) fn with_options(options: CurlHttpTransportOptions) -> Self {
+        let CurlHttpTransportOptions {
+            general_options:
+                TransportOptions {
+                    dsn,
+                    user_agent,
+                    http_proxy,
+                    https_proxy,
+                    accept_invalid_certs,
+                    ..
+                },
+            client,
+        } = options;
+
         let client = client.unwrap_or_else(CurlClient::new);
-        let http_proxy = options.http_proxy.as_ref().map(ToString::to_string);
-        let https_proxy = options.https_proxy.as_ref().map(ToString::to_string);
-        let dsn = options.dsn.as_ref().unwrap();
-        let user_agent = options.user_agent.clone();
         let auth = dsn.to_auth(Some(&user_agent)).to_string();
         let url = dsn.envelope_api_url().to_string();
         let scheme = dsn.scheme();
-        let accept_invalid_certs = options.accept_invalid_certs;
 
         let mut handle = client;
-        let thread = TransportThread::new(move |envelope, rl| {
+
+        let send_fn = move |envelope: Envelope, rl: &mut RateLimiter| {
             handle.reset();
             handle.url(&url).unwrap();
             handle.custom_request("POST").unwrap();
@@ -130,7 +182,9 @@ impl CurlHttpTransport {
                     sentry_debug!("Failed to send envelope: {}", err);
                 }
             }
-        });
+        };
+
+        let thread = TransportThreadOptions::new(send_fn).spawn_thread();
         Self { thread }
     }
 }
@@ -145,5 +199,30 @@ impl Transport for CurlHttpTransport {
 
     fn shutdown(&self, timeout: Duration) -> bool {
         self.flush(timeout)
+    }
+}
+
+impl From<TransportOptions> for CurlHttpTransportOptions {
+    #[inline]
+    fn from(value: TransportOptions) -> Self {
+        Self {
+            general_options: value,
+            client: None,
+        }
+    }
+}
+
+impl CurlHttpTransportOptions {
+    /// Specify the [`CurlClient`] for the [`CurlHttpTransport`].
+    #[inline]
+    pub fn with_client(self, client: CurlClient) -> Self {
+        let client = Some(client);
+        Self { client, ..self }
+    }
+
+    /// Create a [`CurlHttpTransport`] using these options.
+    #[inline]
+    pub fn build(self) -> CurlHttpTransport {
+        CurlHttpTransport::with_options(self)
     }
 }

@@ -2,9 +2,19 @@
 
 ## Unreleased
 
+### New Features
+
+- Added [`TransportFactory::create_transport_with_options`](https://docs.rs/sentry-core/latest/sentry_core/trait.TransportFactory.html#method.create_transport_with_options), which constructs transports from [`TransportOptions`](https://docs.rs/sentry-core/latest/sentry_core/struct.TransportOptions.html) instead of full [`ClientOptions`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html) ([#1142](https://github.com/getsentry/sentry-rust/pull/1142)).
+- Added transport-specific options types and `with_options` constructors for built-in HTTP transports, including `ReqwestHttpTransportOptions`, `CurlHttpTransportOptions`, `UreqHttpTransportOptions`, and `EmbeddedSVCHttpTransportOptions` ([#1142](https://github.com/getsentry/sentry-rust/pull/1142)).
+- Added transport worker options types and deprecated the legacy constructors for built-in background transport workers, including `StdTransportThreadOptions` and `TokioTransportThreadOptions` ([#1142](https://github.com/getsentry/sentry-rust/pull/1142)).
+
 ### Fixes
 
 - Fixed `ureq` transport handling for HTTP error statuses so `429` rate limits and `413` payload-too-large responses are processed correctly ([#1177](https://github.com/getsentry/sentry-rust/pull/1177)).
+
+### Behavior Changes
+
+- Custom transport factories that implement [`TransportFactory::create_transport`](https://docs.rs/sentry-core/latest/sentry_core/trait.TransportFactory.html#method.create_transport) now receive [`ClientOptions`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html) reconstructed from [`TransportOptions`](https://docs.rs/sentry-core/latest/sentry_core/struct.TransportOptions.html). The reconstructed options include only transport-relevant fields, such as DSN, user agent, proxy settings, and TLS certificate validation settings. This may affect code that reads non-transport fields in `create_transport`, but the API remains source-compatible and this change is included in a minor/patch release ([#1142](https://github.com/getsentry/sentry-rust/pull/1142)).
 
 ## 0.48.2
 

@@ -131,7 +131,7 @@ pub use crate::integration::Integration;
 pub use crate::intodsn::IntoDsn;
 pub use crate::performance::*;
 pub use crate::scope::{Scope, ScopeGuard};
-pub use crate::transport::{Transport, TransportFactory};
+pub use crate::transport::{Transport, TransportFactory, TransportOptions};
 #[cfg(feature = "logs")]
 mod logger; // structured logging macros exported with `#[macro_export]`
 
