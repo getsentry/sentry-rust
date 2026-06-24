@@ -47,6 +47,8 @@ indexed_enum! {
         RatelimitBackoff,
         /// An internal queue overflowed (e.g. the transport queue).
         QueueOverflow,
+        /// An SDK internal buffer overflowed.
+        BufferOverflow,
         /// An event was dropped by an event processor.
         EventProcessor,
         /// An event was dropped by a `before_send` callback.

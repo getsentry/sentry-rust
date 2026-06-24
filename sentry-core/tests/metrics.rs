@@ -368,8 +368,9 @@ fn metrics_span_id_from_active_span() {
         .expect("expected one envelope");
     let item = envelope
         .into_items()
+        .filter(|item| !matches!(item, EnvelopeItem::ClientReport(_)))
         .try_into_only_item()
-        .expect("expected one item");
+        .expect("expected one non-client-report item");
     let mut metrics = item.into_metrics().expect("expected metrics item");
     let metric = metrics.pop().expect("expected one metric");
 
