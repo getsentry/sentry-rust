@@ -15,6 +15,9 @@ use crate::metrics::IntoProtocolMetric;
 use crate::protocol::SessionUpdate;
 use crate::transport::TransportOptions;
 use rand::random;
+use sentry_types::protocol::v7::client_report::{
+    Category as ClientReportCategory, Reason as ClientReportReason,
+};
 use sentry_types::random_uuid;
 
 #[cfg(any(feature = "logs", feature = "metrics"))]
@@ -333,7 +336,13 @@ impl Client {
         }
 
         if let Some(scope) = scope {
-            event = scope.apply_to_event(event)?;
+            event = match scope.apply_to_event(event) {
+                Some(event) => event,
+                None => {
+                    self.record_lost_event(ClientReportReason::EventProcessor);
+                    return None;
+                }
+            };
         }
 
         for (_, integration) in self.integrations.iter() {
@@ -342,6 +351,7 @@ impl Client {
                 Some(event) => event,
                 None => {
                     sentry_debug!("integration dropped event {:?}", id);
+                    self.record_lost_event(ClientReportReason::EventProcessor);
                     return None;
                 }
             }
@@ -367,6 +377,7 @@ impl Client {
                 event = processed_event;
             } else {
                 sentry_debug!("before_send dropped event {:?}", id);
+                self.record_lost_event(ClientReportReason::BeforeSend);
                 return None;
             }
         }
@@ -376,6 +387,7 @@ impl Client {
         }
 
         if !self.sample_should_send(self.options.sample_rate) {
+            self.record_lost_event(ClientReportReason::SampleRate);
             None
         } else {
             Some(event)
@@ -453,6 +465,21 @@ impl Client {
             })
         });
         event_id
+    }
+
+    /// Records `quantity` lost items for `category` and `reason`.
+    fn record_loss(
+        &self,
+        category: ClientReportCategory,
+        reason: ClientReportReason,
+        quantity: u64,
+    ) {
+        self.envelope_sender.record_loss(category, reason, quantity);
+    }
+
+    /// Records one lost error event for `reason`.
+    fn record_lost_event(&self, reason: ClientReportReason) {
+        self.record_loss(ClientReportCategory::Error, reason, 1);
     }
 
     /// Sends the specified [`Envelope`] to sentry.

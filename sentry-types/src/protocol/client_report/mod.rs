@@ -47,6 +47,12 @@ indexed_enum! {
         RatelimitBackoff,
         /// An internal queue overflowed (e.g. the transport queue).
         QueueOverflow,
+        /// An event was dropped by an event processor.
+        EventProcessor,
+        /// An event was dropped by a `before_send` callback.
+        BeforeSend,
+        /// An event was dropped because of error event sampling.
+        SampleRate,
     }
 
     /// The category of data which was dropped.
