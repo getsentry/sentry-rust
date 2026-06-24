@@ -38,6 +38,7 @@ use sentry_types::protocol::v7::LogAttribute;
 use sentry_types::protocol::v7::Metric;
 
 mod batcher;
+mod client_reports;
 mod envelope_sender;
 
 pub(crate) use self::envelope_sender::EnvelopeSender;
