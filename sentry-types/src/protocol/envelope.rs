@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
 
-use crate::utils::ts_rfc3339_opt;
 use crate::Dsn;
+use crate::{protocol::v7::ClientReport, utils::ts_rfc3339_opt};
 
 use super::v7 as protocol;
 
@@ -132,6 +132,9 @@ enum EnvelopeItemType {
     /// Serialized to a `trace_metric` envelope item.
     #[serde(rename = "trace_metric")]
     MetricsContainer,
+    /// A client report.
+    #[serde(rename = "client_report")]
+    ClientReport,
 }
 
 /// An Envelope Item Header.
@@ -181,6 +184,8 @@ pub enum EnvelopeItem {
     Attachment(Attachment),
     /// A MonitorCheckIn item.
     MonitorCheckIn(MonitorCheckIn),
+    /// An aggregated client report
+    ClientReport(ClientReport),
     /// A container for a list of multiple items.
     ItemContainer(ItemContainer),
     /// This is a sentinel item used to `filter` raw envelopes.
@@ -269,6 +274,7 @@ impl EnvelopeItem {
             Self::Transaction(_) => Some(EnvelopeItemType::Transaction),
             Self::Attachment(_) => Some(EnvelopeItemType::Attachment),
             Self::MonitorCheckIn(_) => Some(EnvelopeItemType::MonitorCheckIn),
+            Self::ClientReport(_) => Some(EnvelopeItemType::ClientReport),
             Self::ItemContainer(container) => Some(container.item_type()),
             Self::Raw => None,
         }
@@ -326,6 +332,12 @@ impl From<Vec<Log>> for EnvelopeItem {
 impl From<Vec<Metric>> for EnvelopeItem {
     fn from(metrics: Vec<Metric>) -> Self {
         EnvelopeItem::ItemContainer(metrics.into())
+    }
+}
+
+impl From<ClientReport> for EnvelopeItem {
+    fn from(value: ClientReport) -> Self {
+        EnvelopeItem::ClientReport(value)
     }
 }
 
@@ -600,6 +612,9 @@ impl Envelope {
                 EnvelopeItem::MonitorCheckIn(check_in) => {
                     serde_json::to_writer(&mut item_buf, check_in)?
                 }
+                EnvelopeItem::ClientReport(client_report) => {
+                    serde_json::to_writer(&mut item_buf, client_report)?
+                }
                 EnvelopeItem::ItemContainer(container) => match container {
                     ItemContainer::Logs(logs) => {
                         let wrapper = ItemsSerdeWrapper { items: logs.into() };
@@ -797,6 +812,9 @@ impl Envelope {
             })),
             EnvelopeItemType::MonitorCheckIn => {
                 serde_json::from_slice(payload).map(EnvelopeItem::MonitorCheckIn)
+            }
+            EnvelopeItemType::ClientReport => {
+                serde_json::from_slice(payload).map(EnvelopeItem::ClientReport)
             }
             EnvelopeItemType::LogsContainer => {
                 serde_json::from_slice::<ItemsSerdeWrapper<_>>(payload)

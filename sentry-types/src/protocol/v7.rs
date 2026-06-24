@@ -24,11 +24,19 @@ pub use uuid::Uuid;
 
 use crate::utils::{display_from_str_opt, ts_rfc3339_opt, ts_seconds_float};
 
+pub use self::client_report::Report as ClientReport;
 pub use super::attachment::*;
 pub use super::envelope::*;
 pub use super::monitor::*;
 pub use super::session::*;
 pub use super::unit::Unit;
+
+/// Types related to [Client Reports].
+///
+/// [Client Reports]: https://develop.sentry.dev/sdk/telemetry/client-reports/
+pub mod client_report {
+    pub use super::super::client_report::{Category, Item, Reason, Report};
+}
 
 /// An arbitrary (JSON) value.
 pub mod value {
