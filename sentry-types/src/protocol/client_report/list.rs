@@ -11,11 +11,11 @@ const POSSIBLE_CATEGORY_REASONS: usize = Category::VARIANTS.len() * Reason::VARI
 /// An entry in a client report.
 ///
 /// Contains the quantity dropped for a certain category and reason.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Copy)]
 pub struct Item {
-    category: Category,
-    reason: Reason,
-    quantity: u64,
+    pub(super) category: Category,
+    pub(super) reason: Reason,
+    pub(super) quantity: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -74,6 +74,12 @@ impl FromIterator<Item> for ClientReportList {
 impl PartialEq for ClientReportList {
     fn eq(&self, other: &Self) -> bool {
         self.aggregate() == other.aggregate()
+    }
+}
+
+impl AsRef<[Item]> for ClientReportList {
+    fn as_ref(&self) -> &[Item] {
+        &self.0
     }
 }
 

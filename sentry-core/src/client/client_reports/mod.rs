@@ -59,8 +59,15 @@ impl ClientReportAggregator {
         #[cfg(all(target_has_atomic = "64", target_has_atomic = "8"))]
         data.losses().for_each(|loss| {
             let ItemLoss {
-                category, quantity, ..
+                category,
+                quantity,
+                reason: reason_override,
+                ..
             } = loss;
+
+            // If a reason was already set, use that reason. Otherwise, use the reason supplied
+            // when this function was called.
+            let reason = reason_override.unwrap_or(reason);
             self.record_loss(category, reason, quantity)
         });
         #[cfg(not(all(target_has_atomic = "64", target_has_atomic = "8")))]
