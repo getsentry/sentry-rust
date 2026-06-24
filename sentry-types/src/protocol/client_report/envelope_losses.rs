@@ -1,13 +1,13 @@
 //! Computes client report loss categories and quantities for dropped envelope items.
 
 use std::mem;
-use std::slice::Iter as SliceIter;
 
 use crate::protocol::v7::{
     Attachment, ClientReport, Envelope, EnvelopeItem, Event, ItemContainer, Log, Metric,
     MonitorCheckIn, SessionAggregateItem, SessionAggregates, SessionUpdate, Span, Transaction,
 };
 
+use super::list::Iter as ClientReportItemIter;
 use super::{relay_size, Category, Item as ClientReportItem, Reason};
 
 /// A trait for protocol types which can be a source of lost Sentry data if discarded.
@@ -49,7 +49,7 @@ enum ItemLossIter<'a> {
     Empty,
     One(ItemLoss),
     Two(ItemLoss, ItemLoss),
-    ClientReportItems(SliceIter<'a, ClientReportItem>),
+    ClientReportItems(ClientReportItemIter<'a>),
 }
 
 impl Iterator for ItemLossIter<'_> {
@@ -248,7 +248,7 @@ fn monitor_check_in_losses(_check_in: &MonitorCheckIn) -> ItemLossIter<'static> 
 /// Unlike losses for other types, these losses will also contain a reason: that reason is the
 /// loss reason originally recorded for the loss.
 fn client_report_losses(client_report: &ClientReport) -> ItemLossIter<'_> {
-    ItemLossIter::new(client_report.discarded_events.as_ref().iter())
+    ItemLossIter::new(client_report.discarded_events.iter())
 }
 
 /// Returns losses for the container's item kind.
@@ -338,8 +338,8 @@ impl From<[ItemLoss; 2]> for ItemLossIter<'static> {
     }
 }
 
-impl<'a> From<SliceIter<'a, ClientReportItem>> for ItemLossIter<'a> {
-    fn from(value: SliceIter<'a, ClientReportItem>) -> Self {
+impl<'a> From<ClientReportItemIter<'a>> for ItemLossIter<'a> {
+    fn from(value: ClientReportItemIter<'a>) -> Self {
         Self::ClientReportItems(value)
     }
 }
