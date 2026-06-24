@@ -1,5 +1,7 @@
 //! Module with code for representing the underlying list of client reports.
 
+use std::slice::Iter as SliceIter;
+
 use serde::{Deserialize, Serialize};
 
 use super::{Category, Reason};
@@ -11,18 +13,26 @@ const POSSIBLE_CATEGORY_REASONS: usize = Category::VARIANTS.len() * Reason::VARI
 /// An entry in a client report.
 ///
 /// Contains the quantity dropped for a certain category and reason.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Copy)]
 pub struct Item {
-    category: Category,
-    reason: Reason,
-    quantity: u64,
+    pub(super) category: Category,
+    pub(super) reason: Reason,
+    pub(super) quantity: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(transparent)]
 pub(super) struct ClientReportList(Vec<Item>);
 
+/// An iterator over items in a client report list.
+pub(super) struct Iter<'a>(SliceIter<'a, Item>);
+
 impl ClientReportList {
+    /// Get an iterator over the items in this list.
+    pub(super) fn iter(&self) -> Iter<'_> {
+        Iter(self.0.iter())
+    }
+
     /// Private helper used in [`PartialEq`] implementation to make comparisions order-insensitive.
     ///
     /// This function aggregates all the counts into an array, where each item in the array
@@ -74,6 +84,14 @@ impl FromIterator<Item> for ClientReportList {
 impl PartialEq for ClientReportList {
     fn eq(&self, other: &Self) -> bool {
         self.aggregate() == other.aggregate()
+    }
+}
+
+impl<'a> Iterator for Iter<'a> {
+    type Item = &'a Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next()
     }
 }
 
