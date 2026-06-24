@@ -9,9 +9,12 @@ use serde::{Deserialize, Serialize};
 use self::list::ClientReportList;
 use crate::utils;
 
+pub use self::envelope_losses::{ItemLoss, LossSource};
 pub use self::list::Item;
 
+mod envelope_losses;
 mod list;
+mod relay_size;
 
 /// A [client report].
 ///
@@ -44,7 +47,56 @@ indexed_enum! {
     #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Copy)]
     #[serde(rename_all = "snake_case")]
     #[non_exhaustive]
-    pub enum Category {}
+    pub enum Category {
+        /// An error event.
+        Error,
+        /// A session update or quantity of session outcomes contained in a session aggregate.
+        Session,
+        /// A transaction event.
+        ///
+        /// Dropped transactions should also be counted as dropped [`Span`]s: one for the
+        /// transaction root span extracted by Relay, plus one for each child span.
+        ///
+        /// [`Span`]: Category::Span
+        Transaction,
+        /// A span.
+        ///
+        /// When counting spans for a dropped transaction, the quantity includes all child spans
+        /// plus one for the transaction root span extracted by Relay.
+        Span,
+        /// A quantity of attachment bytes.
+        Attachment,
+        /// A monitor check-in.
+        Monitor,
+        /// A log item.
+        ///
+        /// Dropped logs should also be counted as dropped [`LogByte`]s so client reports include
+        /// the approximate volume of dropped log data.
+        ///
+        /// [`LogByte`]: Category::LogByte
+        LogItem,
+        /// A quantity of log bytes.
+        ///
+        /// This complements [`LogItem`]: `log_item` counts dropped logs, while `log_byte` counts
+        /// their estimated byte size.
+        ///
+        /// [`LogItem`]: Category::LogItem
+        LogByte,
+        /// A trace metric item.
+        ///
+        /// Dropped trace metrics should also be counted as dropped [`TraceMetricByte`]s so client
+        /// reports include the approximate volume of dropped metric data.
+        ///
+        /// [`TraceMetricByte`]: Category::TraceMetricByte
+        TraceMetric,
+        /// A quantity of trace metric bytes.
+        ///
+        /// This complements [`TraceMetric`]: `trace_metric` counts dropped trace metrics, while
+        /// `trace_metric_byte` counts their estimated byte size.
+        ///
+        /// [`TraceMetric`]: Category::TraceMetric
+        TraceMetricByte,
+    }
 }
 
 impl Report {

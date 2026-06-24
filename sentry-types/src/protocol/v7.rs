@@ -35,7 +35,7 @@ pub use super::unit::Unit;
 ///
 /// [Client Reports]: https://develop.sentry.dev/sdk/telemetry/client-reports/
 pub mod client_report {
-    pub use super::super::client_report::{Category, Item, Reason, Report};
+    pub use super::super::client_report::{Category, Item, ItemLoss, LossSource, Reason, Report};
 }
 
 /// An arbitrary (JSON) value.
