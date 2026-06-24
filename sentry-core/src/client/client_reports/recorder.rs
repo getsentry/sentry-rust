@@ -48,7 +48,30 @@ pub struct Recorder {
 /// reasons may be applicable to transports.
 #[derive(Debug, Clone, Copy)]
 #[non_exhaustive]
-pub enum TransportLossReason {}
+pub enum TransportLossReason {
+    /// Use this reason to record an error when sending an envelope.
+    ///
+    /// This reason should be used, for example, if the server responds with a non-`2xx` HTTP
+    /// when the envelope is sent.
+    ///
+    /// However, transports **must never** record a loss when receiving an HTTP `429`
+    /// (rate-limiting) response, as the server already records a loss in this case.
+    SendError,
+    /// Used for an internal error.
+    ///
+    /// This reason should be used, for example, if an I/O error prevents the envelope from
+    /// being serialized.
+    ///
+    /// Converts to [`Reason::InternalSdkError`].
+    InternalError,
+    /// Used for a network error.
+    ///
+    /// This reason should be used, for example, if a connection timeout or DNS error prevents the
+    /// envelope from being sent.
+    ///
+    /// Converts to [`Reason::NetworkError`].
+    NetworkError,
+}
 
 impl Recorder {
     /// Record an envelope item lost for a given reason.
@@ -109,6 +132,10 @@ impl TransportLossReason {
     /// Convert to the corresponding [`Reason`].
     #[cfg(all(target_has_atomic = "8", target_has_atomic = "64"))]
     fn into_reason(self) -> Reason {
-        match self {}
+        match self {
+            Self::SendError => Reason::SendError,
+            Self::InternalError => Reason::InternalSdkError,
+            Self::NetworkError => Reason::NetworkError,
+        }
     }
 }
