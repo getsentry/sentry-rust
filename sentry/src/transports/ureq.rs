@@ -150,12 +150,15 @@ impl UreqHttpTransport {
         let auth = dsn.to_auth(Some(&user_agent)).to_string();
         let url = dsn.envelope_api_url().to_string();
 
+        let send_fn_client_report_recorder = client_report_recorder.clone();
+
         let send_fn = move |envelope: Envelope, rl: &mut RateLimiter| {
             let mut body = Vec::new();
             envelope
                 .to_writer(&mut body)
                 .inspect_err(|_| {
-                    client_report_recorder.record_lost_data(&envelope, LossReason::InternalError);
+                    send_fn_client_report_recorder
+                        .record_lost_data(&envelope, LossReason::InternalError);
                 })
                 .expect("envelope should serialize successfully");
             let request = agent
@@ -197,17 +200,21 @@ impl UreqHttpTransport {
                     if (400..=599).contains(&response_status)
                         && response_status != HTTP_RATE_LIMIT_STATUS
                     {
-                        client_report_recorder.record_lost_data(&envelope, LossReason::SendError);
+                        send_fn_client_report_recorder
+                            .record_lost_data(&envelope, LossReason::SendError);
                     }
                 }
                 Err(err) => {
                     sentry_debug!("Failed to send envelope: {}", err);
-                    client_report_recorder.record_lost_data(&envelope, LossReason::NetworkError);
+                    send_fn_client_report_recorder
+                        .record_lost_data(&envelope, LossReason::NetworkError);
                 }
             }
         };
 
-        let thread = TransportThreadOptions::new(send_fn).spawn_thread();
+        let thread = TransportThreadOptions::new(send_fn)
+            .with_client_report_recorder(client_report_recorder)
+            .spawn_thread();
         Self { thread }
     }
 }

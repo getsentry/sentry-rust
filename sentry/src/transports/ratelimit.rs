@@ -1,4 +1,6 @@
 use httpdate::parse_http_date;
+use sentry_core::client_report::{Reason as ClientReportReason, Recorder as ClientReportRecorder};
+use sentry_core::protocol::EnvelopeFilterCallbacks;
 use std::time::{Duration, SystemTime};
 
 use crate::protocol::EnvelopeItem;
@@ -110,24 +112,43 @@ impl RateLimiter {
     /// Filters the [`Envelope`] according to the current rate limits.
     ///
     /// Returns [`None`] if all the envelope items were filtered out.
+    #[deprecated = "Deprecated with no new public API equivalent."]
     pub fn filter_envelope(&self, envelope: Envelope) -> Option<Envelope> {
-        envelope.filter(|item: &_| {
-            self.is_enabled(match item {
-                EnvelopeItem::Event(_) => RateLimitingCategory::Error,
-                EnvelopeItem::SessionUpdate(_) | EnvelopeItem::SessionAggregates(_) => {
-                    RateLimitingCategory::Session
-                }
-                EnvelopeItem::Transaction(_) => RateLimitingCategory::Transaction,
-                EnvelopeItem::Attachment(_) => RateLimitingCategory::Attachment,
-                EnvelopeItem::ItemContainer(ItemContainer::Logs(_)) => {
-                    RateLimitingCategory::LogItem
-                }
-                EnvelopeItem::ItemContainer(ItemContainer::Metrics(_)) => {
-                    RateLimitingCategory::TraceMetric
-                }
-                _ => RateLimitingCategory::Any,
-            })
-        })
+        self.filter(envelope, &Default::default())
+    }
+
+    /// Filters the [`Envelope`] according to current rate limits, recording any discarded items
+    /// as lost via the client report recorder.
+    ///
+    /// Returns [`None`] if all the envelope items were filtered out.
+    pub(super) fn filter(
+        &self,
+        envelope: Envelope,
+        client_report_recorder: &ClientReportRecorder,
+    ) -> Option<Envelope> {
+        envelope.filter(EnvelopeFilterCallbacks::new(
+            |item: &_| {
+                self.is_enabled(match item {
+                    EnvelopeItem::Event(_) => RateLimitingCategory::Error,
+                    EnvelopeItem::SessionUpdate(_) | EnvelopeItem::SessionAggregates(_) => {
+                        RateLimitingCategory::Session
+                    }
+                    EnvelopeItem::Transaction(_) => RateLimitingCategory::Transaction,
+                    EnvelopeItem::Attachment(_) => RateLimitingCategory::Attachment,
+                    EnvelopeItem::ItemContainer(ItemContainer::Logs(_)) => {
+                        RateLimitingCategory::LogItem
+                    }
+                    EnvelopeItem::ItemContainer(ItemContainer::Metrics(_)) => {
+                        RateLimitingCategory::TraceMetric
+                    }
+                    _ => RateLimitingCategory::Any,
+                })
+            },
+            |item| {
+                client_report_recorder
+                    .record_lost_data(&item, ClientReportReason::RatelimitBackoff);
+            },
+        ))
     }
 }
 
