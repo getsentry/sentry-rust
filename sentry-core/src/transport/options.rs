@@ -4,6 +4,8 @@ use std::borrow::Cow;
 
 use sentry_types::Dsn;
 
+#[cfg(feature = "client")]
+use crate::client_report::Recorder as ClientReportRecorder;
 use crate::ClientOptions;
 
 /// Options for a transport.
@@ -21,6 +23,9 @@ pub struct TransportOptions {
     pub https_proxy: Option<Cow<'static, str>>,
     /// Whether TLS certificate validation should be disabled.
     pub accept_invalid_certs: bool,
+    /// A handle for recording lost Sentry data.
+    #[cfg(feature = "client")]
+    pub client_report_recorder: ClientReportRecorder,
 }
 
 impl TransportOptions {
@@ -47,6 +52,8 @@ impl TransportOptions {
             http_proxy: http_proxy.clone(),
             https_proxy: https_proxy.clone(),
             accept_invalid_certs: *accept_invalid_certs,
+            #[cfg(feature = "client")]
+            client_report_recorder: ClientReportRecorder::new_no_op(),
         })
     }
 
@@ -64,6 +71,8 @@ impl TransportOptions {
             http_proxy,
             https_proxy,
             accept_invalid_certs,
+            #[cfg(feature = "client")]
+                client_report_recorder: _,
         } = self;
 
         let dsn = Some(dsn);
