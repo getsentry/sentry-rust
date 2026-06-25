@@ -14,6 +14,10 @@ The Sentry Rust SDK now reports data discarded by the SDK to Sentry’s [Stats](
 - Added client report protocol types in `sentry-types`, including [`ClientReport`](https://docs.rs/sentry-types/0.48.3/sentry_types/protocol/v7/index.html#reexport.ClientReport), [`client_report::Item`](https://docs.rs/sentry-types/0.48.3/sentry_types/protocol/v7/client_report/struct.Item.html), [`client_report::Category`](https://docs.rs/sentry-types/0.48.3/sentry_types/protocol/v7/client_report/enum.Category.html), and [`client_report::Reason`](https://docs.rs/sentry-types/0.48.3/sentry_types/protocol/v7/client_report/enum.Reason.html), plus support for serializing [`client_report` envelope items](https://docs.rs/sentry-types/0.48.3/sentry_types/protocol/v7/enum.EnvelopeItem.html#variant.ClientReport) ([#1144](https://github.com/getsentry/sentry-rust/pull/1144)).
 - Added [a client report `Recorder` type](https://docs.rs/sentry-core/0.48.3/sentry_core/client_report/struct.Recorder.html), which modern [`TransportFactory`](https://docs.rs/sentry-core/0.48.3/sentry_core/trait.TransportFactory.html) implementations receive via [`TransportOptions`](https://docs.rs/sentry-core/0.48.3/sentry_core/struct.TransportOptions.html). Transports can use this recorder to record discarded Sentry data; the SDK aggregates these reported losses and automatically sends them in a future envelope ([#1158](https://github.com/getsentry/sentry-rust/pull/1158)).
 
+### Deprecations
+
+- Deprecated [`Hub::with`](https://docs.rs/sentry-core/0.48.3/sentry_core/struct.Hub.html#method.with). Use [`Hub::current`](https://docs.rs/sentry-core/0.48.3/sentry_core/struct.Hub.html#method.current) instead ([#1126](https://github.com/getsentry/sentry-rust/pull/1126)).
+
 ### Fixes
 
 - Fixed `ureq` transport handling for HTTP error statuses so `429` rate limits and `413` payload-too-large responses are processed correctly ([#1177](https://github.com/getsentry/sentry-rust/pull/1177)).
