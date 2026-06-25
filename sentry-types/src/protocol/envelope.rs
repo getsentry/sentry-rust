@@ -518,10 +518,9 @@ impl Envelope {
         })
     }
 
-    /// Filters the Envelope's [`EnvelopeItem`]s based on a predicate,
+    /// Filters the Envelope's [`EnvelopeItem`]s with an [`EnvelopeFilter`],
     /// and returns a new Envelope containing only the filtered items.
     ///
-    /// Retains the [`EnvelopeItem`]s for which the predicate returns `true`.
     /// Additionally, [`EnvelopeItem::Attachment`]s are only kept if the Envelope
     /// contains an [`EnvelopeItem::Event`] or [`EnvelopeItem::Transaction`].
     ///
