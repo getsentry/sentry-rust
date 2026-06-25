@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Breaking Changes
+
+- Added [`ClientOptions::org_id`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html#structfield.org_id) and [`ClientOptions::strict_trace_continuation`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html#structfield.strict_trace_continuation) for configuring strict trace continuation. Code that constructs `ClientOptions` with a full struct literal (without `..Default::default()`), or which exhaustively matches against it, must now include both fields ([#1203](https://github.com/getsentry/sentry-rust/pull/1203)).
+
 ### New Features
 
 - Added [`Dsn::org_id`](https://docs.rs/sentry-types/latest/sentry_types/struct.Dsn.html#method.org_id), which parses the Sentry SaaS organization ID from DSN hosts such as `o123.ingest.sentry.io` ([#1202](https://github.com/getsentry/sentry-rust/pull/1202)).
