@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.48.3
 
 The Sentry Rust SDK now reports data discarded by the SDK to Sentry’s [Stats](https://docs.sentry.io/product/stats/) page. The SDK reports approximate counts for drops from transports, queues, rate-limit backoff, sampling, event processors, and `before_send*` callbacks, including span counts for dropped transactions and byte counts for dropped logs and metrics.
 
