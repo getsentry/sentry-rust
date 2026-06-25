@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use crate::constants::USER_AGENT;
 use crate::performance::{TracesSampler, TransactionContext};
-use crate::protocol::{Breadcrumb, Event, Log, Metric};
+use crate::protocol::{Breadcrumb, Event, Log, Metric, OrganizationId};
 use crate::types::Dsn;
 use crate::{Integration, IntoDsn, TransportFactory};
 
@@ -145,6 +145,17 @@ pub struct ClientOptions {
     ///
     /// See [`dsn`](method@ClientOptions::dsn) for details.
     pub dsn: Option<Dsn>,
+    /// The Sentry organization ID used for trace continuation decisions.
+    ///
+    /// The SDK can derive this value automatically from Sentry SaaS DSNs. Set this explicitly for
+    /// DSNs whose organization ID cannot be inferred, mainly self-hosted Sentry and local Relay
+    /// setups.
+    pub org_id: Option<OrganizationId>,
+    /// Enables strict trace continuation.
+    ///
+    /// When enabled, the SDK will only continue incoming traces whose organization ID matches this
+    /// SDK's organization ID.
+    pub strict_trace_continuation: bool,
     /// Enables debug mode.
     ///
     /// See [`debug`](method@ClientOptions::debug) for details.
@@ -778,6 +789,8 @@ impl fmt::Debug for ClientOptions {
             .field("before_send_log", &before_send_log)
             .field("enable_metrics", &self.enable_metrics)
             .field("before_send_metric", &before_send_metric)
+            .field("org_id", &self.org_id)
+            .field("strict_trace_continuation", &self.strict_trace_continuation)
             .field("user_agent", &self.user_agent)
             .finish()
     }
@@ -787,6 +800,8 @@ impl Default for ClientOptions {
     fn default() -> ClientOptions {
         ClientOptions {
             dsn: None,
+            org_id: None,
+            strict_trace_continuation: false,
             debug: false,
             release: None,
             environment: None,
