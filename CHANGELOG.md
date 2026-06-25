@@ -26,6 +26,10 @@
 - Removed the public `ClientOptions::sample_rate` field. Use `ClientOptions::event_sampling_strategy` to inspect the configured event sampling strategy, and use the existing `ClientOptions::sample_rate(...)` builder setter to configure fixed-rate sampling ([#1228](https://github.com/getsentry/sentry-rust/pull/1228)).
 - Removed the public `ClientOptions::traces_sample_rate` and `ClientOptions::traces_sampler` fields. Use `ClientOptions::traces_sampling_strategy` to inspect the configured traces sampling strategy, and use the existing `ClientOptions::traces_sample_rate(...)` and `ClientOptions::traces_sampler(...)` builder setters to configure fixed-rate and callback-based sampling ([#1227](https://github.com/getsentry/sentry-rust/pull/1227)).
 
+### New Features
+
+- Added [`Dsn::org_id`](https://docs.rs/sentry-types/latest/sentry_types/struct.Dsn.html#method.org_id), which parses the Sentry SaaS organization ID from DSN hosts such as `o123.ingest.sentry.io` ([#1202](https://github.com/getsentry/sentry-rust/pull/1202)).
+
 ### Fixes
 
 - Restored the reqwest transport's pre-0.13 protocol features by disabling HTTP/2 and native-TLS ALPN ([#1258](https://github.com/getsentry/sentry-rust/pull/1258)).
