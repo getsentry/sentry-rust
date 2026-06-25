@@ -6,6 +6,8 @@ use url::Url;
 
 use crate::auth::{auth_from_dsn_and_client, Auth};
 use crate::project_id::{ParseProjectIdError, ProjectId};
+#[cfg(feature = "protocol")]
+use crate::protocol::v7::OrganizationId;
 
 /// Represents a dsn url parsing error.
 #[derive(Debug, Error)]
@@ -143,6 +145,18 @@ impl Dsn {
     pub fn project_id(&self) -> &ProjectId {
         &self.project_id
     }
+
+    /// Returns the organization ID for SaaS DSNs.
+    ///
+    /// The organization ID is parsed from Sentry SaaS ingest hosts whose first
+    /// DNS label is `o<digits>`, such as `o123.ingest.sentry.io`.
+    #[cfg(feature = "protocol")]
+    pub fn org_id(&self) -> Option<OrganizationId> {
+        let org_id = extract_org_id(&self.host)?;
+        let is_numeric = org_id.chars().all(|c| c.is_ascii_digit());
+
+        (is_numeric).then(|| org_id.parse().ok()).flatten()
+    }
 }
 
 impl fmt::Display for Dsn {
@@ -213,6 +227,35 @@ impl FromStr for Dsn {
 }
 
 impl_str_serde!(Dsn);
+
+/// Given a Sentry host, extracts the org ID as a `&str`.
+///
+/// Returns [`None`] if this is not a Sentry host.
+///
+/// Sentry hosts must look like one of the following:
+///     - `o{orgid}.ingest.{region}.sentry.io`
+///     - `o{orgid}.ingest.sentry.io`
+fn extract_org_id(host: &str) -> Option<&str> {
+    // First split on the dots, up to 6 segments.
+    let mut host_iter = host.splitn(6, '.');
+    let segments = [
+        host_iter.next(),
+        host_iter.next(),
+        host_iter.next(),
+        host_iter.next(),
+        host_iter.next(),
+        host_iter.next(),
+    ];
+
+    // Then, match either the region or regionless variant, stripping the "o" prefix.
+    match segments {
+        [Some(org_segment), Some("ingest"), Some(_), Some("sentry"), Some("io"), None]
+        | [Some(org_segment), Some("ingest"), Some("sentry"), Some("io"), None, None] => {
+            org_segment.strip_prefix('o')
+        }
+        _ => None,
+    }
+}
 
 #[cfg(test)]
 mod test {
@@ -315,6 +358,88 @@ mod test {
         let dsn = url.parse::<Dsn>().unwrap();
         assert_eq!(dsn.project_id(), &ProjectId::new("pid"));
         assert_eq!(dsn.path(), "/pathone/pathtwo/");
+    }
+
+    /// Asserts the organization ID parsed from the given DSN.
+    #[cfg(feature = "protocol")]
+    fn assert_org_id(url: &str, expected: Option<OrganizationId>) {
+        let dsn = Dsn::from_str(url).unwrap();
+        assert_eq!(dsn.org_id(), expected);
+    }
+
+    #[cfg(feature = "protocol")]
+    #[test]
+    fn test_dsn_org_id_from_ingest_host() {
+        assert_org_id(
+            "https://username@o123.ingest.sentry.io/42",
+            Some(123.into()),
+        );
+    }
+
+    #[cfg(feature = "protocol")]
+    #[test]
+    fn test_dsn_org_id_from_regional_ingest_host() {
+        assert_org_id(
+            "https://username@o123.ingest.de.sentry.io/42",
+            Some(123.into()),
+        );
+    }
+
+    #[cfg(feature = "protocol")]
+    #[test]
+    fn test_dsn_org_id_ignores_host_without_org_label() {
+        assert_org_id("https://username@blah.ingest.sentry.io/42", None);
+    }
+
+    #[cfg(feature = "protocol")]
+    #[test]
+    fn test_dsn_org_id_ignores_non_ingest_saas_host() {
+        assert_org_id("https://username@o123.sentry.io/42", None);
+    }
+
+    #[cfg(feature = "protocol")]
+    #[test]
+    fn test_dsn_org_id_ignores_relay_host() {
+        assert_org_id("https://username@relay.example.com/42", None);
+    }
+
+    #[cfg(feature = "protocol")]
+    #[test]
+    fn test_dsn_org_id_ignores_localhost() {
+        assert_org_id("https://username@localhost/42", None);
+    }
+
+    #[cfg(feature = "protocol")]
+    #[test]
+    fn test_dsn_org_id_rejects_non_numeric_org_label() {
+        assert_org_id("https://username@oabc.ingest.sentry.io/42", None);
+    }
+
+    #[cfg(feature = "protocol")]
+    #[test]
+    fn test_dsn_org_id_rejects_missing_org_prefix() {
+        assert_org_id("https://username@123.ingest.sentry.io/42", None);
+    }
+
+    #[cfg(feature = "protocol")]
+    #[test]
+    fn test_dsn_org_id_rejects_empty_first_label() {
+        assert_org_id("https://username@.ingest.sentry.io/42", None);
+    }
+
+    #[cfg(feature = "protocol")]
+    #[test]
+    fn test_dsn_org_id_rejects_empty_org_id() {
+        assert_org_id("https://username@o.ingest.sentry.io/42", None);
+    }
+
+    #[cfg(feature = "protocol")]
+    #[test]
+    fn test_dsn_org_id_rejects_overflow() {
+        assert_org_id(
+            "https://username@o18446744073709551616.ingest.sentry.io/42",
+            None,
+        );
     }
 
     #[test]
