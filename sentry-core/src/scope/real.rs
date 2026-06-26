@@ -20,7 +20,7 @@ use crate::protocol::{
 };
 #[cfg(feature = "release-health")]
 use crate::session::Session;
-use crate::{Client, SentryTrace, TraceHeader, TraceHeadersIter};
+use crate::{Client, TraceHeader, TraceHeadersIter, TracePropagationContext};
 
 #[derive(Debug)]
 pub struct Stack {
@@ -64,7 +64,7 @@ pub struct Scope {
     pub(crate) session: Arc<Mutex<Option<Session>>>,
     pub(crate) span: Arc<Option<TransactionOrSpan>>,
     pub(crate) attachments: Arc<Vec<Attachment>>,
-    pub(crate) propagation_context: SentryTrace,
+    pub(crate) propagation_context: TracePropagationContext,
 }
 
 impl fmt::Debug for Scope {
@@ -482,7 +482,7 @@ impl Scope {
         if let Some(span) = self.get_span() {
             span.iter_headers()
         } else {
-            let data = SentryTrace::new(
+            let data = TracePropagationContext::new(
                 self.propagation_context.trace_id,
                 self.propagation_context.span_id,
                 None,

@@ -8,6 +8,7 @@
 
 ### New Features
 
+- Added [`TracePropagationContext`](https://docs.rs/sentry-core/latest/sentry_core/struct.TracePropagationContext.html) as the preferred name for Sentry trace propagation metadata. The existing [`SentryTrace`](https://docs.rs/sentry-core/latest/sentry_core/type.SentryTrace.html) name remains available as a deprecated type alias ([#1206](https://github.com/getsentry/sentry-rust/pull/1206)).
 - Added [`Dsn::org_id`](https://docs.rs/sentry-types/latest/sentry_types/struct.Dsn.html#method.org_id), which parses the Sentry SaaS organization ID from DSN hosts such as `o123.ingest.sentry.io` ([#1202](https://github.com/getsentry/sentry-rust/pull/1202)).
 
 ## 0.48.3

@@ -19,7 +19,6 @@ use opentelemetry_sdk::error::OTelSdkResult;
 use opentelemetry_sdk::trace::{Span, SpanData, SpanProcessor};
 
 use opentelemetry_sdk::Resource;
-use sentry_core::SentryTrace;
 use sentry_core::{TransactionContext, TransactionOrSpan};
 
 use crate::converters::{
@@ -128,7 +127,7 @@ impl SpanProcessor for SentrySpanProcessor {
                 ))
             } else {
                 let sentry_ctx = {
-                    if let Some(sentry_trace) = ctx.get::<SentryTrace>() {
+                    if let Some(sentry_trace) = ctx.get() {
                         // continue remote trace
                         TransactionContext::continue_from_sentry_trace(
                             span_description,

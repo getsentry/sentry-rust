@@ -13,7 +13,9 @@ use crate::{protocol, Hub};
 #[cfg(feature = "client")]
 use crate::Client;
 
-pub use self::headers::{parse as parse_headers, SentryTrace};
+#[expect(deprecated, reason = "backwards-compatibility re-export")]
+pub use self::headers::SentryTrace;
+pub use self::headers::{parse as parse_headers, TracePropagationContext};
 
 mod headers;
 
@@ -202,7 +204,7 @@ impl TransactionContext {
     pub fn continue_from_sentry_trace(
         name: &str,
         op: &str,
-        sentry_trace: &SentryTrace,
+        sentry_trace: &TracePropagationContext,
         span_id: Option<SpanId>,
     ) -> Self {
         Self {
@@ -836,7 +838,7 @@ impl Transaction {
     /// trace's distributed tracing headers.
     pub fn iter_headers(&self) -> TraceHeadersIter {
         let inner = self.inner.lock().unwrap();
-        let trace = SentryTrace::new(
+        let trace = TracePropagationContext::new(
             inner.context.trace_id,
             inner.context.span_id,
             Some(inner.sampled),
@@ -1123,7 +1125,7 @@ impl Span {
     /// trace's distributed tracing headers.
     pub fn iter_headers(&self) -> TraceHeadersIter {
         let span = self.span.lock().unwrap();
-        let trace = SentryTrace::new(span.trace_id, span.span_id, Some(self.sampled));
+        let trace = TracePropagationContext::new(span.trace_id, span.span_id, Some(self.sampled));
         TraceHeadersIter {
             sentry_trace: Some(trace.to_string()),
         }

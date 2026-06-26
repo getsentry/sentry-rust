@@ -20,7 +20,7 @@ use opentelemetry::{
     Context, SpanId, TraceId,
 };
 use sentry_core::parse_headers;
-use sentry_core::SentryTrace;
+use sentry_core::TracePropagationContext;
 
 use crate::converters::{convert_span_id, convert_trace_id};
 
@@ -57,7 +57,7 @@ impl TextMapPropagator for SentryPropagator {
         if trace_id == TraceId::INVALID || span_id == SpanId::INVALID {
             return;
         }
-        let sentry_trace = SentryTrace::new(
+        let sentry_trace = TracePropagationContext::new(
             convert_trace_id(&trace_id),
             convert_span_id(&span_id),
             Some(sampled),
