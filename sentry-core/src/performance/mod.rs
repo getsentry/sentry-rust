@@ -6,7 +6,7 @@ use std::time::SystemTime;
 
 #[cfg(feature = "client")]
 use sentry_types::protocol::v7::client_report::Reason as ClientReportReason;
-use sentry_types::protocol::v7::SpanId;
+use sentry_types::protocol::v7::{OrganizationId, SpanId};
 
 #[cfg(feature = "client")]
 use crate::clientoptions::TracesSamplingStrategy;
@@ -116,6 +116,11 @@ pub struct TransactionContext {
     parent_span_id: Option<protocol::SpanId>,
     span_id: protocol::SpanId,
     sampled: Option<bool>,
+    #[cfg_attr(
+        not(test),
+        expect(dead_code, reason = "used by future strict trace continuation")
+    )]
+    incoming_org_id: Option<OrganizationId>,
     custom: Option<CustomTransactionContext>,
 }
 
@@ -151,6 +156,7 @@ impl TransactionContext {
             parent_span_id: None,
             span_id: Default::default(),
             sampled: None,
+            incoming_org_id: None,
             custom: None,
         }
     }
@@ -197,6 +203,7 @@ impl TransactionContext {
                 parent_span_id: None,
                 span_id: Default::default(),
                 sampled: None,
+                incoming_org_id: None,
                 custom: None,
             })
     }
@@ -227,6 +234,7 @@ impl TransactionContext {
             trace_id,
             span_id: context_span_id,
             sampled,
+            org_id,
         } = context;
 
         Self {
@@ -235,6 +243,7 @@ impl TransactionContext {
             trace_id,
             parent_span_id: Some(context_span_id),
             sampled,
+            incoming_org_id: org_id,
             span_id: span_id.unwrap_or_default(),
             custom: None,
         }
@@ -274,6 +283,7 @@ impl TransactionContext {
             parent_span_id: Some(parent_span_id),
             span_id: protocol::SpanId::default(),
             sampled,
+            incoming_org_id: None,
             custom: None,
         }
     }
@@ -1311,6 +1321,35 @@ mod tests {
 
         ctx.set_sampled(true);
         assert_eq!(ctx.sampled(), Some(true));
+    }
+
+    #[test]
+    fn continue_from_headers_stores_incoming_org_id() {
+        let ctx = TransactionContext::continue_from_headers(
+            "noop",
+            "noop",
+            [
+                (
+                    "sentry-trace",
+                    "09e04486820349518ac7b5d2adbf6ba5-9cf635fa5b870b3a-1",
+                ),
+                ("baggage", "sentry-org_id=123"),
+            ],
+        );
+
+        assert_eq!(ctx.incoming_org_id, Some("123".parse().unwrap()));
+    }
+
+    #[test]
+    fn continue_from_headers_does_not_keep_org_id_without_sentry_trace() {
+        let ctx = TransactionContext::continue_from_headers(
+            "noop",
+            "noop",
+            [("baggage", "sentry-org_id=123")],
+        );
+
+        assert_eq!(ctx.incoming_org_id, None);
+        assert_eq!(ctx.parent_span_id, None);
     }
 
     #[cfg(feature = "client")]
