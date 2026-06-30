@@ -2,7 +2,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
-use futures::Stream;
+use futures_core::Stream;
 
 use crate::Hub;
 
