@@ -154,7 +154,7 @@ pub fn log_from_record(record: &log::Record<'_>) -> Log {
         attributes.insert("logger.line".into(), line.into());
     }
 
-    attributes.insert("sentry.origin".into(), "auto.logger.log".into());
+    attributes.insert("sentry.origin".into(), "auto.log.log".into());
 
     Log {
         level: convert_log_level_to_sentry_log_level(record.level()),

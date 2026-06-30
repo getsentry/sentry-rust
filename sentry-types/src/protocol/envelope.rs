@@ -1,17 +1,18 @@
-use std::{io::Write, path::Path, time::SystemTime};
+use std::mem;
+use std::{borrow::Cow, io::Write, path::Path, time::SystemTime};
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
 
-use crate::utils::ts_rfc3339_opt;
 use crate::Dsn;
+use crate::{protocol::v7::ClientReport, utils::ts_rfc3339_opt};
 
 use super::v7 as protocol;
 
 use protocol::{
-    Attachment, AttachmentType, ClientSdkInfo, DynamicSamplingContext, Event, Log, MonitorCheckIn,
-    SessionAggregates, SessionUpdate, Transaction,
+    Attachment, AttachmentType, ClientSdkInfo, DynamicSamplingContext, Event, Log, Metric,
+    MonitorCheckIn, SessionAggregates, SessionUpdate, Transaction,
 };
 
 /// Raised if a envelope cannot be parsed from a given input.
@@ -103,7 +104,7 @@ impl EnvelopeHeaders {
 }
 
 /// An Envelope Item Type.
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
 #[non_exhaustive]
 enum EnvelopeItemType {
     /// An Event Item type.
@@ -127,6 +128,13 @@ enum EnvelopeItemType {
     /// A container of Log items.
     #[serde(rename = "log")]
     LogsContainer,
+    /// A container of Metric items.
+    /// Serialized to a `trace_metric` envelope item.
+    #[serde(rename = "trace_metric")]
+    MetricsContainer,
+    /// A client report.
+    #[serde(rename = "client_report")]
+    ClientReport,
 }
 
 /// An Envelope Item Header.
@@ -176,6 +184,8 @@ pub enum EnvelopeItem {
     Attachment(Attachment),
     /// A MonitorCheckIn item.
     MonitorCheckIn(MonitorCheckIn),
+    /// An aggregated client report
+    ClientReport(ClientReport),
     /// A container for a list of multiple items.
     ItemContainer(ItemContainer),
     /// This is a sentinel item used to `filter` raw envelopes.
@@ -192,6 +202,8 @@ pub enum EnvelopeItem {
 pub enum ItemContainer {
     /// A list of logs.
     Logs(Vec<Log>),
+    /// A list of metrics.
+    Metrics(Vec<Metric>),
 }
 
 #[allow(clippy::len_without_is_empty, reason = "is_empty is not needed")]
@@ -200,6 +212,7 @@ impl ItemContainer {
     pub fn len(&self) -> usize {
         match self {
             Self::Logs(logs) => logs.len(),
+            Self::Metrics(metrics) => metrics.len(),
         }
     }
 
@@ -207,6 +220,7 @@ impl ItemContainer {
     pub fn ty(&self) -> &'static str {
         match self {
             Self::Logs(_) => "log",
+            Self::Metrics(_) => "trace_metric",
         }
     }
 
@@ -214,6 +228,7 @@ impl ItemContainer {
     pub fn content_type(&self) -> &'static str {
         match self {
             Self::Logs(_) => "application/vnd.sentry.items.log+json",
+            Self::Metrics(_) => "application/vnd.sentry.items.trace-metric+json",
         }
     }
 }
@@ -224,14 +239,46 @@ impl From<Vec<Log>> for ItemContainer {
     }
 }
 
-#[derive(Serialize)]
-struct LogsSerializationWrapper<'a> {
-    items: &'a [Log],
+/// A lightweight wrapper for serializing/deserializing a slice of items,
+/// so that it looks like:
+///
+/// ```json
+/// { items: [...] }
+/// ```
+#[derive(Deserialize, Serialize)]
+struct ItemsSerdeWrapper<'a, T: Clone> {
+    items: Cow<'a, [T]>,
 }
 
-#[derive(Deserialize)]
-struct LogsDeserializationWrapper {
-    items: Vec<Log>,
+impl From<Vec<Metric>> for ItemContainer {
+    fn from(metrics: Vec<Metric>) -> Self {
+        Self::Metrics(metrics)
+    }
+}
+
+impl ItemContainer {
+    fn item_type(&self) -> EnvelopeItemType {
+        match self {
+            Self::Logs(_) => EnvelopeItemType::LogsContainer,
+            Self::Metrics(_) => EnvelopeItemType::MetricsContainer,
+        }
+    }
+}
+
+impl EnvelopeItem {
+    fn item_type(&self) -> Option<EnvelopeItemType> {
+        match self {
+            Self::Event(_) => Some(EnvelopeItemType::Event),
+            Self::SessionUpdate(_) => Some(EnvelopeItemType::SessionUpdate),
+            Self::SessionAggregates(_) => Some(EnvelopeItemType::SessionAggregates),
+            Self::Transaction(_) => Some(EnvelopeItemType::Transaction),
+            Self::Attachment(_) => Some(EnvelopeItemType::Attachment),
+            Self::MonitorCheckIn(_) => Some(EnvelopeItemType::MonitorCheckIn),
+            Self::ClientReport(_) => Some(EnvelopeItemType::ClientReport),
+            Self::ItemContainer(container) => Some(container.item_type()),
+            Self::Raw => None,
+        }
+    }
 }
 
 impl From<Event<'static>> for EnvelopeItem {
@@ -282,6 +329,18 @@ impl From<Vec<Log>> for EnvelopeItem {
     }
 }
 
+impl From<Vec<Metric>> for EnvelopeItem {
+    fn from(metrics: Vec<Metric>) -> Self {
+        EnvelopeItem::ItemContainer(metrics.into())
+    }
+}
+
+impl From<ClientReport> for EnvelopeItem {
+    fn from(value: ClientReport) -> Self {
+        EnvelopeItem::ClientReport(value)
+    }
+}
+
 /// An Iterator over the items of an Envelope.
 #[derive(Clone)]
 pub struct EnvelopeItemIter<'s> {
@@ -317,6 +376,46 @@ impl Items {
         match self {
             Items::EnvelopeItems(items) => items.is_empty(),
             Items::Raw(bytes) => bytes.is_empty(),
+        }
+    }
+}
+
+/// A trait for types which can filter items in envelopes.
+///
+/// This trait is used by [`Envelope::filter`].
+pub trait EnvelopeFilter: private::Sealed {
+    /// The function used to filter the envelopes.
+    ///
+    /// A return value of `true` indicates that the item should be kept in the envelope, `false`
+    /// will filter the value out.
+    ///
+    /// A value of `true` does not guarantee the item is kept; in particular, [`Envelope::filter`]
+    /// removes attachments if the corresponding event or transaction item is removed from the
+    /// envelope, as it no longer makes sense to send them in this case.
+    fn filter(&mut self, item: &EnvelopeItem) -> bool;
+
+    /// A callback which is called with all items removed by filtering, including items for which
+    /// [`Self::filter`] had returned `true`, such as no-longer-applicable attachments.
+    fn on_filtered(&mut self, item: EnvelopeItem) {
+        let _ = item;
+    }
+}
+
+/// A container for callbacks that can be passed to [`Envelope::filter`].
+pub struct EnvelopeFilterCallbacks<F, C> {
+    filter: F,
+    on_filtered: C,
+}
+
+impl<F, C> EnvelopeFilterCallbacks<F, C> {
+    /// Create a new [`EnvelopeFilterCallbacks`].
+    ///
+    /// `filter` will be called to determine whether the envelope items should be kept.
+    /// `on_filtered` will be called on all envelope items which are then dropped.
+    pub fn new(filter: F, on_filtered: C) -> Self {
+        Self {
+            filter,
+            on_filtered,
         }
     }
 }
@@ -377,6 +476,17 @@ impl Envelope {
         EnvelopeItemIter { inner }
     }
 
+    /// Consume the Envelope and create an [`Iterator`] over all
+    /// owned [`EnvelopeItem`]s.
+    ///
+    /// Raw envelopes yield an empty iterator.
+    pub fn into_items(self) -> impl Iterator<Item = EnvelopeItem> {
+        match self.items {
+            Items::EnvelopeItems(items) => items.into_iter(),
+            Items::Raw(_) => Default::default(),
+        }
+    }
+
     /// Returns the Envelope headers.
     pub fn headers(&self) -> &EnvelopeHeaders {
         &self.headers
@@ -408,30 +518,32 @@ impl Envelope {
         })
     }
 
-    /// Filters the Envelope's [`EnvelopeItem`]s based on a predicate,
+    /// Filters the Envelope's [`EnvelopeItem`]s with an [`EnvelopeFilter`],
     /// and returns a new Envelope containing only the filtered items.
     ///
-    /// Retains the [`EnvelopeItem`]s for which the predicate returns `true`.
     /// Additionally, [`EnvelopeItem::Attachment`]s are only kept if the Envelope
     /// contains an [`EnvelopeItem::Event`] or [`EnvelopeItem::Transaction`].
     ///
     /// [`None`] is returned if no items remain in the Envelope after filtering.
-    pub fn filter<P>(self, mut predicate: P) -> Option<Self>
+    pub fn filter<F>(self, mut filter: F) -> Option<Self>
     where
-        P: FnMut(&EnvelopeItem) -> bool,
+        F: EnvelopeFilter,
     {
         let Items::EnvelopeItems(items) = self.items else {
-            return if predicate(&EnvelopeItem::Raw) {
+            return if filter.filter(&EnvelopeItem::Raw) {
                 Some(self)
             } else {
+                filter.on_filtered(EnvelopeItem::Raw);
                 None
             };
         };
 
         let mut filtered = Envelope::new();
         for item in items {
-            if predicate(&item) {
+            if filter.filter(&item) {
                 filtered.add_item(item);
+            } else {
+                filter.on_filtered(item);
             }
         }
 
@@ -439,7 +551,17 @@ impl Envelope {
         // an event/transaction
         if filtered.uuid().is_none() {
             if let Items::EnvelopeItems(ref mut items) = filtered.items {
-                items.retain(|item| !matches!(item, EnvelopeItem::Attachment(..)))
+                let old_items = mem::take(items);
+                *items = old_items
+                    .into_iter()
+                    .filter_map(|item| match item {
+                        EnvelopeItem::Attachment(..) => {
+                            filter.on_filtered(item);
+                            None
+                        }
+                        _ => Some(item),
+                    })
+                    .collect();
             }
         }
 
@@ -489,9 +611,18 @@ impl Envelope {
                 EnvelopeItem::MonitorCheckIn(check_in) => {
                     serde_json::to_writer(&mut item_buf, check_in)?
                 }
+                EnvelopeItem::ClientReport(client_report) => {
+                    serde_json::to_writer(&mut item_buf, client_report)?
+                }
                 EnvelopeItem::ItemContainer(container) => match container {
                     ItemContainer::Logs(logs) => {
-                        let wrapper = LogsSerializationWrapper { items: logs };
+                        let wrapper = ItemsSerdeWrapper { items: logs.into() };
+                        serde_json::to_writer(&mut item_buf, &wrapper)?
+                    }
+                    ItemContainer::Metrics(metrics) => {
+                        let wrapper = ItemsSerdeWrapper {
+                            items: metrics.into(),
+                        };
                         serde_json::to_writer(&mut item_buf, &wrapper)?
                     }
                 },
@@ -499,20 +630,15 @@ impl Envelope {
                     continue;
                 }
             }
-            let item_type = match item {
-                EnvelopeItem::Event(_) => "event",
-                EnvelopeItem::SessionUpdate(_) => "session",
-                EnvelopeItem::SessionAggregates(_) => "sessions",
-                EnvelopeItem::Transaction(_) => "transaction",
-                EnvelopeItem::MonitorCheckIn(_) => "check_in",
-                EnvelopeItem::ItemContainer(container) => container.ty(),
-                EnvelopeItem::Attachment(_) | EnvelopeItem::Raw => unreachable!(),
-            };
+            let item_type = item
+                .item_type()
+                .expect("raw envelope items are skipped during serialization");
+            let item_type = serde_json::to_string(&item_type)?;
 
             if let EnvelopeItem::ItemContainer(container) = item {
                 writeln!(
                     writer,
-                    r#"{{"type":"{}","item_count":{},"content_type":"{}"}}"#,
+                    r#"{{"type":{},"item_count":{},"content_type":"{}"}}"#,
                     item_type,
                     container.len(),
                     container.content_type()
@@ -520,7 +646,7 @@ impl Envelope {
             } else {
                 writeln!(
                     writer,
-                    r#"{{"type":"{}","length":{}}}"#,
+                    r#"{{"type":{},"length":{}}}"#,
                     item_type,
                     item_buf.len()
                 )?;
@@ -585,7 +711,13 @@ impl Envelope {
         let offset = first_line.len();
         Self::require_termination(slice, offset)?;
 
-        Ok((headers, offset + 1))
+        // Valid slices cannot be larger than `isize::MAX` bytes:
+        // https://doc.rust-lang.org/std/slice/fn.from_raw_parts.html#safety
+        let byte_after_header = offset
+            .checked_add(1)
+            .expect("offset is at most isize::MAX; adding 1 cannot overflow usize");
+
+        Ok((headers, byte_after_header))
     }
 
     fn parse_items(slice: &[u8], mut offset: usize) -> Result<Vec<EnvelopeItem>, EnvelopeError> {
@@ -595,14 +727,26 @@ impl Envelope {
             let bytes = slice
                 .get(offset..)
                 .ok_or(EnvelopeError::MissingItemHeader)?;
-            let (item, item_size) = Self::parse_item(bytes)?;
-            offset += item_size;
+            let (item, item_offset) = Self::parse_item(bytes)?;
+            // `bytes` is `slice[offset..]`, so `bytes.len() == slice.len() - offset`.
+            // Since `item_offset <= bytes.len() + 1`, `offset + item_offset <= slice.len() + 1`.
+            // Valid slices cannot exceed `isize::MAX` bytes, so `slice.len() + 1` cannot overflow `usize`.
+            offset = offset
+                .checked_add(item_offset)
+                .expect("offset + item_offset is at most slice.len() + 1");
             items.push(item);
         }
 
         Ok(items)
     }
 
+    /// Parses one envelope item from the beginning of `slice`.
+    ///
+    /// Returns the parsed item and the offset at which parsing should continue.
+    ///
+    /// The offset is relative to `slice`. It points just after the payload terminator if one is
+    /// present, or one byte past the end of `slice` if the payload ends at the end of `slice`.
+    /// The offset therefore satisfies `1 <= offset <= slice.len() + 1`.
     fn parse_item(slice: &[u8]) -> Result<(EnvelopeItem, usize), EnvelopeError> {
         let mut stream = serde_json::Deserializer::from_slice(slice).into_iter();
 
@@ -618,10 +762,14 @@ impl Envelope {
 
         // The last header does not require a trailing newline, so `payload_start` may point
         // past the end of the buffer.
-        let payload_start = std::cmp::min(header_end + 1, slice.len());
+        // The checked_add never overflows since slices cannot exceed isize::MAX bytes:
+        // https://doc.rust-lang.org/std/slice/fn.from_raw_parts.html#safety
+        let payload_start = std::cmp::min(header_end, slice.len().saturating_sub(1))
+            .checked_add(1)
+            .expect("&[u8] length is at most isize::MAX; adding one cannot overflow usize");
         let payload_end = match header.length {
             Some(len) => {
-                let payload_end = payload_start + len;
+                let payload_end = payload_start.saturating_add(len);
                 if slice.len() < payload_end {
                     return Err(EnvelopeError::UnexpectedEof);
                 }
@@ -632,7 +780,10 @@ impl Envelope {
             }
             None => match slice.get(payload_start..) {
                 Some(range) => match range.iter().position(|&b| b == b'\n') {
-                    Some(relative_end) => payload_start + relative_end,
+                    Some(relative_end) => payload_start.checked_add(relative_end).expect(
+                        "relative_end is an index into slice[payload_start..]; \
+                        so the sum is within slice and cannot overflow usize",
+                    ),
                     None => slice.len(),
                 },
                 None => slice.len(),
@@ -661,14 +812,27 @@ impl Envelope {
             EnvelopeItemType::MonitorCheckIn => {
                 serde_json::from_slice(payload).map(EnvelopeItem::MonitorCheckIn)
             }
+            EnvelopeItemType::ClientReport => {
+                serde_json::from_slice(payload).map(EnvelopeItem::ClientReport)
+            }
             EnvelopeItemType::LogsContainer => {
-                serde_json::from_slice::<LogsDeserializationWrapper>(payload)
-                    .map(|x| EnvelopeItem::ItemContainer(ItemContainer::Logs(x.items)))
+                serde_json::from_slice::<ItemsSerdeWrapper<_>>(payload)
+                    .map(|x| EnvelopeItem::ItemContainer(ItemContainer::Logs(x.items.into())))
+            }
+            EnvelopeItemType::MetricsContainer => {
+                serde_json::from_slice::<ItemsSerdeWrapper<_>>(payload)
+                    .map(|x| EnvelopeItem::ItemContainer(ItemContainer::Metrics(x.items.into())))
             }
         }
         .map_err(EnvelopeError::InvalidItemPayload)?;
 
-        Ok((item, payload_end + 1))
+        // Valid slices cannot be larger than `isize::MAX` bytes:
+        // https://doc.rust-lang.org/std/slice/fn.from_raw_parts.html#safety
+        let byte_after_payload = payload_end
+            .checked_add(1)
+            .expect("payload_end <= slice.len() <= isize::MAX, so adding 1 cannot overflow usize");
+
+        Ok((item, byte_after_payload))
     }
 
     fn require_termination(slice: &[u8], offset: usize) -> Result<(), EnvelopeError> {
@@ -690,19 +854,62 @@ where
     }
 }
 
+impl<F, C> EnvelopeFilter for EnvelopeFilterCallbacks<F, C>
+where
+    F: FnMut(&EnvelopeItem) -> bool,
+    C: FnMut(EnvelopeItem),
+{
+    fn filter(&mut self, item: &EnvelopeItem) -> bool {
+        (self.filter)(item)
+    }
+
+    fn on_filtered(&mut self, item: EnvelopeItem) {
+        (self.on_filtered)(item);
+    }
+}
+
+impl<F> EnvelopeFilter for F
+where
+    F: FnMut(&EnvelopeItem) -> bool,
+{
+    fn filter(&mut self, item: &EnvelopeItem) -> bool {
+        self(item)
+    }
+}
+
+mod private {
+    use super::*;
+
+    pub trait Sealed {}
+
+    impl<F, C> Sealed for EnvelopeFilterCallbacks<F, C>
+    where
+        F: FnMut(&EnvelopeItem) -> bool,
+        C: FnMut(EnvelopeItem),
+    {
+    }
+
+    impl<F> Sealed for F where F: FnMut(&EnvelopeItem) -> bool {}
+}
+
 #[cfg(test)]
 mod test {
+    use std::borrow::Cow;
     use std::str::FromStr;
     use std::time::{Duration, SystemTime};
 
     use protocol::Map;
+    use serde_json::Value;
     use time::format_description::well_known::Rfc3339;
     use time::OffsetDateTime;
+    use uuid::Uuid;
 
     use super::*;
+    use crate::protocol::client_report::{Item, LossSource};
+    use crate::protocol::v7::client_report::Category;
     use crate::protocol::v7::{
-        Level, MonitorCheckInStatus, MonitorConfig, MonitorSchedule, SampleRand, SessionAttributes,
-        SessionStatus, Span,
+        ClientReport, Level, LogLevel, MetricType, MonitorCheckInStatus, MonitorConfig,
+        MonitorSchedule, SampleRand, SessionAggregateItem, SessionAttributes, SessionStatus, Span,
     };
 
     fn to_str(envelope: Envelope) -> String {
@@ -717,6 +924,22 @@ mod test {
         let nanos = dt.nanosecond();
         let duration = Duration::new(secs, nanos);
         SystemTime::UNIX_EPOCH.checked_add(duration).unwrap()
+    }
+
+    fn session_attributes() -> SessionAttributes<'static> {
+        SessionAttributes {
+            release: Cow::Borrowed("release@1.0.0"),
+            environment: Some(Cow::Borrowed("production")),
+            ip_address: None,
+            user_agent: None,
+        }
+    }
+
+    fn collect_losses(envelope: &Envelope) -> Vec<(Category, u64)> {
+        envelope
+            .losses()
+            .map(|loss| (loss.category, loss.quantity))
+            .collect()
     }
 
     #[test]
@@ -1109,6 +1332,49 @@ some content
         assert_eq!(expected, serialized.as_bytes());
     }
 
+    #[test]
+    fn test_metric_container_header() {
+        let metrics: EnvelopeItem = vec![Metric {
+            r#type: protocol::MetricType::Counter,
+            name: "api.requests".into(),
+            value: 1.0,
+            timestamp: timestamp("2026-03-02T13:36:02.000Z"),
+            trace_id: "335e53d614474acc9f89e632b776cc28".parse().unwrap(),
+            span_id: None,
+            unit: None,
+            attributes: Map::new(),
+        }]
+        .into();
+
+        let mut envelope = Envelope::new();
+        envelope.add_item(metrics);
+
+        let expected = [
+            serde_json::json!({}),
+            serde_json::json!({
+                "type": "trace_metric",
+                "item_count": 1,
+                "content_type": "application/vnd.sentry.items.trace-metric+json"
+            }),
+            serde_json::json!({
+                "items": [{
+                    "type": "counter",
+                    "name": "api.requests",
+                    "value": 1.0,
+                    "timestamp": 1772458562,
+                    "trace_id": "335e53d614474acc9f89e632b776cc28"
+                }]
+            }),
+        ];
+
+        let serialized = to_str(envelope);
+        let actual = serialized
+            .lines()
+            .map(|line| serde_json::from_str::<Value>(line).expect("envelope has invalid JSON"));
+
+        assert!(actual.eq(expected.into_iter()));
+    }
+
     // Test all possible item types in a single envelope
     #[test]
     fn test_deserialize_serialized() {
@@ -1185,15 +1451,290 @@ some content
         ]
         .into();
 
+        let mut metric_attributes = Map::new();
+        metric_attributes.insert("route".into(), "/users".into());
+        let metrics: EnvelopeItem = vec![Metric {
+            r#type: protocol::MetricType::Distribution,
+            name: "response.time".into(),
+            value: 123.4,
+            timestamp: timestamp("2022-07-26T14:51:14.296Z"),
+            trace_id: "335e53d614474acc9f89e632b776cc28".parse().unwrap(),
+            span_id: Some("d42cee9fc3e74f5c".parse().unwrap()),
+            unit: Some("millisecond".into()),
+            attributes: metric_attributes,
+        }]
+        .into();
+
         let mut envelope: Envelope = Envelope::new();
         envelope.add_item(event);
         envelope.add_item(transaction);
         envelope.add_item(session);
         envelope.add_item(attachment);
         envelope.add_item(logs);
+        envelope.add_item(metrics);
 
         let serialized = to_str(envelope);
         let deserialized = Envelope::from_slice(serialized.as_bytes()).unwrap();
         assert_eq!(serialized, to_str(deserialized))
+    }
+
+    #[test]
+    fn losses_on_drop_maps_event_to_error() {
+        let envelope: Envelope = Event::default().into();
+
+        assert_eq!(collect_losses(&envelope), vec![(Category::Error, 1)]);
+    }
+
+    #[test]
+    fn losses_on_drop_maps_session_update_to_session() {
+        let envelope: Envelope = SessionUpdate {
+            session_id: Uuid::nil(),
+            distinct_id: None,
+            sequence: None,
+            timestamp: None,
+            started: SystemTime::UNIX_EPOCH,
+            init: false,
+            duration: None,
+            status: SessionStatus::Ok,
+            errors: 0,
+            attributes: session_attributes(),
+        }
+        .into();
+
+        assert_eq!(collect_losses(&envelope), vec![(Category::Session, 1)]);
+    }
+
+    #[test]
+    fn losses_on_drop_maps_attachment_to_buffer_bytes() {
+        let envelope: Envelope = Attachment {
+            buffer: b"attachment".to_vec(),
+            filename: "attachment.bin".to_owned(),
+            ..Default::default()
+        }
+        .into();
+
+        assert_eq!(collect_losses(&envelope), vec![(Category::Attachment, 10)]);
+    }
+
+    #[test]
+    fn losses_on_drop_maps_monitor_check_in_to_monitor() {
+        let envelope: Envelope = MonitorCheckIn {
+            check_in_id: Uuid::nil(),
+            monitor_slug: "monitor".to_owned(),
+            status: MonitorCheckInStatus::Ok,
+            environment: None,
+            duration: None,
+            monitor_config: None,
+        }
+        .into();
+
+        assert_eq!(collect_losses(&envelope), vec![(Category::Monitor, 1)]);
+    }
+
+    #[test]
+    fn losses_on_drop_sums_session_aggregate_status_counts() {
+        let envelope: Envelope = SessionAggregates {
+            aggregates: vec![
+                SessionAggregateItem {
+                    started: SystemTime::UNIX_EPOCH,
+                    distinct_id: None,
+                    exited: 2,
+                    errored: 3,
+                    abnormal: 5,
+                    crashed: 7,
+                },
+                SessionAggregateItem {
+                    started: SystemTime::UNIX_EPOCH,
+                    distinct_id: None,
+                    exited: 11,
+                    errored: 13,
+                    abnormal: 17,
+                    crashed: 19,
+                },
+            ],
+            attributes: session_attributes(),
+        }
+        .into();
+
+        assert_eq!(collect_losses(&envelope), vec![(Category::Session, 77)]);
+    }
+
+    #[test]
+    fn losses_on_drop_counts_transaction_root_span() {
+        let envelope: Envelope = Transaction {
+            spans: vec![],
+            ..Default::default()
+        }
+        .into();
+
+        assert_eq!(
+            collect_losses(&envelope),
+            vec![(Category::Transaction, 1), (Category::Span, 1)]
+        );
+    }
+
+    #[test]
+    fn losses_on_drop_counts_transaction_child_spans() {
+        let envelope: Envelope = Transaction {
+            spans: vec![Span::default(), Span::default(), Span::default()],
+            ..Default::default()
+        }
+        .into();
+
+        assert_eq!(
+            collect_losses(&envelope),
+            vec![(Category::Transaction, 1), (Category::Span, 4)]
+        );
+    }
+
+    #[test]
+    fn losses_on_drop_counts_minimal_log_bytes() {
+        let envelope: Envelope = vec![Log {
+            level: LogLevel::Info,
+            body: String::new(),
+            trace_id: None,
+            timestamp: SystemTime::UNIX_EPOCH,
+            severity_number: None,
+            attributes: Map::new(),
+        }]
+        .into();
+
+        assert_eq!(
+            collect_losses(&envelope),
+            vec![(Category::LogItem, 1), (Category::LogByte, 1)]
+        );
+    }
+
+    #[test]
+    fn losses_on_drop_counts_complex_log_bytes() {
+        let mut attributes = Map::new();
+        attributes.insert("k1".to_owned(), "string value".into());
+        attributes.insert("k2".to_owned(), u64::MAX.into());
+        attributes.insert("k3".to_owned(), 42.0.into());
+        attributes.insert("k4".to_owned(), false.into());
+        attributes.insert(
+            "k5".to_owned(),
+            serde_json::json!({
+                "nested": {
+                    "array": [1.0, 2, -12, "7 bytes", false]
+                }
+            })
+            .into(),
+        );
+        let envelope: Envelope = vec![Log {
+            level: LogLevel::Info,
+            body: "7 bytes".to_owned(),
+            trace_id: None,
+            timestamp: SystemTime::UNIX_EPOCH,
+            severity_number: None,
+            attributes,
+        }]
+        .into();
+
+        assert_eq!(
+            collect_losses(&envelope),
+            vec![(Category::LogItem, 1), (Category::LogByte, 89)]
+        );
+    }
+
+    #[test]
+    fn losses_on_drop_counts_minimal_metric_bytes() {
+        let envelope: Envelope = vec![Metric {
+            r#type: MetricType::Counter,
+            name: Cow::Borrowed(""),
+            value: 1.0,
+            timestamp: SystemTime::UNIX_EPOCH,
+            trace_id: Default::default(),
+            span_id: None,
+            unit: None,
+            attributes: Map::new(),
+        }]
+        .into();
+
+        assert_eq!(
+            collect_losses(&envelope),
+            vec![(Category::TraceMetric, 1), (Category::TraceMetricByte, 8)]
+        );
+    }
+
+    #[test]
+    fn losses_on_drop_counts_complex_metric_bytes() {
+        let mut attributes = Map::new();
+        attributes.insert(
+            Cow::Borrowed("foo"),
+            "ඞ and some more equals 33 bytes".into(),
+        );
+        let envelope: Envelope = vec![Metric {
+            r#type: MetricType::Counter,
+            name: Cow::Borrowed("counter"),
+            value: 1.0,
+            timestamp: SystemTime::UNIX_EPOCH,
+            trace_id: Default::default(),
+            span_id: None,
+            unit: None,
+            attributes,
+        }]
+        .into();
+
+        assert_eq!(
+            collect_losses(&envelope),
+            vec![(Category::TraceMetric, 1), (Category::TraceMetricByte, 51)]
+        );
+    }
+
+    #[test]
+    fn losses_on_drop_skips_client_reports() {
+        let envelope: Envelope = ClientReport::new(<[Item; 0]>::default()).into();
+
+        assert!(collect_losses(&envelope).is_empty());
+    }
+
+    #[test]
+    fn losses_on_drop_skips_raw_envelopes() {
+        let envelope = Envelope::from_bytes_raw(b"not parsed".to_vec()).unwrap();
+
+        assert!(collect_losses(&envelope).is_empty());
+    }
+
+    #[test]
+    fn losses_on_drop_flattens_losses_from_all_envelope_items() {
+        let log = Log {
+            level: LogLevel::Warn,
+            body: "flattened".to_owned(),
+            trace_id: None,
+            timestamp: SystemTime::UNIX_EPOCH,
+            severity_number: None,
+            attributes: Map::new(),
+        };
+        let mut envelope = Envelope::new();
+        envelope.add_item(Event::default());
+        envelope.add_item(Transaction {
+            spans: vec![Span::default(), Span::default()],
+            ..Default::default()
+        });
+        envelope.add_item(vec![log]);
+        envelope.add_item(vec![Metric {
+            r#type: MetricType::Counter,
+            name: Cow::Borrowed("flattened.metric"),
+            value: 1.0,
+            timestamp: SystemTime::UNIX_EPOCH,
+            trace_id: Default::default(),
+            span_id: None,
+            unit: None,
+            attributes: Map::new(),
+        }]);
+
+        assert_eq!(
+            collect_losses(&envelope),
+            vec![
+                (Category::Error, 1),
+                (Category::Transaction, 1),
+                (Category::Span, 3),
+                (Category::LogItem, 1),
+                (Category::LogByte, 9),
+                (Category::TraceMetric, 1),
+                (Category::TraceMetricByte, 24),
+            ]
+        );
     }
 }

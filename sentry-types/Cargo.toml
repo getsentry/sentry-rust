@@ -1,17 +1,20 @@
 [package]
 name = "sentry-types"
-version = "0.42.0"
-authors = ["Sentry <hello@sentry.io>"]
+version = "0.48.3"
+authors = { workspace = true }
 license = "MIT"
 readme = "README.md"
-repository = "https://github.com/getsentry/sentry-rust"
-homepage = "https://sentry.io/welcome/"
+repository = { workspace = true }
+homepage = { workspace = true }
 description = """
 Common reusable types for implementing the sentry.io protocol.
 """
 keywords = ["sentry", "protocol"]
-edition = "2021"
-rust-version = "1.81"
+edition = { workspace = true }
+rust-version = { workspace = true }
+
+[lints]
+workspace = true
 
 [package.metadata.docs.rs]
 all-features = true
@@ -23,11 +26,11 @@ protocol = []
 [dependencies]
 debugid = { version = "0.8.0", features = ["serde"] }
 hex = "0.4.3"
-rand = "0.9.0"
+rand = "0.9.3"
 serde = { version = "1.0.104", features = ["derive"] }
 serde_json = "1.0.46"
 thiserror = "2.0.12"
-time = { version = "0.3.5", features = ["formatting", "parsing"] }
+time = { version = "0.3.47", features = ["formatting", "parsing"] }
 url = { version = "2.1.1", features = ["serde"] }
 uuid = { version = "1.0.0", features = ["serde"] }
 

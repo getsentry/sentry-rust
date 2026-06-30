@@ -1,0 +1,40 @@
+name: Run tests
+
+on:
+  workflow_call:
+
+env:
+  RUSTFLAGS: -Dwarnings
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        rust: [stable, 1.88.0]
+
+    name: Run tests using Rust ${{ matrix.rust }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install rust ${{ matrix.rust }} toolchain
+        run: |
+          rustup toolchain install ${{ matrix.rust }} --profile minimal --no-self-update
+          rustup default ${{ matrix.rust }}
+
+      - uses: Swatinem/rust-cache@42dc69e1aa15d09112580998cf2ef0119e2e91ae # v2
+
+      - name: Run cargo test
+        run: cargo test --workspace --all-features --all-targets --locked
+
+      - name: Run cargo doc tests
+        run: cargo test --workspace --all-features --doc --locked
+
+      # Keep this separate so we continue asserting the default+test feature
+      # combination for sentry explicitly, even with broader all-features coverage.
+      - name: Test sentry default+test feature combination
+        run: cargo test -p sentry --features test --locked

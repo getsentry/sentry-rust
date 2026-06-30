@@ -1,24 +1,28 @@
 [package]
 name = "sentry-log"
-version = "0.42.0"
-authors = ["Sentry <hello@sentry.io>"]
+version = "0.48.3"
+authors = { workspace = true }
 license = "MIT"
 readme = "README.md"
-repository = "https://github.com/getsentry/sentry-rust"
-homepage = "https://sentry.io/welcome/"
+repository = { workspace = true }
+homepage = { workspace = true }
 description = """
-Sentry integration for log and env_logger crates.
+Sentry integration for the log and env_logger crates.
 """
-edition = "2021"
-rust-version = "1.81"
+edition = { workspace = true }
+rust-version = { workspace = true }
+
+[lints]
+workspace = true
 
 [features]
 default = []
 logs = ["sentry-core/logs"]
 
 [dependencies]
-sentry-core = { version = "0.42.0", path = "../sentry-core" }
+sentry-core = { version = "0.48.3", path = "../sentry-core" }
 log = { version = "0.4.8", features = ["std", "kv"] }
+bitflags = "2.9.4"
 
 [dev-dependencies]
 sentry = { path = "../sentry", default-features = false, features = ["test"] }

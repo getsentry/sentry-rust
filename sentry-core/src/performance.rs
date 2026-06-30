@@ -4,6 +4,8 @@ use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::SystemTime;
 
+#[cfg(feature = "client")]
+use sentry_types::protocol::v7::client_report::Reason as ClientReportReason;
 use sentry_types::protocol::v7::SpanId;
 
 use crate::{protocol, Hub};
@@ -402,7 +404,7 @@ pub type TracesSampler = dyn Fn(&TransactionContext) -> f32 + Send + Sync;
 // global API types:
 
 /// A wrapper that groups a [`Transaction`] and a [`Span`] together.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum TransactionOrSpan {
     /// A [`Transaction`].
     Transaction(Transaction),
@@ -462,6 +464,22 @@ impl TransactionOrSpan {
         match self {
             TransactionOrSpan::Transaction(transaction) => transaction.set_status(status),
             TransactionOrSpan::Span(span) => span.set_status(status),
+        }
+    }
+
+    /// Set the operation for this Transaction/Span.
+    pub fn set_op(&self, op: &str) {
+        match self {
+            TransactionOrSpan::Transaction(transaction) => transaction.set_op(op),
+            TransactionOrSpan::Span(span) => span.set_op(op),
+        }
+    }
+
+    /// Set the name (description) for this Transaction/Span.
+    pub fn set_name(&self, name: &str) {
+        match self {
+            TransactionOrSpan::Transaction(transaction) => transaction.set_name(name),
+            TransactionOrSpan::Span(span) => span.set_name(name),
         }
     }
 
@@ -781,12 +799,32 @@ impl Transaction {
         inner.context.status = Some(status);
     }
 
+    /// Set the operation of the Transaction.
+    pub fn set_op(&self, op: &str) {
+        let mut inner = self.inner.lock().unwrap();
+        inner.context.op = Some(op.to_string());
+    }
+
+    /// Set the name of the Transaction.
+    pub fn set_name(&self, name: &str) {
+        let mut inner = self.inner.lock().unwrap();
+        if let Some(transaction) = inner.transaction.as_mut() {
+            transaction.name = Some(name.to_string());
+        }
+    }
+
     /// Set the HTTP request information for this Transaction.
     pub fn set_request(&self, request: protocol::Request) {
         let mut inner = self.inner.lock().unwrap();
         if let Some(transaction) = inner.transaction.as_mut() {
             transaction.request = Some(request);
         }
+    }
+
+    /// Sets the origin for this transaction, indicating what created it.
+    pub fn set_origin(&self, origin: &str) {
+        let mut inner = self.inner.lock().unwrap();
+        inner.context.origin = Some(origin.to_owned());
     }
 
     /// Returns the headers needed for distributed tracing.
@@ -819,6 +857,11 @@ impl Transaction {
 
             // Discard `Transaction` unless sampled.
             if !inner.sampled {
+                if let Some(transaction) = inner.transaction.take() {
+                    if let Some(client) = inner.client.as_ref() {
+                        client.record_lost_data(&transaction, ClientReportReason::SampleRate);
+                    }
+                }
                 return;
             }
 
@@ -922,6 +965,12 @@ impl Transaction {
     }
 }
 
+impl PartialEq for Transaction {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.inner, &other.inner)
+    }
+}
+
 /// A smart pointer to a span's [`data` field](protocol::Span::data).
 pub struct Data<'a>(MutexGuard<'a, protocol::Span>);
 
@@ -1018,6 +1067,18 @@ impl Span {
         span.status = Some(status);
     }
 
+    /// Set the operation of the Span.
+    pub fn set_op(&self, op: &str) {
+        let mut span = self.span.lock().unwrap();
+        span.op = Some(op.to_string());
+    }
+
+    /// Set the name (description) of the Span.
+    pub fn set_name(&self, name: &str) {
+        let mut span = self.span.lock().unwrap();
+        span.description = Some(name.to_string());
+    }
+
     /// Set the HTTP request information for this Span.
     pub fn set_request(&self, request: protocol::Request) {
         let mut span = self.span.lock().unwrap();
@@ -1085,6 +1146,8 @@ impl Span {
             if let Some(transaction) = inner.transaction.as_mut() {
                 if transaction.spans.len() <= MAX_SPANS {
                     transaction.spans.push(span.clone());
+                } else if let Some(client) = inner.client.as_ref() {
+                    client.record_lost_data(&*span, ClientReportReason::BufferOverflow);
                 }
             }
         }}
@@ -1152,6 +1215,12 @@ impl Span {
             sampled: self.sampled,
             span: Arc::new(Mutex::new(span)),
         }
+    }
+}
+
+impl PartialEq for Span {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.span, &other.span)
     }
 }
 

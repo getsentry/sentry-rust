@@ -24,10 +24,19 @@ pub use uuid::Uuid;
 
 use crate::utils::{display_from_str_opt, ts_rfc3339_opt, ts_seconds_float};
 
+pub use self::client_report::Report as ClientReport;
 pub use super::attachment::*;
 pub use super::envelope::*;
 pub use super::monitor::*;
 pub use super::session::*;
+pub use super::unit::Unit;
+
+/// Types related to [Client Reports].
+///
+/// [Client Reports]: https://develop.sentry.dev/sdk/telemetry/client-reports/
+pub mod client_report {
+    pub use super::super::client_report::{Category, Item, ItemLoss, LossSource, Reason, Report};
+}
 
 /// An arbitrary (JSON) value.
 pub mod value {
@@ -1504,6 +1513,10 @@ pub struct TraceContext {
     /// Describes the status of the span (e.g. `ok`, `cancelled`, etc.)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status: Option<SpanStatus>,
+    /// Describes what created the transaction. See the [develop
+    /// docs](https://develop.sentry.dev/sdk/telemetry/traces/trace-origin/) for more information.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub origin: Option<String>,
     /// Optional data attributes to be associated with the transaction.
     #[serde(default, skip_serializing_if = "Map::is_empty")]
     pub data: Map<String, Value>,
@@ -2362,6 +2375,45 @@ impl<'de> Deserialize<'de> for LogAttribute {
 
         deserializer.deserialize_map(LogAttributeVisitor)
     }
+}
+
+/// The type of a [metric](https://develop.sentry.dev/sdk/telemetry/metrics/).
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum MetricType {
+    /// A counter metric that only increments.
+    Counter,
+    /// A gauge metric that can go up and down.
+    Gauge,
+    /// A distribution metric for statistical spread measurements.
+    Distribution,
+}
+
+/// A single [metric](https://develop.sentry.dev/sdk/telemetry/metrics/).
+///
+/// Construct this type directly with a struct literal.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct Metric {
+    /// The metric type.
+    pub r#type: MetricType,
+    /// The metric name. Uses dot separators for hierarchy.
+    pub name: Cow<'static, str>,
+    /// The numeric value.
+    pub value: f64,
+    /// The timestamp when recorded.
+    #[serde(with = "ts_seconds_float")]
+    pub timestamp: SystemTime,
+    /// The trace ID this metric is associated with.
+    pub trace_id: TraceId,
+    /// The span ID of the active span, if any.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub span_id: Option<SpanId>,
+    /// The measurement unit.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub unit: Option<Unit>,
+    /// Additional key-value attributes.
+    #[serde(default, skip_serializing_if = "Map::is_empty")]
+    pub attributes: Map<Cow<'static, str>, LogAttribute>,
 }
 
 /// An ID that identifies an organization in the Sentry backend.

@@ -1,16 +1,225 @@
 # Changelog
 
-## Unreleased
+## 0.48.3
+
+The Sentry Rust SDK now reports data discarded by the SDK to Sentry’s [Stats](https://docs.sentry.io/product/stats/) page. The SDK reports approximate counts for drops from transports, queues, rate-limit backoff, sampling, event processors, and `before_send*` callbacks, including span counts for dropped transactions and byte counts for dropped logs and metrics.
+
+### New Features
+
+- Added [`EnvelopeFilter`](https://docs.rs/sentry-types/0.48.3/sentry_types/protocol/v7/trait.EnvelopeFilter.html) and [`EnvelopeFilterCallbacks`](https://docs.rs/sentry-types/0.48.3/sentry_types/protocol/v7/struct.EnvelopeFilterCallbacks.html), which let callers observe envelope items removed by [`Envelope::filter`](https://docs.rs/sentry-types/0.48.3/sentry_types/protocol/v7/struct.Envelope.html#method.filter), including attachments removed after their event or transaction is filtered out. Existing `Envelope::filter` closure callers continue to work, although some closures may require an explicit item type annotation ([#1182](https://github.com/getsentry/sentry-rust/pull/1182)).
+- Added the [`LossSource`](https://docs.rs/sentry-types/0.48.3/sentry_types/protocol/v7/client_report/trait.LossSource.html) trait, which provides the client report data categories and quantities to report when supported Sentry data is dropped ([#1170](https://github.com/getsentry/sentry-rust/pull/1170)).
+- Added [`TransportFactory::create_transport_with_options`](https://docs.rs/sentry-core/0.48.3/sentry_core/trait.TransportFactory.html#method.create_transport_with_options), which constructs transports from [`TransportOptions`](https://docs.rs/sentry-core/0.48.3/sentry_core/struct.TransportOptions.html) instead of full [`ClientOptions`](https://docs.rs/sentry-core/0.48.3/sentry_core/struct.ClientOptions.html) ([#1142](https://github.com/getsentry/sentry-rust/pull/1142)).
+- Added transport-specific options types and `with_options` constructors for built-in HTTP transports, including `ReqwestHttpTransportOptions`, `CurlHttpTransportOptions`, `UreqHttpTransportOptions`, and `EmbeddedSVCHttpTransportOptions` ([#1142](https://github.com/getsentry/sentry-rust/pull/1142)).
+- Added transport worker options types and deprecated the legacy constructors for built-in background transport workers, including `StdTransportThreadOptions` and `TokioTransportThreadOptions` ([#1142](https://github.com/getsentry/sentry-rust/pull/1142)).
+- Added client report protocol types in `sentry-types`, including [`ClientReport`](https://docs.rs/sentry-types/0.48.3/sentry_types/protocol/v7/index.html#reexport.ClientReport), [`client_report::Item`](https://docs.rs/sentry-types/0.48.3/sentry_types/protocol/v7/client_report/struct.Item.html), [`client_report::Category`](https://docs.rs/sentry-types/0.48.3/sentry_types/protocol/v7/client_report/enum.Category.html), and [`client_report::Reason`](https://docs.rs/sentry-types/0.48.3/sentry_types/protocol/v7/client_report/enum.Reason.html), plus support for serializing [`client_report` envelope items](https://docs.rs/sentry-types/0.48.3/sentry_types/protocol/v7/enum.EnvelopeItem.html#variant.ClientReport) ([#1144](https://github.com/getsentry/sentry-rust/pull/1144)).
+- Added [a client report `Recorder` type](https://docs.rs/sentry-core/0.48.3/sentry_core/client_report/struct.Recorder.html), which modern [`TransportFactory`](https://docs.rs/sentry-core/0.48.3/sentry_core/trait.TransportFactory.html) implementations receive via [`TransportOptions`](https://docs.rs/sentry-core/0.48.3/sentry_core/struct.TransportOptions.html). Transports can use this recorder to record discarded Sentry data; the SDK aggregates these reported losses and automatically sends them in a future envelope ([#1158](https://github.com/getsentry/sentry-rust/pull/1158)).
+
+### Deprecations
+
+- Deprecated [`Hub::with`](https://docs.rs/sentry-core/0.48.3/sentry_core/struct.Hub.html#method.with). Use [`Hub::current`](https://docs.rs/sentry-core/0.48.3/sentry_core/struct.Hub.html#method.current) instead ([#1126](https://github.com/getsentry/sentry-rust/pull/1126)).
+
+### Fixes
+
+- Fixed `ureq` transport handling for HTTP error statuses so `429` rate limits and `413` payload-too-large responses are processed correctly ([#1177](https://github.com/getsentry/sentry-rust/pull/1177)).
+
+### Behavior Changes
+
+- Custom transport factories that implement [`TransportFactory::create_transport`](https://docs.rs/sentry-core/0.48.3/sentry_core/trait.TransportFactory.html#method.create_transport) now receive [`ClientOptions`](https://docs.rs/sentry-core/0.48.3/sentry_core/struct.ClientOptions.html) reconstructed from [`TransportOptions`](https://docs.rs/sentry-core/0.48.3/sentry_core/struct.TransportOptions.html). The reconstructed options include only transport-relevant fields, such as DSN, user agent, proxy settings, and TLS certificate validation settings. This may affect code that reads non-transport fields in `create_transport`, but the API remains source-compatible and this change is included in a minor/patch release ([#1142](https://github.com/getsentry/sentry-rust/pull/1142)).
+
+## 0.48.2
+
+### New Features
+
+- Added `rustls-no-provider` feature flag in the `sentry` crate to allow using the `rustls` transport with a different crypto provider ([#1103](https://github.com/getsentry/sentry-rust/pull/1103)). 
+
+### Fixes
+
+- Serialize attachment envelope headers as JSON to correctly encode header values ([#1109](https://github.com/getsentry/sentry-rust/pull/1109)).
+- Use checked arithmetic to handle possible overflows ([#1119](https://github.com/getsentry/sentry-rust/pull/1119), [#1121](https://github.com/getsentry/sentry-rust/pull/1121), [#1122](https://github.com/getsentry/sentry-rust/pull/1122)).
+
+## 0.48.1
+
+### Fixes
+
+- Changed [`ClientOptions::enable_metrics`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html#structfield.enable_metrics) to default to `true`, aligning metrics behavior with other Sentry SDKs ([#1106](https://github.com/getsentry/sentry-rust/issues/1106)). Metric capture APIs still require the `metrics` feature flag at compile time.
+
+## 0.48.0
+
+### Breaking Changes
+
+- Added the following metrics-related fields to the [`ClientOptions` struct in `sentry-core`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html). Both fields are no-ops, unless the `metrics` feature flag is enabled:
+  - [`enable_metrics`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html#structfield.enable_metrics), used to enable sending metrics to Sentry ([#1073](https://github.com/getsentry/sentry-rust/pull/1073)). 
+  - [`before_send_metric`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html#structfield.before_send_metric), used to define a callback for filtering/pre-processing metrics before sending to Sentry ([#1064](https://github.com/getsentry/sentry-rust/pull/1064)).
+- There are several breakages related to the [SemVer feature additivity bug fixes](#semver-additivity-bug-fixes-2026-04):
+  - [`sentry_core::ClientOptions`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html) fields [`before_send_log`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html#structfield.before_send_log), [`enable_logs`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html#structfield.enable_logs), [`auto_session_tracking`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html#structfield.auto_session_tracking), and [`session_mode`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html#structfield.session_mode) are no longer gated behind the `logs` and `release-health` feature flags ([#1091](https://github.com/getsentry/sentry-rust/pull/1091)). Code that constructs `ClientOptions` with a full struct literal (without `..Default::default()`), or which exhaustively matches against it, must now include all four fields regardless of enabled features.
+  - [`sentry_core::Scope`](https://docs.rs/sentry-core/latest/sentry_core/struct.Scope.html) can no longer be publicly constructed or exhaustively matched against, even when the `client` feature is disabled ([#1094](https://github.com/getsentry/sentry-rust/pull/1094)). Previously, both of these were possible when `client` was disabled.
+  - [`sentry_core::Scope::add_event_processor`](https://docs.rs/sentry-core/latest/sentry_core/struct.Scope.html#method.add_event_processor) now requires passed closures to be `RefUnwindSafe` ([#1093](https://github.com/getsentry/sentry-rust/pull/1093)). Thanks to this change, [`sentry_core::Scope`](https://docs.rs/sentry-core/latest/sentry_core/struct.Scope.html) is now [`UnwindSafe`](https://docs.rs/sentry-core/latest/sentry_core/struct.Scope.html#impl-UnwindSafe-for-Scope) regardless of feature flag configuration; previously, `Scope` was only `UnwindSafe` when the `client` feature was disabled.
+  - [`sentry_tracing::EventMapping`](https://docs.rs/sentry-tracing/latest/sentry_tracing/enum.EventMapping.html) is now ``#[non_exhaustive]`` ([#1097](https://github.com/getsentry/sentry-rust/pull/1097)).
+  - [`sentry_log::RecordMapping`](https://docs.rs/sentry-log/latest/sentry_log/enum.RecordMapping.html) is now ``#[non_exhaustive]`` ([#1098](https://github.com/getsentry/sentry-rust/pull/1098)).
+
+### New Features
+
+📊📈💯 The Sentry-Rust SDK now supports emitting [Sentry Metrics](https://docs.sentry.io/product/explore/metrics/) ([#1073](https://github.com/getsentry/sentry-rust/pull/1073))! 
+
+To get started, you will need to add the `metrics` feature flag when compiling the `sentry` crate. You will also need to enable metrics when initializing the SDK, like so:
+
+```rust
+use sentry::ClientOptions;
+
+let _guard = sentry::init((
+    "(your DSN here)",
+    ClientOptions {
+        enable_metrics: true,
+        // ... other options ...
+        ..Default::default()
+    },
+));
+```
+
+You can then capture metrics as follows:
+
+```rust
+use sentry::metrics;
+use sentry::types::protocol::latest::Unit;
+
+// We support counter, gauge, and distribution metrics.
+metrics::counter("example.counter", 1).capture();
+metrics::gauge("connections", 20).capture();
+metrics::distribution("response.time", 123.4)
+    .unit(Unit::Millisecond) // units can also be set on gauges
+    .attribute("http.status", 200) // attributes can be set on all metric types
+    .capture();
+```
+
+### Fixes
+
+- <a name="semver-additivity-bug-fixes-2026-04"></a> Fixed several [feature additivity SemVer violations](https://doc.rust-lang.org/cargo/reference/features.html#semver-compatibility), where enabling a feature flag could have introduced breaking changes. All known violations are fixed now, so simply enabling an additional feature flag in any Sentry SDK crate should no longer cause any public API breakages. Fixing these issues required us to break the public API in some places; those breakages are detailed above.
+
+## 0.47.0
+
+### Breaking Changes
+
+- Update reqwest from 0.12.25 to 0.13.1 ([#998](https://github.com/getsentry/sentry-rust/pull/998)). This change is breaking for users who use the [`RequestHttpTransport::with_client`](https://docs.rs/sentry/latest/sentry/transports/struct.ReqwestHttpTransport.html#method.with_client) method.
+- `sentry_core::HubSwitchGuard` is now `!Send`, preventing it from being moved across threads ([#957](https://github.com/getsentry/sentry-rust/pull/957)).
+
+### New Features
+
+- Added a `Envelope::into_items` method, which returns an iterator over owned [`EnvelopeItem`s](https://docs.rs/sentry/0.46.2/sentry/protocol/enum.EnvelopeItem.html) in the [`Envelope`](https://docs.rs/sentry/0.46.2/sentry/struct.Envelope.html) ([#983](https://github.com/getsentry/sentry-rust/pull/983)).
+- Expose transport utilities ([#949](https://github.com/getsentry/sentry-rust/pull/949))
+
+### Fixes
+
+- Fixed thread corruption bug where `HubSwitchGuard` could be dropped on wrong thread ([#957](https://github.com/getsentry/sentry-rust/pull/957)).
+- We now fork the `Hub` every time a span is entered. This prevents data from leaking across spans ([#957](https://github.com/getsentry/sentry-rust/pull/957)).
+
+## 0.46.2
+
+### New Features
+
+- Log HTTP 413 responses as oversized envelope discards in HTTP transports ([#966](https://github.com/getsentry/sentry-rust/pull/966))
+
+### Minimum Supported Rust Version
+
+- Bump minimum supported Rust version to 1.88 ([#970](https://github.com/getsentry/sentry-rust/pull/970)).
+
+## 0.46.1
+
+### Improvements
+
+- Make it possible to == Transaction/Span/TransactionOrSpan ([#942](https://github.com/getsentry/sentry-rust/pull/942))
+
+### Dependencies
+
+- Update reqwest from 0.12.15 to 0.12.25 ([#951](https://github.com/getsentry/sentry-rust/pull/951))
+
+## 0.46.0
 
 ### Breaking changes
 
-- fix(actix): capture only server errors ([#877](https://github.com/getsentry/sentry-rust/pull/877))
+- Removed the `ClientOptions` struct's `trim_backtraces` and `extra_border_frames` fields ([#925](https://github.com/getsentry/sentry-rust/pull/925)).
+  - These fields configured backtrace trimming, which is being removed in this release.
+
+### Improvements
+
+- Removed backtrace trimming to align the Rust SDK with the general principle that Sentry SDKs should only truncate telemetry data when needed to comply with [documented size limits](https://develop.sentry.dev/sdk/data-model/envelopes/#size-limits) ([#925](https://github.com/getsentry/sentry-rust/pull/925)). This change ensures that as much data as possible remains available for debugging.
+  - If you notice any new issues being created for existing errors after this change, please open an issue on [GitHub](https://github.com/getsentry/sentry-rust/issues/new/choose).
+
+### Fixes
+
+- fix: adjust sentry.origin for log integration ([#919](https://github.com/getsentry/sentry-rust/pull/919)) by @lcian
+
+## 0.45.0
+
+### Breaking changes
+
+- Add custom variant to `AttachmentType` that holds an arbitrary String. ([#916](https://github.com/getsentry/sentry-rust/pull/916))
+
+## 0.44.0
+
+### Breaking changes
+
+- feat(log): support combined LogFilters and RecordMappings ([#914](https://github.com/getsentry/sentry-rust/pull/914)) by @lcian
+  - Breaking change: `sentry::integrations::log::LogFilter` has been changed to a `bitflags` struct.
+  - It's now possible to map a `log` record to multiple items in Sentry by combining multiple log filters in the filter, e.g. `log::Level::ERROR => LogFilter::Event | LogFilter::Log`.
+  - If using a custom `mapper` instead, it's possible to return a `Vec<sentry::integrations::log::RecordMapping>` to map a `log` record to multiple items in Sentry. 
+
+### Behavioral changes
+
+- ref(log): send logs by default when logs feature flag is enabled ([#915](https://github.com/getsentry/sentry-rust/pull/915)) by @lcian
+  - If the `logs` feature flag is enabled, the default Sentry `log` logger now sends logs for all events at or above INFO.
+- ref(logs): enable logs by default if logs feature flag is used ([#910](https://github.com/getsentry/sentry-rust/pull/910)) by @lcian
+  - This changes the default value of `sentry::ClientOptions::enable_logs` to `true`.
+  - This simplifies the setup of Sentry structured logs by requiring users to just add the `log` feature flag to the `sentry` dependency to opt-in to sending logs.
+  - When the `log` feature flag is enabled, the `tracing` and `log` integrations will send structured logs to Sentry for all logs/events at or above INFO level by default.
+
+## 0.43.0
+
+### Breaking changes
+
+- ref(tracing): rework tracing to Sentry span name/op conversion ([#887](https://github.com/getsentry/sentry-rust/pull/887)) by @lcian
+  - The `tracing` integration now uses the tracing span name as the Sentry span name by default.
+  - Before this change, the span name would be set based on the `tracing` span target (`<module>::<function>` when using the `tracing::instrument` macro).
+  - The `tracing` integration now uses `<span target>::<span name>` as the default Sentry span op (i.e. `<module>::<function>` when using `tracing::instrument`).
+  - Before this change, the span op would be set based on the `tracing` span name.
+  - Read below to learn how to customize the span name and op.
+  - When upgrading, please ensure to adapt any queries, metrics or dashboards to use the new span names/ops.
+- ref(tracing): use standard code attributes ([#899](https://github.com/getsentry/sentry-rust/pull/899)) by @lcian
+  - Logs now carry the attributes `code.module.name`, `code.file.path` and `code.line.number` standardized in OTEL to surface the respective information, in contrast with the previously sent `tracing.module_path`, `tracing.file` and `tracing.line`.
+- fix(actix): capture only server errors ([#877](https://github.com/getsentry/sentry-rust/pull/877)) by @lcian
   - The Actix integration now properly honors the `capture_server_errors` option (enabled by default), capturing errors returned by middleware only if they are server errors (HTTP status code 5xx).
   - Previously, if a middleware were to process the request after the Sentry middleware and return an error, our middleware would always capture it and send it to Sentry, regardless if it was a client, server or some other kind of error.
   - With this change, we capture errors returned by middleware only if those errors can be classified as server errors.
   - There is no change in behavior when it comes to errors returned by services, in which case the Sentry middleware only captures server errors exclusively.
+- fix: send trace origin correctly ([#906](https://github.com/getsentry/sentry-rust/pull/906)) by @lcian
+  - `TraceContext` now has an additional field `origin`, used to report which integration created a transaction.
+
+### Behavioral changes
+
+- feat(tracing): send both breadcrumbs and logs by default ([#878](https://github.com/getsentry/sentry-rust/pull/878)) by @lcian
+  - If the `logs` feature flag is enabled, and `enable_logs: true` is set on your client options, the default Sentry `tracing` layer now sends logs for all events at or above INFO.
 
 ### Features
+
+- ref(tracing): rework tracing to Sentry span name/op conversion ([#887](https://github.com/getsentry/sentry-rust/pull/887)) by @lcian
+  - Additional special fields have been added that allow overriding certain data on the Sentry span:
+    - `sentry.op`: override the Sentry span op.
+    - `sentry.name`: override the Sentry span name.
+    - `sentry.trace`: given a string matching a valid `sentry-trace` header (sent automatically by client SDKs), continues the distributed trace instead of starting a new one. If the value is not a valid `sentry-trace` header or a trace is already started, this value is ignored.
+  - `sentry.op` and `sentry.name` can also be applied retroactively by declaring fields with value `tracing::field::Empty` and then recorded using `tracing::Span::record`.
+  - Example usage:
+    ```rust
+    #[tracing::instrument(skip_all, fields(
+        sentry.op = "http.server",
+        sentry.name = "GET /payments",
+        sentry.trace = headers.get("sentry-trace").unwrap_or(&"".to_owned()),
+    ))]
+    async fn handle_request(headers: std::collections::HashMap<String, String>) {
+        // ...
+    }
+    ```
+  - Additional attributes are sent along with each span by default:
+    - `sentry.tracing.target`: corresponds to the `tracing` span's `metadata.target()`
+    - `code.module.name`, `code.file.path`, `code.line.number`
 
 - feat(core): add Response context ([#874](https://github.com/getsentry/sentry-rust/pull/874)) by @lcian
   - The `Response` context can now be attached to events, to include information about HTTP responses such as headers, cookies and status code.
@@ -33,6 +242,7 @@
 
 - build(panic): Fix build without other dependencies ([#883](https://github.com/getsentry/sentry-rust/pull/883)) by @liskin
   - The `sentry-panic` crate now builds successfully when used as a standalone dependency.
+- fix(transport): add rate limits for logs ([#894](https://github.com/getsentry/sentry-rust/pull/894)) by @giortzisg
 
 ## 0.42.0
 

@@ -5,14 +5,20 @@ use std::sync::Arc;
 
 use bitflags::bitflags;
 use sentry_core::protocol::Value;
-use sentry_core::{Breadcrumb, TransactionOrSpan};
+use sentry_core::{Breadcrumb, Hub, HubSwitchGuard, TransactionOrSpan};
 use tracing_core::field::Visit;
 use tracing_core::{span, Event, Field, Level, Metadata, Subscriber};
 use tracing_subscriber::layer::{Context, Layer};
 use tracing_subscriber::registry::LookupSpan;
 
 use crate::converters::*;
+use crate::SENTRY_NAME_FIELD;
+use crate::SENTRY_OP_FIELD;
+use crate::SENTRY_TRACE_FIELD;
 use crate::TAGS_PREFIX;
+use span_guard_stack::SpanGuardStack;
+
+mod span_guard_stack;
 
 bitflags! {
     /// The action that Sentry should perform for a given [`Event`]
@@ -31,6 +37,7 @@ bitflags! {
 
 /// The type of data Sentry should ingest for an [`Event`].
 #[derive(Debug)]
+#[non_exhaustive]
 #[allow(clippy::large_enum_variant)]
 pub enum EventMapping {
     /// Ignore the [`Event`]
@@ -72,7 +79,13 @@ impl From<Vec<EventMapping>> for CombinedEventMapping {
 /// `warning` and `info`, and `debug` and `trace` logs are ignored.
 pub fn default_event_filter(metadata: &Metadata) -> EventFilter {
     match metadata.level() {
+        #[cfg(feature = "logs")]
+        &Level::ERROR => EventFilter::Event | EventFilter::Log,
+        #[cfg(not(feature = "logs"))]
         &Level::ERROR => EventFilter::Event,
+        #[cfg(feature = "logs")]
+        &Level::WARN | &Level::INFO => EventFilter::Breadcrumb | EventFilter::Log,
+        #[cfg(not(feature = "logs"))]
         &Level::WARN | &Level::INFO => EventFilter::Breadcrumb,
         &Level::DEBUG | &Level::TRACE => EventFilter::Ignore,
     }
@@ -225,9 +238,7 @@ fn record_fields<'a, K: AsRef<str> + Into<Cow<'a, str>>>(
 /// the *current* span.
 pub(super) struct SentrySpanData {
     pub(super) sentry_span: TransactionOrSpan,
-    parent_sentry_span: Option<TransactionOrSpan>,
     hub: Arc<sentry_core::Hub>,
-    hub_switch_guard: Option<sentry_core::HubSwitchGuard>,
 }
 
 impl<S> Layer<S> for SentryLayer<S>
@@ -292,29 +303,29 @@ where
             return;
         }
 
-        let (description, data) = extract_span_data(attrs);
-        let op = span.name();
-
-        // Spans don't always have a description, this ensures our data is not empty,
-        // therefore the Sentry UI will be a lot more valuable for navigating spans.
-        let description = description.unwrap_or_else(|| {
-            let target = span.metadata().target();
-            if target.is_empty() {
-                op.to_string()
-            } else {
-                format!("{target}::{op}")
-            }
-        });
+        let (data, sentry_name, sentry_op, sentry_trace) = extract_span_data(attrs);
+        let sentry_name = sentry_name.as_deref().unwrap_or_else(|| span.name());
+        let sentry_op =
+            sentry_op.unwrap_or_else(|| format!("{}::{}", span.metadata().target(), span.name()));
 
         let hub = sentry_core::Hub::current();
         let parent_sentry_span = hub.configure_scope(|scope| scope.get_span());
 
-        let sentry_span: sentry_core::TransactionOrSpan = match &parent_sentry_span {
-            Some(parent) => parent.start_child(op, &description).into(),
+        let mut sentry_span: sentry_core::TransactionOrSpan = match &parent_sentry_span {
+            Some(parent) => parent.start_child(&sentry_op, sentry_name).into(),
             None => {
-                let ctx = sentry_core::TransactionContext::new(&description, op);
+                let ctx = if let Some(trace_header) = sentry_trace {
+                    sentry_core::TransactionContext::continue_from_headers(
+                        sentry_name,
+                        &sentry_op,
+                        [("sentry-trace", trace_header.as_str())],
+                    )
+                } else {
+                    sentry_core::TransactionContext::new(sentry_name, &sentry_op)
+                };
+
                 let tx = sentry_core::start_transaction(ctx);
-                tx.set_data("origin", "auto.tracing".into());
+                tx.set_origin("auto.tracing");
                 tx.into()
             }
         };
@@ -322,46 +333,67 @@ where
         // This comes from typically the `fields` in `tracing::instrument`.
         record_fields(&sentry_span, data);
 
+        set_default_attributes(&mut sentry_span, span.metadata());
+
         let mut extensions = span.extensions_mut();
-        extensions.insert(SentrySpanData {
-            sentry_span,
-            parent_sentry_span,
-            hub,
-            hub_switch_guard: None,
-        });
+        extensions.insert(SentrySpanData { sentry_span, hub });
     }
 
-    /// Sets entered span as *current* sentry span. A tracing span can be
-    /// entered and existed multiple times, for example, when using a `tracing::Instrumented` future.
+    /// Sets the entered span as *current* sentry span.
+    ///
+    /// A tracing span can be entered and exited multiple times, for example,
+    /// when using a `tracing::Instrumented` future.
+    ///
+    /// Spans must be exited on the same thread that they are entered. The
+    /// `sentry-tracing` integration's behavior is undefined if spans are
+    /// exited on threads other than the one they are entered from;
+    /// specifically, doing so will likely cause data to bleed between
+    /// [`Hub`]s in unexpected ways.
     fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
         let span = match ctx.span(id) {
             Some(span) => span,
             None => return,
         };
 
-        let mut extensions = span.extensions_mut();
-        if let Some(data) = extensions.get_mut::<SentrySpanData>() {
-            data.hub_switch_guard = Some(sentry_core::HubSwitchGuard::new(data.hub.clone()));
-            data.hub.configure_scope(|scope| {
+        let extensions = span.extensions();
+        if let Some(data) = extensions.get::<SentrySpanData>() {
+            // We fork the hub (based on the hub associated with the span)
+            // upon entering the span. This prevents data leakage if the span
+            // is entered and exited multiple times.
+            //
+            // Further, Hubs are meant to manage thread-local state, even
+            // though they can be shared across threads. As the span may being
+            // entered on a different thread than where it was created, we need
+            // to use a new hub to avoid altering state on the original thread.
+            let hub = Arc::new(Hub::new_from_top(&data.hub));
+
+            hub.configure_scope(|scope| {
                 scope.set_span(Some(data.sentry_span.clone()));
-            })
+            });
+
+            let guard = HubSwitchGuard::new(hub);
+
+            SPAN_GUARDS.with(|guards| {
+                guards.borrow_mut().push(id.clone(), guard);
+            });
         }
     }
 
-    /// Set exited span's parent as *current* sentry span.
+    /// Drop the current span's [`HubSwitchGuard`] to restore the parent [`Hub`].
     fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
-        let span = match ctx.span(id) {
-            Some(span) => span,
-            None => return,
-        };
+        let popped = SPAN_GUARDS.with(|guards| guards.borrow_mut().pop(id.clone()));
 
-        let mut extensions = span.extensions_mut();
-        if let Some(data) = extensions.get_mut::<SentrySpanData>() {
-            data.hub.configure_scope(|scope| {
-                scope.set_span(data.parent_sentry_span.clone());
-            });
-            data.hub_switch_guard.take();
-        }
+        // We should have popped a guard if the tracing span has `SentrySpanData` extensions.
+        sentry_core::debug_assert_or_log!(
+            popped.is_some()
+                || ctx
+                    .span(id)
+                    .is_none_or(|span| span.extensions().get::<SentrySpanData>().is_none()),
+            "[SentryLayer] missing HubSwitchGuard on exit for span {id:?}. \
+            This span has been exited more times on this thread than it has been entered, \
+            likely due to dropping an `Entered` guard in a different thread than where it was \
+            entered. This mismatch will likely cause the sentry-tracing layer to leak memory."
+        );
     }
 
     /// When a span gets closed, finish the underlying sentry span, and set back
@@ -397,7 +429,49 @@ where
         let mut data = FieldVisitor::default();
         values.record(&mut data);
 
+        let sentry_name = data
+            .json_values
+            .remove(SENTRY_NAME_FIELD)
+            .and_then(|v| match v {
+                Value::String(s) => Some(s),
+                _ => None,
+            });
+
+        let sentry_op = data
+            .json_values
+            .remove(SENTRY_OP_FIELD)
+            .and_then(|v| match v {
+                Value::String(s) => Some(s),
+                _ => None,
+            });
+
+        // `sentry.trace` cannot be applied retroactively
+        data.json_values.remove(SENTRY_TRACE_FIELD);
+
+        if let Some(name) = sentry_name {
+            span.set_name(&name);
+        }
+        if let Some(op) = sentry_op {
+            span.set_op(&op);
+        }
+
         record_fields(span, data.json_values);
+    }
+}
+
+fn set_default_attributes(span: &mut TransactionOrSpan, metadata: &Metadata<'_>) {
+    span.set_data("sentry.tracing.target", metadata.target().into());
+
+    if let Some(module) = metadata.module_path() {
+        span.set_data("code.module.name", module.into());
+    }
+
+    if let Some(file) = metadata.file() {
+        span.set_data("code.file.path", file.into());
+    }
+
+    if let Some(line) = metadata.line() {
+        span.set_data("code.line.number", line.into());
     }
 }
 
@@ -409,8 +483,16 @@ where
     Default::default()
 }
 
-/// Extracts the message and attributes from a span
-fn extract_span_data(attrs: &span::Attributes) -> (Option<String>, BTreeMap<&'static str, Value>) {
+/// Extracts the attributes from a span,
+/// returning the values of SENTRY_NAME_FIELD, SENTRY_OP_FIELD, SENTRY_TRACE_FIELD separately
+fn extract_span_data(
+    attrs: &span::Attributes,
+) -> (
+    BTreeMap<&'static str, Value>,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+) {
     let mut json_values = VISITOR_BUFFER.with_borrow_mut(|debug_buffer| {
         let mut visitor = SpanFieldVisitor {
             debug_buffer,
@@ -420,17 +502,33 @@ fn extract_span_data(attrs: &span::Attributes) -> (Option<String>, BTreeMap<&'st
         visitor.json_values
     });
 
-    // Find message of the span, if any
-    let message = json_values.remove("message").and_then(|v| match v {
+    let name = json_values.remove(SENTRY_NAME_FIELD).and_then(|v| match v {
         Value::String(s) => Some(s),
         _ => None,
     });
 
-    (message, json_values)
+    let op = json_values.remove(SENTRY_OP_FIELD).and_then(|v| match v {
+        Value::String(s) => Some(s),
+        _ => None,
+    });
+
+    let sentry_trace = json_values
+        .remove(SENTRY_TRACE_FIELD)
+        .and_then(|v| match v {
+            Value::String(s) => Some(s),
+            _ => None,
+        });
+
+    (json_values, name, op, sentry_trace)
 }
 
 thread_local! {
     static VISITOR_BUFFER: RefCell<String> = const { RefCell::new(String::new()) };
+    /// Hub switch guards keyed by span ID.
+    ///
+    /// Guard bookkeeping is thread-local by design. Correctness expects
+    /// balanced enter/exit callbacks on the same thread.
+    static SPAN_GUARDS: RefCell<SpanGuardStack> = RefCell::new(SpanGuardStack::new());
 }
 
 /// Records all span fields into a `BTreeMap`, reusing a mutable `String` as buffer.

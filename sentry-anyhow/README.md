@@ -49,4 +49,4 @@ capture backtraces with your events.  It is enabled by default.
 License: MIT
 
 - [Discord](https://discord.gg/ez5KZN7) server for project discussions.
-- Follow [@getsentry](https://twitter.com/getsentry) on Twitter for updates
+- Follow [@sentry](https://x.com/sentry) on X for updates.

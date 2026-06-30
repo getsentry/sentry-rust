@@ -1,16 +1,19 @@
 [package]
 name = "sentry-actix"
-version = "0.42.0"
-authors = ["Sentry <hello@sentry.io>"]
+version = "0.48.3"
+authors = { workspace = true }
 license = "MIT"
 readme = "README.md"
-repository = "https://github.com/getsentry/sentry-rust"
-homepage = "https://sentry.io/welcome/"
+repository = { workspace = true }
+homepage = { workspace = true }
 description = """
-Sentry client extension for actix-web 3.
+Sentry integration for actix-web 4.
 """
-edition = "2021"
-rust-version = "1.81"
+edition = { workspace = true }
+rust-version = { workspace = true }
+
+[lints]
+workspace = true
 
 [features]
 default = ["release-health"]
@@ -18,12 +21,12 @@ release-health = ["sentry-core/release-health"]
 
 [dependencies]
 actix-web = { version = "4", default-features = false }
-bytes = "1.2"
+bytes = "1.11.1"
 futures-util = { version = "0.3.5", default-features = false }
-sentry-core = { version = "0.42.0", path = "../sentry-core", default-features = false, features = [
+sentry-core = { version = "0.48.3", path = "../sentry-core", default-features = false, features = [
     "client",
 ] }
-actix-http = "3.10"
+actix-http = "3.12"
 
 [dev-dependencies]
 actix-web = { version = "4" }

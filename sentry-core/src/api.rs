@@ -188,13 +188,12 @@ where
 {
     #[cfg(feature = "client")]
     {
-        Hub::with(|hub| {
-            if hub.is_active_and_usage_safe() {
-                hub.with_scope(scope_config, callback)
-            } else {
-                callback()
-            }
-        })
+        let hub = Hub::current();
+        if hub.is_active_and_usage_safe() {
+            hub.with_scope(scope_config, callback)
+        } else {
+            callback()
+        }
     }
     #[cfg(not(feature = "client"))]
     {
@@ -261,7 +260,7 @@ where
 /// [`Hub`]: struct.Hub.html
 pub fn last_event_id() -> Option<Uuid> {
     with_client_impl! {{
-        Hub::with(|hub| hub.last_event_id())
+        Hub::with_current(|hub| hub.last_event_id())
     }}
 }
 

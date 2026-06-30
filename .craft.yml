@@ -8,3 +8,4 @@ targets:
   - name: registry
     sdks:
       cargo:sentry:
+        apiDocsUrl: https://docs.rs/sentry

@@ -1,16 +1,19 @@
 [package]
 name = "sentry-tracing"
-version = "0.42.0"
-authors = ["Sentry <hello@sentry.io>"]
+version = "0.48.3"
+authors = { workspace = true }
 license = "MIT"
 readme = "README.md"
-repository = "https://github.com/getsentry/sentry-rust"
-homepage = "https://sentry.io/welcome/"
+repository = { workspace = true }
+homepage = { workspace = true }
 description = """
-Sentry integration for tracing and tracing-subscriber crates.
+Sentry integration for the tracing and tracing-subscriber crates.
 """
-edition = "2021"
-rust-version = "1.81"
+edition = { workspace = true }
+rust-version = { workspace = true }
+
+[lints]
+workspace = true
 
 [package.metadata.docs.rs]
 all-features = true
@@ -21,20 +24,20 @@ backtrace = ["dep:sentry-backtrace"]
 logs = ["sentry-core/logs"]
 
 [dependencies]
-sentry-core = { version = "0.42.0", path = "../sentry-core", features = [
+sentry-core = { version = "0.48.3", path = "../sentry-core", features = [
     "client",
 ] }
 tracing-core = "0.1"
-tracing-subscriber = { version = "0.3.1", default-features = false, features = [
+tracing-subscriber = { version = "0.3.20", default-features = false, features = [
     "std",
 ] }
-sentry-backtrace = { version = "0.42.0", path = "../sentry-backtrace", optional = true }
-bitflags = "2.0.0"
+sentry-backtrace = { version = "0.48.3", path = "../sentry-backtrace", optional = true }
+bitflags = "2.9.4"
 
 [dev-dependencies]
 log = "0.4"
 sentry = { path = "../sentry", default-features = false, features = ["test", "tracing"] }
 serde_json = "1"
 tracing = "0.1"
-tracing-subscriber = { version = "0.3.1", features = ["fmt", "registry"] }
+tracing-subscriber = { version = "0.3.20", features = ["fmt", "registry"] }
 tokio = { version = "1.44", features = ["rt-multi-thread", "macros", "time"] }

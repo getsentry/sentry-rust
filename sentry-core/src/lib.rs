@@ -132,17 +132,18 @@ pub use crate::integration::Integration;
 pub use crate::intodsn::IntoDsn;
 pub use crate::performance::*;
 pub use crate::scope::{Scope, ScopeGuard};
-pub use crate::transport::{Transport, TransportFactory};
+pub use crate::transport::{Transport, TransportFactory, TransportOptions};
 #[cfg(feature = "logs")]
 mod logger; // structured logging macros exported with `#[macro_export]`
+
+#[cfg(feature = "metrics")]
+pub mod metrics;
 
 // client feature
 #[cfg(feature = "client")]
 mod client;
 #[cfg(feature = "client")]
 mod hub_impl;
-#[cfg(all(feature = "client", feature = "logs"))]
-mod logs;
 #[cfg(feature = "client")]
 mod session;
 
@@ -151,6 +152,14 @@ pub use crate::clientoptions::MaxRequestBodySize;
 
 #[cfg(feature = "client")]
 pub use crate::{client::Client, hub_impl::SwitchGuard as HubSwitchGuard};
+
+/// Types which enable transports to capture [client reports] to report lost data to Sentry.
+///
+/// [client reports]: https://develop.sentry.dev/sdk/telemetry/client-reports/
+#[cfg(feature = "client")]
+pub mod client_report {
+    pub use crate::client::client_reports::{Recorder, TransportLossReason as Reason};
+}
 
 // test utilities
 #[cfg(feature = "test")]

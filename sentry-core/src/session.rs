@@ -2,6 +2,8 @@
 //!
 //! <https://develop.sentry.dev/sdk/sessions/>
 
+#![expect(clippy::arithmetic_side_effects)] // https://github.com/getsentry/sentry-rust/issues/1117
+
 #[cfg(feature = "release-health")]
 pub use session_impl::*;
 
@@ -13,7 +15,7 @@ mod session_impl {
     use std::thread::JoinHandle;
     use std::time::{Duration, Instant, SystemTime};
 
-    use crate::client::TransportArc;
+    use crate::client::EnvelopeSender;
     use crate::clientoptions::SessionMode;
     use crate::protocol::{
         EnvelopeItem, Event, Level, SessionAggregateItem, SessionAggregates, SessionAttributes,
@@ -188,7 +190,7 @@ mod session_impl {
     /// It has its own background thread that will flush its queue once every
     /// `FLUSH_INTERVAL`.
     pub(crate) struct SessionFlusher {
-        transport: TransportArc,
+        envelope_sender: EnvelopeSender,
         mode: SessionMode,
         queue: Arc<Mutex<SessionQueue>>,
         shutdown: Arc<(Mutex<bool>, Condvar)>,
@@ -196,13 +198,13 @@ mod session_impl {
     }
 
     impl SessionFlusher {
-        /// Creates a new Flusher that will submit envelopes to the given `transport`.
-        pub fn new(transport: TransportArc, mode: SessionMode) -> Self {
+        /// Creates a new Flusher that will submit envelopes to the transport.
+        pub fn new(envelope_sender: EnvelopeSender, mode: SessionMode) -> Self {
             let queue = Arc::new(Mutex::new(Default::default()));
             #[allow(clippy::mutex_atomic)]
             let shutdown = Arc::new((Mutex::new(false), Condvar::new()));
 
-            let worker_transport = transport.clone();
+            let worker_envelope_sender = envelope_sender.clone();
             let worker_queue = queue.clone();
             let worker_shutdown = shutdown.clone();
             let worker = std::thread::Builder::new()
@@ -228,7 +230,7 @@ mod session_impl {
                         }
                         SessionFlusher::flush_queue_internal(
                             worker_queue.lock().unwrap(),
-                            &worker_transport,
+                            &worker_envelope_sender,
                         );
                         last_flush = Instant::now();
                     }
@@ -236,7 +238,7 @@ mod session_impl {
                 .unwrap();
 
             Self {
-                transport,
+                envelope_sender,
                 mode,
                 queue,
                 shutdown,
@@ -253,7 +255,7 @@ mod session_impl {
             if self.mode == SessionMode::Application || !session_update.init {
                 queue.individual.push(session_update);
                 if queue.individual.len() >= MAX_SESSION_ITEMS {
-                    SessionFlusher::flush_queue_internal(queue, &self.transport);
+                    SessionFlusher::flush_queue_internal(queue, &self.envelope_sender);
                 }
                 return;
             }
@@ -302,7 +304,7 @@ mod session_impl {
         /// Flushes the queue to the transport.
         pub fn flush(&self) {
             let queue = self.queue.lock().unwrap();
-            SessionFlusher::flush_queue_internal(queue, &self.transport);
+            SessionFlusher::flush_queue_internal(queue, &self.envelope_sender);
         }
 
         /// Flushes the queue to the transport.
@@ -311,7 +313,7 @@ mod session_impl {
         /// thread and the main thread on drop.
         fn flush_queue_internal(
             mut queue_lock: MutexGuard<SessionQueue>,
-            transport: &TransportArc,
+            envelope_sender: &EnvelopeSender,
         ) {
             let queue = std::mem::take(&mut queue_lock.individual);
             let aggregate = queue_lock.aggregated.take();
@@ -319,11 +321,9 @@ mod session_impl {
 
             // send aggregates
             if let Some(aggregate) = aggregate {
-                if let Some(ref transport) = *transport.read().unwrap() {
-                    let mut envelope = Envelope::new();
-                    envelope.add_item(aggregate);
-                    transport.send_envelope(envelope);
-                }
+                let mut envelope = Envelope::new();
+                envelope.add_item(aggregate);
+                envelope_sender.send_envelope(envelope);
             }
 
             // send individual items
@@ -336,9 +336,7 @@ mod session_impl {
 
             for session_update in queue {
                 if items >= MAX_SESSION_ITEMS {
-                    if let Some(ref transport) = *transport.read().unwrap() {
-                        transport.send_envelope(envelope);
-                    }
+                    envelope_sender.send_envelope(envelope);
                     envelope = Envelope::new();
                     items = 0;
                 }
@@ -347,9 +345,7 @@ mod session_impl {
                 items += 1;
             }
 
-            if let Some(ref transport) = *transport.read().unwrap() {
-                transport.send_envelope(envelope);
-            }
+            envelope_sender.send_envelope(envelope);
         }
     }
 
@@ -362,7 +358,7 @@ mod session_impl {
             if let Some(worker) = self.worker.take() {
                 worker.join().ok();
             }
-            SessionFlusher::flush_queue_internal(self.queue.lock().unwrap(), &self.transport);
+            SessionFlusher::flush_queue_internal(self.queue.lock().unwrap(), &self.envelope_sender);
         }
     }
 
@@ -488,7 +484,9 @@ mod session_impl {
             } else {
                 panic!("expected session");
             }
-            assert_eq!(items.next(), None);
+            // A client report gets captured for the dropped event.
+            assert!(matches!(items.next(), Some(EnvelopeItem::ClientReport(_))));
+            assert!(items.next().is_none());
         }
 
         #[test]
@@ -570,7 +568,12 @@ mod session_impl {
             } else {
                 panic!("expected session");
             }
-            assert_eq!(items.next(), None);
+            // The envelope may or may not contain a client report.
+            assert!(matches!(
+                items.next(),
+                None | Some(EnvelopeItem::ClientReport(_))
+            ));
+            assert!(items.next().is_none());
         }
 
         /// For _user-mode_ sessions, we want to inherit the session for any _new_

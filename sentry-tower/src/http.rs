@@ -118,10 +118,10 @@ where
         if let Some((sentry_req, trx_ctx)) = slf.on_first_poll.take() {
             sentry_core::configure_scope(|scope| {
                 if let Some(trx_ctx) = trx_ctx {
-                    let transaction: sentry_core::TransactionOrSpan =
-                        sentry_core::start_transaction(trx_ctx).into();
+                    let transaction = sentry_core::start_transaction(trx_ctx);
+                    transaction.set_origin("auto.http.tower");
+                    let transaction: sentry_core::TransactionOrSpan = transaction.into();
                     transaction.set_request(sentry_req.clone());
-                    transaction.set_data("origin", "auto.http.tower".into());
                     let parent_span = scope.get_span();
                     scope.set_span(Some(transaction.clone()));
                     *slf.transaction = Some((transaction, parent_span));

@@ -19,16 +19,16 @@ jobs:
     if: github.repository_owner == 'getsentry'
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Install rust stable toolchain
         run: |
           rustup toolchain install ${{ matrix.rust }} --profile minimal --component clippy --no-self-update
           rustup default ${{ matrix.rust }}
 
-      - run: cargo clippy --all-features --workspace --tests --examples -- -D clippy::all
+      - run: cargo clippy --all-features --workspace --tests --examples --locked -- -D clippy::all
 
-      - run: cargo test --workspace --all-features
+      - run: cargo test --workspace --all-features --locked
 
   weekly-audit:
     name: Audit
@@ -36,7 +36,7 @@ jobs:
     if: github.repository_owner == 'getsentry'
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - uses: rustsec/audit-check@69366f33c96575abad1ee0dba8212993eecbe998 # v2.0.0
         with:
