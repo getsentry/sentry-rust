@@ -13,7 +13,9 @@ use crate::{protocol, Hub};
 #[cfg(feature = "client")]
 use crate::Client;
 
-pub use self::headers::{parse as parse_headers, SentryTrace};
+#[expect(deprecated, reason = "backwards-compatibility re-export")]
+pub use self::headers::{parse_sentry_trace_header as parse_headers, SentryTrace};
+pub use self::headers::{HeaderParseError, TracePropagationContext};
 
 mod headers;
 
@@ -184,9 +186,9 @@ impl TransactionContext {
         op: &str,
         headers: I,
     ) -> Self {
-        parse_headers(headers)
-            .map(|sentry_trace| Self::continue_from_sentry_trace(name, op, &sentry_trace, None))
-            .unwrap_or_else(|| Self {
+        TracePropagationContext::try_from_headers(headers)
+            .map(|context| Self::continue_from_trace_propagation_context(name, op, &context, None))
+            .unwrap_or_else(|_| Self {
                 name: name.into(),
                 op: op.into(),
                 trace_id: Default::default(),
@@ -199,18 +201,38 @@ impl TransactionContext {
 
     /// Creates a new Transaction Context based on the provided distributed tracing data,
     /// optionally creating the `TransactionContext` with the provided `span_id`.
+    #[deprecated = "use `TransactionContext::continue_from_trace_propagation_context` instead"]
+    #[expect(deprecated, reason = "backwards-compatible method")]
     pub fn continue_from_sentry_trace(
         name: &str,
         op: &str,
         sentry_trace: &SentryTrace,
         span_id: Option<SpanId>,
     ) -> Self {
+        let context = (*sentry_trace).into();
+        Self::continue_from_trace_propagation_context(name, op, &context, span_id)
+    }
+
+    /// Creates a new Transaction Context based on the provided trace propagation context,
+    /// optionally creating the `TransactionContext` with the provided `span_id`.
+    pub fn continue_from_trace_propagation_context(
+        name: &str,
+        op: &str,
+        context: &TracePropagationContext,
+        span_id: Option<SpanId>,
+    ) -> Self {
+        let &TracePropagationContext {
+            trace_id,
+            span_id: context_span_id,
+            sampled,
+        } = context;
+
         Self {
             name: name.into(),
             op: op.into(),
-            trace_id: sentry_trace.trace_id,
-            parent_span_id: Some(sentry_trace.span_id),
-            sampled: sentry_trace.sampled,
+            trace_id,
+            parent_span_id: Some(context_span_id),
+            sampled,
             span_id: span_id.unwrap_or_default(),
             custom: None,
         }
@@ -836,13 +858,10 @@ impl Transaction {
     /// trace's distributed tracing headers.
     pub fn iter_headers(&self) -> TraceHeadersIter {
         let inner = self.inner.lock().unwrap();
-        let trace = SentryTrace::new(
-            inner.context.trace_id,
-            inner.context.span_id,
-            Some(inner.sampled),
-        );
+        let trace = TracePropagationContext::new(inner.context.trace_id, inner.context.span_id)
+            .with_sampled(inner.sampled);
         TraceHeadersIter {
-            sentry_trace: Some(trace.to_string()),
+            sentry_trace: Some(trace.sentry_trace_header()),
         }
     }
 
@@ -1123,9 +1142,10 @@ impl Span {
     /// trace's distributed tracing headers.
     pub fn iter_headers(&self) -> TraceHeadersIter {
         let span = self.span.lock().unwrap();
-        let trace = SentryTrace::new(span.trace_id, span.span_id, Some(self.sampled));
+        let trace =
+            TracePropagationContext::new(span.trace_id, span.span_id).with_sampled(self.sampled);
         TraceHeadersIter {
-            sentry_trace: Some(trace.to_string()),
+            sentry_trace: Some(trace.sentry_trace_header()),
         }
     }
 
@@ -1272,7 +1292,8 @@ mod tests {
         let span = trx.start_child("noop", "noop");
 
         let header = span.iter_headers().next().unwrap().1;
-        let parsed = parse_headers([("sentry-trace", header.as_str())]).unwrap();
+        let parsed =
+            TracePropagationContext::try_from_headers([("sentry-trace", header.as_str())]).unwrap();
 
         assert_eq!(
             &parsed.trace_id.to_string(),
