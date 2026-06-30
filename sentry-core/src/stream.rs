@@ -6,9 +6,9 @@ use futures::Stream;
 
 use crate::Hub;
 
-/// A stream that binds a `Hub` to its execution.
+/// A stream that binds a `Hub` to its polling.
 ///
-/// This activates the given hub for the duration of the inner streams `poll_next`
+/// This activates the given hub for the duration of the inner stream's `poll_next`
 /// method. Users usually do not need to construct this type manually, but
 /// rather use the [`StreamExt::bind_hub`] method instead.
 ///
@@ -51,7 +51,7 @@ where
 
 /// Stream extensions for Sentry.
 pub trait SentryStreamExt: Sized {
-    /// Binds a hub to the execution of this stream.
+    /// Binds a hub to this stream.
     ///
     /// This ensures that the stream is polled within the given hub.
     fn bind_hub<H>(self, hub: H) -> SentryStream<Self>
