@@ -24,7 +24,7 @@ type Header<'h> = (&'h str, &'h str);
 pub struct TracePropagationContext {
     pub(crate) trace_id: TraceId,
     pub(crate) span_id: SpanId,
-    pub(crate) sampled: Option<bool>,
+    pub(super) sampled: Option<bool>,
 }
 
 #[derive(Debug, Clone)]
@@ -41,9 +41,9 @@ pub enum HeaderParseError {
 #[deprecated = "Please use `TracePropagationContext` instead"]
 #[derive(Debug, PartialEq, Clone, Copy, Default)]
 pub struct SentryTrace {
-    pub(crate) trace_id: TraceId,
-    pub(crate) span_id: SpanId,
-    pub(crate) sampled: Option<bool>,
+    trace_id: TraceId,
+    span_id: SpanId,
+    sampled: Option<bool>,
 }
 
 impl TracePropagationContext {
