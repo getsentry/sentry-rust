@@ -15,6 +15,18 @@ use crate::{sentry_debug, types::Scheme, ClientOptions, Envelope, Transport};
 /// The status code returned for rate-limited envelopes.
 const HTTP_RATE_LIMIT_STATUS: u32 = 429;
 
+/// Parse a single raw header line as delivered by libcurl's `header_function`.
+///
+/// Returns the lowercased header name and the trimmed value, or `None` if the
+/// line is empty, contains a NUL byte, is not valid UTF-8, or has no `:`.
+fn parse_curl_header_line(data: &[u8]) -> Option<(String, String)> {
+    let line = std::str::from_utf8(data)
+        .ok()?
+        .trim_end_matches(['\r', '\n']);
+    let (key, value) = line.split_once(':')?;
+    Some((key.trim().to_lowercase(), value.trim().to_string()))
+}
+
 /// A [`Transport`] that sends events via the [`curl`] library.
 ///
 /// This is enabled by the `curl` feature flag.
@@ -161,15 +173,11 @@ impl CurlHttpTransport {
                 let sentry_header_setter = &mut sentry_header;
                 handle
                     .header_function(move |data| {
-                        if let Ok(data) = std::str::from_utf8(data) {
-                            let mut iter = data.split(':');
-                            if let Some(key) = iter.next().map(str::to_lowercase) {
-                                if key == "retry-after" {
-                                    *retry_after_setter = iter.next().map(|x| x.trim().to_string());
-                                } else if key == "x-sentry-rate-limits" {
-                                    *sentry_header_setter =
-                                        iter.next().map(|x| x.trim().to_string());
-                                }
+                        if let Some((key, value)) = parse_curl_header_line(data) {
+                            match key.as_str() {
+                                "retry-after" => *retry_after_setter = Some(value),
+                                "x-sentry-rate-limits" => *sentry_header_setter = Some(value),
+                                _ => {}
                             }
                         }
                         true
@@ -264,5 +272,101 @@ impl CurlHttpTransportOptions {
     #[inline]
     pub fn build(self) -> CurlHttpTransport {
         CurlHttpTransport::with_options(self)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_curl_header_line;
+
+    #[test]
+    fn parses_sentry_rate_limits_with_categories() {
+        // Direct regression for issue #1111.
+        let (key, value) =
+            parse_curl_header_line(b"X-Sentry-Rate-Limits: 120:error:project:reason\r\n").unwrap();
+        assert_eq!(key, "x-sentry-rate-limits");
+        assert_eq!(value, "120:error:project:reason");
+    }
+
+    #[test]
+    fn parses_sentry_rate_limits_multi_group_comma() {
+        let (key, value) = parse_curl_header_line(
+            b"X-Sentry-Rate-Limits: 60:transaction:key, 2700:default;error;security:organization\r\n",
+        )
+        .unwrap();
+        assert_eq!(key, "x-sentry-rate-limits");
+        assert_eq!(
+            value,
+            "60:transaction:key, 2700:default;error;security:organization"
+        );
+    }
+
+    #[test]
+    fn parses_sentry_rate_limits_empty_categories() {
+        let (key, value) =
+            parse_curl_header_line(b"x-sentry-rate-limits: 60::organization\r\n").unwrap();
+        assert_eq!(key, "x-sentry-rate-limits");
+        assert_eq!(value, "60::organization");
+    }
+
+    #[test]
+    fn parses_retry_after_integer() {
+        let (key, value) = parse_curl_header_line(b"Retry-After: 60\r\n").unwrap();
+        assert_eq!(key, "retry-after");
+        assert_eq!(value, "60");
+    }
+
+    #[test]
+    fn parses_retry_after_http_date() {
+        // Before the fix this was truncated to "Wed, 21 Oct 2015 07".
+        let (key, value) =
+            parse_curl_header_line(b"Retry-After: Wed, 21 Oct 2015 07:28:00 GMT\r\n").unwrap();
+        assert_eq!(key, "retry-after");
+        assert_eq!(value, "Wed, 21 Oct 2015 07:28:00 GMT");
+    }
+
+    #[test]
+    fn strips_trailing_cr_only() {
+        let (_, value) = parse_curl_header_line(b"Retry-After: 5\r").unwrap();
+        assert_eq!(value, "5");
+    }
+
+    #[test]
+    fn strips_trailing_lf_only() {
+        let (_, value) = parse_curl_header_line(b"Retry-After: 5\n").unwrap();
+        assert_eq!(value, "5");
+    }
+
+    #[test]
+    fn lowercases_and_trims_unrelated_header() {
+        let (key, value) = parse_curl_header_line(b"Content-Length: 42\r\n").unwrap();
+        assert_eq!(key, "content-length");
+        assert_eq!(value, "42");
+    }
+
+    #[test]
+    fn trims_leading_and_inner_whitespace() {
+        let (key, value) = parse_curl_header_line(b"  X-Sentry-Rate-Limits :  120 \r\n").unwrap();
+        assert_eq!(key, "x-sentry-rate-limits");
+        assert_eq!(value, "120");
+    }
+
+    #[test]
+    fn returns_none_for_empty_line() {
+        assert!(parse_curl_header_line(b"\r\n").is_none());
+    }
+
+    #[test]
+    fn returns_none_for_line_without_colon() {
+        // "X-Sentry-Rate-Limits\r\n" (no colon) — old code's iter.next() on a
+        // one-element split iterator returned None, so the setter was untouched.
+        // The new helper preserves that behavior by returning None for the
+        // whole call.
+        assert!(parse_curl_header_line(b"X-Sentry-Rate-Limits\r\n").is_none());
+    }
+
+    #[test]
+    fn returns_none_for_non_utf8_input() {
+        assert!(parse_curl_header_line(&[0xFF, 0xFE, 0xFD]).is_none());
     }
 }

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixes
+
+- Fixed curl transport truncating `X-Sentry-Rate-Limits` and `Retry-After` response headers before they reach the rate limiter ([#1216](https://github.com/getsentry/sentry-rust/pull/1216)).
+
 ## 0.48.3
 
 The Sentry Rust SDK now reports data discarded by the SDK to Sentry’s [Stats](https://docs.sentry.io/product/stats/) page. The SDK reports approximate counts for drops from transports, queues, rate-limit backoff, sampling, event processors, and `before_send*` callbacks, including span counts for dropped transactions and byte counts for dropped logs and metrics.
