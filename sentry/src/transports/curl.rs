@@ -15,6 +15,11 @@ use crate::{sentry_debug, types::Scheme, ClientOptions, Envelope, Transport};
 /// The status code returned for rate-limited envelopes.
 const HTTP_RATE_LIMIT_STATUS: u32 = 429;
 
+fn header_value<'a>(data: &'a str, name: &str) -> Option<&'a str> {
+    let (key, value) = data.split_once(':')?;
+    key.eq_ignore_ascii_case(name).then_some(value.trim())
+}
+
 /// A [`Transport`] that sends events via the [`curl`] library.
 ///
 /// This is enabled by the `curl` feature flag.
@@ -162,14 +167,10 @@ impl CurlHttpTransport {
                 handle
                     .header_function(move |data| {
                         if let Ok(data) = std::str::from_utf8(data) {
-                            let mut iter = data.split(':');
-                            if let Some(key) = iter.next().map(str::to_lowercase) {
-                                if key == "retry-after" {
-                                    *retry_after_setter = iter.next().map(|x| x.trim().to_string());
-                                } else if key == "x-sentry-rate-limits" {
-                                    *sentry_header_setter =
-                                        iter.next().map(|x| x.trim().to_string());
-                                }
+                            if let Some(value) = header_value(data, "retry-after") {
+                                *retry_after_setter = Some(value.to_string());
+                            } else if let Some(value) = header_value(data, "x-sentry-rate-limits") {
+                                *sentry_header_setter = Some(value.to_string());
                             }
                         }
                         true
@@ -264,5 +265,28 @@ impl CurlHttpTransportOptions {
     #[inline]
     pub fn build(self) -> CurlHttpTransport {
         CurlHttpTransport::with_options(self)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::ratelimit::RateLimitingCategory;
+    use super::*;
+
+    #[test]
+    fn test_sentry_rate_limit_header_value_preserves_colons() {
+        let value = header_value(
+            "X-Sentry-Rate-Limits: 120:error:project\r\n",
+            "x-sentry-rate-limits",
+        )
+        .unwrap();
+
+        assert_eq!(value, "120:error:project");
+
+        let mut rate_limiter = RateLimiter::new();
+        rate_limiter.update_from_sentry_header(value);
+        assert!(rate_limiter
+            .is_disabled(RateLimitingCategory::Error)
+            .is_some());
     }
 }

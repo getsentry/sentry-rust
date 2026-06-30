@@ -21,6 +21,7 @@ The Sentry Rust SDK now reports data discarded by the SDK to Sentry’s [Stats](
 ### Fixes
 
 - Fixed `ureq` transport handling for HTTP error statuses so `429` rate limits and `413` payload-too-large responses are processed correctly ([#1177](https://github.com/getsentry/sentry-rust/pull/1177)).
+- Fixed `curl` transport parsing of `X-Sentry-Rate-Limits` headers so colon-separated rate limit values are preserved ([#1111](https://github.com/getsentry/sentry-rust/issues/1111)).
 
 ### Behavior Changes
 
