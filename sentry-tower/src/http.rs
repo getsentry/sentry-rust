@@ -260,3 +260,80 @@ fn get_url_from_request<B>(request: &Request<B>) -> Option<url::Url> {
     let uri = uri::Uri::from_parts(uri_parts).ok()?;
     uri.to_string().parse().ok()
 }
+
+#[cfg(test)]
+mod tests {
+    use sentry_core::protocol::{Context, EnvelopeItem, TraceContext};
+    use sentry_core::Envelope;
+
+    use super::*;
+
+    fn trace_context_from_single_transaction(envelopes: &[Envelope]) -> TraceContext {
+        let [envelope] = envelopes else {
+            panic!("Expected exactly one envelope");
+        };
+
+        let mut items = envelope.items();
+        let Some(EnvelopeItem::Transaction(transaction)) = items.next() else {
+            panic!("Expected a transaction envelope item");
+        };
+        assert!(items.next().is_none(), "expected only one envelope item");
+
+        match transaction.contexts.get("trace") {
+            Some(Context::Trace(trace)) => *trace.clone(),
+            unexpected => panic!("expected trace context, got {unexpected:#?}"),
+        }
+    }
+
+    fn run_request_with_org_ids(incoming_org_id: &str, client_org_id: &str) -> Vec<Envelope> {
+        sentry::test::with_captured_envelopes_options(
+            || {
+                tokio::runtime::Runtime::new().unwrap().block_on(async {
+                    let mut service = SentryHttpLayer::new().enable_transaction().layer(
+                        tower::service_fn(|_request| async {
+                            Ok::<_, std::convert::Infallible>(Response::new(()))
+                        }),
+                    );
+                    let request = Request::builder()
+                        .uri("http://example.com/test")
+                        .header(
+                            "sentry-trace",
+                            "09e04486820349518ac7b5d2adbf6ba5-9cf635fa5b870b3a-1",
+                        )
+                        .header("baggage", format!("sentry-org_id={incoming_org_id}"))
+                        .body(())
+                        .unwrap();
+
+                    service.call(request).await.unwrap();
+                });
+            },
+            sentry::ClientOptions {
+                org_id: Some(client_org_id.parse().unwrap()),
+                strict_trace_continuation: true,
+                traces_sample_rate: 1.0,
+                ..Default::default()
+            },
+        )
+    }
+
+    #[test]
+    fn transaction_continues_matching_org_id() {
+        let envelopes = run_request_with_org_ids("42", "42");
+        let trace = trace_context_from_single_transaction(&envelopes);
+
+        assert_eq!(trace.trace_id.to_string(), "09e04486820349518ac7b5d2adbf6ba5");
+        assert_eq!(
+            trace.parent_span_id.map(|span_id| span_id.to_string()),
+            Some("9cf635fa5b870b3a".to_owned())
+        );
+    }
+
+    #[test]
+    fn transaction_rejects_mismatched_org_id() {
+        let envelopes = run_request_with_org_ids("43", "42");
+        let trace = trace_context_from_single_transaction(&envelopes);
+
+        assert_ne!(trace.trace_id.to_string(), "09e04486820349518ac7b5d2adbf6ba5");
+        assert_eq!(trace.parent_span_id, None);
+    }
+}
