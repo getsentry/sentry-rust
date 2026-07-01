@@ -6,17 +6,19 @@ use std::time::SystemTime;
 
 #[cfg(feature = "client")]
 use sentry_types::protocol::v7::client_report::Reason as ClientReportReason;
-use sentry_types::protocol::v7::{OrganizationId, SpanId};
 
-use crate::{protocol, Hub};
-
+use self::context::TransactionContextParts;
+use crate::protocol::SpanId;
 #[cfg(feature = "client")]
 use crate::Client;
+use crate::{protocol, Hub};
 
+pub use self::context::{CustomTransactionContext, TransactionContext};
 #[expect(deprecated, reason = "backwards-compatibility re-export")]
 pub use self::headers::{parse_sentry_trace_header as parse_headers, SentryTrace};
 pub use self::headers::{HeaderParseError, TracePropagationContext};
 
+mod context;
 mod headers;
 
 #[cfg(feature = "client")]
@@ -93,342 +95,6 @@ impl Hub {
 }
 
 // "Context" Types:
-
-/// Arbitrary data passed by the caller, when starting a transaction.
-///
-/// May be inspected by the user in the `traces_sampler` callback, if set.
-///
-/// Represents arbitrary JSON data, the top level of which must be a map.
-pub type CustomTransactionContext = serde_json::Map<String, serde_json::Value>;
-
-/// The Transaction Context used to start a new Performance Monitoring Transaction.
-///
-/// The Transaction Context defines the metadata for a Performance Monitoring
-/// Transaction, and also the connection point for distributed tracing.
-#[derive(Debug, Clone)]
-pub struct TransactionContext {
-    #[cfg_attr(not(feature = "client"), allow(dead_code))]
-    name: String,
-    op: String,
-    trace_id: protocol::TraceId,
-    parent_span_id: Option<protocol::SpanId>,
-    span_id: protocol::SpanId,
-    sampled: Option<bool>,
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "used by future strict trace continuation")
-    )]
-    incoming_org_id: Option<OrganizationId>,
-    custom: Option<CustomTransactionContext>,
-}
-
-impl TransactionContext {
-    /// Creates a new Transaction Context with the given `name` and `op`. A random
-    /// `trace_id` is assigned. Use [`TransactionContext::new_with_trace_id`] to
-    /// specify a custom trace ID.
-    ///
-    /// See <https://docs.sentry.io/platforms/native/enriching-events/transaction-name/>
-    /// for an explanation of a Transaction's `name`, and
-    /// <https://develop.sentry.dev/sdk/performance/span-operations/> for conventions
-    /// around an `operation`'s value.
-    ///
-    /// See also the [`TransactionContext::continue_from_headers`] function that
-    /// can be used for distributed tracing.
-    #[must_use = "this must be used with `start_transaction`"]
-    pub fn new(name: &str, op: &str) -> Self {
-        Self::new_with_trace_id(name, op, protocol::TraceId::default())
-    }
-
-    /// Creates a new Transaction Context with the given `name`, `op`, and `trace_id`.
-    ///
-    /// See <https://docs.sentry.io/platforms/native/enriching-events/transaction-name/>
-    /// for an explanation of a Transaction's `name`, and
-    /// <https://develop.sentry.dev/sdk/performance/span-operations/> for conventions
-    /// around an `operation`'s value.
-    #[must_use = "this must be used with `start_transaction`"]
-    pub fn new_with_trace_id(name: &str, op: &str, trace_id: protocol::TraceId) -> Self {
-        Self {
-            name: name.into(),
-            op: op.into(),
-            trace_id,
-            parent_span_id: None,
-            span_id: Default::default(),
-            sampled: None,
-            incoming_org_id: None,
-            custom: None,
-        }
-    }
-
-    /// Creates a new Transaction Context with the given `name`, `op`, `trace_id`, and
-    /// possibly the given `span_id` and `parent_span_id`.
-    ///
-    /// See <https://docs.sentry.io/platforms/native/enriching-events/transaction-name/>
-    /// for an explanation of a Transaction's `name`, and
-    /// <https://develop.sentry.dev/sdk/performance/span-operations/> for conventions
-    /// around an `operation`'s value.
-    #[must_use = "this must be used with `start_transaction`"]
-    pub fn new_with_details(
-        name: &str,
-        op: &str,
-        trace_id: protocol::TraceId,
-        span_id: Option<protocol::SpanId>,
-        parent_span_id: Option<protocol::SpanId>,
-    ) -> Self {
-        let mut slf = Self::new_with_trace_id(name, op, trace_id);
-        if let Some(span_id) = span_id {
-            slf.span_id = span_id;
-        }
-        slf.parent_span_id = parent_span_id;
-        slf
-    }
-
-    /// Creates a new Transaction Context based on the distributed tracing `headers`.
-    ///
-    /// The `headers` in particular need to include the `sentry-trace` header,
-    /// which is used to associate the transaction with a distributed trace.
-    #[must_use = "this must be used with `start_transaction`"]
-    pub fn continue_from_headers<'a, I: IntoIterator<Item = (&'a str, &'a str)>>(
-        name: &str,
-        op: &str,
-        headers: I,
-    ) -> Self {
-        TracePropagationContext::try_from_headers(headers)
-            .map(|context| Self::continue_from_trace_propagation_context(name, op, &context, None))
-            .unwrap_or_else(|_| Self {
-                name: name.into(),
-                op: op.into(),
-                trace_id: Default::default(),
-                parent_span_id: None,
-                span_id: Default::default(),
-                sampled: None,
-                incoming_org_id: None,
-                custom: None,
-            })
-    }
-
-    /// Creates a new Transaction Context based on the provided distributed tracing data,
-    /// optionally creating the `TransactionContext` with the provided `span_id`.
-    #[deprecated = "use `TransactionContext::continue_from_trace_propagation_context` instead"]
-    #[expect(deprecated, reason = "backwards-compatible method")]
-    pub fn continue_from_sentry_trace(
-        name: &str,
-        op: &str,
-        sentry_trace: &SentryTrace,
-        span_id: Option<SpanId>,
-    ) -> Self {
-        let context = (*sentry_trace).into();
-        Self::continue_from_trace_propagation_context(name, op, &context, span_id)
-    }
-
-    /// Creates a new Transaction Context based on the provided trace propagation context,
-    /// optionally creating the `TransactionContext` with the provided `span_id`.
-    pub fn continue_from_trace_propagation_context(
-        name: &str,
-        op: &str,
-        context: &TracePropagationContext,
-        span_id: Option<SpanId>,
-    ) -> Self {
-        let &TracePropagationContext {
-            trace_id,
-            span_id: context_span_id,
-            sampled,
-            org_id,
-        } = context;
-
-        Self {
-            name: name.into(),
-            op: op.into(),
-            trace_id,
-            parent_span_id: Some(context_span_id),
-            sampled,
-            incoming_org_id: org_id,
-            span_id: span_id.unwrap_or_default(),
-            custom: None,
-        }
-    }
-
-    /// Creates a new Transaction Context based on an existing Span.
-    ///
-    /// This should be used when an independent computation is spawned on another
-    /// thread and should be connected to the calling thread via a distributed
-    /// tracing transaction.
-    pub fn continue_from_span(name: &str, op: &str, span: Option<TransactionOrSpan>) -> Self {
-        let span = match span {
-            Some(span) => span,
-            None => return Self::new(name, op),
-        };
-
-        let (trace_id, parent_span_id, sampled) = match span {
-            TransactionOrSpan::Transaction(transaction) => {
-                let inner = transaction.inner.lock().unwrap();
-                (
-                    inner.context.trace_id,
-                    inner.context.span_id,
-                    Some(inner.sampled),
-                )
-            }
-            TransactionOrSpan::Span(span) => {
-                let sampled = span.sampled;
-                let span = span.span.lock().unwrap();
-                (span.trace_id, span.span_id, Some(sampled))
-            }
-        };
-
-        Self {
-            name: name.into(),
-            op: op.into(),
-            trace_id,
-            parent_span_id: Some(parent_span_id),
-            span_id: protocol::SpanId::default(),
-            sampled,
-            incoming_org_id: None,
-            custom: None,
-        }
-    }
-
-    /// Set the sampling decision for this Transaction.
-    ///
-    /// This can be either an explicit boolean flag, or [`None`], which will fall
-    /// back to use the configured `traces_sample_rate` option.
-    pub fn set_sampled(&mut self, sampled: impl Into<Option<bool>>) {
-        self.sampled = sampled.into();
-    }
-
-    /// Get the sampling decision for this Transaction.
-    pub fn sampled(&self) -> Option<bool> {
-        self.sampled
-    }
-
-    /// Get the name of this Transaction.
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
-    /// Get the operation of this Transaction.
-    pub fn operation(&self) -> &str {
-        &self.op
-    }
-
-    /// Get the Trace ID of this Transaction.
-    pub fn trace_id(&self) -> protocol::TraceId {
-        self.trace_id
-    }
-
-    /// Get the Span ID of this Transaction.
-    pub fn span_id(&self) -> protocol::SpanId {
-        self.span_id
-    }
-
-    /// Get the custom context of this Transaction.
-    pub fn custom(&self) -> Option<&CustomTransactionContext> {
-        self.custom.as_ref()
-    }
-
-    /// Update the custom context of this Transaction.
-    ///
-    /// For simply adding a key, use the `custom_insert` method.
-    pub fn custom_mut(&mut self) -> &mut Option<CustomTransactionContext> {
-        &mut self.custom
-    }
-
-    /// Inserts a key-value pair into the custom context.
-    ///
-    /// If the context did not have this key present, None is returned.
-    ///
-    /// If the context did have this key present, the value is updated, and the old value is
-    /// returned.
-    pub fn custom_insert(
-        &mut self,
-        key: String,
-        value: serde_json::Value,
-    ) -> Option<serde_json::Value> {
-        // Get the custom context
-        let mut custom = None;
-        std::mem::swap(&mut self.custom, &mut custom);
-
-        // Initialise the context, if not used yet
-        let mut custom = custom.unwrap_or_default();
-
-        // And set our key
-        let existing_value = custom.insert(key, value);
-        self.custom = Some(custom);
-        existing_value
-    }
-
-    /// Creates a transaction context builder initialized with the given `name` and `op`.
-    ///
-    /// See <https://docs.sentry.io/platforms/native/enriching-events/transaction-name/>
-    /// for an explanation of a Transaction's `name`, and
-    /// <https://develop.sentry.dev/sdk/performance/span-operations/> for conventions
-    /// around an `operation`'s value.
-    #[must_use]
-    pub fn builder(name: &str, op: &str) -> TransactionContextBuilder {
-        TransactionContextBuilder {
-            ctx: TransactionContext::new(name, op),
-        }
-    }
-}
-
-/// A transaction context builder created by [`TransactionContext::builder`].
-pub struct TransactionContextBuilder {
-    ctx: TransactionContext,
-}
-
-impl TransactionContextBuilder {
-    /// Defines the name of the transaction.
-    #[must_use]
-    pub fn with_name(mut self, name: String) -> Self {
-        self.ctx.name = name;
-        self
-    }
-
-    /// Defines the operation of the transaction.
-    #[must_use]
-    pub fn with_op(mut self, op: String) -> Self {
-        self.ctx.op = op;
-        self
-    }
-
-    /// Defines the trace ID.
-    #[must_use]
-    pub fn with_trace_id(mut self, trace_id: protocol::TraceId) -> Self {
-        self.ctx.trace_id = trace_id;
-        self
-    }
-
-    /// Defines a parent span ID for the created transaction.
-    #[must_use]
-    pub fn with_parent_span_id(mut self, parent_span_id: Option<protocol::SpanId>) -> Self {
-        self.ctx.parent_span_id = parent_span_id;
-        self
-    }
-
-    /// Defines the span ID to be used when creating the transaction.
-    #[must_use]
-    pub fn with_span_id(mut self, span_id: protocol::SpanId) -> Self {
-        self.ctx.span_id = span_id;
-        self
-    }
-
-    /// Defines whether the transaction will be sampled.
-    #[must_use]
-    pub fn with_sampled(mut self, sampled: Option<bool>) -> Self {
-        self.ctx.sampled = sampled;
-        self
-    }
-
-    /// Adds a custom key and value to the transaction context.
-    #[must_use]
-    pub fn with_custom(mut self, key: String, value: serde_json::Value) -> Self {
-        self.ctx.custom_insert(key, value);
-        self
-    }
-
-    /// Finishes building a transaction.
-    pub fn finish(self) -> TransactionContext {
-        self.ctx
-    }
-}
 
 /// A function to be run for each new transaction, to determine the rate at which
 /// it should be sampled.
@@ -648,7 +314,7 @@ fn transaction_sample_rate(
 ) -> f32 {
     match (traces_sampler, traces_sample_rate) {
         (Some(traces_sampler), _) => traces_sampler(ctx),
-        (None, traces_sample_rate) => ctx.sampled.map(f32::from).unwrap_or(traces_sample_rate),
+        (None, traces_sample_rate) => ctx.sampled().map(f32::from).unwrap_or(traces_sample_rate),
     }
 }
 
@@ -723,30 +389,25 @@ impl<'a> TransactionData<'a> {
 impl Transaction {
     #[cfg(feature = "client")]
     fn new(client: Option<Arc<Client>>, ctx: TransactionContext) -> Self {
-        let ((sampled, sample_rate), transaction) = match client.as_ref() {
-            Some(client) => (
-                client.determine_sampling_decision(&ctx),
-                Some(protocol::Transaction {
-                    name: Some(ctx.name),
-                    ..Default::default()
-                }),
-            ),
-            None => (
-                (
-                    ctx.sampled.unwrap_or(false),
-                    ctx.sampled.map_or(0.0, f32::from),
-                ),
-                None,
-            ),
-        };
+        let client_sampling_decision = client
+            .as_ref()
+            .map(|client| client.determine_sampling_decision(&ctx));
 
-        let context = protocol::TraceContext {
-            trace_id: ctx.trace_id,
-            parent_span_id: ctx.parent_span_id,
-            span_id: ctx.span_id,
-            op: Some(ctx.op),
+        let TransactionContextParts {
+            name,
+            trace_context: context,
+            sampled: ctx_sampled,
+        } = ctx.into_parts();
+
+        let (sampled, sample_rate) = client_sampling_decision.unwrap_or_else(|| {
+            let sampled = ctx_sampled.unwrap_or(false);
+            (sampled, sampled.into())
+        });
+
+        let transaction = client.as_ref().map(|_| protocol::Transaction {
+            name: Some(name),
             ..Default::default()
-        };
+        });
 
         Self {
             inner: Arc::new(Mutex::new(TransactionInner {
@@ -761,13 +422,12 @@ impl Transaction {
 
     #[cfg(not(feature = "client"))]
     fn new_noop(ctx: TransactionContext) -> Self {
-        let context = protocol::TraceContext {
-            trace_id: ctx.trace_id,
-            parent_span_id: ctx.parent_span_id,
-            op: Some(ctx.op),
-            ..Default::default()
-        };
-        let sampled = ctx.sampled.unwrap_or(false);
+        let TransactionContextParts {
+            trace_context: context,
+            sampled,
+        } = ctx.into_parts();
+
+        let sampled = sampled.unwrap_or(false);
 
         Self {
             inner: Arc::new(Mutex::new(TransactionInner {
@@ -1321,35 +981,6 @@ mod tests {
 
         ctx.set_sampled(true);
         assert_eq!(ctx.sampled(), Some(true));
-    }
-
-    #[test]
-    fn continue_from_headers_stores_incoming_org_id() {
-        let ctx = TransactionContext::continue_from_headers(
-            "noop",
-            "noop",
-            [
-                (
-                    "sentry-trace",
-                    "09e04486820349518ac7b5d2adbf6ba5-9cf635fa5b870b3a-1",
-                ),
-                ("baggage", "sentry-org_id=123"),
-            ],
-        );
-
-        assert_eq!(ctx.incoming_org_id, Some("123".parse().unwrap()));
-    }
-
-    #[test]
-    fn continue_from_headers_does_not_keep_org_id_without_sentry_trace() {
-        let ctx = TransactionContext::continue_from_headers(
-            "noop",
-            "noop",
-            [("baggage", "sentry-org_id=123")],
-        );
-
-        assert_eq!(ctx.incoming_org_id, None);
-        assert_eq!(ctx.parent_span_id, None);
     }
 
     #[cfg(feature = "client")]
