@@ -3,6 +3,7 @@
 use std::sync::Arc;
 
 use sentry_core::protocol::{SpanId, TraceId};
+use sentry_core::test::TestTransport;
 use sentry_core::{Client, ClientOptions, Hub, Transaction};
 
 /// Fixture for starting a transaction from incoming trace headers with a configured client.
@@ -14,7 +15,6 @@ struct TraceContinuationScenario {
 
 impl TraceContinuationScenario {
     /// Starts a transaction with the given incoming and SDK organization IDs.
-    /// 
     fn run(
         incoming_org_id: Option<&str>,
         sdk_org_id: Option<&str>,
@@ -35,7 +35,14 @@ impl TraceContinuationScenario {
     ///
     /// `sentry::init` lives in the outer crate, so core tests bind a configured hub directly
     /// and then use the public `start_transaction` entry point.
-    fn run_with_options(incoming_org_id: Option<&str>, options: ClientOptions) -> Self {
+    fn run_with_options(incoming_org_id: Option<&str>, mut options: ClientOptions) -> Self {
+        options
+            .dsn
+            .get_or_insert_with(|| "https://public@sentry.invalid/1".parse().unwrap());
+        options
+            .transport
+            .get_or_insert_with(|| Arc::new(TestTransport::new()));
+
         // Generate a random sampled sentry trace header
         let incoming_trace_id = TraceId::default();
         let incoming_parent_span_id = SpanId::default();
