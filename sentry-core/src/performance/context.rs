@@ -276,6 +276,8 @@ impl TransactionContext {
     /// <https://develop.sentry.dev/sdk/performance/span-operations/> for conventions
     /// around an `operation`'s value.
     #[must_use]
+    #[deprecated]
+    #[expect(deprecated, reason = "backwards-compatibility impls")]
     pub fn builder(name: &str, op: &str) -> TransactionContextBuilder {
         TransactionContextBuilder {
             ctx: TransactionContext::new(name, op),
@@ -316,10 +318,12 @@ impl TransactionContext {
 }
 
 /// A transaction context builder created by [`TransactionContext::builder`].
+#[deprecated(note = "TransactionContext::builder is deprecated")]
 pub struct TransactionContextBuilder {
     ctx: TransactionContext,
 }
 
+#[expect(deprecated, reason = "backwards-compat implementations")]
 impl TransactionContextBuilder {
     /// Defines the name of the transaction.
     #[must_use]
