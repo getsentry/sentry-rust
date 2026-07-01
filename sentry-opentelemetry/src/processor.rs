@@ -132,7 +132,7 @@ impl SpanProcessor for SentrySpanProcessor {
                         TransactionContext::continue_from_trace_propagation_context(
                             span_description,
                             span_op,
-                            trace_context,
+                            trace_context.clone(),
                             Some(convert_span_id(&span_id)),
                         )
                     } else {

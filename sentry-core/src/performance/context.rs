@@ -24,16 +24,9 @@ pub struct TransactionContext {
     #[cfg_attr(not(feature = "client"), allow(dead_code))]
     name: String,
     op: String,
-    trace_id: TraceId,
-    parent_span_id: Option<SpanId>,
     span_id: SpanId,
-    sampled: Option<bool>,
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "used by future strict trace continuation")
-    )]
-    incoming_org_id: Option<OrganizationId>,
     custom: Option<CustomTransactionContext>,
+    trace: TransactionTrace,
 }
 
 impl TransactionContext {
@@ -61,16 +54,17 @@ impl TransactionContext {
     /// around an `operation`'s value.
     #[must_use = "this must be used with `start_transaction`"]
     pub fn new_with_trace_id(name: &str, op: &str, trace_id: TraceId) -> Self {
-        Self {
-            name: name.into(),
-            op: op.into(),
-            trace_id,
-            parent_span_id: None,
-            span_id: Default::default(),
-            sampled: None,
-            incoming_org_id: None,
-            custom: None,
-        }
+        todo!("what to do here");
+        // Self {
+        //     name: name.into(),
+        //     op: op.into(),
+        //     trace_id,
+        //     parent_span_id: None,
+        //     span_id: Default::default(),
+        //     sampled: None,
+        //     incoming_org_id: None,
+        //     custom: None,
+        // }
     }
 
     /// Creates a new Transaction Context with the given `name`, `op`, `trace_id`, and
@@ -88,12 +82,13 @@ impl TransactionContext {
         span_id: Option<SpanId>,
         parent_span_id: Option<SpanId>,
     ) -> Self {
-        let mut slf = Self::new_with_trace_id(name, op, trace_id);
-        if let Some(span_id) = span_id {
-            slf.span_id = span_id;
-        }
-        slf.parent_span_id = parent_span_id;
-        slf
+        todo!("what to do?")
+        // let mut slf = Self::new_with_trace_id(name, op, trace_id);
+        // if let Some(span_id) = span_id {
+        //     slf.span_id = span_id;
+        // }
+        // slf.parent_span_id = parent_span_id;
+        // slf
     }
 
     /// Creates a new Transaction Context based on the distributed tracing `headers`.
@@ -107,15 +102,12 @@ impl TransactionContext {
         headers: I,
     ) -> Self {
         TracePropagationContext::try_from_headers(headers)
-            .map(|context| Self::continue_from_trace_propagation_context(name, op, &context, None))
+            .map(|context| Self::continue_from_trace_propagation_context(name, op, context, None))
             .unwrap_or_else(|_| Self {
                 name: name.into(),
                 op: op.into(),
-                trace_id: Default::default(),
-                parent_span_id: None,
                 span_id: Default::default(),
-                sampled: None,
-                incoming_org_id: None,
+                trace: TransactionTrace::new_head(),
                 custom: None,
             })
     }
@@ -131,7 +123,7 @@ impl TransactionContext {
         span_id: Option<SpanId>,
     ) -> Self {
         let context = (*sentry_trace).into();
-        Self::continue_from_trace_propagation_context(name, op, &context, span_id)
+        Self::continue_from_trace_propagation_context(name, op, context, span_id)
     }
 
     /// Creates a new Transaction Context based on the provided trace propagation context,
@@ -139,23 +131,14 @@ impl TransactionContext {
     pub fn continue_from_trace_propagation_context(
         name: &str,
         op: &str,
-        context: &TracePropagationContext,
+        context: TracePropagationContext,
         span_id: Option<SpanId>,
     ) -> Self {
-        let &TracePropagationContext {
-            trace_id,
-            span_id: context_span_id,
-            sampled,
-            org_id,
-        } = context;
-
+        let trace = TransactionTrace::new_incoming(context);
         Self {
             name: name.into(),
             op: op.into(),
-            trace_id,
-            parent_span_id: Some(context_span_id),
-            sampled,
-            incoming_org_id: org_id,
+            trace,
             span_id: span_id.unwrap_or_default(),
             custom: None,
         }
@@ -188,29 +171,40 @@ impl TransactionContext {
             }
         };
 
-        Self {
-            name: name.into(),
-            op: op.into(),
-            trace_id,
-            parent_span_id: Some(parent_span_id),
-            span_id: SpanId::default(),
-            sampled,
-            incoming_org_id: None,
-            custom: None,
-        }
+        todo!("must handle org ID here!");
+
+        // Self {
+        //     name: name.into(),
+        //     op: op.into(),
+        //     trace_id,
+        //     parent_span_id: Some(parent_span_id),
+        //     span_id: SpanId::default(),
+        //     sampled,
+        //     incoming_org_id: None,
+        //     custom: None,
+        // }
     }
 
     /// Set the sampling decision for this Transaction.
     ///
     /// This can be either an explicit boolean flag, or [`None`], which will fall
     /// back to use the configured `traces_sample_rate` option.
+    ///
+    /// Overriding the sampling decision can break distributed traces, so it is no longer
+    /// recommended to use this function.
+    #[deprecated(note = "Overriding the sampling decision can break distributed traces.")]
     pub fn set_sampled(&mut self, sampled: impl Into<Option<bool>>) {
-        self.sampled = sampled.into();
+        let sampled_slot = match &mut self.trace {
+            TransactionTrace::Head { id: _, sampled } => sampled,
+            TransactionTrace::Incoming { context } => &mut context.sampled,
+        };
+
+        *sampled_slot = sampled.into();
     }
 
     /// Get the sampling decision for this Transaction.
     pub fn sampled(&self) -> Option<bool> {
-        self.sampled
+        self.trace.sampled()
     }
 
     /// Get the name of this Transaction.
@@ -225,7 +219,7 @@ impl TransactionContext {
 
     /// Get the Trace ID of this Transaction.
     pub fn trace_id(&self) -> TraceId {
-        self.trace_id
+        self.trace.id()
     }
 
     /// Get the Span ID of this Transaction.
@@ -289,13 +283,14 @@ impl TransactionContext {
         let Self {
             name,
             op,
-            trace_id,
-            parent_span_id,
             span_id,
-            sampled,
-            incoming_org_id: _,
             custom: _,
+            trace,
         } = self;
+
+        let trace_id = trace.id();
+        let parent_span_id = trace.parent_span_id();
+        let sampled = trace.sampled();
 
         let trace_context = TraceContext {
             span_id,
@@ -340,16 +335,22 @@ impl TransactionContextBuilder {
     }
 
     /// Defines the trace ID.
+    ///
+    /// This is a no-op for incoming traces, as overriding the trace ID would break the trace.
     #[must_use]
     pub fn with_trace_id(mut self, trace_id: TraceId) -> Self {
-        self.ctx.trace_id = trace_id;
+        match &mut self.ctx.trace {
+            TransactionTrace::Head { id, .. } => *id = trace_id,
+            TransactionTrace::Incoming { .. } => (),
+        }
+
         self
     }
 
-    /// Defines a parent span ID for the created transaction.
+    /// Deprecated no-op.
+    #[deprecated(note = "This is a no-op; setting the parent span ID would break traces")]
     #[must_use]
-    pub fn with_parent_span_id(mut self, parent_span_id: Option<SpanId>) -> Self {
-        self.ctx.parent_span_id = parent_span_id;
+    pub fn with_parent_span_id(self, _: Option<SpanId>) -> Self {
         self
     }
 
@@ -361,9 +362,19 @@ impl TransactionContextBuilder {
     }
 
     /// Defines whether the transaction will be sampled.
+    ///
+    /// This is a no-op for incoming traces, as allowing the sampling decision to be overridden
+    /// could break distributed traces.
     #[must_use]
     pub fn with_sampled(mut self, sampled: Option<bool>) -> Self {
-        self.ctx.sampled = sampled;
+        match &mut self.ctx.trace {
+            TransactionTrace::Head {
+                sampled: ctx_sampled,
+                ..
+            } => *ctx_sampled = sampled,
+            TransactionTrace::Incoming { .. } => (),
+        }
+
         self
     }
 
@@ -377,6 +388,56 @@ impl TransactionContextBuilder {
     /// Finishes building a transaction.
     pub fn finish(self) -> TransactionContext {
         self.ctx
+    }
+}
+
+/// Container for trace information.
+#[derive(Debug, Clone)]
+enum TransactionTrace {
+    /// Data associated with head traces (i.e. this SDK started the trace).
+    Head { id: TraceId, sampled: Option<bool> },
+    /// Data associated with incoming traces (i.e. this SDK is continuing the trace).
+    Incoming { context: TracePropagationContext },
+}
+
+impl TransactionTrace {
+    /// Create a new [`TransactionTrace::Head`] with a random trace and span ID, and no sampling
+    /// decision.
+    fn new_head() -> Self {
+        let (id, sampled) = Default::default();
+
+        TransactionTrace::Head { id, sampled }
+    }
+
+    /// Create a new [`TransactionTrace::Incoming`] from the incoming context.
+    fn new_incoming(context: TracePropagationContext) -> Self {
+        Self::Incoming { context }
+    }
+
+    /// Get the sampling decision.
+    fn sampled(&self) -> Option<bool> {
+        match self {
+            &TransactionTrace::Head { sampled, .. } => sampled,
+            TransactionTrace::Incoming { context } => context.sampled,
+        }
+    }
+
+    /// Get the trace id.
+    fn id(&self) -> TraceId {
+        match self {
+            &TransactionTrace::Head { id, .. } => id,
+            TransactionTrace::Incoming { context } => context.trace_id,
+        }
+    }
+
+    /// Get the parent span ID.
+    ///
+    /// This is `Some` if and only if this is an incoming trace.
+    fn parent_span_id(&self) -> Option<SpanId> {
+        match self {
+            TransactionTrace::Head { .. } => None,
+            TransactionTrace::Incoming { context } => Some(context.span_id),
+        }
     }
 }
 
@@ -406,7 +467,10 @@ mod tests {
             ],
         );
 
-        assert_eq!(ctx.incoming_org_id, Some("123".parse().unwrap()));
+        let TransactionTrace::Incoming { context } = ctx.trace else {
+            panic!("trace should be continued");
+        };
+        assert_eq!(context.org_id, Some("123".parse().unwrap()));
     }
 
     #[test]
@@ -417,7 +481,6 @@ mod tests {
             [("baggage", "sentry-org_id=123")],
         );
 
-        assert_eq!(ctx.incoming_org_id, None);
-        assert_eq!(ctx.parent_span_id, None);
+        assert!(matches!(ctx.trace, TransactionTrace::Head { .. }))
     }
 }
