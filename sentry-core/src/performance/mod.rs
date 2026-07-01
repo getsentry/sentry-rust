@@ -6,7 +6,9 @@ use std::time::SystemTime;
 
 #[cfg(feature = "client")]
 use sentry_types::protocol::v7::client_report::Reason as ClientReportReason;
-use sentry_types::protocol::v7::{OrganizationId, SpanId};
+#[cfg(feature = "client")]
+use sentry_types::protocol::v7::OrganizationId;
+use sentry_types::protocol::v7::SpanId;
 
 #[cfg(feature = "client")]
 use crate::clientoptions::TracesSamplingStrategy;
@@ -116,10 +118,7 @@ pub struct TransactionContext {
     parent_span_id: Option<protocol::SpanId>,
     span_id: protocol::SpanId,
     sampled: Option<bool>,
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "used by future strict trace continuation")
-    )]
+    #[cfg(feature = "client")]
     incoming_org_id: Option<OrganizationId>,
     custom: Option<CustomTransactionContext>,
 }
@@ -156,6 +155,7 @@ impl TransactionContext {
             parent_span_id: None,
             span_id: Default::default(),
             sampled: None,
+            #[cfg(feature = "client")]
             incoming_org_id: None,
             custom: None,
         }
@@ -203,6 +203,7 @@ impl TransactionContext {
                 parent_span_id: None,
                 span_id: Default::default(),
                 sampled: None,
+                #[cfg(feature = "client")]
                 incoming_org_id: None,
                 custom: None,
             })
@@ -234,6 +235,7 @@ impl TransactionContext {
             trace_id,
             span_id: context_span_id,
             sampled,
+            #[cfg(feature = "client")]
             org_id,
         } = context;
 
@@ -243,6 +245,7 @@ impl TransactionContext {
             trace_id,
             parent_span_id: Some(context_span_id),
             sampled,
+            #[cfg(feature = "client")]
             incoming_org_id: org_id,
             span_id: span_id.unwrap_or_default(),
             custom: None,
@@ -283,6 +286,7 @@ impl TransactionContext {
             parent_span_id: Some(parent_span_id),
             span_id: protocol::SpanId::default(),
             sampled,
+            #[cfg(feature = "client")]
             incoming_org_id: None,
             custom: None,
         }
@@ -368,6 +372,17 @@ impl TransactionContext {
         TransactionContextBuilder {
             ctx: TransactionContext::new(name, op),
         }
+    }
+
+    /// Clears incoming trace state so the transaction starts a new trace.
+    #[cfg(feature = "client")]
+    fn reject_incoming_trace(&mut self) {
+        (
+            self.trace_id,
+            self.parent_span_id,
+            self.sampled,
+            self.incoming_org_id,
+        ) = Default::default();
     }
 }
 
@@ -654,6 +669,19 @@ fn transaction_sample_rate(
     }
 }
 
+#[cfg(feature = "client")]
+fn should_continue_trace(
+    incoming: Option<OrganizationId>,
+    sdk: Option<OrganizationId>,
+    strict: bool,
+) -> bool {
+    match (incoming, sdk) {
+        (Some(incoming), Some(sdk)) => incoming == sdk,
+        (Some(_), None) | (None, Some(_)) => !strict,
+        (None, None) => true,
+    }
+}
+
 /// Determine whether the new transaction should be sampled.
 #[cfg(feature = "client")]
 impl Client {
@@ -720,15 +748,29 @@ impl<'a> TransactionData<'a> {
 
 impl Transaction {
     #[cfg(feature = "client")]
-    fn new(client: Option<Arc<Client>>, ctx: TransactionContext) -> Self {
+    fn new(client: Option<Arc<Client>>, mut ctx: TransactionContext) -> Self {
         let ((sampled, sample_rate), transaction) = match client.as_ref() {
-            Some(client) => (
-                client.determine_sampling_decision(&ctx),
-                Some(protocol::Transaction {
-                    name: Some(ctx.name),
-                    ..Default::default()
-                }),
-            ),
+            Some(client) => {
+                let options = client.options();
+                let incoming_org_id = ctx.incoming_org_id;
+                let sdk_org_id = options.org_id.or_else(|| options.dsn.as_ref()?.org_id());
+
+                if !should_continue_trace(
+                    incoming_org_id,
+                    sdk_org_id,
+                    options.strict_trace_continuation,
+                ) {
+                    ctx.reject_incoming_trace();
+                }
+
+                (
+                    client.determine_sampling_decision(&ctx),
+                    Some(protocol::Transaction {
+                        name: Some(ctx.name),
+                        ..Default::default()
+                    }),
+                )
+            }
             None => (
                 (
                     ctx.sampled.unwrap_or(false),

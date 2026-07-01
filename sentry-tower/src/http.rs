@@ -289,11 +289,12 @@ mod tests {
         sentry::test::with_captured_envelopes_options(
             || {
                 tokio::runtime::Runtime::new().unwrap().block_on(async {
-                    let mut service = SentryHttpLayer::new().enable_transaction().layer(
-                        tower::service_fn(|_request| async {
-                            Ok::<_, std::convert::Infallible>(Response::new(()))
-                        }),
-                    );
+                    let mut service =
+                        SentryHttpLayer::new()
+                            .enable_transaction()
+                            .layer(tower::service_fn(|_request| async {
+                                Ok::<_, std::convert::Infallible>(Response::new(()))
+                            }));
                     let request = Request::builder()
                         .uri("http://example.com/test")
                         .header(
@@ -321,7 +322,10 @@ mod tests {
         let envelopes = run_request_with_org_ids("42", "42");
         let trace = trace_context_from_single_transaction(&envelopes);
 
-        assert_eq!(trace.trace_id.to_string(), "09e04486820349518ac7b5d2adbf6ba5");
+        assert_eq!(
+            trace.trace_id.to_string(),
+            "09e04486820349518ac7b5d2adbf6ba5"
+        );
         assert_eq!(
             trace.parent_span_id.map(|span_id| span_id.to_string()),
             Some("9cf635fa5b870b3a".to_owned())
@@ -333,7 +337,10 @@ mod tests {
         let envelopes = run_request_with_org_ids("43", "42");
         let trace = trace_context_from_single_transaction(&envelopes);
 
-        assert_ne!(trace.trace_id.to_string(), "09e04486820349518ac7b5d2adbf6ba5");
+        assert_ne!(
+            trace.trace_id.to_string(),
+            "09e04486820349518ac7b5d2adbf6ba5"
+        );
         assert_eq!(trace.parent_span_id, None);
     }
 }
