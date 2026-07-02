@@ -16,13 +16,9 @@ fn test_into_client() {
 
     let c: sentry::Client = sentry::Client::from_config((
         "https://public@example.com/42%21",
-        sentry::ClientOptions {
-            release: Some("foo@1.0".into()),
-            traces_sampler: Some(Arc::new(
-                |ctx| if ctx.name().is_empty() { 0.0 } else { 1.0 },
-            )),
-            ..Default::default()
-        },
+        sentry::ClientOptions::new()
+            .release("foo@1.0")
+            .traces_sampler(|ctx| if ctx.name().is_empty() { 0.0 } else { 1.0 }),
     ));
     {
         let dsn = c.dsn().unwrap();
@@ -39,11 +35,9 @@ fn test_into_client() {
 #[test]
 fn test_unwind_safe() {
     let transport = sentry::test::TestTransport::new();
-    let options = sentry::ClientOptions {
-        dsn: Some("https://public@example.com/1".parse().unwrap()),
-        transport: Some(Arc::new(transport.clone())),
-        ..sentry::ClientOptions::default()
-    };
+    let options = sentry::ClientOptions::new()
+        .dsn("https://public@example.com/1")
+        .transport(transport.clone());
 
     let client: Arc<sentry::Client> = Arc::new(options.into());
 
@@ -62,14 +56,10 @@ fn test_unwind_safe() {
 
 #[test]
 fn test_concurrent_init() {
-    let _guard = sentry::init(sentry::ClientOptions {
-        ..Default::default()
-    });
+    let _guard = sentry::init(sentry::ClientOptions::new());
 
     std::thread::spawn(|| {
-        let _guard = sentry::init(sentry::ClientOptions {
-            ..Default::default()
-        });
+        let _guard = sentry::init(sentry::ClientOptions::new());
     })
     .join()
     .unwrap();
@@ -77,8 +67,5 @@ fn test_concurrent_init() {
 
 #[test]
 fn test_invalid_proxy() {
-    let _guard = sentry::init(sentry::ClientOptions {
-        https_proxy: Some("".into()),
-        ..Default::default()
-    });
+    let _guard = sentry::init(sentry::ClientOptions::new().https_proxy(""));
 }

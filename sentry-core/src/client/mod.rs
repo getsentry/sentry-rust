@@ -411,19 +411,14 @@ impl Client {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::Arc;
-    ///
-    /// let client = sentry::Client::from(sentry::ClientOptions::default());
+    /// let client = sentry::Client::from(sentry::ClientOptions::new());
     /// assert!(!client.is_enabled());
     ///
     /// let dsn = "https://public@example.com/1";
     /// let transport = sentry::test::TestTransport::new();
     /// let client = sentry::Client::from((
     ///     dsn,
-    ///     sentry::ClientOptions {
-    ///         transport: Some(Arc::new(transport)),
-    ///         ..Default::default()
-    ///     },
+    ///     sentry::ClientOptions::new().transport(transport),
     /// ));
     /// assert!(client.is_enabled());
     /// ```

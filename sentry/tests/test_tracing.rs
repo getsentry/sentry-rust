@@ -128,10 +128,7 @@ fn test_span_record() {
         .with(sentry_tracing::layer())
         .set_default();
 
-    let options = sentry::ClientOptions {
-        traces_sample_rate: 1.0,
-        ..Default::default()
-    };
+    let options = sentry::ClientOptions::new().traces_sample_rate(1.0);
 
     let envelopes = sentry::test::with_captured_envelopes_options(
         || {
@@ -157,10 +154,7 @@ fn test_span_record() {
 
 #[test]
 fn test_set_transaction() {
-    let options = sentry::ClientOptions {
-        traces_sample_rate: 1.0,
-        ..Default::default()
-    };
+    let options = sentry::ClientOptions::new().traces_sample_rate(1.0);
 
     let envelopes = sentry::test::with_captured_envelopes_options(
         || {
@@ -203,10 +197,7 @@ fn test_tracing_logs() {
         .with(sentry_layer)
         .set_default();
 
-    let options = sentry::ClientOptions {
-        enable_logs: true,
-        ..Default::default()
-    };
+    let options = sentry::ClientOptions::new().enable_logs(true);
 
     let envelopes = sentry::test::with_captured_envelopes_options(
         || {

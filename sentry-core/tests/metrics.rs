@@ -1,7 +1,6 @@
 #![cfg(all(feature = "test", feature = "metrics"))]
 
 use std::collections::HashSet;
-use std::sync::Arc;
 
 use anyhow::{Context, Result};
 
@@ -14,10 +13,7 @@ use sentry_types::protocol::v7::{Envelope, LogAttribute, Metric, User};
 /// Test that metrics are sent when metrics are enabled.
 #[test]
 fn sent_when_enabled() {
-    let options = ClientOptions {
-        enable_metrics: true,
-        ..Default::default()
-    };
+    let options = ClientOptions::new().enable_metrics(true);
 
     let mut envelopes =
         test::with_captured_envelopes_options(|| metrics::counter("test", 1).capture(), options);
@@ -66,10 +62,7 @@ fn metrics_enabled_by_default() {
 /// [`ClientOptions`].
 #[test]
 fn metrics_disabled_when_configured() {
-    let options = ClientOptions {
-        enable_metrics: false,
-        ..Default::default()
-    };
+    let options = ClientOptions::new().enable_metrics(false);
 
     let envelopes =
         test::with_captured_envelopes_options(|| metrics::counter("test", 1).capture(), options);
@@ -384,12 +377,10 @@ fn metrics_span_id_from_active_span() {
 /// Test that default SDK attributes are attached to metrics.
 #[test]
 fn default_attributes_attached() {
-    let options = ClientOptions {
-        environment: Some("test-env".into()),
-        release: Some("1.0.0".into()),
-        server_name: Some("test-server".into()),
-        ..Default::default()
-    };
+    let options = ClientOptions::new()
+        .environment("test-env")
+        .release("1.0.0")
+        .server_name("test-server");
 
     let envelopes =
         test::with_captured_envelopes_options(|| metrics::counter("test", 1).capture(), options);
@@ -433,10 +424,7 @@ fn optional_default_attributes_omitted_when_not_configured() {
 /// Test that explicitly set metric attributes are not overwritten by defaults.
 #[test]
 fn default_attributes_do_not_overwrite_explicit() {
-    let options = ClientOptions {
-        environment: Some("default-env".into()),
-        ..Default::default()
-    };
+    let options = ClientOptions::new().environment("default-env");
 
     let envelopes = test::with_captured_envelopes_options(
         || {
@@ -465,10 +453,7 @@ fn default_attributes_do_not_overwrite_explicit() {
 /// Test that user attributes are NOT attached when `send_default_pii` is false.
 #[test]
 fn user_attributes_absent_without_send_default_pii() {
-    let options = ClientOptions {
-        send_default_pii: false,
-        ..Default::default()
-    };
+    let options = ClientOptions::new().send_default_pii(false);
 
     let envelopes = test::with_captured_envelopes_options(
         || {
@@ -502,10 +487,7 @@ fn user_attributes_absent_without_send_default_pii() {
 /// `send_default_pii` is true.
 #[test]
 fn metric_user_attributes_from_scope_are_applied_with_send_default_pii() {
-    let options = ClientOptions {
-        send_default_pii: true,
-        ..Default::default()
-    };
+    let options = ClientOptions::new().send_default_pii(true);
 
     let envelopes = test::with_captured_envelopes_options(
         || {
@@ -541,10 +523,7 @@ fn metric_user_attributes_from_scope_are_applied_with_send_default_pii() {
 /// attributes are not merged in.
 #[test]
 fn metric_user_attributes_do_not_overwrite_explicit() {
-    let options = ClientOptions {
-        send_default_pii: true,
-        ..Default::default()
-    };
+    let options = ClientOptions::new().send_default_pii(true);
 
     let envelopes = test::with_captured_envelopes_options(
         || {
@@ -581,10 +560,7 @@ fn metric_user_attributes_do_not_overwrite_explicit() {
 /// Test that `before_send_metric` can filter out metrics.
 #[test]
 fn before_send_metric_can_drop() {
-    let options = ClientOptions {
-        before_send_metric: Some(Arc::new(|_| None)),
-        ..Default::default()
-    };
+    let options = ClientOptions::new().before_send_metric(|_| None);
 
     let envelopes =
         test::with_captured_envelopes_options(|| metrics::counter("test", 1).capture(), options);
@@ -597,15 +573,12 @@ fn before_send_metric_can_drop() {
 /// Test that `before_send_metric` can modify metrics.
 #[test]
 fn before_send_metric_can_modify() {
-    let options = ClientOptions {
-        before_send_metric: Some(Arc::new(|mut metric| {
-            metric
-                .attributes
-                .insert("added_by_callback".into(), LogAttribute(Value::from("yes")));
-            Some(metric)
-        })),
-        ..Default::default()
-    };
+    let options = ClientOptions::new().before_send_metric(|mut metric| {
+        metric
+            .attributes
+            .insert("added_by_callback".into(), LogAttribute(Value::from("yes")));
+        Some(metric)
+    });
 
     let envelopes =
         test::with_captured_envelopes_options(|| metrics::counter("test", 1).capture(), options);

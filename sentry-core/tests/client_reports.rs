@@ -20,11 +20,11 @@ impl Integration for DroppingIntegration {
 }
 
 fn client_with_options(transport: Arc<TestTransport>, options: ClientOptions) -> Client {
-    Client::with_options(ClientOptions {
-        dsn: Some("https://public@sentry.invalid/1".parse().unwrap()),
-        transport: Some(Arc::new(transport)),
-        ..options
-    })
+    Client::with_options(
+        options
+            .dsn("https://public@sentry.invalid/1")
+            .transport(transport),
+    )
 }
 
 fn assert_client_report(envelope: &Envelope, expected: serde_json::Value) {
@@ -87,10 +87,7 @@ fn client_report_records_integration_event_processor_drop() {
 
 #[test]
 fn client_report_records_before_send_drop() {
-    let options = ClientOptions {
-        before_send: Some(Arc::new(|_| None)),
-        ..Default::default()
-    };
+    let options = ClientOptions::new().before_send(|_| None);
 
     assert_drop_records_client_report(
         options,
@@ -103,10 +100,7 @@ fn client_report_records_before_send_drop() {
 
 #[test]
 fn client_report_records_sample_rate_drop() {
-    let options = ClientOptions {
-        sample_rate: 0.0,
-        ..Default::default()
-    };
+    let options = ClientOptions::new().sample_rate(0.0);
 
     assert_drop_records_client_report(
         options,
@@ -122,10 +116,7 @@ fn client_report_records_unsampled_transaction_and_spans() {
     let transport = TestTransport::new();
     let client = Arc::new(client_with_options(
         transport.clone(),
-        ClientOptions {
-            traces_sample_rate: 0.0,
-            ..Default::default()
-        },
+        ClientOptions::new().traces_sample_rate(0.0),
     ));
 
     Hub::run(
@@ -158,10 +149,7 @@ fn client_report_records_transaction_span_cap_drop() {
     let transport = TestTransport::new();
     let client = Arc::new(client_with_options(
         transport.clone(),
-        ClientOptions {
-            traces_sample_rate: 1.0,
-            ..Default::default()
-        },
+        ClientOptions::new().traces_sample_rate(1.0),
     ));
 
     Hub::run(
