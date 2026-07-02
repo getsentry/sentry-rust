@@ -1,5 +1,31 @@
 # Changelog
 
+## Unreleased
+
+### New Features
+
+- Added builder-style setters to [`ClientOptions`](https://docs.rs/sentry-core/0.48.3/sentry_core/struct.ClientOptions.html) ([#1221](https://github.com/getsentry/sentry-rust/pull/1221)):
+
+  ```rust
+  // Before
+  let options = sentry::ClientOptions {
+      dsn: "https://examplePublicKey@o0.ingest.sentry.io/0",
+      debug: true,
+      release: Some("my-app@1.0.0".into()),
+      ..Default::default()
+  };
+
+  // After
+  let options = sentry::ClientOptions::new()
+      .dsn("https://examplePublicKey@o0.ingest.sentry.io/0")
+      .debug(true)
+      .release("my-app@1.0.0");
+  ```
+
+### Deprecations
+
+- Constructing `ClientOptions` with struct-literal syntax, including `..Default::default()` functional update syntax, is deprecated and **will stop compiling in the next breaking release**, as we will mark `ClientOptions` as `#[non_exhaustive]` ([#1221](https://github.com/getsentry/sentry-rust/pull/1221)). Reading and assigning individual public fields will remain supported. Please migrate to the builder-style setters introduced in this release.
+
 ## 0.48.3
 
 The Sentry Rust SDK now reports data discarded by the SDK to Sentry’s [Stats](https://docs.sentry.io/product/stats/) page. The SDK reports approximate counts for drops from transports, queues, rate-limit backoff, sampling, event processors, and `before_send*` callbacks, including span counts for dropped transactions and byte counts for dropped logs and metrics.
