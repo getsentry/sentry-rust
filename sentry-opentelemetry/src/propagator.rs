@@ -19,8 +19,7 @@ use opentelemetry::{
     trace::TraceContextExt,
     Context, SpanId, TraceId,
 };
-use sentry_core::parse_headers;
-use sentry_core::SentryTrace;
+use sentry_core::TracePropagationContext;
 
 use crate::converters::{convert_span_id, convert_trace_id};
 
@@ -57,12 +56,10 @@ impl TextMapPropagator for SentryPropagator {
         if trace_id == TraceId::INVALID || span_id == SpanId::INVALID {
             return;
         }
-        let sentry_trace = SentryTrace::new(
-            convert_trace_id(&trace_id),
-            convert_span_id(&span_id),
-            Some(sampled),
-        );
-        injector.set(SENTRY_TRACE_KEY, sentry_trace.to_string());
+        let trace_context =
+            TracePropagationContext::new(convert_trace_id(&trace_id), convert_span_id(&span_id))
+                .with_sampled(sampled);
+        injector.set(SENTRY_TRACE_KEY, trace_context.sentry_trace_header());
     }
 
     fn extract_with_context(&self, ctx: &Context, extractor: &dyn Extractor) -> Context {
@@ -70,8 +67,8 @@ impl TextMapPropagator for SentryPropagator {
         let pairs = keys
             .iter()
             .filter_map(|&key| extractor.get(key).map(|value| (key, value)));
-        if let Some(sentry_trace) = parse_headers(pairs) {
-            return ctx.with_value(sentry_trace);
+        if let Ok(trace_context) = TracePropagationContext::try_from_headers(pairs) {
+            return ctx.with_value(trace_context);
         }
         ctx.clone()
     }
