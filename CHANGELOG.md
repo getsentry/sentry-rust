@@ -11,6 +11,10 @@
 - Added [`TracePropagationContext`](https://docs.rs/sentry-core/latest/sentry_core/struct.TracePropagationContext.html) as the preferred type for Sentry trace propagation metadata. The existing [`SentryTrace`](https://docs.rs/sentry-core/latest/sentry_core/struct.SentryTrace.html) type remains available for backwards compatibility ([#1212](https://github.com/getsentry/sentry-rust/pull/1212)).
 - Added [`Dsn::org_id`](https://docs.rs/sentry-types/latest/sentry_types/struct.Dsn.html#method.org_id), which parses the Sentry SaaS organization ID from DSN hosts such as `o123.ingest.sentry.io` ([#1202](https://github.com/getsentry/sentry-rust/pull/1202)).
 
+### Improvements
+
+- Improved trace continuation safety by rejecting incoming traces with incompatible `sentry-org_id` values when starting transactions, according to [strict trace continuation rules](https://develop.sentry.dev/sdk/foundations/trace-propagation/#continuing-traces) ([#1218](https://github.com/getsentry/sentry-rust/pull/1218)).
+
 ## 0.48.3
 
 The Sentry Rust SDK now reports data discarded by the SDK to Sentry’s [Stats](https://docs.sentry.io/product/stats/) page. The SDK reports approximate counts for drops from transports, queues, rate-limit backoff, sampling, event processors, and `before_send*` callbacks, including span counts for dropped transactions and byte counts for dropped logs and metrics.
