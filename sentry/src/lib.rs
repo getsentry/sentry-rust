@@ -172,11 +172,9 @@ pub use crate::init::{init, ClientInitGuard};
 /// use sentry::integrations::debug_images::DebugImagesIntegration;
 /// use sentry::ClientOptions;
 ///
-/// let options = ClientOptions {
-///     default_integrations: false,
-///     ..Default::default()
-/// }
-/// .add_integration(DebugImagesIntegration::new());
+/// let options = ClientOptions::new()
+///     .default_integrations(false)
+///     .add_integration(DebugImagesIntegration::new());
 /// let _guard = sentry::init(options);
 /// # }
 /// ```

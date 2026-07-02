@@ -1,9 +1,9 @@
 fn main() {
-    let _sentry = sentry::init(sentry::ClientOptions {
-        release: sentry::release_name!(),
-        debug: true,
-        ..Default::default()
-    });
+    let _sentry = sentry::init(
+        sentry::ClientOptions::new()
+            .maybe_release(sentry::release_name!())
+            .debug(true),
+    );
 
     sentry::configure_scope(|scope| {
         scope.add_event_processor(|mut event| {

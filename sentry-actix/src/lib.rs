@@ -18,10 +18,9 @@
 //! }
 //!
 //! fn main() -> io::Result<()> {
-//!     let _guard = sentry::init(sentry::ClientOptions {
-//!         release: sentry::release_name!(),
-//!         ..Default::default()
-//!     });
+//!     let _guard = sentry::init(
+//!         sentry::ClientOptions::new().maybe_release(sentry::release_name!()),
+//!     );
 //!     std::env::set_var("RUST_BACKTRACE", "1");
 //!
 //!     let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -47,12 +46,12 @@
 //! use `SessionMode::Request`.
 //!
 //! ```
-//! let _sentry = sentry::init(sentry::ClientOptions {
-//!     release: sentry::release_name!(),
-//!     session_mode: sentry::SessionMode::Request,
-//!     auto_session_tracking: true,
-//!     ..Default::default()
-//! });
+//! let _sentry = sentry::init(
+//!     sentry::ClientOptions::new()
+//!         .maybe_release(sentry::release_name!())
+//!         .session_mode(sentry::SessionMode::Request)
+//!         .auto_session_tracking(true),
+//! );
 //! ```
 //!
 //! # Reusing the Hub
@@ -765,12 +764,10 @@ mod tests {
                     }
                 })
             },
-            sentry::ClientOptions {
-                release: Some("some-release".into()),
-                session_mode: sentry::SessionMode::Request,
-                auto_session_tracking: true,
-                ..Default::default()
-            },
+            sentry::ClientOptions::new()
+                .release("some-release")
+                .session_mode(sentry::SessionMode::Request)
+                .auto_session_tracking(true),
         );
         assert_eq!(envelopes.len(), 1);
 
