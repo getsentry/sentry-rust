@@ -11,10 +11,7 @@ fn test_log_logs() {
         .map(|()| log::set_max_level(log::LevelFilter::Trace))
         .unwrap();
 
-    let options = sentry::ClientOptions {
-        enable_logs: true,
-        ..Default::default()
-    };
+    let options = sentry::ClientOptions::new().enable_logs(true);
 
     let envelopes = sentry::test::with_captured_envelopes_options(
         || {

@@ -376,10 +376,7 @@ mod session_impl {
         {
             crate::test::with_captured_envelopes_options(
                 f,
-                crate::ClientOptions {
-                    release: Some("some-release".into()),
-                    ..Default::default()
-                },
+                crate::ClientOptions::new().release("some-release"),
             )
         }
 
@@ -452,11 +449,9 @@ mod session_impl {
                     let err = "NaN".parse::<usize>().unwrap_err();
                     sentry::capture_error(&err);
                 },
-                crate::ClientOptions {
-                    release: Some("some-release".into()),
-                    session_mode: SessionMode::Request,
-                    ..Default::default()
-                },
+                crate::ClientOptions::new()
+                    .release("some-release")
+                    .session_mode(SessionMode::Request),
             );
             assert_eq!(envelopes.len(), 2);
 
@@ -551,11 +546,9 @@ mod session_impl {
                         sentry::capture_error(&err);
                     }
                 },
-                crate::ClientOptions {
-                    release: Some("some-release".into()),
-                    sample_rate: 0.5,
-                    ..Default::default()
-                },
+                crate::ClientOptions::new()
+                    .release("some-release")
+                    .sample_rate(0.5),
             );
             assert!(envelopes.len() > 25);
             assert!(envelopes.len() < 75);

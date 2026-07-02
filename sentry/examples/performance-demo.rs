@@ -5,12 +5,12 @@ use sentry::protocol::Request;
 
 // cargo run --example performance-demo
 fn main() {
-    let _sentry = sentry::init(sentry::ClientOptions {
-        release: sentry::release_name!(),
-        traces_sample_rate: 1.0,
-        debug: true,
-        ..Default::default()
-    });
+    let _sentry = sentry::init(
+        sentry::ClientOptions::new()
+            .maybe_release(sentry::release_name!())
+            .traces_sample_rate(1.0)
+            .debug(true),
+    );
 
     let transaction =
         sentry::start_transaction(sentry::TransactionContext::new("transaction", "root span"));

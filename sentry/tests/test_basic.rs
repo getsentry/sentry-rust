@@ -119,16 +119,14 @@ fn test_factory() {
     let events = Arc::new(AtomicUsize::new(0));
 
     let events_for_options = events.clone();
-    let options = sentry::ClientOptions {
-        dsn: "http://foo@example.com/42".parse().ok(),
-        transport: Some(Arc::new(
+    let options = sentry::ClientOptions::new()
+        .dsn("http://foo@example.com/42")
+        .transport(
             move |opts: &sentry::ClientOptions| -> Arc<dyn sentry::Transport> {
                 assert_eq!(opts.dsn.as_ref().unwrap().host(), "example.com");
                 Arc::new(TestTransport(events_for_options.clone()))
             },
-        )),
-        ..Default::default()
-    };
+        );
 
     sentry::Hub::run(
         Arc::new(sentry::Hub::new(
@@ -170,10 +168,7 @@ fn test_attached_stacktrace() {
         .map(|()| log::set_max_level(log::LevelFilter::Info))
         .unwrap();
 
-    let options = sentry::apply_defaults(sentry::ClientOptions {
-        attach_stacktrace: true,
-        ..Default::default()
-    });
+    let options = sentry::apply_defaults(sentry::ClientOptions::new().attach_stacktrace(true));
     let events = sentry::test::with_captured_events_options(
         || {
             let error = "thisisnotanumber".parse::<u32>().unwrap_err();
@@ -274,10 +269,7 @@ fn test_basic_capture_log() {
 
     use sentry::{protocol::Log, protocol::LogAttribute, protocol::Map, Hub};
 
-    let options = sentry::ClientOptions {
-        enable_logs: true,
-        ..Default::default()
-    };
+    let options = sentry::ClientOptions::new().enable_logs(true);
     let envelopes = sentry::test::with_captured_envelopes_options(
         || {
             let mut attributes: Map<String, LogAttribute> = Map::new();
@@ -321,10 +313,7 @@ fn test_basic_capture_log() {
 fn test_basic_capture_log_macro_message() {
     use sentry_core::logger_info;
 
-    let options = sentry::ClientOptions {
-        enable_logs: true,
-        ..Default::default()
-    };
+    let options = sentry::ClientOptions::new().enable_logs(true);
     let envelopes = sentry::test::with_captured_envelopes_options(
         || {
             logger_info!("Hello, world!");
@@ -357,10 +346,7 @@ fn test_basic_capture_log_macro_message_formatted() {
     use sentry::protocol::LogAttribute;
     use sentry_core::logger_warn;
 
-    let options = sentry::ClientOptions {
-        enable_logs: true,
-        ..Default::default()
-    };
+    let options = sentry::ClientOptions::new().enable_logs(true);
     let envelopes = sentry::test::with_captured_envelopes_options(
         || {
             let failed_requests = ["request1", "request2", "request3"];
@@ -424,10 +410,7 @@ fn test_basic_capture_log_macro_message_with_attributes() {
     use sentry::protocol::LogAttribute;
     use sentry_core::logger_error;
 
-    let options = sentry::ClientOptions {
-        enable_logs: true,
-        ..Default::default()
-    };
+    let options = sentry::ClientOptions::new().enable_logs(true);
     let envelopes = sentry::test::with_captured_envelopes_options(
         || {
             logger_error!(
@@ -483,10 +466,7 @@ fn test_basic_capture_log_macro_message_formatted_with_attributes() {
     use sentry::protocol::LogAttribute;
     use sentry_core::logger_debug;
 
-    let options = sentry::ClientOptions {
-        enable_logs: true,
-        ..Default::default()
-    };
+    let options = sentry::ClientOptions::new().enable_logs(true);
     let envelopes = sentry::test::with_captured_envelopes_options(
         || {
             logger_debug!(
@@ -584,7 +564,7 @@ fn test_basic_capture_log_macro_message_formatted_with_attributes() {
 #[test]
 fn test_transaction_envelope_dsc_headers() {
     let mut trace_id: Option<sentry::protocol::TraceId> = None;
-    let dsn: Option<Dsn> = "http://foo@example.com/42".parse().ok();
+    let dsn = "http://foo@example.com/42";
     let envelopes = sentry::test::with_captured_envelopes_options(
         || {
             let transaction_ctx = sentry::TransactionContext::new("name transaction", "op");
@@ -593,11 +573,9 @@ fn test_transaction_envelope_dsc_headers() {
             sentry::configure_scope(|scope| scope.set_span(Some(transaction.clone().into())));
             transaction.finish();
         },
-        sentry::ClientOptions {
-            dsn: dsn.clone(),
-            traces_sample_rate: 1.0,
-            ..Default::default()
-        },
+        sentry::ClientOptions::new()
+            .dsn(dsn)
+            .traces_sample_rate(1.0),
     );
 
     assert!(trace_id.is_some());
@@ -610,7 +588,12 @@ fn test_transaction_envelope_dsc_headers() {
     let expected = EnvelopeHeaders::new().with_event_id(uuid).with_trace(
         DynamicSamplingContext::new()
             .with_trace_id(trace_id)
-            .with_public_key(dsn.unwrap().public_key().to_owned())
+            .with_public_key(
+                dsn.parse::<Dsn>()
+                    .expect("should parse as DSN")
+                    .public_key()
+                    .to_owned(),
+            )
             .with_sample_rate(1.0)
             .with_sampled(true),
     );

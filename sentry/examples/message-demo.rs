@@ -1,9 +1,9 @@
 fn main() {
-    let _sentry = sentry::init(sentry::ClientOptions {
-        release: sentry::release_name!(),
-        debug: true,
-        ..Default::default()
-    });
+    let _sentry = sentry::init(
+        sentry::ClientOptions::new()
+            .maybe_release(sentry::release_name!())
+            .debug(true),
+    );
     sentry::configure_scope(|scope| {
         scope.set_fingerprint(Some(["a-message"].as_ref()));
         scope.set_tag("foo", "bar");

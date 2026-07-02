@@ -14,11 +14,9 @@ use tower::{ServiceBuilder, ServiceExt};
 fn test_tower_hub() {
     // Create a fake transport for new hubs
     let transport = TestTransport::new();
-    let opts = ClientOptions {
-        dsn: Some("https://public@sentry.invalid/1".parse().unwrap()),
-        transport: Some(Arc::new(transport.clone())),
-        ..Default::default()
-    };
+    let opts = ClientOptions::new()
+        .dsn("https://public@sentry.invalid/1")
+        .transport(transport.clone());
 
     let events = sentry::test::with_captured_events(|| {
         // This breadcrumb should be in all subsequent requests
