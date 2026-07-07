@@ -8,6 +8,8 @@ use std::time::SystemTime;
 use sentry_types::protocol::v7::client_report::Reason as ClientReportReason;
 use sentry_types::protocol::v7::SpanId;
 
+#[cfg(feature = "client")]
+use crate::clientoptions::TracesSamplingStrategy;
 use crate::{protocol, Hub};
 
 #[cfg(feature = "client")]
@@ -252,8 +254,8 @@ impl TransactionContext {
 
     /// Set the sampling decision for this Transaction.
     ///
-    /// This can be either an explicit boolean flag, or [`None`], which will fall
-    /// back to use the configured `traces_sample_rate` option.
+    /// This can be either an explicit boolean flag, or [`None`], which leaves
+    /// the decision to the configured traces sampling strategy.
     pub fn set_sampled(&mut self, sampled: impl Into<Option<bool>>) {
         self.sampled = sampled.into();
     }
@@ -606,13 +608,13 @@ type TransactionArc = Arc<Mutex<TransactionInner>>;
 /// Split out from `Client.is_transaction_sampled` for testing.
 #[cfg(feature = "client")]
 fn transaction_sample_rate(
-    traces_sampler: Option<&TracesSampler>,
+    traces_sampling_strategy: &TracesSamplingStrategy,
     ctx: &TransactionContext,
-    traces_sample_rate: f32,
 ) -> f32 {
-    match (traces_sampler, traces_sample_rate) {
-        (Some(traces_sampler), _) => traces_sampler(ctx),
-        (None, traces_sample_rate) => ctx.sampled.map(f32::from).unwrap_or(traces_sample_rate),
+    match traces_sampling_strategy {
+        &TracesSamplingStrategy::FixedRate(rate) => ctx.sampled.map_or(rate, f32::from),
+        TracesSamplingStrategy::Function(traces_sampler) => traces_sampler(ctx),
+        TracesSamplingStrategy::Disabled => 0.0,
     }
 }
 
@@ -621,11 +623,7 @@ fn transaction_sample_rate(
 impl Client {
     fn determine_sampling_decision(&self, ctx: &TransactionContext) -> (bool, f32) {
         let client_options = self.options();
-        let sample_rate = transaction_sample_rate(
-            client_options.traces_sampler.as_deref(),
-            ctx,
-            client_options.traces_sample_rate,
-        );
+        let sample_rate = transaction_sample_rate(&client_options.traces_sampling_strategy, ctx);
         let sampled = self.sample_should_send(sample_rate);
         (sampled, sample_rate)
     }
@@ -1319,6 +1317,7 @@ impl std::fmt::Display for SentryTrace {
 #[cfg(test)]
 mod tests {
     use std::str::FromStr;
+    use std::sync::Arc;
 
     use super::*;
 
@@ -1373,35 +1372,65 @@ mod tests {
     #[cfg(feature = "client")]
     #[test]
     fn compute_transaction_sample_rate() {
-        // Global rate used as fallback.
         let ctx = TransactionContext::new("noop", "noop");
-        assert_eq!(transaction_sample_rate(None, &ctx, 0.3), 0.3);
-        assert_eq!(transaction_sample_rate(None, &ctx, 0.7), 0.7);
+        assert_eq!(
+            transaction_sample_rate(&TracesSamplingStrategy::FixedRate(0.3), &ctx),
+            0.3
+        );
+        assert_eq!(
+            transaction_sample_rate(&TracesSamplingStrategy::FixedRate(0.7), &ctx),
+            0.7
+        );
 
-        // If only global rate, setting sampled overrides it
         let mut ctx = TransactionContext::new("noop", "noop");
         ctx.set_sampled(true);
-        assert_eq!(transaction_sample_rate(None, &ctx, 0.3), 1.0);
+        assert_eq!(
+            transaction_sample_rate(&TracesSamplingStrategy::FixedRate(0.3), &ctx),
+            1.0
+        );
         ctx.set_sampled(false);
-        assert_eq!(transaction_sample_rate(None, &ctx, 0.3), 0.0);
+        assert_eq!(
+            transaction_sample_rate(&TracesSamplingStrategy::FixedRate(0.3), &ctx),
+            0.0
+        );
 
-        // If given, sampler function overrides everything else.
+        let ctx = TransactionContext::new("noop", "noop");
+        assert_eq!(
+            transaction_sample_rate(&TracesSamplingStrategy::Disabled, &ctx),
+            0.0
+        );
         let mut ctx = TransactionContext::new("noop", "noop");
-        assert_eq!(transaction_sample_rate(Some(&|_| { 0.7 }), &ctx, 0.3), 0.7);
+        ctx.set_sampled(true);
+        assert_eq!(
+            transaction_sample_rate(&TracesSamplingStrategy::Disabled, &ctx),
+            0.0
+        );
         ctx.set_sampled(false);
-        assert_eq!(transaction_sample_rate(Some(&|_| { 0.7 }), &ctx, 0.3), 0.7);
-        // But the sampler may choose to inspect parent sampling
+        assert_eq!(
+            transaction_sample_rate(&TracesSamplingStrategy::Disabled, &ctx),
+            0.0
+        );
+
+        // Function and FixedRate are mutually exclusive strategy variants. A function
+        // strategy can ignore parent sampling or choose to inspect it.
+        let mut ctx = TransactionContext::new("noop", "noop");
+        let sampler = |_: &TransactionContext| 0.7_f32;
+        let strategy = TracesSamplingStrategy::Function(Arc::new(sampler) as Arc<TracesSampler>);
+        assert_eq!(transaction_sample_rate(&strategy, &ctx), 0.7);
+        ctx.set_sampled(false);
+        assert_eq!(transaction_sample_rate(&strategy, &ctx), 0.7);
+
         let sampler = |ctx: &TransactionContext| match ctx.sampled() {
-            Some(true) => 0.8,
-            Some(false) => 0.4,
-            None => 0.6,
+            Some(true) => 0.8_f32,
+            Some(false) => 0.4_f32,
+            None => 0.6_f32,
         };
+        let strategy = TracesSamplingStrategy::Function(Arc::new(sampler) as Arc<TracesSampler>);
         ctx.set_sampled(true);
-        assert_eq!(transaction_sample_rate(Some(&sampler), &ctx, 0.3), 0.8);
+        assert_eq!(transaction_sample_rate(&strategy, &ctx), 0.8);
         ctx.set_sampled(None);
-        assert_eq!(transaction_sample_rate(Some(&sampler), &ctx, 0.3), 0.6);
+        assert_eq!(transaction_sample_rate(&strategy, &ctx), 0.6);
 
-        // Can use first-class and custom attributes of the context.
         let sampler = |ctx: &TransactionContext| {
             if ctx.name() == "must-name" || ctx.operation() == "must-operation" {
                 return 1.0;
@@ -1417,14 +1446,13 @@ mod tests {
 
             0.1
         };
-        // First class attributes
+        let strategy = TracesSamplingStrategy::Function(Arc::new(sampler) as Arc<TracesSampler>);
         let ctx = TransactionContext::new("noop", "must-operation");
-        assert_eq!(transaction_sample_rate(Some(&sampler), &ctx, 0.3), 1.0);
+        assert_eq!(transaction_sample_rate(&strategy, &ctx), 1.0);
         let ctx = TransactionContext::new("must-name", "noop");
-        assert_eq!(transaction_sample_rate(Some(&sampler), &ctx, 0.3), 1.0);
-        // Custom data payload
+        assert_eq!(transaction_sample_rate(&strategy, &ctx), 1.0);
         let mut ctx = TransactionContext::new("noop", "noop");
         ctx.custom_insert("rate".to_owned(), serde_json::json!(0.7));
-        assert_eq!(transaction_sample_rate(Some(&sampler), &ctx, 0.3), 0.7);
+        assert_eq!(transaction_sample_rate(&strategy, &ctx), 0.7);
     }
 }
