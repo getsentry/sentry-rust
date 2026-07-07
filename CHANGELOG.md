@@ -1,5 +1,27 @@
 # Changelog
 
+## Unreleased
+
+### Breaking Changes
+
+- [`ClientOptions`](https://docs.rs/sentry-core/0.49.0/sentry_core/struct.ClientOptions.html) is now `#[non_exhaustive]`. The struct must now be constructed with the builder-style setters:
+
+  ```rust
+  // Before
+  let options = sentry::ClientOptions {
+      dsn: "https://examplePublicKey@o0.ingest.sentry.io/0",
+      debug: true,
+      release: Some("my-app@1.0.0".into()),
+      ..Default::default()
+  };
+
+  // After
+  let options = sentry::ClientOptions::new()
+      .dsn("https://examplePublicKey@o0.ingest.sentry.io/0")
+      .debug(true)
+      .release("my-app@1.0.0");
+  ```
+
 ## 0.48.5
 
 ### Fixes
