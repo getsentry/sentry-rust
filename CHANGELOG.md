@@ -22,6 +22,7 @@
       .release("my-app@1.0.0");
   ```
 - The `logs` and `metrics` features are now enabled by default in the `sentry` crate. This does not break the API, but may cause new telemetry to be sent to Sentry: log and tracing integrations can send structured logs, and applications can send metrics without adding the feature flags. Disable these features explicitly if this additional telemetry is not desired ([#1251](https://github.com/getsentry/sentry-rust/pull/1251)).
+- Removed the public `ClientOptions::sample_rate` field. Use `ClientOptions::event_sampling_strategy` to inspect the configured event sampling strategy, and use the existing `ClientOptions::sample_rate(...)` builder setter to configure fixed-rate sampling.
 - Removed the public `ClientOptions::traces_sample_rate` and `ClientOptions::traces_sampler` fields. Use `ClientOptions::traces_sampling_strategy` to inspect the configured traces sampling strategy, and use the existing `ClientOptions::traces_sample_rate(...)` and `ClientOptions::traces_sampler(...)` builder setters to configure fixed-rate and callback-based sampling ([#1227](https://github.com/getsentry/sentry-rust/pull/1227)).
 
 ## 0.48.5

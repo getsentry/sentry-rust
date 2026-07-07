@@ -29,7 +29,7 @@ use crate::session::SessionFlusher;
 use crate::types::{Dsn, Uuid};
 #[cfg(feature = "release-health")]
 use crate::SessionMode;
-use crate::{ClientOptions, Envelope, Hub, Integration, Scope};
+use crate::{ClientOptions, Envelope, EventSamplingStrategy, Hub, Integration, Scope};
 
 #[cfg(feature = "logs")]
 use sentry_types::protocol::v7::Context;
@@ -46,6 +46,13 @@ mod envelope_sender;
 pub(crate) mod client_reports;
 
 pub(crate) use self::envelope_sender::EnvelopeSender;
+
+/// Functional implementation of how an event's sample rate is chosen.
+fn event_sample_rate(event_sampling_strategy: &EventSamplingStrategy) -> f32 {
+    match event_sampling_strategy {
+        &EventSamplingStrategy::FixedRate(rate) => rate,
+    }
+}
 
 impl<T: Into<ClientOptions>> From<T> for Client {
     fn from(o: T) -> Client {
@@ -386,7 +393,8 @@ impl Client {
             scope.update_session_from_event(&event);
         }
 
-        if !self.sample_should_send(self.options.sample_rate) {
+        let sample_rate = event_sample_rate(&self.options.event_sampling_strategy);
+        if !self.sample_should_send(sample_rate) {
             self.record_lost_event(ClientReportReason::SampleRate);
             None
         } else {
