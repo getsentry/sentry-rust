@@ -338,7 +338,8 @@ impl ClientOptions {
         }
     }
 
-    /// Sets the sample rate for tracing transactions.
+    /// Sets the [traces sampling strategy](field@ClientOptions::traces_sampling_strategy) to a
+    /// fixed sample rate for tracing transactions.
     ///
     /// Must be between `0.0` and `1.0`.
     ///
@@ -365,7 +366,8 @@ impl ClientOptions {
         }
     }
 
-    /// Sets the sampler callback for tracing transactions.
+    /// Sets the [traces sampling strategy](field@ClientOptions::traces_sampling_strategy) to a
+    /// sampler callback for tracing transactions.
     ///
     /// Return a sample rate between `0.0` and `1.0` for the transaction in question. This replaces
     /// any fixed-rate strategy configured with [`Self::traces_sample_rate`] and is distinct from
