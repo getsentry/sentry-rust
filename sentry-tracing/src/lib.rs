@@ -27,11 +27,11 @@
 //! ```
 //! use tracing_subscriber::prelude::*;
 //!
-//! let _guard = sentry::init(sentry::ClientOptions {
-//!     // Enable capturing of traces; set this a to lower value in production:
-//!     traces_sample_rate: 1.0,
-//!     ..sentry::ClientOptions::default()
-//! });
+//! let _guard = sentry::init(
+//!     sentry::ClientOptions::new()
+//!         // Enable capturing of traces; set this a to lower value in production:
+//!         .traces_sample_rate(1.0),
+//! );
 //!
 //! // Register the Sentry tracing layer to capture breadcrumbs, events, and spans:
 //! tracing_subscriber::registry()

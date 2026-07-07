@@ -38,11 +38,9 @@ static TEST_DSN: LazyLock<Dsn> =
 /// use std::sync::Arc;
 ///
 /// let transport = TestTransport::new();
-/// let options = ClientOptions {
-///     dsn: Some("https://public@example.com/1".parse().unwrap()),
-///     transport: Some(Arc::new(transport.clone())),
-///     ..ClientOptions::default()
-/// };
+/// let options = ClientOptions::new()
+///     .dsn("https://public@example.com/1")
+///     .transport(transport.clone());
 /// Hub::current().bind_client(Some(Arc::new(options.into())));
 /// ```
 pub struct TestTransport {

@@ -134,13 +134,11 @@ fn discarding_hub() -> sentry::Hub {
         }
     }
 
-    let client = Arc::new(sentry::Client::from(sentry::ClientOptions {
-        dsn: Some("https://public@sentry.invalid/1".parse().unwrap()),
-        // lol, this double arcing -_-
-        transport: Some(Arc::new(Arc::new(NoopTransport))),
-        // before_send: Some(Arc::new(|_| None)),
-        ..Default::default()
-    }));
+    let client = Arc::new(sentry::Client::from(
+        sentry::ClientOptions::new()
+            .dsn("https://public@sentry.invalid/1")
+            .transport(Arc::new(NoopTransport)),
+    ));
     let scope = Arc::new(sentry::Scope::default());
     sentry::Hub::new(Some(client), scope)
 }

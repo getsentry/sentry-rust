@@ -121,10 +121,7 @@ mod tests {
 
     #[test]
     fn test_default_environment() {
-        let opts = ClientOptions {
-            environment: Some("explicit-env".into()),
-            ..Default::default()
-        };
+        let opts = ClientOptions::new().environment("explicit-env");
         let opts = apply_defaults(opts);
         assert_eq!(opts.environment.unwrap(), "explicit-env");
 
