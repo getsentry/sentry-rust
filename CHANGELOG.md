@@ -4,7 +4,7 @@
 
 ### Breaking Changes
 
-- [`ClientOptions`](https://docs.rs/sentry-core/0.49.0/sentry_core/struct.ClientOptions.html) is now `#[non_exhaustive]`. The struct must now be constructed with the builder-style setters:
+- [`ClientOptions`](https://docs.rs/sentry-core/0.49.0/sentry_core/struct.ClientOptions.html) is now `#[non_exhaustive]` ([#1230](https://github.com/getsentry/sentry-rust/pull/1230)). The struct must now be constructed with the builder-style setters:
 
   ```rust
   // Before
