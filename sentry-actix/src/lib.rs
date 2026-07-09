@@ -754,12 +754,10 @@ mod tests {
                     assert!(res.status().is_success());
                 })
             },
-            sentry::ClientOptions {
-                org_id: Some(client_org_id.parse().unwrap()),
-                strict_trace_continuation: true,
-                traces_sample_rate: 1.0,
-                ..Default::default()
-            },
+            sentry::ClientOptions::new()
+                .org_id(client_org_id.parse().unwrap())
+                .strict_trace_continuation(true)
+                .traces_sample_rate(1.0),
         )
     }
 

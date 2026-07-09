@@ -20,15 +20,13 @@ impl TraceContinuationScenario {
         sdk_org_id: Option<&str>,
         strict_trace_continuation: bool,
     ) -> Self {
-        Self::run_with_options(
-            incoming_org_id,
-            ClientOptions {
-                org_id: sdk_org_id.map(|org_id| org_id.parse().unwrap()),
-                strict_trace_continuation,
-                traces_sample_rate: 0.0,
-                ..Default::default()
-            },
-        )
+        let options = sdk_org_id
+            .map(|org_id| ClientOptions::new().org_id(org_id.parse().unwrap()))
+            .unwrap_or_default()
+            .strict_trace_continuation(strict_trace_continuation)
+            .traces_sample_rate(0.0);
+
+        Self::run_with_options(incoming_org_id, options)
     }
 
     /// Starts a transaction with custom client options, preserving generated incoming IDs.
@@ -139,13 +137,11 @@ fn start_transaction_rejects_when_org_ids_mismatch_and_strict() {
 fn start_transaction_prefers_explicit_org_id_over_dsn_org_id() {
     TraceContinuationScenario::run_with_options(
         Some("42"),
-        ClientOptions {
-            dsn: Some("https://public@o43.ingest.sentry.io/1".parse().unwrap()),
-            org_id: Some("42".parse().unwrap()),
-            strict_trace_continuation: true,
-            traces_sample_rate: 0.0,
-            ..Default::default()
-        },
+        ClientOptions::new()
+            .dsn("https://public@o43.ingest.sentry.io/1")
+            .org_id("42".parse().unwrap())
+            .strict_trace_continuation(true)
+            .traces_sample_rate(0.0),
     )
     .assert_continued();
 }
