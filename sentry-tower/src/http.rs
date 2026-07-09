@@ -264,7 +264,7 @@ fn get_url_from_request<B>(request: &Request<B>) -> Option<url::Url> {
 #[cfg(test)]
 mod tests {
     use sentry_core::protocol::{Context, EnvelopeItem, TraceContext};
-    use sentry_core::Envelope;
+    use sentry_core::{ClientOptions, Envelope};
 
     use super::*;
 
@@ -308,12 +308,10 @@ mod tests {
                     service.call(request).await.unwrap();
                 });
             },
-            sentry::ClientOptions {
-                org_id: Some(client_org_id.parse().unwrap()),
-                strict_trace_continuation: true,
-                traces_sample_rate: 1.0,
-                ..Default::default()
-            },
+            ClientOptions::new()
+                .org_id(client_org_id.parse().unwrap())
+                .strict_trace_continuation(true)
+                .traces_sample_rate(1.0),
         )
     }
 
