@@ -145,17 +145,6 @@ pub struct ClientOptions {
     ///
     /// See [`dsn`](method@ClientOptions::dsn) for details.
     pub dsn: Option<Dsn>,
-    /// The Sentry organization ID used for trace continuation decisions.
-    ///
-    /// The SDK can derive this value automatically from Sentry SaaS DSNs. Set this explicitly for
-    /// DSNs whose organization ID cannot be inferred, mainly self-hosted Sentry and local Relay
-    /// setups.
-    pub org_id: Option<OrganizationId>,
-    /// Enables strict trace continuation.
-    ///
-    /// When enabled, the SDK will only continue incoming traces whose organization ID matches this
-    /// SDK's organization ID.
-    pub strict_trace_continuation: bool,
     /// Enables debug mode.
     ///
     /// See [`debug`](method@ClientOptions::debug) for details.
@@ -179,6 +168,15 @@ pub struct ClientOptions {
     /// [`traces_sampler`](method@ClientOptions::traces_sampler), or can be left at the default
     /// disabled value.
     pub traces_sampling_strategy: TracesSamplingStrategy,
+    /// The organization ID used for trace continuation.
+    ///
+    /// See [`org_id`](method@ClientOptions::org_id) for details.
+    pub org_id: Option<OrganizationId>,
+    /// Enables strict trace continuation.
+    ///
+    /// See [`strict_trace_continuation`](method@ClientOptions::strict_trace_continuation) for
+    /// details.
+    pub strict_trace_continuation: bool,
     /// Maximum number of breadcrumbs.
     ///
     /// See [`max_breadcrumbs`](method@ClientOptions::max_breadcrumbs) for details.
@@ -412,6 +410,38 @@ impl ClientOptions {
 
         Self {
             traces_sampling_strategy,
+            ..self
+        }
+    }
+
+    /// Sets the [organization ID](field@ClientOptions::org_id) used for trace continuation.
+    ///
+    /// By default, we infer the organization ID from the DSN when available. Setting this option
+    /// overrides the DSN-derived organization ID.
+    ///
+    /// This option should be used in local Relay and self-hosted setups, as the organization ID
+    /// cannot be inferred from the DSN in these cases.
+    #[inline]
+    pub fn org_id(self, org_id: OrganizationId) -> Self {
+        let org_id = Some(org_id);
+        Self { org_id, ..self }
+    }
+
+    /// Enables or disables [strict trace continuation](field@ClientOptions::strict_trace_continuation).
+    ///
+    /// Strict trace continuation helps prevent the SDK from continuing traces that originate from
+    /// services instrumented with Sentry by another organization.
+    ///
+    /// By default, the SDK will always continue incoming traces, unless this SDK has an org ID
+    /// embedded in the DSN or explicitly set with [`Self::org_id`] **and** the incoming trace
+    /// includes a different org ID.
+    ///
+    /// When strict trace continuation is enabled, the SDK additionally will not continue traces in
+    /// the case where one of the SDK's org ID or the incoming trace org ID are missing.
+    #[inline]
+    pub fn strict_trace_continuation(self, strict_trace_continuation: bool) -> Self {
+        Self {
+            strict_trace_continuation,
             ..self
         }
     }
