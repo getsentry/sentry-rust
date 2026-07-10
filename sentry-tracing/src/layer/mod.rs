@@ -388,12 +388,27 @@ where
             SPAN_GUARDS.with(|guards| {
                 guards.borrow_mut().push(id.clone(), guard);
             });
+
+            // TEMPORARY debug instrumentation; remove before merge.
+            crate::repro_diag::record(format!(
+                "on_enter id={:?} thread={:?}",
+                id,
+                std::thread::current().id(),
+            ));
         }
     }
 
     /// Drop the current span's [`HubSwitchGuard`] to restore the parent [`Hub`].
     fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
         let popped = SPAN_GUARDS.with(|guards| guards.borrow_mut().pop(id.clone()));
+
+        // TEMPORARY debug instrumentation; remove before merge.
+        crate::repro_diag::record(format!(
+            "on_exit id={:?} popped={} thread={:?}",
+            id,
+            popped.is_some(),
+            std::thread::current().id(),
+        ));
 
         // We should have popped a guard if the tracing span has `SentrySpanData` extensions.
         sentry_core::debug_assert_or_log!(

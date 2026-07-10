@@ -48,6 +48,10 @@ fn future_cross_thread_info_span() {
     thread2_result.expect("thread2 should not panic if debug_assertions are disabled");
 
     // TEMPORARY debug instrumentation; remove before merge.
+    sentry_tracing::repro_diag::record(format!(
+        "MAIN read transport on thread={:?}",
+        std::thread::current().id()
+    ));
     let envelopes = transport.fetch_and_clear_envelopes();
     if envelopes.len() != 1 {
         let diag = sentry_tracing::repro_diag::take();
@@ -115,17 +119,31 @@ fn futures_same_thread_info_span() {
 /// This function sets up the [`span_across_await`] future, then executes it such that
 /// the span gets entered and exited from different threads.
 fn futures_cross_thread_common(span: Span) -> Result<(), Box<dyn Any + Send + 'static>> {
+    // TEMPORARY debug instrumentation; remove before merge.
+    let name = span.metadata().map(|m| m.name()).unwrap_or("?").to_string();
+
     let mut future = Box::pin(span_across_await(span));
 
     let (tx, rx) = mpsc::channel();
 
+    let name1 = name.clone();
     let thread1 = thread::spawn(move || {
+        // TEMPORARY debug instrumentation; remove before merge.
+        sentry_tracing::repro_diag::record(format!(
+            "{name1} thread1 = {:?}",
+            std::thread::current().id()
+        ));
         let poll = future.as_mut().poll(&mut noop_context());
         assert!(poll.is_pending(), "future should be pending");
         tx.send(future).expect("failed to send future");
     });
 
     let thread2 = thread::spawn(move || {
+        // TEMPORARY debug instrumentation; remove before merge.
+        sentry_tracing::repro_diag::record(format!(
+            "{name} thread2 = {:?}",
+            std::thread::current().id()
+        ));
         let poll = rx
             .recv()
             .expect("failed to receive future")
@@ -161,11 +179,29 @@ fn assert_transaction(envelopes: Vec<Envelope>, name: &str) {
     );
 }
 
+/// TEMPORARY debug instrumentation; remove before merge.
+/// Logs the thread on which the future's own [`Span`] handle is dropped.
+struct DropLoggedSpan(Span);
+
+impl Drop for DropLoggedSpan {
+    fn drop(&mut self) {
+        sentry_tracing::repro_diag::record(format!(
+            "FUTURE span handle dropped on thread={:?}",
+            std::thread::current().id(),
+        ));
+    }
+}
+
 /// A helper function which and [`enter`s](tracing::Span::enter)
 /// a given [`Span`](tracing::Span), holding the returned
 /// [`Entered<'_>`](tracing::span::Entered) guard across an `.await` boundary.
 async fn span_across_await(span: Span) {
-    let _entered = span.enter();
+    // TEMPORARY debug instrumentation; remove before merge.
+    // Wrapping the span lets us log the thread where the future's own handle is
+    // dropped. Drop order: `_entered` first (-> on_exit), then `tracked`
+    // (-> logs the thread, then the inner Span drops -> try_close/on_close).
+    let tracked = DropLoggedSpan(span);
+    let _entered = tracked.0.enter();
     yield_once().await;
     // _entered dropped here, after .await call
 }
