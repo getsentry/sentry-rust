@@ -118,6 +118,7 @@ mod integration;
 mod intodsn;
 mod performance;
 mod scope;
+mod stream;
 mod transport;
 
 // public api or exports from this crate
@@ -131,6 +132,7 @@ pub use crate::integration::Integration;
 pub use crate::intodsn::IntoDsn;
 pub use crate::performance::*;
 pub use crate::scope::{Scope, ScopeGuard};
+pub use crate::stream::{SentryStream, SentryStreamExt};
 pub use crate::transport::{Transport, TransportFactory, TransportOptions};
 #[cfg(feature = "logs")]
 mod logger; // structured logging macros exported with `#[macro_export]`
