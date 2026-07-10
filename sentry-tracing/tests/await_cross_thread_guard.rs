@@ -136,8 +136,8 @@ fn futures_cross_thread_common(span: Span) -> Result<(), Box<dyn Any + Send + 's
 /// containing exactly one [`EnvelopeItem`], which is a [`Transaction`],
 /// with given [`name`](Transaction::name).
 fn assert_transaction(envelopes: Vec<Envelope>, name: &str) {
-    let envelope = get_and_assert_only_item(envelopes, "expected exactly one envelope");
-    let item = get_and_assert_only_item(envelope.into_items(), "expected exactly one item");
+    let envelope = get_and_assert_only_item(envelopes, "envelope");
+    let item = get_and_assert_only_item(envelope.into_items(), "envelope item");
 
     assert!(
         matches!(
@@ -180,15 +180,16 @@ fn noop_context() -> Context<'static> {
     Context::from_waker(Waker::noop())
 }
 
-/// Helper function to get and assert that there is exactly one item in the iterator.
-/// Extracts the only item from the iterator and returns it, or panics with the
-/// provided message if there are zero or multiple items.
-fn get_and_assert_only_item<I>(item_iter: I, message: &str) -> I::Item
+fn get_and_assert_only_item<I>(item_iter: I, what: &str) -> I::Item
 where
     I: IntoIterator,
+    I::Item: std::fmt::Debug,
 {
-    let mut iter = item_iter.into_iter();
-    let item = iter.next().expect(message);
-    assert!(iter.next().is_none(), "{message}");
-    item
+    let items: Vec<_> = item_iter.into_iter().collect();
+    assert!(
+        items.len() == 1,
+        "expected exactly one {what}, got {}: {items:#?}",
+        items.len()
+    );
+    items.into_iter().next().unwrap()
 }
