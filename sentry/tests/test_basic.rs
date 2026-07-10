@@ -161,6 +161,22 @@ fn test_reentrant_configure_scope() {
 }
 
 #[test]
+fn test_reentrant_read_scope() {
+    let events = sentry::test::with_captured_events(|| {
+        sentry::read_scope(|_scope| {
+            sentry::configure_scope(|scope| {
+                scope.set_tag("which_scope", "reentrant");
+            });
+        });
+
+        sentry::capture_message("look ma, no deadlock!", sentry::Level::Info);
+    });
+
+    assert_eq!(events.len(), 1);
+    assert_eq!(events[0].tags["which_scope"], "reentrant");
+}
+
+#[test]
 fn test_attached_stacktrace() {
     let logger = sentry_log::SentryLogger::new();
 

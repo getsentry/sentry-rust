@@ -216,6 +216,24 @@ impl Hub {
         }
     }
 
+    /// Invokes a function with read-only access to the current scope.
+    ///
+    /// See the global [`read_scope`](crate::read_scope)
+    /// for more documentation.
+    pub fn read_scope<F, R>(&self, f: F) -> R
+    where
+        R: Default,
+        F: FnOnce(&Scope) -> R,
+    {
+        use_without_client!(f);
+        with_client_impl! {{
+            // Clone the `Arc<Scope>` out so the callback runs without
+            // holding the stack lock, keeping reentrant hub calls safe.
+            let scope = self.inner.with(|stack| stack.top().scope.clone());
+            f(&scope)
+        }}
+    }
+
     /// Invokes a function that can modify the current scope.
     ///
     /// See the global [`configure_scope`](fn.configure_scope.html)
