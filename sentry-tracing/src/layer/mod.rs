@@ -329,6 +329,18 @@ where
                 tx.into()
             }
         };
+        // TEMPORARY debug instrumentation; remove before merge.
+        crate::repro_diag::record(format!(
+            "on_new_span name={:?} id={:?} kind={} thread={:?}",
+            sentry_name,
+            id,
+            match &sentry_span {
+                TransactionOrSpan::Transaction(_) => "Transaction",
+                TransactionOrSpan::Span(_) => "Span",
+            },
+            std::thread::current().id(),
+        ));
+
         // Add the data from the original span to the sentry span.
         // This comes from typically the `fields` in `tracing::instrument`.
         record_fields(&sentry_span, data);
@@ -401,16 +413,56 @@ where
     fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
         let span = match ctx.span(&id) {
             Some(span) => span,
-            None => return,
+            None => {
+                // TEMPORARY debug instrumentation; remove before merge.
+                crate::repro_diag::record(format!(
+                    "on_close id={:?} thread={:?} NO tracing span (no finish)",
+                    id,
+                    std::thread::current().id(),
+                ));
+                return;
+            }
         };
+
+        // TEMPORARY debug instrumentation; remove before merge.
+        let span_name = span.name();
 
         let mut extensions = span.extensions_mut();
         let SentrySpanData { sentry_span, .. } = match extensions.remove::<SentrySpanData>() {
             Some(data) => data,
-            None => return,
+            None => {
+                // TEMPORARY debug instrumentation; remove before merge.
+                crate::repro_diag::record(format!(
+                    "on_close name={:?} id={:?} thread={:?} NO SentrySpanData (no finish)",
+                    span_name,
+                    id,
+                    std::thread::current().id(),
+                ));
+                return;
+            }
         };
 
+        // TEMPORARY debug instrumentation; remove before merge.
+        crate::repro_diag::record(format!(
+            "on_close name={:?} id={:?} kind={} thread={:?} -> finish()",
+            span_name,
+            id,
+            match &sentry_span {
+                TransactionOrSpan::Transaction(_) => "Transaction",
+                TransactionOrSpan::Span(_) => "Span",
+            },
+            std::thread::current().id(),
+        ));
+
         sentry_span.finish();
+
+        // TEMPORARY debug instrumentation; remove before merge.
+        crate::repro_diag::record(format!(
+            "on_close name={:?} id={:?} thread={:?} finish() returned",
+            span_name,
+            id,
+            std::thread::current().id(),
+        ));
     }
 
     /// Implement the writing of extra data to span

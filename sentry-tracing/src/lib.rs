@@ -245,6 +245,32 @@ mod layer;
 pub use converters::*;
 pub use layer::*;
 
+/// TEMPORARY debug instrumentation for the `future_cross_thread_info_span`
+/// flake. Records layer callbacks (transaction vs span creation, and whether
+/// `on_close`/`finish` runs and on which thread) into a global buffer that the
+/// failing test dumps. Not part of the public API; remove before merge.
+#[doc(hidden)]
+pub mod repro_diag {
+    use std::sync::Mutex;
+
+    static EVENTS: Mutex<Vec<String>> = Mutex::new(Vec::new());
+
+    /// Append a diagnostic line.
+    pub fn record(line: String) {
+        if let Ok(mut events) = EVENTS.lock() {
+            events.push(line);
+        }
+    }
+
+    /// Drain and return all recorded diagnostic lines.
+    pub fn take() -> Vec<String> {
+        EVENTS
+            .lock()
+            .map(|mut events| std::mem::take(&mut *events))
+            .unwrap_or_default()
+    }
+}
+
 const TAGS_PREFIX: &str = "tags.";
 const SENTRY_OP_FIELD: &str = "sentry.op";
 const SENTRY_NAME_FIELD: &str = "sentry.name";

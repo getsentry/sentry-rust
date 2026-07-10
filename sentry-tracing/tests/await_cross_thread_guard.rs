@@ -47,7 +47,17 @@ fn future_cross_thread_info_span() {
     #[cfg(not(debug_assertions))]
     thread2_result.expect("thread2 should not panic if debug_assertions are disabled");
 
-    assert_transaction(transport.fetch_and_clear_envelopes(), SPAN_NAME);
+    // TEMPORARY debug instrumentation; remove before merge.
+    let envelopes = transport.fetch_and_clear_envelopes();
+    if envelopes.len() != 1 {
+        let diag = sentry_tracing::repro_diag::take();
+        panic!(
+            "REPRO expected exactly one envelope, got {}. layer diagnostics (all spans, this test run):\n{}",
+            envelopes.len(),
+            diag.join("\n"),
+        );
+    }
+    assert_transaction(envelopes, SPAN_NAME);
 }
 
 /// Counterpart to [`future_cross_thread_info_span`]; here, we check that no panic occurs
