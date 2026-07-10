@@ -4,7 +4,7 @@
 
 ### New Features
 
-- Added `sentry::read_scope` and `Hub::read_scope`, read-only counterparts to [`configure_scope`](https://docs.rs/sentry-core/0.48.4/sentry_core/fn.configure_scope.html) that avoid cloning the scope and writing it back.
+- Added `sentry::read_scope` and `Hub::read_scope`, read-only counterparts to [`configure_scope`](https://docs.rs/sentry-core/0.48.4/sentry_core/fn.configure_scope.html) that avoid cloning the scope and writing it back. The `sentry-tracing` integration now uses this to resolve the parent span when creating a new span.
 
 ## 0.48.4
 

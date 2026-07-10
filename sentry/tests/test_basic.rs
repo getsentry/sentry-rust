@@ -35,9 +35,7 @@ fn test_event_trace_context_from_propagation_context() {
     let mut last_event_id = None::<Uuid>;
     let mut span = None;
     let events = sentry::test::with_captured_events(|| {
-        sentry::configure_scope(|scope| {
-            span = scope.get_span();
-        });
+        span = sentry::read_scope(|scope| scope.get_span());
         sentry::capture_message("Hello World!", sentry::Level::Warning);
         last_event_id = sentry::last_event_id();
     });

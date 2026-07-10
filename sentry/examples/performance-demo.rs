@@ -37,7 +37,7 @@ fn main_span1() {
         let transaction_ctx = sentry::TransactionContext::continue_from_span(
             "background transaction",
             "root span",
-            sentry::configure_scope(|scope| scope.get_span()),
+            sentry::read_scope(|scope| scope.get_span()),
         );
         thread::spawn(move || {
             let transaction = sentry::start_transaction(transaction_ctx);
@@ -76,7 +76,7 @@ fn wrap_in_span<F, R>(op: &str, description: &str, f: F) -> R
 where
     F: FnOnce() -> R,
 {
-    let parent = sentry::configure_scope(|scope| scope.get_span());
+    let parent = sentry::read_scope(|scope| scope.get_span());
     let span1: sentry::TransactionOrSpan = match &parent {
         Some(parent) => parent.start_child(op, description).into(),
         None => {
