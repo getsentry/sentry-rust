@@ -32,7 +32,7 @@ metrics = []
 
 [dependencies]
 log = { version = "0.4.8", optional = true, features = ["std"] }
-rand = { version = "0.9.3", optional = true }
+rand = { version = "0.10.2", optional = true }
 sentry-types = { version = "0.48.4", path = "../sentry-types" }
 serde = { version = "1.0.104", features = ["derive"] }
 serde_json = { version = "1.0.46" }
