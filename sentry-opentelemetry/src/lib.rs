@@ -37,17 +37,15 @@
 //! // Initialize the Sentry SDK
 //! let _guard = sentry::init((
 //!     "https://your-dsn@sentry.io/0",
-//!     sentry::ClientOptions {
+//!     sentry::ClientOptions::new()
 //!         // Enable capturing of traces; set this a to lower value in production.
 //!         // For more sophisticated behavior use a custom
 //!         // [`sentry::ClientOptions::traces_sampler`] instead.
 //!         // That's the equivalent of a tail sampling processor in OpenTelemetry.
 //!         // These options will only affect sampling of the spans that are sent to Sentry,
 //!         // not of the underlying OpenTelemetry spans.
-//!         traces_sample_rate: 1.0,
-//!         debug: true,
-//!         ..sentry::ClientOptions::default()
-//!     },
+//!         .traces_sample_rate(1.0)
+//!         .debug(true),
 //! ));
 //!
 //! // Register the Sentry propagator to enable distributed tracing

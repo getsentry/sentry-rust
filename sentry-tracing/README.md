@@ -35,11 +35,11 @@ tracing subscriber:
 ```rust
 use tracing_subscriber::prelude::*;
 
-let _guard = sentry::init(sentry::ClientOptions {
-    // Enable capturing of traces; set this a to lower value in production:
-    traces_sample_rate: 1.0,
-    ..sentry::ClientOptions::default()
-});
+let _guard = sentry::init(
+    sentry::ClientOptions::new()
+        // Enable capturing of traces; set this a to lower value in production:
+        .traces_sample_rate(1.0),
+);
 
 // Register the Sentry tracing layer to capture breadcrumbs, events, and spans:
 tracing_subscriber::registry()
@@ -121,7 +121,7 @@ tracing::error!(
 );
 ```
 
-To track [error structs](https://docs.rs/sentry-tracing/0.48.3/sentry_tracing/std::error::Error), assign a reference to error trait object as field
+To track [error structs](https://docs.rs/sentry-tracing/0.48.4/sentry_tracing/std::error::Error), assign a reference to error trait object as field
 in one of the logging macros. By convention, it is recommended to use the `ERROR` level and
 assign it to a field called `error`, although the integration will also work with all other
 levels and field names.

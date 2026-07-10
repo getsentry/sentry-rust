@@ -22,14 +22,14 @@ async fn captures_message(_req: HttpRequest) -> Result<String, Error> {
 
 // cargo run -p sentry-actix --example basic
 fn main() -> io::Result<()> {
-    let _guard = sentry::init(sentry::ClientOptions {
-        release: sentry::release_name!(),
-        auto_session_tracking: true,
-        traces_sample_rate: 1.0,
-        session_mode: sentry::SessionMode::Request,
-        debug: true,
-        ..Default::default()
-    });
+    let _guard = sentry::init(
+        sentry::ClientOptions::new()
+            .maybe_release(sentry::release_name!())
+            .auto_session_tracking(true)
+            .traces_sample_rate(1.0)
+            .session_mode(sentry::SessionMode::Request)
+            .debug(true),
+    );
     env::set_var("RUST_BACKTRACE", "1");
 
     let runtime = tokio::runtime::Builder::new_multi_thread()

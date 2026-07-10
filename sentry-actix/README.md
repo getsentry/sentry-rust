@@ -26,10 +26,9 @@ async fn failing(_req: HttpRequest) -> Result<String, Error> {
 }
 
 fn main() -> io::Result<()> {
-    let _guard = sentry::init(sentry::ClientOptions {
-        release: sentry::release_name!(),
-        ..Default::default()
-    });
+    let _guard = sentry::init(
+        sentry::ClientOptions::new().maybe_release(sentry::release_name!()),
+    );
     std::env::set_var("RUST_BACKTRACE", "1");
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -55,12 +54,12 @@ when `auto_session_tracking` is enabled and the client is configured to
 use `SessionMode::Request`.
 
 ```rust
-let _sentry = sentry::init(sentry::ClientOptions {
-    release: sentry::release_name!(),
-    session_mode: sentry::SessionMode::Request,
-    auto_session_tracking: true,
-    ..Default::default()
-});
+let _sentry = sentry::init(
+    sentry::ClientOptions::new()
+        .maybe_release(sentry::release_name!())
+        .session_mode(sentry::SessionMode::Request)
+        .auto_session_tracking(true),
+);
 ```
 
 ## Reusing the Hub

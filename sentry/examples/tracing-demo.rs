@@ -11,12 +11,12 @@ fn main() {
         .try_init()
         .unwrap();
 
-    let _sentry = sentry::init(sentry::ClientOptions {
-        release: sentry::release_name!(),
-        traces_sample_rate: 1.0,
-        debug: true,
-        ..Default::default()
-    });
+    let _sentry = sentry::init(
+        sentry::ClientOptions::new()
+            .maybe_release(sentry::release_name!())
+            .traces_sample_rate(1.0)
+            .debug(true),
+    );
 
     tracing::debug!("System is booting");
     tracing::info!("System is booting");

@@ -1,6 +1,6 @@
 [package]
 name = "sentry-debug-images"
-version = "0.48.3"
+version = "0.48.4"
 authors = { workspace = true }
 license = "MIT"
 readme = "README.md"
@@ -17,4 +17,4 @@ workspace = true
 
 [dependencies]
 findshlibs = "=0.10.2"
-sentry-core = { version = "0.48.3", path = "../sentry-core" }
+sentry-core = { version = "0.48.4", path = "../sentry-core" }
