@@ -35,9 +35,7 @@ fn test_event_trace_context_from_propagation_context() {
     let mut last_event_id = None::<Uuid>;
     let mut span = None;
     let events = sentry::test::with_captured_events(|| {
-        sentry::configure_scope(|scope| {
-            span = scope.get_span();
-        });
+        span = sentry::read_scope(|scope| scope.get_span());
         sentry::capture_message("Hello World!", sentry::Level::Warning);
         last_event_id = sentry::last_event_id();
     });
@@ -158,6 +156,22 @@ fn test_reentrant_configure_scope() {
     assert_eq!(events.len(), 1);
     // well, the "outer" `configure_scope` wins
     assert_eq!(events[0].tags["which_scope"], "scope1");
+}
+
+#[test]
+fn test_reentrant_read_scope() {
+    let events = sentry::test::with_captured_events(|| {
+        sentry::read_scope(|_scope| {
+            sentry::configure_scope(|scope| {
+                scope.set_tag("which_scope", "reentrant");
+            });
+        });
+
+        sentry::capture_message("look ma, no deadlock!", sentry::Level::Info);
+    });
+
+    assert_eq!(events.len(), 1);
+    assert_eq!(events[0].tags["which_scope"], "reentrant");
 }
 
 #[test]

@@ -309,7 +309,7 @@ where
             sentry_op.unwrap_or_else(|| format!("{}::{}", span.metadata().target(), span.name()));
 
         let hub = sentry_core::Hub::current();
-        let parent_sentry_span = hub.configure_scope(|scope| scope.get_span());
+        let parent_sentry_span = hub.read_scope(|scope| scope.get_span());
 
         let mut sentry_span: sentry_core::TransactionOrSpan = match &parent_sentry_span {
             Some(parent) => parent.start_child(&sentry_op, sentry_name).into(),

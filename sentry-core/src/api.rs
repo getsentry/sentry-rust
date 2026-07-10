@@ -157,6 +157,28 @@ where
     Hub::with_active(|hub| hub.configure_scope(f))
 }
 
+/// Invokes a function with read-only access to the current scope.
+///
+/// The function is passed a shared reference to the [`Scope`].  Because there
+/// might currently not be a scope or client active it's possible that the
+/// callback might not be called at all.  As a result of this the return value
+/// of this closure must have a default that is returned in such cases.
+///
+/// # Examples
+///
+/// ```
+/// # sentry::test::with_captured_events(|| {
+/// let span = sentry::read_scope(|scope| scope.get_span());
+/// # });
+/// ```
+pub fn read_scope<F, R>(f: F) -> R
+where
+    R: Default,
+    F: FnOnce(&Scope) -> R,
+{
+    Hub::with_active(|hub| hub.read_scope(f))
+}
+
 /// Temporarily pushes a scope for a single call optionally reconfiguring it.
 ///
 /// This function takes two arguments: the first is a callback that is passed
