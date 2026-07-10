@@ -294,6 +294,21 @@ where
     /// When a new Span gets created, run the filter and start a new sentry span
     /// if it passes, setting it as the *current* sentry span.
     fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
+        // TEMPORARY debug instrumentation; remove before merge.
+        // Log EVERY span the subscriber sees, *before* the span filter can
+        // ignore it, so we catch library-emitted (e.g. trace/debug) spans.
+        // `contextual_parent` is the current span at creation time; if it is
+        // our span's id, this new span clones it as its parent and pins its
+        // ref_count until this new span closes.
+        crate::repro_diag::record(format!(
+            "on_new_span(ALL) name={:?} level={} id={:?} contextual_parent={:?} thread={:?}",
+            attrs.metadata().name(),
+            attrs.metadata().level(),
+            id,
+            ctx.current_span().id(),
+            std::thread::current().id(),
+        ));
+
         let span = match ctx.span(id) {
             Some(span) => span,
             None => return,
