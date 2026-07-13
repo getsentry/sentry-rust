@@ -1,3 +1,4 @@
+mod future_cross_thread_common;
 mod future_span_common;
 mod shared;
 
@@ -12,7 +13,7 @@ fn future_cross_thread_trace_span() {
 
     let span = tracing::trace_span!("future_cross_thread_trace_span");
 
-    future_span_common::futures_cross_thread_common(span)
+    future_cross_thread_common::futures_cross_thread_common(span)
         .expect("no panic should occur for spans not captured by Sentry");
 
     assert!(

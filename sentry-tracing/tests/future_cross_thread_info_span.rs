@@ -1,5 +1,7 @@
+mod future_cross_thread_common;
 mod future_span_common;
 mod shared;
+mod transaction_assertions;
 
 use sentry::{Hub, HubSwitchGuard};
 
@@ -19,7 +21,7 @@ fn future_cross_thread_info_span() {
 
     let span = tracing::info_span!(SPAN_NAME);
 
-    let thread2_result = future_span_common::futures_cross_thread_common(span);
+    let thread2_result = future_cross_thread_common::futures_cross_thread_common(span);
 
     // Panic should only occur when debug_assertions are enabled.
     #[cfg(debug_assertions)]
@@ -41,5 +43,5 @@ fn future_cross_thread_info_span() {
     #[cfg(not(debug_assertions))]
     thread2_result.expect("thread2 should not panic if debug_assertions are disabled");
 
-    future_span_common::assert_transaction(transport.fetch_and_clear_envelopes(), SPAN_NAME);
+    transaction_assertions::assert_transaction(transport.fetch_and_clear_envelopes(), SPAN_NAME);
 }

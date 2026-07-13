@@ -1,5 +1,6 @@
 mod future_span_common;
 mod shared;
+mod transaction_assertions;
 
 use std::future::Future;
 use std::thread;
@@ -35,7 +36,7 @@ fn futures_same_thread_info_span() {
     });
 
     thread.join().expect("thread should complete successfully");
-    future_span_common::assert_transaction(
+    transaction_assertions::assert_transaction(
         transport.fetch_and_clear_envelopes(),
         "futures_same_thread_info_span",
     );
