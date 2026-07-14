@@ -1,6 +1,6 @@
 [package]
 name = "sentry-backtrace"
-version = "0.48.4"
+version = "0.48.5"
 authors = { workspace = true }
 license = "MIT"
 readme = "README.md"
@@ -21,4 +21,4 @@ regex = { version = "1.5.5", default-features = false, features = [
     "std",
     "unicode-perl",
 ] }
-sentry-core = { version = "0.48.4", path = "../sentry-core" }
+sentry-core = { version = "0.48.5", path = "../sentry-core" }
