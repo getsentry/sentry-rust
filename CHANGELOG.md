@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixes
+
+- Fixed a bug that could cause the SDK to panic and, in some cases, panic while handling the panic, aborting the process ([#1241](https://github.com/getsentry/sentry-rust/pull/1241)).
+
 ## 0.48.4
 
 ### New Features
