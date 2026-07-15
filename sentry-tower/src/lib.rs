@@ -193,12 +193,7 @@ pub struct NewFromTopProvider;
 
 impl<Request> HubProvider<Arc<Hub>, Request> for NewFromTopProvider {
     fn hub(&self, _request: &Request) -> Arc<Hub> {
-        // The Clippy lint here is a false positive, the suggestion to write
-        // `Hub::with(Hub::new_from_top)` does not compiles:
-        //     143 |         Hub::with(Hub::new_from_top).into()
-        //         |         ^^^^^^^^^ implementation of `std::ops::FnOnce` is not general enough
-        #[allow(clippy::redundant_closure)]
-        Hub::with(|hub| Hub::new_from_top(hub)).into()
+        Hub::new_from_top(Hub::current()).into()
     }
 }
 

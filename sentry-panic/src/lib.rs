@@ -8,7 +8,7 @@
 //! # Configuration
 //!
 //! The panic integration can be configured with an additional extractor, which
-//! might optionally create a sentry `Event` out of a `PanicInfo`.
+//! might optionally create a sentry `Event` out of a `PanicHookInfo`.
 //!
 //! ```
 //! let integration = sentry_panic::PanicIntegration::default().add_extractor(|info| None);
@@ -19,8 +19,7 @@
 #![warn(missing_docs)]
 #![deny(unsafe_code)]
 
-#[allow(deprecated)] // `PanicHookInfo` is only available in Rust 1.81+.
-use std::panic::{self, PanicInfo};
+use std::panic::{self, PanicHookInfo};
 use std::sync::Once;
 
 use sentry_backtrace::current_stacktrace;
@@ -32,8 +31,7 @@ use sentry_core::{ClientOptions, Integration};
 /// This panic handler reports panics to Sentry. It also attempts to prevent
 /// double faults in some cases where it's known to be unsafe to invoke the
 /// Sentry panic handler.
-#[allow(deprecated)] // `PanicHookInfo` is only available in Rust 1.81+.
-pub fn panic_handler(info: &PanicInfo<'_>) {
+pub fn panic_handler(info: &PanicHookInfo<'_>) {
     sentry_core::with_integration(|integration: &PanicIntegration, hub| {
         hub.capture_event(integration.event_from_panic_info(info));
         if let Some(client) = hub.client() {
@@ -42,8 +40,7 @@ pub fn panic_handler(info: &PanicInfo<'_>) {
     });
 }
 
-#[allow(deprecated)] // `PanicHookInfo` is only available in Rust 1.81+.
-type PanicExtractor = dyn Fn(&PanicInfo<'_>) -> Option<Event<'static>> + Send + Sync;
+type PanicExtractor = dyn Fn(&PanicHookInfo<'_>) -> Option<Event<'static>> + Send + Sync;
 
 /// The Sentry Panic handler Integration.
 #[derive(Default)]
@@ -78,8 +75,7 @@ impl Integration for PanicIntegration {
 }
 
 /// Extract the message of a panic.
-#[allow(deprecated)] // `PanicHookInfo` is only available in Rust 1.81+.
-pub fn message_from_panic_info<'a>(info: &'a PanicInfo<'_>) -> &'a str {
+pub fn message_from_panic_info<'a>(info: &'a PanicHookInfo<'_>) -> &'a str {
     match info.payload().downcast_ref::<&'static str>() {
         Some(s) => s,
         None => match info.payload().downcast_ref::<String>() {
@@ -97,10 +93,9 @@ impl PanicIntegration {
 
     /// Registers a new extractor.
     #[must_use]
-    #[allow(deprecated)] // `PanicHookInfo` is only available in Rust 1.81+.
     pub fn add_extractor<F>(mut self, f: F) -> Self
     where
-        F: Fn(&PanicInfo<'_>) -> Option<Event<'static>> + Send + Sync + 'static,
+        F: Fn(&PanicHookInfo<'_>) -> Option<Event<'static>> + Send + Sync + 'static,
     {
         self.extractors.push(Box::new(f));
         self
@@ -109,8 +104,7 @@ impl PanicIntegration {
     /// Creates an event from the given panic info.
     ///
     /// The stacktrace is calculated from the current frame.
-    #[allow(deprecated)] // `PanicHookInfo` is only available in Rust 1.81+.
-    pub fn event_from_panic_info(&self, info: &PanicInfo<'_>) -> Event<'static> {
+    pub fn event_from_panic_info(&self, info: &PanicHookInfo<'_>) -> Event<'static> {
         for extractor in &self.extractors {
             if let Some(event) = extractor(info) {
                 return event;

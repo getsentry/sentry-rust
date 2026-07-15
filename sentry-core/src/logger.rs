@@ -25,13 +25,13 @@ macro_rules! logger_log {
             "sentry.message.template".to_owned(),
             $crate::protocol::LogAttribute($crate::protocol::Value::from($fmt))
         );
-        let mut i = 0;
+        let mut i = 0usize;
         $(
             attributes.insert(
                 format!("sentry.message.parameter.{}", i),
                 $crate::protocol::LogAttribute($crate::protocol::Value::from($arg))
             );
-            i += 1;
+            i = i.checked_add(1).expect("number of parametrs should not overflow usize");
         )*
         let _ = i; // avoid triggering the `unused_assignments` lint
 

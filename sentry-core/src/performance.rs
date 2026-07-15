@@ -4,6 +4,8 @@ use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::SystemTime;
 
+#[cfg(feature = "client")]
+use sentry_types::protocol::v7::client_report::Reason as ClientReportReason;
 use sentry_types::protocol::v7::SpanId;
 
 use crate::{protocol, Hub};
@@ -855,6 +857,11 @@ impl Transaction {
 
             // Discard `Transaction` unless sampled.
             if !inner.sampled {
+                if let Some(transaction) = inner.transaction.take() {
+                    if let Some(client) = inner.client.as_ref() {
+                        client.record_lost_data(&transaction, ClientReportReason::SampleRate);
+                    }
+                }
                 return;
             }
 
@@ -1139,6 +1146,8 @@ impl Span {
             if let Some(transaction) = inner.transaction.as_mut() {
                 if transaction.spans.len() <= MAX_SPANS {
                     transaction.spans.push(span.clone());
+                } else if let Some(client) = inner.client.as_ref() {
+                    client.record_lost_data(&*span, ClientReportReason::BufferOverflow);
                 }
             }
         }}

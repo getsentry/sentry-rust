@@ -1,6 +1,6 @@
 [package]
 name = "sentry-core"
-version = "0.47.0"
+version = "0.48.5"
 authors = { workspace = true }
 license = "MIT"
 readme = "README.md"
@@ -11,6 +11,9 @@ Core Sentry library used for instrumentation and integration development.
 """
 edition = { workspace = true }
 rust-version = { workspace = true }
+
+[lints]
+workspace = true
 
 [package.metadata.docs.rs]
 all-features = true
@@ -25,11 +28,12 @@ client = ["rand"]
 test = ["client", "release-health"]
 release-health = []
 logs = []
+metrics = []
 
 [dependencies]
 log = { version = "0.4.8", optional = true, features = ["std"] }
 rand = { version = "0.9.3", optional = true }
-sentry-types = { version = "0.47.0", path = "../sentry-types" }
+sentry-types = { version = "0.48.5", path = "../sentry-types" }
 serde = { version = "1.0.104", features = ["derive"] }
 serde_json = { version = "1.0.46" }
 url = { version = "2.1.1" }
@@ -42,6 +46,7 @@ uuid = { version = "1.0.0", features = ["v4", "serde"], optional = true }
 sentry = { path = "../sentry", default-features = false, features = [
     "test",
     "transport",
+    "metrics",
 ] }
 anyhow = "1.0.30"
 criterion = "0.5"

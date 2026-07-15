@@ -1,11 +1,15 @@
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{sync_channel, SyncSender};
+use std::sync::mpsc::{sync_channel, SyncSender, TrySendError};
 use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
+use sentry_core::client_report::{Reason as ClientReportReason, Recorder as ClientReportRecorder};
+
 use super::ratelimit::{RateLimiter, RateLimitingCategory};
 use super::DEFAULT_CHANNEL_CAPACITY;
+#[cfg(doc)]
+use super::{StdTransportThread, StdTransportThreadOptions}; // so we can use pub re-exports in docs
 use crate::{sentry_debug, Envelope};
 
 #[expect(
@@ -24,32 +28,88 @@ pub struct TransportThread {
     sender: SyncSender<Task>,
     shutdown: Arc<AtomicBool>,
     handle: Option<JoinHandle<()>>,
+    client_report_recorder: ClientReportRecorder,
+}
+
+/// Options for constructing a [`StdTransportThread`].
+#[must_use]
+pub struct TransportThreadOptions<F> {
+    send_fn: F,
+    client_report_recorder: ClientReportRecorder,
+    channel_capacity: usize,
+}
+
+impl<F> TransportThreadOptions<F> {
+    /// Creates options with the function used to send envelopes.
+    pub fn new(send_fn: F) -> Self {
+        Self {
+            send_fn,
+            client_report_recorder: Default::default(),
+            channel_capacity: DEFAULT_CHANNEL_CAPACITY,
+        }
+    }
+
+    /// Set the [`ClientReportRecorder`] on the options.
+    pub fn with_client_report_recorder(self, client_report_recorder: ClientReportRecorder) -> Self {
+        Self {
+            client_report_recorder,
+            ..self
+        }
+    }
+
+    /// Set the capacity of the channel that queues envelopes for the background
+    /// thread.
+    ///
+    /// The capacity bounds how many envelopes may be queued before `send`
+    /// starts dropping them. A capacity of `0` creates a rendezvous channel:
+    /// because `send` uses `try_send`, an envelope is accepted only when the
+    /// transport thread is currently waiting on the receiver, otherwise it is
+    /// dropped. That is a no-buffer back-pressure policy, not a blanket
+    /// "drop everything" mode.
+    pub fn with_channel_capacity(self, channel_capacity: usize) -> Self {
+        Self {
+            channel_capacity,
+            ..self
+        }
+    }
+}
+
+impl<F> TransportThreadOptions<F>
+where
+    F: FnMut(Envelope, &mut RateLimiter) + Send + 'static,
+{
+    /// Spawn a [`StdTransportThread`], configured per these options.
+    pub fn spawn_thread(self) -> TransportThread {
+        TransportThread::with_options(self)
+    }
 }
 
 impl TransportThread {
-    /// Spawn a new background thread with the default channel capacity of 30.
+    /// Backwards-compatible method to spawn a new background thread.
+    ///
+    /// Please construct this type via [`StdTransportThreadOptions`] instead.
+    #[deprecated(note = "construct via `TransportThreadOptions` instead")]
     pub fn new<SendFn>(send: SendFn) -> Self
     where
         SendFn: FnMut(Envelope, &mut RateLimiter) + Send + 'static,
     {
-        Self::with_capacity(send, DEFAULT_CHANNEL_CAPACITY)
+        Self::with_options(TransportThreadOptions::new(send))
     }
 
-    /// Spawn a new background thread with a custom channel capacity.
-    ///
-    /// The channel capacity bounds how many envelopes may be queued before
-    /// `send` blocks. A capacity of `0` creates a rendezvous channel:
-    /// because `send` uses `try_send`, an envelope is accepted only when the
-    /// transport thread is currently waiting on the receiver, otherwise it
-    /// is dropped. That is a no-buffer back-pressure policy, not a blanket
-    /// "drop everything" mode.
-    pub(crate) fn with_capacity<SendFn>(mut send: SendFn, channel_capacity: usize) -> Self
+    /// Spawn a new background thread with options.
+    fn with_options<SendFn>(options: TransportThreadOptions<SendFn>) -> Self
     where
         SendFn: FnMut(Envelope, &mut RateLimiter) + Send + 'static,
     {
+        let TransportThreadOptions {
+            send_fn: mut send,
+            client_report_recorder,
+            channel_capacity,
+        } = options;
         let (sender, receiver) = sync_channel(channel_capacity);
         let shutdown = Arc::new(AtomicBool::new(false));
         let shutdown_worker = shutdown.clone();
+        let handle_client_report_recorder = client_report_recorder.clone();
         let handle = thread::Builder::new()
             .name("sentry-transport".into())
             .spawn(move || {
@@ -75,9 +135,11 @@ impl TransportThread {
                             "Skipping event send because we're disabled due to rate limits for {}s",
                             time_left.as_secs()
                         );
+                        handle_client_report_recorder
+                            .record_lost_data(&envelope, ClientReportReason::RatelimitBackoff);
                         continue;
                     }
-                    match rl.filter_envelope(envelope) {
+                    match rl.filter(envelope, &handle_client_report_recorder) {
                         Some(envelope) => {
                             send(envelope, &mut rl);
                         }
@@ -93,6 +155,7 @@ impl TransportThread {
             sender,
             shutdown,
             handle,
+            client_report_recorder,
         }
     }
 
@@ -105,6 +168,18 @@ impl TransportThread {
         // drop the envelope in that case.
         if let Err(e) = self.sender.try_send(Task::SendEnvelope(envelope)) {
             sentry_debug!("envelope dropped: {e}");
+
+            // Get back the envelope from the TrySendError so we can record it as lost.
+            let (task, reason) = match e {
+                TrySendError::Full(task) => (task, ClientReportReason::QueueOverflow),
+                TrySendError::Disconnected(task) => (task, ClientReportReason::InternalError),
+            };
+            let Task::SendEnvelope(envelope) = task else {
+                unreachable!("we sent a `SendEnvelope` task");
+            };
+
+            self.client_report_recorder
+                .record_lost_data(&envelope, reason);
         }
     }
 

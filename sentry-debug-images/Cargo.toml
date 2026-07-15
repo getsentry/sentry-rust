@@ -1,6 +1,6 @@
 [package]
 name = "sentry-debug-images"
-version = "0.47.0"
+version = "0.48.5"
 authors = { workspace = true }
 license = "MIT"
 readme = "README.md"
@@ -12,6 +12,9 @@ Sentry integration that adds the list of loaded libraries to events.
 edition = { workspace = true }
 rust-version = { workspace = true }
 
+[lints]
+workspace = true
+
 [dependencies]
 findshlibs = "=0.10.2"
-sentry-core = { version = "0.47.0", path = "../sentry-core" }
+sentry-core = { version = "0.48.5", path = "../sentry-core" }

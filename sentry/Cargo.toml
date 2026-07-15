@@ -1,6 +1,6 @@
 [package]
 name = "sentry"
-version = "0.47.0"
+version = "0.48.5"
 authors = { workspace = true }
 license = "MIT"
 readme = "README.md"
@@ -49,6 +49,7 @@ opentelemetry = ["sentry-opentelemetry"]
 test = ["sentry-core/test"]
 release-health = ["sentry-core/release-health", "sentry-actix?/release-health"]
 logs = ["sentry-core/logs", "sentry-tracing?/logs", "sentry-log?/logs"]
+metrics = ["sentry-core/metrics"]
 # transports
 transport = ["reqwest", "native-tls"]
 reqwest = ["dep:reqwest", "httpdate", "tokio"]
@@ -57,23 +58,24 @@ ureq = ["dep:ureq", "httpdate"]
 # transport settings
 native-tls = ["dep:native-tls", "reqwest?/native-tls", "ureq?/native-tls"]
 rustls = ["dep:rustls", "reqwest?/rustls", "ureq?/rustls"]
+rustls-no-provider = ["dep:rustls", "reqwest?/rustls-no-provider", "ureq?/rustls"]
 embedded-svc-http = ["dep:embedded-svc", "dep:esp-idf-svc"]
 
 [dependencies]
-sentry-core = { version = "0.47.0", path = "../sentry-core", features = [
+sentry-core = { version = "0.48.5", path = "../sentry-core", features = [
     "client",
 ] }
-sentry-anyhow = { version = "0.47.0", path = "../sentry-anyhow", optional = true }
-sentry-actix = { version = "0.47.0", path = "../sentry-actix", optional = true, default-features = false }
-sentry-backtrace = { version = "0.47.0", path = "../sentry-backtrace", optional = true }
-sentry-contexts = { version = "0.47.0", path = "../sentry-contexts", optional = true }
-sentry-debug-images = { version = "0.47.0", path = "../sentry-debug-images", optional = true }
-sentry-log = { version = "0.47.0", path = "../sentry-log", optional = true }
-sentry-panic = { version = "0.47.0", path = "../sentry-panic", optional = true }
-sentry-slog = { version = "0.47.0", path = "../sentry-slog", optional = true }
-sentry-tower = { version = "0.47.0", path = "../sentry-tower", optional = true }
-sentry-tracing = { version = "0.47.0", path = "../sentry-tracing", optional = true }
-sentry-opentelemetry = { version = "0.47.0", path = "../sentry-opentelemetry", optional = true }
+sentry-anyhow = { version = "0.48.5", path = "../sentry-anyhow", optional = true }
+sentry-actix = { version = "0.48.5", path = "../sentry-actix", optional = true, default-features = false }
+sentry-backtrace = { version = "0.48.5", path = "../sentry-backtrace", optional = true }
+sentry-contexts = { version = "0.48.5", path = "../sentry-contexts", optional = true }
+sentry-debug-images = { version = "0.48.5", path = "../sentry-debug-images", optional = true }
+sentry-log = { version = "0.48.5", path = "../sentry-log", optional = true }
+sentry-panic = { version = "0.48.5", path = "../sentry-panic", optional = true }
+sentry-slog = { version = "0.48.5", path = "../sentry-slog", optional = true }
+sentry-tower = { version = "0.48.5", path = "../sentry-tower", optional = true }
+sentry-tracing = { version = "0.48.5", path = "../sentry-tracing", optional = true }
+sentry-opentelemetry = { version = "0.48.5", path = "../sentry-opentelemetry", optional = true }
 reqwest = { version = "0.13.1", optional = true, features = [
     "http2",
     "blocking",
@@ -106,8 +108,8 @@ tower = { version = "0.5.2", features = ["util"] }
 tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["fmt", "tracing-log"] }
 
-[lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(doc_cfg)'] }
+[lints]
+workspace = true
 
 [build-dependencies]
 cfg_aliases = "0.2.1"

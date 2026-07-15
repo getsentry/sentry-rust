@@ -1,4 +1,6 @@
 use httpdate::parse_http_date;
+use sentry_core::client_report::{Reason as ClientReportReason, Recorder as ClientReportRecorder};
+use sentry_core::protocol::EnvelopeFilterCallbacks;
 use std::time::{Duration, SystemTime};
 
 use crate::protocol::EnvelopeItem;
@@ -14,6 +16,7 @@ pub struct RateLimiter {
     transaction: Option<SystemTime>,
     attachment: Option<SystemTime>,
     log_item: Option<SystemTime>,
+    trace_metric: Option<SystemTime>,
 }
 
 impl RateLimiter {
@@ -25,11 +28,11 @@ impl RateLimiter {
     /// Updates the RateLimiter with information from a `Retry-After` header.
     pub fn update_from_retry_after(&mut self, header: &str) {
         let new_time = if let Ok(value) = header.parse::<f64>() {
-            SystemTime::now() + Duration::from_secs(value.ceil() as u64)
+            time_after(Duration::from_secs(value.ceil() as u64))
         } else if let Ok(value) = parse_http_date(header) {
             value
         } else {
-            SystemTime::now() + Duration::from_secs(60)
+            time_after_default_delay()
         };
 
         self.global = Some(new_time);
@@ -46,7 +49,7 @@ impl RateLimiter {
             let categories = splits.next()?;
             let _scope = splits.next()?;
 
-            let new_time = Some(SystemTime::now() + Duration::from_secs(seconds.ceil() as u64));
+            let new_time = Some(time_after(Duration::from_secs(seconds.ceil() as u64)));
 
             if categories.is_empty() {
                 self.global = new_time;
@@ -59,6 +62,7 @@ impl RateLimiter {
                     "transaction" => self.transaction = new_time,
                     "attachment" => self.attachment = new_time,
                     "log_item" => self.log_item = new_time,
+                    "trace_metric" => self.trace_metric = new_time,
                     _ => {}
                 }
             }
@@ -72,7 +76,7 @@ impl RateLimiter {
 
     /// Updates the RateLimiter in response to a `429` status code.
     pub fn update_from_429(&mut self) {
-        self.global = Some(SystemTime::now() + Duration::from_secs(60));
+        self.global = Some(time_after_default_delay());
     }
 
     /// Query the RateLimiter if a certain category of event is currently rate limited.
@@ -93,6 +97,7 @@ impl RateLimiter {
             RateLimitingCategory::Transaction => self.transaction,
             RateLimitingCategory::Attachment => self.attachment,
             RateLimitingCategory::LogItem => self.log_item,
+            RateLimitingCategory::TraceMetric => self.trace_metric,
         }?;
         time_left.duration_since(SystemTime::now()).ok()
     }
@@ -107,21 +112,43 @@ impl RateLimiter {
     /// Filters the [`Envelope`] according to the current rate limits.
     ///
     /// Returns [`None`] if all the envelope items were filtered out.
+    #[deprecated = "Deprecated with no new public API equivalent."]
     pub fn filter_envelope(&self, envelope: Envelope) -> Option<Envelope> {
-        envelope.filter(|item| {
-            self.is_enabled(match item {
-                EnvelopeItem::Event(_) => RateLimitingCategory::Error,
-                EnvelopeItem::SessionUpdate(_) | EnvelopeItem::SessionAggregates(_) => {
-                    RateLimitingCategory::Session
-                }
-                EnvelopeItem::Transaction(_) => RateLimitingCategory::Transaction,
-                EnvelopeItem::Attachment(_) => RateLimitingCategory::Attachment,
-                EnvelopeItem::ItemContainer(ItemContainer::Logs(_)) => {
-                    RateLimitingCategory::LogItem
-                }
-                _ => RateLimitingCategory::Any,
-            })
-        })
+        self.filter(envelope, &Default::default())
+    }
+
+    /// Filters the [`Envelope`] according to current rate limits, recording any discarded items
+    /// as lost via the client report recorder.
+    ///
+    /// Returns [`None`] if all the envelope items were filtered out.
+    pub(super) fn filter(
+        &self,
+        envelope: Envelope,
+        client_report_recorder: &ClientReportRecorder,
+    ) -> Option<Envelope> {
+        envelope.filter(EnvelopeFilterCallbacks::new(
+            |item: &_| {
+                self.is_enabled(match item {
+                    EnvelopeItem::Event(_) => RateLimitingCategory::Error,
+                    EnvelopeItem::SessionUpdate(_) | EnvelopeItem::SessionAggregates(_) => {
+                        RateLimitingCategory::Session
+                    }
+                    EnvelopeItem::Transaction(_) => RateLimitingCategory::Transaction,
+                    EnvelopeItem::Attachment(_) => RateLimitingCategory::Attachment,
+                    EnvelopeItem::ItemContainer(ItemContainer::Logs(_)) => {
+                        RateLimitingCategory::LogItem
+                    }
+                    EnvelopeItem::ItemContainer(ItemContainer::Metrics(_)) => {
+                        RateLimitingCategory::TraceMetric
+                    }
+                    _ => RateLimitingCategory::Any,
+                })
+            },
+            |item| {
+                client_report_recorder
+                    .record_lost_data(&item, ClientReportReason::RatelimitBackoff);
+            },
+        ))
     }
 }
 
@@ -140,6 +167,26 @@ pub enum RateLimitingCategory {
     Attachment,
     /// Rate Limit pertaining to Log Items.
     LogItem,
+    /// Rate Limit pertaining to Trace Metrics.
+    TraceMetric,
+}
+
+/// Returns the [`SystemTime`] after the given duration has passed.
+/// If this would overflow [`SystemTime`], we fall back to [`time_after_default_delay`].
+fn time_after(duration: Duration) -> SystemTime {
+    SystemTime::now()
+        .checked_add(duration)
+        .unwrap_or_else(time_after_default_delay)
+}
+
+/// Returns the [`SystemTime`] after the default 1-minute delay has passed.
+/// If this would overflow [`SystemTime`] (very unlikely), we fall back to the current time.
+fn time_after_default_delay() -> SystemTime {
+    /// The default rate limit delay is 1 minute.
+    const DEFAULT_DELAY: Duration = Duration::from_secs(60);
+
+    let now = SystemTime::now();
+    now.checked_add(DEFAULT_DELAY).unwrap_or(now)
 }
 
 #[cfg(test)]
@@ -155,6 +202,7 @@ mod tests {
         assert!(rl.is_disabled(RateLimitingCategory::Session).unwrap() <= Duration::from_secs(60));
         assert!(rl.is_disabled(RateLimitingCategory::Transaction).is_none());
         assert!(rl.is_disabled(RateLimitingCategory::LogItem).is_none());
+        assert!(rl.is_disabled(RateLimitingCategory::TraceMetric).is_none());
         assert!(rl.is_disabled(RateLimitingCategory::Any).is_none());
 
         rl.update_from_sentry_header(
@@ -184,6 +232,9 @@ mod tests {
         assert!(rl.is_disabled(RateLimitingCategory::LogItem).unwrap() <= Duration::from_secs(120));
         assert!(
             rl.is_disabled(RateLimitingCategory::Attachment).unwrap() <= Duration::from_secs(120)
+        );
+        assert!(
+            rl.is_disabled(RateLimitingCategory::TraceMetric).unwrap() <= Duration::from_secs(120)
         );
         assert!(rl.is_disabled(RateLimitingCategory::Any).unwrap() <= Duration::from_secs(120));
     }

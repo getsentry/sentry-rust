@@ -1,23 +1,29 @@
-use std::cell::{Cell, UnsafeCell};
+use std::cell::RefCell;
 use std::marker::PhantomData;
 use std::sync::{Arc, LazyLock, MutexGuard, PoisonError, RwLock};
 use std::thread;
+use std::thread::ThreadId;
 
 use crate::Scope;
 use crate::{scope::Stack, Client, Hub};
 
-static PROCESS_HUB: LazyLock<(Arc<Hub>, thread::ThreadId)> = LazyLock::new(|| {
-    (
-        Arc::new(Hub::new(None, Arc::new(Default::default()))),
-        thread::current().id(),
-    )
+static PROCESS_HUB: LazyLock<ProcessHub> = LazyLock::new(|| ProcessHub {
+    hub: Arc::new(Hub::new(None, Arc::new(Default::default()))),
+    thread: thread::current().id(),
 });
 
 thread_local! {
-    static THREAD_HUB: (UnsafeCell<Arc<Hub>>, Cell<bool>) = (
-        UnsafeCell::new(Arc::new(Hub::new_from_top(&PROCESS_HUB.0))),
-        Cell::new(PROCESS_HUB.1 == thread::current().id())
-    );
+    /// The [`Hub`] associated with this thread.
+    ///
+    /// On the thread on which the [`PROCESS_HUB`] is initialized, the [`THREAD_HUB`] and
+    /// [`PROCESS_HUB`] are identical, i.e. `Arc::ptr_eq(&PROCESS_HUB, &THREAD_HUB)` is true.
+    /// On any other thread, the [`THREAD_HUB`] is created as a new hub based off of the
+    /// [`PROCESS_HUB`].
+    static THREAD_HUB: RefCell<Arc<Hub>> = if thread::current().id() == PROCESS_HUB.thread {
+        PROCESS_HUB.hub.clone()
+    } else {
+        Hub::new_from_top(&PROCESS_HUB.hub).into()
+    }.into()
 }
 
 /// A guard that temporarily swaps the active hub in thread-local storage.
@@ -25,7 +31,7 @@ thread_local! {
 /// This type is `!Send` because it manages thread-local state and must be
 /// dropped on the same thread where it was created.
 pub struct SwitchGuard {
-    inner: Option<(Arc<Hub>, bool)>,
+    inner: Option<Arc<Hub>>,
     /// Makes this type `!Send` while keeping it `Sync`.
     ///
     /// ```rust
@@ -49,16 +55,13 @@ impl SwitchGuard {
     /// and returns a guard that, when dropped, replaces it
     /// to the previous one.
     pub fn new(mut hub: Arc<Hub>) -> Self {
-        let inner = THREAD_HUB.with(|(thread_hub, is_process_hub)| {
-            // SAFETY: `thread_hub` will always be a valid thread local hub,
-            // by definition not shared between threads.
-            let thread_hub = unsafe { &mut *thread_hub.get() };
+        let inner = THREAD_HUB.with(|thread_hub| {
+            let mut thread_hub = thread_hub.borrow_mut();
             if std::ptr::eq(thread_hub.as_ref(), hub.as_ref()) {
                 return None;
             }
-            std::mem::swap(thread_hub, &mut hub);
-            let was_process_hub = is_process_hub.replace(false);
-            Some((hub, was_process_hub))
+            std::mem::swap(&mut *thread_hub, &mut hub);
+            Some(hub)
         });
         SwitchGuard {
             inner,
@@ -67,18 +70,20 @@ impl SwitchGuard {
     }
 
     fn swap(&mut self) -> Option<Arc<Hub>> {
-        if let Some((mut hub, was_process_hub)) = self.inner.take() {
-            Some(THREAD_HUB.with(|(thread_hub, is_process_hub)| {
-                let thread_hub = unsafe { &mut *thread_hub.get() };
-                std::mem::swap(thread_hub, &mut hub);
-                if was_process_hub {
-                    is_process_hub.set(true);
-                }
-                hub
-            }))
-        } else {
-            None
-        }
+        self.inner.take().and_then(|mut hub| {
+            // We use `try_with` to access the `THREAD_HUB`, intentionally ignoring any errors that
+            // result. If `try_with` errors, this is because the `THREAD_HUB` local key has been
+            // destroyed, which means that there is nothing to swap with, making this operation
+            // pointless. Further, the destruction of the thread-local indicates that the thread
+            // is likely shutting down.
+            THREAD_HUB
+                .try_with(|thread_hub| {
+                    let mut thread_hub = thread_hub.borrow_mut();
+                    std::mem::swap(&mut *thread_hub, &mut hub);
+                    hub
+                })
+                .ok()
+        })
     }
 }
 
@@ -148,7 +153,7 @@ impl Hub {
     /// This method is unavailable if the client implementation is disabled.
     /// When using the minimal API set use [`Hub::with_active`] instead.
     pub fn current() -> Arc<Hub> {
-        Hub::with(Arc::clone)
+        THREAD_HUB.with_borrow(Arc::clone)
     }
 
     /// Returns the main thread's hub.
@@ -156,24 +161,33 @@ impl Hub {
     /// This is similar to [`Hub::current`] but instead of picking the
     /// current thread's hub it returns the main thread's hub instead.
     pub fn main() -> Arc<Hub> {
-        PROCESS_HUB.0.clone()
+        PROCESS_HUB.hub.clone()
     }
 
     /// Invokes the callback with the default hub.
-    ///
-    /// This is a slightly more efficient version than [`Hub::current`] and
-    /// also unavailable in minimal mode.
+    #[deprecated = "Use `Hub::current` instead; this function offers no performance benefit."]
     pub fn with<F, R>(f: F) -> R
     where
         F: FnOnce(&Arc<Hub>) -> R,
     {
-        THREAD_HUB.with(|(hub, is_process_hub)| {
-            if is_process_hub.get() {
-                f(&PROCESS_HUB.0)
-            } else {
-                f(unsafe { &*hub.get() })
-            }
-        })
+        f(&Hub::current())
+    }
+
+    /// Invokes the callback with a reference to the thread hub.
+    ///
+    /// This is potentially more performant than [`Hub::current`] as we avoid an [`Arc::clone`],
+    /// but it holds a borrow to the [`THREAD_HUB`]'s `RefCell` for the duration of the callback.
+    /// It is therefore essential to avoid calling [`Hub::run`], [`SwitchGuard::new`], or anything
+    /// else that mutably borrows the [`THREAD_HUB`] during the callback, e.g. any user-supplied
+    /// callbacks.
+    ///
+    /// # Panics
+    /// Panics if the [`THREAD_HUB`] is mutably borrowed at any point during the callback.
+    pub(crate) fn with_current<F, R>(f: F) -> R
+    where
+        F: FnOnce(&Hub) -> R,
+    {
+        THREAD_HUB.with_borrow(|hub| f(hub))
     }
 
     /// Binds a hub to the current thread for the duration of the call.
@@ -212,5 +226,32 @@ impl Hub {
     pub(crate) fn with_current_scope_mut<F: FnOnce(&mut Scope) -> R, R>(&self, f: F) -> R {
         self.inner
             .with_mut(|stack| f(Arc::make_mut(&mut stack.top_mut().scope)))
+    }
+}
+
+/// Helper struct for storing the [`PROCESS_HUB`].
+struct ProcessHub {
+    /// The process's main hub.
+    hub: Arc<Hub>,
+    /// The thread on which the main hub was initialized.
+    thread: ThreadId,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Regression test for [`Hub::with`], ensuring that the `RefCell` borrow is not held during the callback.
+    ///
+    /// If we hold the `RefCell` borrow during the callback, this would panic.
+    #[test]
+    fn hub_run_inside_with_scope() {
+        let outer_hub = Arc::new(Hub::new(None, Default::default()));
+        let inner_hub = Arc::new(Hub::new(None, Default::default()));
+
+        Hub::run(outer_hub, || {
+            #[expect(deprecated)] // We are intentionally testing deprecated functionality
+            Hub::with(|_| Hub::run(inner_hub, || {}));
+        });
     }
 }

@@ -70,10 +70,7 @@ impl Drop for ClientInitGuard {
 /// created to enable further configuration:
 ///
 /// ```
-/// let sentry = sentry::init(sentry::ClientOptions {
-///     release: Some("foo-bar-baz@1.0.0".into()),
-///     ..Default::default()
-/// });
+/// let sentry = sentry::init(sentry::ClientOptions::new().release("foo-bar-baz@1.0.0"));
 /// if sentry.is_enabled() {
 ///     // some other initialization
 /// }
@@ -104,7 +101,9 @@ where
 
     let client = Arc::new(Client::from(opts));
 
-    Hub::with(|hub| hub.bind_client(Some(client.clone())));
+    let hub = Hub::current();
+    hub.bind_client(Some(client.clone()));
+
     if let Some(dsn) = client.dsn() {
         sentry_debug!("enabled sentry client for DSN {}", dsn);
     } else {

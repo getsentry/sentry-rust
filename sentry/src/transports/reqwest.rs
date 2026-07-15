@@ -1,13 +1,18 @@
 use std::time::Duration;
 
 use reqwest::{header as ReqwestHeaders, Client as ReqwestClient, Proxy, StatusCode};
+use sentry_core::client_report::Reason as LossReason;
+use sentry_core::TransportOptions;
 
 use super::{
-    tokio_thread::TransportThread, DEFAULT_CHANNEL_CAPACITY, HTTP_PAYLOAD_TOO_LARGE,
-    HTTP_PAYLOAD_TOO_LARGE_MESSAGE,
+    tokio_thread::{TransportThread, TransportThreadOptions},
+    RateLimiter, DEFAULT_CHANNEL_CAPACITY, HTTP_PAYLOAD_TOO_LARGE, HTTP_PAYLOAD_TOO_LARGE_MESSAGE,
 };
 
 use crate::{sentry_debug, ClientOptions, Envelope, Transport};
+
+/// The status code returned for rate-limited envelopes.
+const HTTP_RATE_LIMIT_STATUS: u16 = 429;
 
 /// A [`Transport`] that sends events via the [`reqwest`] library.
 ///
@@ -19,37 +24,79 @@ pub struct ReqwestHttpTransport {
     thread: TransportThread,
 }
 
+/// Options for constructing a [`ReqwestHttpTransport`].
+///
+/// Currently, this is primarily a wrapper around a [`TransportOptions`], and must be created with
+/// the `From<TransportOptions>` implementation. Optionally, a [`reqwest::Client`] for the
+/// transport may be provided with [`Self::with_client`].
+#[derive(Debug)]
+#[must_use]
+pub struct ReqwestHttpTransportOptions {
+    general_options: TransportOptions,
+    client: Option<ReqwestClient>,
+    channel_capacity: usize,
+}
+
 impl ReqwestHttpTransport {
-    /// Creates a new Transport.
-    pub fn new(options: &ClientOptions) -> Self {
-        Self::new_internal(options, None, DEFAULT_CHANNEL_CAPACITY)
-    }
-
-    /// Creates a new Transport that uses the specified [`ReqwestClient`].
-    pub fn with_client(options: &ClientOptions, client: ReqwestClient) -> Self {
-        Self::new_internal(options, Some(client), DEFAULT_CHANNEL_CAPACITY)
-    }
-
-    /// Creates a new Transport with a custom transport channel capacity.
+    /// Backwards-compatible method for creating a [`ReqwestHttpTransport`].
     ///
-    /// The channel capacity bounds how many envelopes may be queued before
-    /// `send_envelope` blocks. A higher capacity reduces the chance of
-    /// dropped events in high-throughput scenarios at the cost of memory.
-    pub fn with_channel_capacity(options: &ClientOptions, channel_capacity: usize) -> Self {
-        Self::new_internal(options, None, channel_capacity)
+    /// Please use [`ReqwestHttpTransportOptions::build`] instead.
+    ///
+    /// ### Panics
+    ///
+    /// Panics if called with `options` that lack a DSN.
+    #[inline]
+    #[deprecated = "use `ReqwestHttpTransportOptions::build` instead"]
+    pub fn new(options: &ClientOptions) -> Self {
+        let general_options = TransportOptions::try_from_client_options(options)
+            .expect("this method should only be called when options has a DSN");
+
+        ReqwestHttpTransportOptions::from(general_options).build()
     }
 
-    fn new_internal(
-        options: &ClientOptions,
-        client: Option<ReqwestClient>,
-        channel_capacity: usize,
-    ) -> Self {
+    /// Backwards-compatible method for creating a [`ReqwestHttpTransport`] that uses the specified
+    /// [`ReqwestClient`].
+    ///
+    /// Please use [`ReqwestHttpTransportOptions::build`] instead.
+    ///
+    /// ### Panics
+    ///
+    /// Panics if called with `options` that lack a DSN.
+    #[inline]
+    #[deprecated = "use `ReqwestHttpTransportOptions::build` instead"]
+    pub fn with_client(options: &ClientOptions, client: ReqwestClient) -> Self {
+        let general_options = TransportOptions::try_from_client_options(options)
+            .expect("this method should only be called when options has a DSN");
+
+        ReqwestHttpTransportOptions::from(general_options)
+            .with_client(client)
+            .build()
+    }
+
+    /// Creates a new [`ReqwestHttpTransport`] with the given `options`.
+    #[inline]
+    pub(super) fn with_options(options: ReqwestHttpTransportOptions) -> Self {
+        let ReqwestHttpTransportOptions {
+            general_options:
+                TransportOptions {
+                    dsn,
+                    user_agent,
+                    http_proxy,
+                    https_proxy,
+                    accept_invalid_certs,
+                    client_report_recorder,
+                    ..
+                },
+            client,
+            channel_capacity,
+        } = options;
+
         let client = client.unwrap_or_else(|| {
             let mut builder = reqwest::Client::builder();
-            if options.accept_invalid_certs {
+            if accept_invalid_certs {
                 builder = builder.danger_accept_invalid_certs(true);
             }
-            if let Some(url) = options.http_proxy.as_ref() {
+            if let Some(url) = http_proxy.as_ref() {
                 match Proxy::http(url.as_ref()) {
                     Ok(proxy) => {
                         builder = builder.proxy(proxy);
@@ -59,7 +106,7 @@ impl ReqwestHttpTransport {
                     }
                 }
             };
-            if let Some(url) = options.https_proxy.as_ref() {
+            if let Some(url) = https_proxy.as_ref() {
                 match Proxy::https(url.as_ref()) {
                     Ok(proxy) => {
                         builder = builder.proxy(proxy);
@@ -73,61 +120,82 @@ impl ReqwestHttpTransport {
                 .build()
                 .expect("Failed to build `reqwest` client as a TLS backend is not available. Enable either the `native-tls` or the `rustls` feature of the `sentry` crate.")
         });
-        let dsn = options.dsn.as_ref().unwrap();
-        let user_agent = options.user_agent.clone();
+
         let auth = dsn.to_auth(Some(&user_agent)).to_string();
         let url = dsn.envelope_api_url().to_string();
 
-        let thread = TransportThread::with_capacity(
-            move |envelope, mut rl| {
-                let mut body = Vec::new();
-                envelope.to_writer(&mut body).unwrap();
-                let request = client.post(&url).header("X-Sentry-Auth", &auth).body(body);
+        let send_fn_client_report_recorder = client_report_recorder.clone();
 
-                // NOTE: because of lifetime issues, building the request using the
-                // `client` has to happen outside of this async block.
-                async move {
-                    match request.send().await {
-                        Ok(response) => {
-                            let headers = response.headers();
+        let send_fn = move |envelope: Envelope, mut rl: RateLimiter| {
+            let mut body = Vec::new();
+            envelope
+                .to_writer(&mut body)
+                .inspect_err(|_| {
+                    send_fn_client_report_recorder
+                        .record_lost_data(&envelope, LossReason::InternalError);
+                })
+                .expect("envelope should serialize successfully");
+            let request = client.post(&url).header("X-Sentry-Auth", &auth).body(body);
 
-                            if let Some(sentry_header) = headers
-                                .get("x-sentry-rate-limits")
-                                .and_then(|x| x.to_str().ok())
-                            {
-                                rl.update_from_sentry_header(sentry_header);
-                            } else if let Some(retry_after) = headers
-                                .get(ReqwestHeaders::RETRY_AFTER)
-                                .and_then(|x| x.to_str().ok())
-                            {
-                                rl.update_from_retry_after(retry_after);
-                            } else if response.status() == StatusCode::TOO_MANY_REQUESTS {
-                                rl.update_from_429();
+            let client_report_recorder = send_fn_client_report_recorder.clone();
+
+            // NOTE: because of lifetime issues, building the request using the
+            // `client` has to happen outside of this async block.
+            async move {
+                match request.send().await {
+                    Ok(response) => {
+                        let headers = response.headers();
+
+                        if let Some(sentry_header) = headers
+                            .get("x-sentry-rate-limits")
+                            .and_then(|x| x.to_str().ok())
+                        {
+                            rl.update_from_sentry_header(sentry_header);
+                        } else if let Some(retry_after) = headers
+                            .get(ReqwestHeaders::RETRY_AFTER)
+                            .and_then(|x| x.to_str().ok())
+                        {
+                            rl.update_from_retry_after(retry_after);
+                        } else if response.status() == StatusCode::TOO_MANY_REQUESTS {
+                            rl.update_from_429();
+                        }
+
+                        let response_status = response.status().as_u16();
+
+                        let is_payload_too_large = response_status == HTTP_PAYLOAD_TOO_LARGE;
+                        match response.text().await {
+                            Err(err) => {
+                                sentry_debug!("Failed to read sentry response: {}", err);
                             }
-
-                            let is_payload_too_large =
-                                response.status().as_u16() == HTTP_PAYLOAD_TOO_LARGE;
-                            match response.text().await {
-                                Err(err) => {
-                                    sentry_debug!("Failed to read sentry response: {}", err);
-                                }
-                                Ok(text) => {
-                                    sentry_debug!("Get response: `{}`", text);
-                                }
-                            }
-                            if is_payload_too_large {
-                                sentry_debug!("{HTTP_PAYLOAD_TOO_LARGE_MESSAGE}");
+                            Ok(text) => {
+                                sentry_debug!("Get response: `{}`", text);
                             }
                         }
-                        Err(err) => {
-                            sentry_debug!("Failed to send envelope: {}", err);
+                        if is_payload_too_large {
+                            sentry_debug!("{HTTP_PAYLOAD_TOO_LARGE_MESSAGE}");
+                        }
+
+                        if (400..=599).contains(&response_status)
+                            && response_status != HTTP_RATE_LIMIT_STATUS
+                        {
+                            client_report_recorder
+                                .record_lost_data(&envelope, LossReason::SendError);
                         }
                     }
-                    rl
+                    Err(err) => {
+                        sentry_debug!("Failed to send envelope: {}", err);
+                        client_report_recorder
+                            .record_lost_data(&envelope, LossReason::NetworkError);
+                    }
                 }
-            },
-            channel_capacity,
-        );
+                rl
+            }
+        };
+
+        let thread = TransportThreadOptions::new(send_fn)
+            .with_client_report_recorder(client_report_recorder)
+            .with_channel_capacity(channel_capacity)
+            .spawn_thread();
         Self { thread }
     }
 }
@@ -142,5 +210,46 @@ impl Transport for ReqwestHttpTransport {
 
     fn shutdown(&self, timeout: Duration) -> bool {
         self.flush(timeout)
+    }
+}
+
+impl From<TransportOptions> for ReqwestHttpTransportOptions {
+    #[inline]
+    fn from(value: TransportOptions) -> Self {
+        Self {
+            general_options: value,
+            client: None,
+            channel_capacity: DEFAULT_CHANNEL_CAPACITY,
+        }
+    }
+}
+
+impl ReqwestHttpTransportOptions {
+    /// Specify the [`reqwest::Client`] for the [`ReqwestHttpTransport`].
+    #[inline]
+    pub fn with_client(self, client: ReqwestClient) -> Self {
+        let client = Some(client);
+        Self { client, ..self }
+    }
+
+    /// Set the capacity of the channel that queues envelopes for the background
+    /// transport thread (default: 30).
+    ///
+    /// A capacity of `0` creates a rendezvous channel: an envelope is accepted
+    /// only when the transport thread is currently waiting on the receiver,
+    /// otherwise it is dropped. A higher capacity reduces the chance of dropped
+    /// events in high-throughput scenarios at the cost of memory.
+    #[inline]
+    pub fn with_channel_capacity(self, channel_capacity: usize) -> Self {
+        Self {
+            channel_capacity,
+            ..self
+        }
+    }
+
+    /// Create a [`ReqwestHttpTransport`] using these options.
+    #[inline]
+    pub fn build(self) -> ReqwestHttpTransport {
+        ReqwestHttpTransport::with_options(self)
     }
 }

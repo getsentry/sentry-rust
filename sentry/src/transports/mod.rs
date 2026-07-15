@@ -3,7 +3,9 @@
 //! This module exposes all transports that are compiled into the sentry
 //! library.  The `reqwest`, `curl`, and `ureq` features turn on these transports.
 
-use crate::{ClientOptions, Transport, TransportFactory};
+use sentry_core::TransportOptions;
+
+use crate::{Transport, TransportFactory};
 use std::sync::Arc;
 
 #[cfg(feature = "httpdate")]
@@ -14,32 +16,36 @@ pub use self::ratelimit::{RateLimiter, RateLimitingCategory};
 #[cfg(any(feature = "curl", feature = "ureq"))]
 mod thread;
 #[cfg(any(feature = "curl", feature = "ureq"))]
-pub use self::thread::TransportThread as StdTransportThread;
+pub use self::thread::{
+    TransportThread as StdTransportThread, TransportThreadOptions as StdTransportThreadOptions,
+};
 
 #[cfg(feature = "reqwest")]
 mod tokio_thread;
 #[cfg(feature = "reqwest")]
-pub use self::tokio_thread::TransportThread as TokioTransportThread;
+pub use self::tokio_thread::{
+    TransportThread as TokioTransportThread, TransportThreadOptions as TokioTransportThreadOptions,
+};
 
 #[cfg(feature = "reqwest")]
 mod reqwest;
 #[cfg(feature = "reqwest")]
-pub use self::reqwest::ReqwestHttpTransport;
+pub use self::reqwest::{ReqwestHttpTransport, ReqwestHttpTransportOptions};
 
 #[cfg(sentry_embedded_svc_http)]
 mod embedded_svc_http;
 #[cfg(sentry_embedded_svc_http)]
-pub use self::embedded_svc_http::EmbeddedSVCHttpTransport;
+pub use self::embedded_svc_http::{EmbeddedSVCHttpTransport, EmbeddedSVCHttpTransportOptions};
 
 #[cfg(feature = "curl")]
 mod curl;
 #[cfg(feature = "curl")]
-pub use self::curl::CurlHttpTransport;
+pub use self::curl::{CurlHttpTransport, CurlHttpTransportOptions};
 
 #[cfg(feature = "ureq")]
 mod ureq;
 #[cfg(feature = "ureq")]
-pub use self::ureq::UreqHttpTransport;
+pub use self::ureq::{UreqHttpTransport, UreqHttpTransportOptions};
 
 #[cfg(sentry_any_http_transport)]
 pub(crate) const HTTP_PAYLOAD_TOO_LARGE: u16 = 413;
@@ -91,10 +97,10 @@ pub type HttpTransport = DefaultTransport;
 pub struct DefaultTransportFactory;
 
 impl TransportFactory for DefaultTransportFactory {
-    fn create_transport(&self, options: &ClientOptions) -> Arc<dyn Transport> {
+    fn create_transport_with_options(&self, options: TransportOptions) -> Arc<dyn Transport> {
         #[cfg(sentry_any_http_transport)]
         {
-            Arc::new(HttpTransport::new(options))
+            Arc::new(HttpTransport::with_options(options.into()))
         }
         #[cfg(not(sentry_any_http_transport))]
         {

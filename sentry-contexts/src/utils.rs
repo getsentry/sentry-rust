@@ -54,7 +54,7 @@ mod model_support {
 
     pub fn get_macos_version() -> Option<String> {
         let version = sysctlbyname_call("kern.osproductversion")?;
-        let dot_count = version.split('.').count() - 1;
+        let dot_count = version.split('.').count().saturating_sub(1);
         if dot_count < 2 {
             return Some(version + ".0");
         }

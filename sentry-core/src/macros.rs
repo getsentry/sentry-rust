@@ -8,10 +8,9 @@
 /// ```
 /// # #[macro_use] extern crate sentry;
 /// # fn main() {
-/// let _sentry = sentry::init(sentry::ClientOptions {
-///     release: sentry::release_name!(),
-///     ..Default::default()
-/// });
+/// let _sentry = sentry::init(
+///     sentry::ClientOptions::new().maybe_release(sentry::release_name!()),
+/// );
 /// # }
 /// ```
 #[macro_export]
@@ -54,14 +53,13 @@ macro_rules! with_client_impl {
 #[macro_export]
 #[doc(hidden)]
 macro_rules! sentry_debug {
-    ($($arg:tt)*) => {
-        $crate::Hub::with(|hub| {
-            if hub.client().map_or(false, |c| c.options().debug) {
-                eprint!("[sentry] ");
-                eprintln!($($arg)*);
-            }
-        });
-    }
+    ($($arg:tt)*) => {{
+        let hub = $crate::Hub::current();
+        if hub.client().map_or(false, |c| c.options().debug) {
+            eprint!("[sentry] ");
+            eprintln!($($arg)*);
+        }
+    }}
 }
 
 /// Panics in debug builds and logs through `sentry_debug!` in non-debug builds.

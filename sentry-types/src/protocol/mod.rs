@@ -14,6 +14,8 @@ pub const LATEST: u16 = 7;
 pub use v7 as latest;
 
 mod attachment;
+mod client_report;
 mod envelope;
 mod monitor;
 mod session;
+mod unit;

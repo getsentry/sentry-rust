@@ -66,6 +66,7 @@
 //! | `transport`       | ✅      |                |            |                                                                                          |
 //! | `anyhow`          |         | 🔌             |            |                                                                                          |
 //! | `test`            |         |                |            |                                                                                          |
+//! | `metrics`         |         |                |            | Enables metrics capture APIs.                                                            |
 //! | `debug-images`    | ✅      | 🔌             |            |                                                                                          |
 //! | `log`             |         | 🔌             |            | Requires extra setup; See [`sentry-log`]'s documentation.                                |
 //! | `slog`            |         | 🔌             |            | Requires extra setup; See [`sentry-slog`]'s documentation.                               |
@@ -97,6 +98,10 @@
 //! ## Debugging/Testing
 //! - `anyhow`: Enables support for the `anyhow` crate.
 //! - `test`: Enables testing support.
+//!
+//! ## Metrics
+//! - `metrics`: Enables [`sentry::metrics`](crate::metrics) APIs for counters, gauges, and
+//!   distributions.
 //!
 //! ## Logging
 //! - `log`: Enables support for the `log` crate.
@@ -167,11 +172,9 @@ pub use crate::init::{init, ClientInitGuard};
 /// use sentry::integrations::debug_images::DebugImagesIntegration;
 /// use sentry::ClientOptions;
 ///
-/// let options = ClientOptions {
-///     default_integrations: false,
-///     ..Default::default()
-/// }
-/// .add_integration(DebugImagesIntegration::new());
+/// let options = ClientOptions::new()
+///     .default_integrations(false)
+///     .add_integration(DebugImagesIntegration::new());
 /// let _guard = sentry::init(options);
 /// # }
 /// ```

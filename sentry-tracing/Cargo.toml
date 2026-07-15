@@ -1,6 +1,6 @@
 [package]
 name = "sentry-tracing"
-version = "0.47.0"
+version = "0.48.5"
 authors = { workspace = true }
 license = "MIT"
 readme = "README.md"
@@ -12,6 +12,9 @@ Sentry integration for the tracing and tracing-subscriber crates.
 edition = { workspace = true }
 rust-version = { workspace = true }
 
+[lints]
+workspace = true
+
 [package.metadata.docs.rs]
 all-features = true
 
@@ -21,14 +24,14 @@ backtrace = ["dep:sentry-backtrace"]
 logs = ["sentry-core/logs"]
 
 [dependencies]
-sentry-core = { version = "0.47.0", path = "../sentry-core", features = [
+sentry-core = { version = "0.48.5", path = "../sentry-core", features = [
     "client",
 ] }
 tracing-core = "0.1"
 tracing-subscriber = { version = "0.3.20", default-features = false, features = [
     "std",
 ] }
-sentry-backtrace = { version = "0.47.0", path = "../sentry-backtrace", optional = true }
+sentry-backtrace = { version = "0.48.5", path = "../sentry-backtrace", optional = true }
 bitflags = "2.9.4"
 
 [dev-dependencies]

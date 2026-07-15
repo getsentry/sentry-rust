@@ -3,11 +3,11 @@ use log::{debug, error, info, warn};
 fn main() {
     init_log();
 
-    let _sentry = sentry::init(sentry::ClientOptions {
-        release: sentry::release_name!(),
-        debug: true,
-        ..Default::default()
-    });
+    let _sentry = sentry::init(
+        sentry::ClientOptions::new()
+            .maybe_release(sentry::release_name!())
+            .debug(true),
+    );
 
     debug!("System is booting");
     info!("System is booting");
