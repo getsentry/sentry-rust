@@ -25,7 +25,7 @@ enum Task {
 
 /// A background-thread powered by [`tokio`] dedicated to sending [`Envelope`]s while respecting the rate limits imposed in the responses.
 pub struct TransportThread {
-    sender: SyncSender<Task>,
+    sender: Option<SyncSender<Task>>,
     shutdown: Arc<AtomicBool>,
     handle: Option<JoinHandle<()>>,
     client_report_recorder: ClientReportRecorder,
@@ -66,7 +66,7 @@ impl<F> TransportThreadOptions<F> {
     /// transport thread is currently waiting on the receiver, otherwise it is
     /// dropped. That is a no-buffer back-pressure policy, not a blanket
     /// "drop everything" mode.
-    pub fn with_channel_capacity(self, channel_capacity: usize) -> Self {
+    pub(crate) fn with_channel_capacity(self, channel_capacity: usize) -> Self {
         Self {
             channel_capacity,
             ..self
@@ -167,7 +167,7 @@ impl TransportThread {
             .ok();
 
         Self {
-            sender,
+            sender: Some(sender),
             shutdown,
             handle,
             client_report_recorder,
@@ -181,7 +181,11 @@ impl TransportThread {
         // Using send here would mean that when the channel fills up for whatever
         // reason, trying to send an envelope would block everything. We'd rather
         // drop the envelope in that case.
-        if let Err(e) = self.sender.try_send(Task::SendEnvelope(envelope)) {
+        let sender = self
+            .sender
+            .as_ref()
+            .expect("transport sender is available until drop");
+        if let Err(e) = sender.try_send(Task::SendEnvelope(envelope)) {
             sentry_debug!("envelope dropped: {e}");
 
             // Get back the envelope from the TrySendError so we can record it as lost.
@@ -203,7 +207,13 @@ impl TransportThread {
     /// Returns true if successful within given timeout.
     pub fn flush(&self, timeout: Duration) -> bool {
         let (sender, receiver) = sync_channel(1);
-        let _ = self.sender.send(Task::Flush(sender));
+        let transport_sender = self
+            .sender
+            .as_ref()
+            .expect("transport sender is available until drop");
+        if transport_sender.try_send(Task::Flush(sender)).is_err() {
+            return false;
+        }
         receiver.recv_timeout(timeout).is_ok()
     }
 }
@@ -211,9 +221,40 @@ impl TransportThread {
 impl Drop for TransportThread {
     fn drop(&mut self) {
         self.shutdown.store(true, Ordering::SeqCst);
-        let _ = self.sender.send(Task::Shutdown);
+        if let Some(sender) = self.sender.take() {
+            let _ = sender.try_send(Task::Shutdown);
+        }
         if let Some(handle) = self.handle.take() {
             handle.join().unwrap();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn flush_does_not_block_on_a_busy_rendezvous_channel() {
+        let (sender, receiver) = sync_channel(0);
+        let transport = TransportThread {
+            sender: Some(sender),
+            shutdown: Arc::new(AtomicBool::new(false)),
+            handle: None,
+            client_report_recorder: Default::default(),
+        };
+        let (result_sender, result_receiver) = sync_channel(1);
+
+        let handle = thread::spawn(move || {
+            let result = transport.flush(Duration::from_secs(1));
+            result_sender.send(result).unwrap();
+        });
+
+        assert_eq!(
+            result_receiver.recv_timeout(Duration::from_secs(1)),
+            Ok(false)
+        );
+        drop(receiver);
+        handle.join().unwrap();
     }
 }
