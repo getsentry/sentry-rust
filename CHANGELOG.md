@@ -21,6 +21,7 @@
       .debug(true)
       .release("my-app@1.0.0");
   ```
+- The `logs` and `metrics` features are now enabled by default in the `sentry` crate. This does not break the API, but may cause new telemetry to be sent to Sentry: log and tracing integrations can send structured logs, and applications can send metrics without adding the feature flags. Disable these features explicitly if this additional telemetry is not desired.
 
 ## 0.48.5
 
