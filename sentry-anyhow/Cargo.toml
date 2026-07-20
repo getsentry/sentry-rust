@@ -21,7 +21,7 @@ backtrace = []
 
 [dependencies]
 sentry-backtrace = { workspace = true }
-sentry-core = { version = "0.48.5", path = "../sentry-core" }
+sentry-core = { workspace = true }
 anyhow = { workspace = true }
 
 [dev-dependencies]
