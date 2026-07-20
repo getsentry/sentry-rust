@@ -16,7 +16,7 @@ rust-version = { workspace = true }
 workspace = true
 
 [dependencies]
-sentry-core = { version = "0.48.5", path = "../sentry-core", features = ["client"] }
+sentry-core = { workspace = true, features = ["client"] }
 sentry-backtrace = { workspace = true }
 
 [dev-dependencies]

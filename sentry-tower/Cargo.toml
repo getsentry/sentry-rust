@@ -29,16 +29,14 @@ tower-layer = { workspace = true }
 tower-service = { workspace = true }
 http = { workspace = true, optional = true }
 pin-project = { workspace = true, optional = true }
-sentry-core = { version = "0.48.5", path = "../sentry-core", default-features = false, features = [
-    "client",
-] }
+sentry-core = { workspace = true, features = ["client"] }
 url = { workspace = true, optional = true }
 
 [dev-dependencies]
 anyhow = { workspace = true }
 prost = { workspace = true }
 sentry = { workspace = true, features = ["test"] }
-sentry-anyhow = { path = "../sentry-anyhow" }
+sentry-anyhow = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tonic = { workspace = true, features = ["transport"] }
 tower = { workspace = true, features = ["util", "timeout"] }

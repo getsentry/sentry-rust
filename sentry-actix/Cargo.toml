@@ -23,9 +23,7 @@ release-health = ["sentry-core/release-health"]
 actix-web = { workspace = true }
 bytes = { workspace = true }
 futures-util = { workspace = true }
-sentry-core = { version = "0.48.5", path = "../sentry-core", default-features = false, features = [
-    "client",
-] }
+sentry-core = { workspace = true, features = ["client"] }
 actix-http = { workspace = true }
 
 [dev-dependencies]

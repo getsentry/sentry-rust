@@ -20,7 +20,7 @@ default = []
 logs = ["sentry-core/logs"]
 
 [dependencies]
-sentry-core = { version = "0.48.5", path = "../sentry-core" }
+sentry-core = { workspace = true }
 log = { workspace = true, features = ["std", "kv"] }
 bitflags = { workspace = true }
 

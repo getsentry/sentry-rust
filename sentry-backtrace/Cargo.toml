@@ -18,4 +18,4 @@ workspace = true
 [dependencies]
 backtrace = { workspace = true }
 regex = { workspace = true, features = ["std", "unicode-perl"] }
-sentry-core = { version = "0.48.5", path = "../sentry-core" }
+sentry-core = { workspace = true }
