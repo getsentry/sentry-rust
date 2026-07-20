@@ -45,8 +45,8 @@ jobs:
       - name: Check workspace dependency inheritance
         run: |
           cargo autoinherit
-          if ! git diff --quiet; then
+          if ! git diff --exit-code; then
             echo "::error title=Workspace dependencies are not centralized::cargo autoinherit found dependency declarations that are not inherited from " \
               "workspace.dependencies. Run 'cargo autoinherit' locally and commit the resulting Cargo.toml changes."
-            git diff --exit-code
+            exit 1
           fi
