@@ -54,6 +54,9 @@ pub(crate) const HTTP_PAYLOAD_TOO_LARGE: u16 = 413;
 pub(crate) const HTTP_PAYLOAD_TOO_LARGE_MESSAGE: &str =
     "Envelope was discarded due to size limits (HTTP 413).";
 
+#[cfg(sentry_any_http_transport)]
+pub(crate) const DEFAULT_CHANNEL_CAPACITY: usize = 30;
+
 #[cfg(feature = "reqwest")]
 type DefaultTransport = ReqwestHttpTransport;
 

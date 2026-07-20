@@ -13,7 +13,7 @@ use ureq::{Agent, Proxy};
 
 use super::{
     thread::{TransportThread, TransportThreadOptions},
-    RateLimiter, HTTP_PAYLOAD_TOO_LARGE, HTTP_PAYLOAD_TOO_LARGE_MESSAGE,
+    RateLimiter, DEFAULT_CHANNEL_CAPACITY, HTTP_PAYLOAD_TOO_LARGE, HTTP_PAYLOAD_TOO_LARGE_MESSAGE,
 };
 
 use crate::{sentry_debug, types::Scheme, ClientOptions, Envelope, Transport};
@@ -39,6 +39,7 @@ pub struct UreqHttpTransport {
 pub struct UreqHttpTransportOptions {
     general_options: TransportOptions,
     agent: Option<Agent>,
+    channel_capacity: usize,
 }
 
 impl UreqHttpTransport {
@@ -97,6 +98,7 @@ impl UreqHttpTransport {
                     ..
                 },
             agent,
+            channel_capacity,
         } = options;
         let scheme = dsn.scheme();
         let agent = agent.unwrap_or_else(|| {
@@ -214,6 +216,7 @@ impl UreqHttpTransport {
 
         let thread = TransportThreadOptions::new(send_fn)
             .with_client_report_recorder(client_report_recorder)
+            .with_channel_capacity(channel_capacity)
             .spawn_thread();
         Self { thread }
     }
@@ -238,6 +241,7 @@ impl From<TransportOptions> for UreqHttpTransportOptions {
         Self {
             general_options: value,
             agent: None,
+            channel_capacity: DEFAULT_CHANNEL_CAPACITY,
         }
     }
 }
@@ -248,6 +252,21 @@ impl UreqHttpTransportOptions {
     pub fn with_agent(self, agent: Agent) -> Self {
         let agent = Some(agent);
         Self { agent, ..self }
+    }
+
+    /// Set the capacity of the channel that queues envelopes for the background
+    /// transport thread (default: 30).
+    ///
+    /// A capacity of `0` creates a rendezvous channel: an envelope is accepted
+    /// only when the transport thread is currently waiting on the receiver,
+    /// otherwise it is dropped. A higher capacity reduces the chance of dropped
+    /// events in high-throughput scenarios at the cost of memory.
+    #[inline]
+    pub fn with_channel_capacity(self, channel_capacity: usize) -> Self {
+        Self {
+            channel_capacity,
+            ..self
+        }
     }
 
     /// Create a [`UreqHttpTransport`] using these options.

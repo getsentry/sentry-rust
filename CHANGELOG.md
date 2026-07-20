@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### New Features
+
+- Added configurable channel capacity for built-in background HTTP transports ([#1040](https://github.com/getsentry/sentry-rust/pull/1040)).
+
 ## 0.48.5
 
 ### Fixes
