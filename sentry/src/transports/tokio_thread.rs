@@ -1,9 +1,7 @@
-use std::sync::mpsc::{
-    channel, sync_channel, RecvTimeoutError, Sender, SyncSender, TryRecvError, TrySendError,
-};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
+use crossbeam_channel::{bounded, select_biased, unbounded, Sender, TrySendError};
 use sentry_core::client_report::{Reason as ClientReportReason, Recorder as ClientReportRecorder};
 
 use super::ratelimit::{RateLimiter, RateLimitingCategory};
@@ -13,13 +11,13 @@ use super::{TokioTransportThread, TokioTransportThreadOptions}; // so we can use
 use crate::{sentry_debug, Envelope};
 
 enum ControlTask {
-    Flush(SyncSender<()>),
+    Flush(Sender<()>),
     Shutdown,
 }
 
 /// A background-thread powered by [`tokio`] dedicated to sending [`Envelope`]s while respecting the rate limits imposed in the responses.
 pub struct TransportThread {
-    sender: SyncSender<Envelope>,
+    sender: Sender<Envelope>,
     control_sender: Sender<ControlTask>,
     handle: Option<JoinHandle<()>>,
     client_report_recorder: ClientReportRecorder,
@@ -106,8 +104,8 @@ impl TransportThread {
             client_report_recorder,
             channel_capacity,
         } = options;
-        let (sender, receiver) = sync_channel(channel_capacity);
-        let (control_sender, control_receiver) = channel();
+        let (sender, receiver) = bounded(channel_capacity);
+        let (control_sender, control_receiver) = unbounded();
         let handle_client_report_recorder = client_report_recorder.clone();
         let handle = thread::Builder::new()
             .name("sentry-transport".into())
@@ -123,9 +121,33 @@ impl TransportThread {
                 // and block on an async fn in this runtime/thread
                 rt.block_on(async move {
                     loop {
-                        match control_receiver.try_recv() {
-                            Ok(ControlTask::Flush(sender)) => {
-                                for envelope in receiver.try_iter() {
+                        select_biased! {
+                            recv(control_receiver) -> task => match task {
+                                Ok(ControlTask::Flush(sender)) => {
+                                    for envelope in receiver.try_iter() {
+                                        if let Some(time_left) = rl.is_disabled(RateLimitingCategory::Any) {
+                                            sentry_debug!(
+                                                "Skipping event send because we're disabled due to rate limits for {}s",
+                                                time_left.as_secs()
+                                            );
+                                            handle_client_report_recorder.record_lost_data(
+                                                &envelope,
+                                                ClientReportReason::RatelimitBackoff,
+                                            );
+                                        } else if let Some(envelope) =
+                                            rl.filter(envelope, &handle_client_report_recorder)
+                                        {
+                                            rl = send(envelope, rl).await;
+                                        } else {
+                                            sentry_debug!("Envelope was discarded due to per-item rate limits");
+                                        }
+                                    }
+                                    sender.send(()).ok();
+                                }
+                                Ok(ControlTask::Shutdown) | Err(_) => return,
+                            },
+                            recv(receiver) -> envelope => match envelope {
+                                Ok(envelope) => {
                                     if let Some(time_left) = rl.is_disabled(RateLimitingCategory::Any) {
                                         sentry_debug!(
                                             "Skipping event send because we're disabled due to rate limits for {}s",
@@ -143,34 +165,8 @@ impl TransportThread {
                                         sentry_debug!("Envelope was discarded due to per-item rate limits");
                                     }
                                 }
-                                sender.send(()).ok();
-                                continue;
-                            }
-                            Ok(ControlTask::Shutdown) | Err(TryRecvError::Disconnected) => return,
-                            Err(TryRecvError::Empty) => {}
-                        }
-
-                        match receiver.recv_timeout(Duration::from_millis(10)) {
-                            Ok(envelope) => {
-                                if let Some(time_left) = rl.is_disabled(RateLimitingCategory::Any) {
-                                    sentry_debug!(
-                                        "Skipping event send because we're disabled due to rate limits for {}s",
-                                        time_left.as_secs()
-                                    );
-                                    handle_client_report_recorder.record_lost_data(
-                                        &envelope,
-                                        ClientReportReason::RatelimitBackoff,
-                                    );
-                                } else if let Some(envelope) =
-                                    rl.filter(envelope, &handle_client_report_recorder)
-                                {
-                                    rl = send(envelope, rl).await;
-                                } else {
-                                    sentry_debug!("Envelope was discarded due to per-item rate limits");
-                                }
-                            }
-                            Err(RecvTimeoutError::Timeout) => {}
-                            Err(RecvTimeoutError::Disconnected) => return,
+                                Err(_) => return,
+                            },
                         }
                     }
                 })
@@ -209,7 +205,7 @@ impl TransportThread {
     ///
     /// Returns true if successful within given timeout.
     pub fn flush(&self, timeout: Duration) -> bool {
-        let (sender, receiver) = sync_channel(1);
+        let (sender, receiver) = bounded(1);
         if self
             .control_sender
             .send(ControlTask::Flush(sender))
@@ -233,6 +229,7 @@ impl Drop for TransportThread {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::mpsc::sync_channel;
     use std::sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc, Mutex,
@@ -261,6 +258,16 @@ mod tests {
                 Err(TrySendError::Disconnected(_)) => panic!("worker disconnected"),
             }
         }
+    }
+
+    #[test]
+    fn flush_wakes_an_idle_transport_thread() {
+        let transport =
+            TransportThreadOptions::new(|_: Envelope, rl: RateLimiter| async move { rl })
+                .spawn_thread();
+
+        thread::sleep(Duration::from_millis(1));
+        assert!(transport.flush(Duration::from_millis(5)));
     }
 
     #[test]
