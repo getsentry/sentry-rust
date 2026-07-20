@@ -31,26 +31,22 @@ logs = []
 metrics = []
 
 [dependencies]
-log = { version = "0.4.8", optional = true, features = ["std"] }
-rand = { version = "0.9.3", optional = true }
-sentry-types = { version = "0.48.5", path = "../sentry-types" }
-serde = { version = "1.0.104", features = ["derive"] }
-serde_json = { version = "1.0.46" }
-url = { version = "2.1.1" }
-uuid = { version = "1.0.0", features = ["v4", "serde"], optional = true }
+log = { workspace = true, features = ["std"], optional = true }
+rand = { workspace = true, optional = true }
+sentry-types = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+url = { workspace = true }
+uuid = { workspace = true, features = ["v4", "serde"], optional = true }
 
 [dev-dependencies]
 # Because we re-export all the public API in `sentry`, we actually run all the
 # doctests using the `sentry` crate. This also takes care of the doctest
 # limitation documented in https://github.com/rust-lang/rust/issues/45599.
-sentry = { path = "../sentry", default-features = false, features = [
-    "test",
-    "transport",
-    "metrics",
-] }
-anyhow = "1.0.30"
-criterion = "0.5"
-futures = "0.3.24"
-rayon = "1.5.3"
-thiserror = "2.0.12"
-tokio = { version = "1.44", features = ["rt", "rt-multi-thread", "macros"] }
+sentry = { workspace = true, features = ["test", "transport", "metrics"] }
+anyhow = { workspace = true }
+criterion = { workspace = true }
+futures = { workspace = true }
+rayon = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["rt", "rt-multi-thread", "macros"] }
