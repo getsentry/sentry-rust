@@ -11,7 +11,7 @@ echo "Current version: ${OLD_VERSION}"
 echo "Bumping version: ${NEW_VERSION}"
 
 perl -pi -e "s/^version = \".*?\"/version = \"$NEW_VERSION\"/" sentry*/Cargo.toml
-perl -pi -e "s/^(sentry.*)?version = \".*?\"/\$1version = \"$NEW_VERSION\"/" sentry*/Cargo.toml
+perl -pi -e "s/^(sentry.*)?version = \".*?\"/\$1version = \"$NEW_VERSION\"/" Cargo.toml sentry*/Cargo.toml
 
 "$SCRIPT_DIR"/update-readme.sh "$NEW_VERSION"
 cargo metadata --format-version 1 > /dev/null # update `Cargo.lock`
