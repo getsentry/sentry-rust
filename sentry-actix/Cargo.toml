@@ -29,7 +29,7 @@ sentry-core = { version = "0.48.5", path = "../sentry-core", default-features = 
 actix-http = { workspace = true }
 
 [dev-dependencies]
-actix-web = { workspace = true }
+actix-web = { workspace = true, features = ["macros"] }
 futures = { workspace = true }
 sentry = { workspace = true, features = ["test"] }
 tokio = { workspace = true, features = ["full"] }
