@@ -4,7 +4,7 @@
 
 ### Features
 
-- `SentryHttpLayer` now records the [`http.response.status_code`](https://getsentry.github.io/sentry-conventions/attributes/http/) attribute on transactions.
+- `SentryHttpLayer` now records the [`http.response.status_code`](https://getsentry.github.io/sentry-conventions/attributes/http/) attribute on transactions ([#1253](https://github.com/getsentry/sentry-rust/pull/1253)).
 
 ## 0.48.5
 
