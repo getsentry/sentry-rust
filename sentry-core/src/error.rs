@@ -10,6 +10,8 @@ impl Hub {
     /// See the global [`capture_error`](fn.capture_error.html)
     /// for more documentation.
     pub fn capture_error<E: Error + ?Sized>(&self, error: &E) -> Uuid {
+        #[cfg(not(feature = "client"))]
+        let _ = error;
         with_client_impl! {{
             self.inner.with(|stack| {
                 let top = stack.top();
