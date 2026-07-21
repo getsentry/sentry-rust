@@ -9,7 +9,6 @@ impl Hub {
     ///
     /// See the global [`capture_error`](fn.capture_error.html)
     /// for more documentation.
-    #[allow(unused)]
     pub fn capture_error<E: Error + ?Sized>(&self, error: &E) -> Uuid {
         with_client_impl! {{
             self.inner.with(|stack| {
@@ -46,7 +45,6 @@ impl Hub {
 /// ```
 ///
 /// [sentry event payloads]: https://develop.sentry.dev/sdk/event-payloads/exception/
-#[allow(unused_variables)]
 pub fn capture_error<E: Error + ?Sized>(error: &E) -> Uuid {
     Hub::with_active(|hub| hub.capture_error(error))
 }
