@@ -74,7 +74,8 @@ extra setup to function properly.
 | `transport`       | ✅      |                |            |                                                                                          |
 | `anyhow`          |         | 🔌             |            |                                                                                          |
 | `test`            |         |                |            |                                                                                          |
-| `metrics`         |         |                |            | Enables metrics capture APIs.                                                            |
+| `logs`            | ✅      |                |            | Enables structured log capture APIs.                                                     |
+| `metrics`         | ✅      |                |            | Enables metrics capture APIs.                                                            |
 | `debug-images`    | ✅      | 🔌             |            |                                                                                          |
 | `log`             |         | 🔌             |            | Requires extra setup; See [`sentry-log`]'s documentation.                                |
 | `slog`            |         | 🔌             |            | Requires extra setup; See [`sentry-slog`]'s documentation.                               |
@@ -102,6 +103,8 @@ extra setup to function properly.
 - `panic`: Enables support for capturing panics.
 - `transport`: Enables the default transport, which is currently `reqwest` with `native-tls`.
 - `debug-images`: Enables capturing metadata about the loaded shared libraries.
+- `logs`: Enables structured log capture APIs and support in the `log` and `tracing` integrations.
+- `metrics`: Enables metric capture APIs.
 
 ### Debugging/Testing
 - `anyhow`: Enables support for the `anyhow` crate.

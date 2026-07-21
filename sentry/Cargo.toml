@@ -25,6 +25,8 @@ default = [
     "backtrace",
     "contexts",
     "debug-images",
+    "logs",
+    "metrics",
     "panic",
     "transport",
     "release-health",

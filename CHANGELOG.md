@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+### Breaking Changes
+
+- [`ClientOptions`](https://docs.rs/sentry-core/0.49.0/sentry_core/struct.ClientOptions.html) is now `#[non_exhaustive]` ([#1230](https://github.com/getsentry/sentry-rust/pull/1230)). The struct must now be constructed with the builder-style setters:
+
+  ```rust
+  // Before
+  let options = sentry::ClientOptions {
+      dsn: "https://examplePublicKey@o0.ingest.sentry.io/0",
+      debug: true,
+      release: Some("my-app@1.0.0".into()),
+      ..Default::default()
+  };
+
+  // After
+  let options = sentry::ClientOptions::new()
+      .dsn("https://examplePublicKey@o0.ingest.sentry.io/0")
+      .debug(true)
+      .release("my-app@1.0.0");
+  ```
+- The `logs` and `metrics` features are now enabled by default in the `sentry` crate. This does not break the API, but may cause new telemetry to be sent to Sentry: log and tracing integrations can send structured logs, and applications can send metrics without adding the feature flags. Disable these features explicitly if this additional telemetry is not desired ([#1251](https://github.com/getsentry/sentry-rust/pull/1251)).
+- Removed the public `ClientOptions::sample_rate` field. Use `ClientOptions::event_sampling_strategy` to inspect the configured event sampling strategy, and use the existing `ClientOptions::sample_rate(...)` builder setter to configure fixed-rate sampling.
+- Removed the public `ClientOptions::sample_rate` field. Use `ClientOptions::event_sampling_strategy` to inspect the configured event sampling strategy, and use the existing `ClientOptions::sample_rate(...)` builder setter to configure fixed-rate sampling ([#1228](https://github.com/getsentry/sentry-rust/pull/1228)).
+- Removed the public `ClientOptions::traces_sample_rate` and `ClientOptions::traces_sampler` fields. Use `ClientOptions::traces_sampling_strategy` to inspect the configured traces sampling strategy, and use the existing `ClientOptions::traces_sample_rate(...)` and `ClientOptions::traces_sampler(...)` builder setters to configure fixed-rate and callback-based sampling ([#1227](https://github.com/getsentry/sentry-rust/pull/1227)).
+
 ### Features
 
 - `SentryHttpLayer` now records the [`http.response.status_code`](https://getsentry.github.io/sentry-conventions/attributes/http/) attribute on transactions ([#1253](https://github.com/getsentry/sentry-rust/pull/1253)).
