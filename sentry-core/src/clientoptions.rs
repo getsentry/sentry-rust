@@ -91,6 +91,7 @@ impl MaxRequestBodySize {
 /// ```
 #[derive(Clone)]
 #[must_use = "ClientOptions must be passed to sentry::init to have any effect"]
+#[non_exhaustive]
 pub struct ClientOptions {
     // Common options
     /// The DSN to use.
