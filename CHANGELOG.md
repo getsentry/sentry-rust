@@ -25,7 +25,7 @@
 - Removed the public `ClientOptions::sample_rate` field. Use `ClientOptions::event_sampling_strategy` to inspect the configured event sampling strategy, and use the existing `ClientOptions::sample_rate(...)` builder setter to configure fixed-rate sampling.
 - Removed the public `ClientOptions::sample_rate` field. Use `ClientOptions::event_sampling_strategy` to inspect the configured event sampling strategy, and use the existing `ClientOptions::sample_rate(...)` builder setter to configure fixed-rate sampling ([#1228](https://github.com/getsentry/sentry-rust/pull/1228)).
 - Removed the public `ClientOptions::traces_sample_rate` and `ClientOptions::traces_sampler` fields. Use `ClientOptions::traces_sampling_strategy` to inspect the configured traces sampling strategy, and use the existing `ClientOptions::traces_sample_rate(...)` and `ClientOptions::traces_sampler(...)` builder setters to configure fixed-rate and callback-based sampling ([#1227](https://github.com/getsentry/sentry-rust/pull/1227)).
-- [`EnvelopeError`](https://docs.rs/sentry-types/0.49.0/sentry_types/protocol/enum.EnvelopeError.html) is now `#[non_exhaustive]` to allow adding new error variants without a breaking change ([#XXXX](https://github.com/getsentry/sentry-rust/pull/XXXX)).
+- [`EnvelopeError`](https://docs.rs/sentry-types/0.49.0/sentry_types/protocol/enum.EnvelopeError.html) is now `#[non_exhaustive]` to allow adding new error variants without a breaking change ([#1254](https://github.com/getsentry/sentry-rust/pull/1254)).
 
 ## 0.48.5
 
