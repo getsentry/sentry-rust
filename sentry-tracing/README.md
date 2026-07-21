@@ -93,8 +93,9 @@ for i in 0..10 {
 ## Capturing logs
 
 Tracing events can be captured as traditional structured logs in Sentry.
-This is gated by the `logs` feature flag and requires setting up a custom Event filter/mapper
-to capture logs. You also need to pass `enable_logs: true` in your `sentry::init` call.
+This requires the `logs` feature, which is enabled by default in the `sentry` crate, and setting up
+a custom Event filter/mapper to capture logs. `enable_logs` defaults to `true`, but can be set explicitly
+in your `sentry::init` call.
 
 ```rust
 // assuming `tracing::Level::INFO => EventFilter::Log` in your `event_filter`

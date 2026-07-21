@@ -21,8 +21,8 @@ The `log` crate is supported in three ways:
 
 By default anything at or above `Info` is recorded as a breadcrumb and
 anything at or above `Error` is captured as error event.
-Additionally, if the `sentry` crate is used with the `logs` feature flag, anything at or above `Info`
-is captured as a [Structured Log](https://docs.sentry.io/product/explore/logs/).
+When the `logs` feature is enabled (as it is by default in the `sentry` crate), anything at or above
+`Info` is captured as a [Structured Log](https://docs.sentry.io/product/explore/logs/).
 
 ## Examples
 
