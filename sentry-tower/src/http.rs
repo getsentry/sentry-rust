@@ -140,10 +140,16 @@ where
                 if let Some((transaction, parent_span)) = slf.transaction.take() {
                     match &res {
                         Ok(res) => {
-                            transaction.set_data(
-                                "http.response.status_code",
-                                res.status().as_u16().into(),
-                            );
+                            if !transaction
+                                .get_trace_context()
+                                .data
+                                .contains_key("http.response.status_code")
+                            {
+                                transaction.set_data(
+                                    "http.response.status_code",
+                                    res.status().as_u16().into(),
+                                );
+                            }
                             if transaction.get_status().is_none() {
                                 transaction.set_status(map_status(res.status()));
                             }

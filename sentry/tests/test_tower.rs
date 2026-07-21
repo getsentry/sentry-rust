@@ -62,6 +62,60 @@ fn test_tower_http_records_response_status_code() {
 }
 
 #[test]
+fn test_tower_http_preserves_existing_response_status_code() {
+    let options = ClientOptions::new().traces_sample_rate(1.0);
+
+    let envelopes = sentry::test::with_captured_envelopes_options(
+        || {
+            let service = ServiceBuilder::new()
+                .layer(SentryHttpLayer::new().enable_transaction())
+                .service_fn(|_req: http::Request<()>| async move {
+                    sentry::configure_scope(|scope| {
+                        if let Some(span) = scope.get_span() {
+                            span.set_data("http.response.status_code", 418.into());
+                            span.set_status(SpanStatus::InvalidArgument);
+                        }
+                    });
+                    Ok::<_, std::convert::Infallible>(
+                        http::Response::builder()
+                            .status(http::StatusCode::NOT_FOUND)
+                            .body(())
+                            .unwrap(),
+                    )
+                });
+
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            let request = http::Request::builder()
+                .method(http::Method::GET)
+                .uri("http://example.com/tea")
+                .body(())
+                .unwrap();
+            let response = rt.block_on(service.oneshot(request)).unwrap();
+            assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
+        },
+        options,
+    );
+
+    assert_eq!(envelopes.len(), 1);
+    let transaction = match envelopes[0].items().next().unwrap() {
+        EnvelopeItem::Transaction(transaction) => transaction,
+        _ => panic!("expected a transaction item"),
+    };
+
+    let Context::Trace(trace) = transaction.contexts.get("trace").unwrap() else {
+        panic!("expected a trace context");
+    };
+    assert_eq!(trace.status, Some(SpanStatus::InvalidArgument));
+    assert_eq!(
+        trace.data.get("http.response.status_code"),
+        Some(&418.into())
+    );
+}
+
+#[test]
 fn test_tower_hub() {
     // Create a fake transport for new hubs
     let transport = TestTransport::new();
