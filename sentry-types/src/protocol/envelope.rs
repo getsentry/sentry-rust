@@ -17,6 +17,7 @@ use protocol::{
 
 /// Raised if a envelope cannot be parsed from a given input.
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum EnvelopeError {
     /// Unexpected end of file
     #[error("unexpected end of file")]
