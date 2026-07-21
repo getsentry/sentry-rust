@@ -52,7 +52,7 @@ fn test_associates_event_with_span() {
                     });
                 }
                 sentry::protocol::EnvelopeItem::Transaction(tx) => {
-                    transaction = Some(tx.clone());
+                    transaction = Some(*tx.clone());
                     tx.spans.iter().for_each(|span| {
                         span_id = Some(span.span_id.to_string());
                     });

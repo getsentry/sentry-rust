@@ -155,13 +155,12 @@ struct EnvelopeItemHeader {
 /// for more details.
 #[derive(Clone, Debug, PartialEq)]
 #[non_exhaustive]
-#[allow(clippy::large_enum_variant)]
 pub enum EnvelopeItem {
     /// An Event Item.
     ///
     /// See the [Event Item documentation](https://develop.sentry.dev/sdk/envelopes/#event)
     /// for more details.
-    Event(Event<'static>),
+    Event(Box<Event<'static>>),
     /// A Session Item.
     ///
     /// See the [Session Item documentation](https://develop.sentry.dev/sdk/envelopes/#session)
@@ -176,7 +175,7 @@ pub enum EnvelopeItem {
     ///
     /// See the [Transaction Item documentation](https://develop.sentry.dev/sdk/envelopes/#transaction)
     /// for more details.
-    Transaction(Transaction<'static>),
+    Transaction(Box<Transaction<'static>>),
     /// An Attachment Item.
     ///
     /// See the [Attachment Item documentation](https://develop.sentry.dev/sdk/envelopes/#attachment)
@@ -283,7 +282,7 @@ impl EnvelopeItem {
 
 impl From<Event<'static>> for EnvelopeItem {
     fn from(event: Event<'static>) -> Self {
-        EnvelopeItem::Event(event)
+        EnvelopeItem::Event(event.into())
     }
 }
 
@@ -301,7 +300,7 @@ impl From<SessionAggregates<'static>> for EnvelopeItem {
 
 impl From<Transaction<'static>> for EnvelopeItem {
     fn from(transaction: Transaction<'static>) -> Self {
-        EnvelopeItem::Transaction(transaction)
+        EnvelopeItem::Transaction(transaction.into())
     }
 }
 
@@ -513,7 +512,7 @@ impl Envelope {
         };
 
         items.iter().find_map(|item| match item {
-            EnvelopeItem::Event(event) => Some(event),
+            EnvelopeItem::Event(event) => Some(&**event),
             _ => None,
         })
     }
