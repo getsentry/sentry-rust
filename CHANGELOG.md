@@ -25,6 +25,7 @@
 - Removed the public `ClientOptions::sample_rate` field. Use `ClientOptions::event_sampling_strategy` to inspect the configured event sampling strategy, and use the existing `ClientOptions::sample_rate(...)` builder setter to configure fixed-rate sampling.
 - Removed the public `ClientOptions::sample_rate` field. Use `ClientOptions::event_sampling_strategy` to inspect the configured event sampling strategy, and use the existing `ClientOptions::sample_rate(...)` builder setter to configure fixed-rate sampling ([#1228](https://github.com/getsentry/sentry-rust/pull/1228)).
 - Removed the public `ClientOptions::traces_sample_rate` and `ClientOptions::traces_sampler` fields. Use `ClientOptions::traces_sampling_strategy` to inspect the configured traces sampling strategy, and use the existing `ClientOptions::traces_sample_rate(...)` and `ClientOptions::traces_sampler(...)` builder setters to configure fixed-rate and callback-based sampling ([#1227](https://github.com/getsentry/sentry-rust/pull/1227)).
+- [`EnvelopeItem`](https://docs.rs/sentry-types/0.49.0/sentry_types/protocol/envelope/enum.EnvelopeItem.html) now stores `Event` and `Transaction` payloads in `Box` values. Code that constructs or pattern-matches these variants must account for the additional indirection ([#1255](https://github.com/getsentry/sentry-rust/pull/1255)).
 
 ## 0.48.5
 
