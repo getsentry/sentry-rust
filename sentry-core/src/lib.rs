@@ -124,7 +124,7 @@ mod transport;
 pub use crate::api::*;
 pub use crate::breadcrumbs::IntoBreadcrumbs;
 pub use crate::clientoptions::{
-    BeforeCallback, ClientOptions, SessionMode, TracesSamplingStrategy,
+    BeforeCallback, ClientOptions, EventSamplingStrategy, SessionMode, TracesSamplingStrategy,
 };
 pub use crate::error::{capture_error, event_from_error, parse_type_from_debug};
 pub use crate::futures::{SentryFuture, SentryFutureExt};

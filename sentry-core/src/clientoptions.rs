@@ -110,6 +110,22 @@ impl fmt::Debug for TracesSamplingStrategy {
     }
 }
 
+/// The sampling strategy for events.
+///
+/// Currently, we only support fixed rates. This defaults to `Self::FixedRate(1.0)`.
+#[derive(Clone, Debug)]
+#[non_exhaustive]
+pub enum EventSamplingStrategy {
+    /// Sample events at a fixed sample rate. The rate should be between 0.0 and 1.0, inclusive.
+    FixedRate(f32),
+}
+
+impl Default for EventSamplingStrategy {
+    fn default() -> Self {
+        Self::FixedRate(1.0)
+    }
+}
+
 /// Configuration settings for the client.
 ///
 /// These options are explained in more detail in the general
@@ -141,10 +157,10 @@ pub struct ClientOptions {
     ///
     /// See [`environment`](method@ClientOptions::environment) for details.
     pub environment: Option<Cow<'static, str>>,
-    /// The sample rate for event submission.
+    /// The sampling strategy for event submission.
     ///
-    /// See [`sample_rate`](method@ClientOptions::sample_rate) for details.
-    pub sample_rate: f32,
+    /// This can be set to with [`sample_rate`](method@ClientOptions::sample_rate).
+    pub event_sampling_strategy: EventSamplingStrategy,
     /// The traces sampling strategy.
     ///
     /// This can be set to a fixed rate with
@@ -319,7 +335,8 @@ impl ClientOptions {
         }
     }
 
-    /// Sets the [sample rate](field@ClientOptions::sample_rate) for event submission.
+    /// Sets the [event sampling strategy](field@ClientOptions::event_sampling_strategy) to a fixed
+    /// sample rate for event submission.
     ///
     /// Must be between `0.0` and `1.0`. Defaults to `1.0`.
     ///
@@ -332,8 +349,10 @@ impl ClientOptions {
             panic!("Sample rate {sample_rate} is outside the allowed range [0.0, 1.0].")
         }
 
+        let event_sampling_strategy = EventSamplingStrategy::FixedRate(sample_rate);
+
         Self {
-            sample_rate,
+            event_sampling_strategy,
             ..self
         }
     }
@@ -736,7 +755,7 @@ impl fmt::Debug for ClientOptions {
             .field("debug", &self.debug)
             .field("release", &self.release)
             .field("environment", &self.environment)
-            .field("sample_rate", &self.sample_rate)
+            .field("event_sampling_strategy", &self.event_sampling_strategy)
             .field("traces_sampling_strategy", &self.traces_sampling_strategy)
             .field("max_breadcrumbs", &self.max_breadcrumbs)
             .field("attach_stacktrace", &self.attach_stacktrace)
@@ -771,7 +790,7 @@ impl Default for ClientOptions {
             debug: false,
             release: None,
             environment: None,
-            sample_rate: 1.0,
+            event_sampling_strategy: Default::default(),
             traces_sampling_strategy: Default::default(),
             max_breadcrumbs: 100,
             attach_stacktrace: false,
