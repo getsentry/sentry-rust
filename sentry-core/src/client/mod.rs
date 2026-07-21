@@ -216,8 +216,7 @@ impl Client {
                 .then(|| Batcher::new(envelope_sender.clone())),
         );
 
-        #[allow(unused_mut)]
-        let mut client = Client {
+        let client = Client {
             options,
             envelope_sender,
             #[cfg(feature = "release-health")]
@@ -235,16 +234,16 @@ impl Client {
         };
 
         #[cfg(feature = "logs")]
-        client.cache_default_log_attributes();
+        let client = client.with_cached_default_log_attributes();
 
         #[cfg(feature = "metrics")]
-        client.cache_default_metric_attributes();
+        let client = client.with_cached_default_metric_attributes();
 
         client
     }
 
     #[cfg(feature = "logs")]
-    fn cache_default_log_attributes(&mut self) {
+    fn with_cached_default_log_attributes(mut self) -> Self {
         let mut attributes = BTreeMap::new();
 
         if let Some(environment) = self.options.environment.as_ref() {
@@ -292,10 +291,12 @@ impl Client {
         }
 
         self.default_log_attributes = Some(attributes);
+
+        self
     }
 
     #[cfg(feature = "metrics")]
-    fn cache_default_metric_attributes(&mut self) {
+    fn with_cached_default_metric_attributes(mut self) -> Self {
         let always_present_attributes = [
             ("sentry.sdk.name", &self.sdk_info.name),
             ("sentry.sdk.version", &self.sdk_info.version),
@@ -314,6 +315,8 @@ impl Client {
         self.default_metric_attributes = maybe_present_attributes
             .chain(always_present_attributes)
             .collect();
+
+        self
     }
 
     pub(crate) fn get_integration<I>(&self) -> Option<&I>
@@ -389,6 +392,7 @@ impl Client {
             }
         }
 
+        #[cfg(feature = "release-health")]
         if let Some(scope) = scope {
             scope.update_session_from_event(&event);
         }

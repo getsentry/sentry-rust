@@ -456,9 +456,8 @@ impl Scope {
         self.span.as_ref().clone()
     }
 
-    #[allow(unused_variables)]
+    #[cfg(feature = "release-health")]
     pub(crate) fn update_session_from_event(&self, event: &Event<'static>) {
-        #[cfg(feature = "release-health")]
         if let Some(session) = self.session.lock().unwrap().as_mut() {
             session.update_from_event(event);
         }
