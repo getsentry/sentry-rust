@@ -3560,6 +3560,7 @@ dependencies = [
  "curl",
  "embedded-svc",
  "esp-idf-svc",
+ "http 1.4.0",
  "httpdate",
  "log",
  "native-tls",

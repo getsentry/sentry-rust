@@ -3,12 +3,63 @@
 use std::sync::Arc;
 
 use sentry::{
-    protocol::{Breadcrumb, Level},
+    protocol::{Breadcrumb, Context, EnvelopeItem, Level, SpanStatus},
     test::TestTransport,
     ClientOptions, Hub,
 };
-use sentry_tower::SentryLayer;
+use sentry_tower::{SentryHttpLayer, SentryLayer};
 use tower::{ServiceBuilder, ServiceExt};
+
+#[test]
+fn test_tower_http_records_response_status_code() {
+    let options = ClientOptions::new().traces_sample_rate(1.0);
+
+    let envelopes = sentry::test::with_captured_envelopes_options(
+        || {
+            let service = ServiceBuilder::new()
+                .layer(SentryHttpLayer::new().enable_transaction())
+                .service_fn(|_req: http::Request<()>| async move {
+                    Ok::<_, std::convert::Infallible>(
+                        http::Response::builder()
+                            .status(http::StatusCode::NOT_FOUND)
+                            .body(())
+                            .unwrap(),
+                    )
+                });
+
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            let request = http::Request::builder()
+                .method(http::Method::GET)
+                .uri("http://example.com/missing")
+                .body(())
+                .unwrap();
+            let response = rt.block_on(service.oneshot(request)).unwrap();
+            assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
+        },
+        options,
+    );
+
+    assert_eq!(envelopes.len(), 1);
+    let transaction = match envelopes[0].items().next().unwrap() {
+        EnvelopeItem::Transaction(transaction) => transaction,
+        _ => panic!("expected a transaction item"),
+    };
+
+    assert_eq!(transaction.name.as_deref(), Some("GET /missing"));
+    let Context::Trace(trace) = transaction.contexts.get("trace").unwrap() else {
+        panic!("expected a trace context");
+    };
+    assert_eq!(trace.op.as_deref(), Some("http.server"));
+    assert_eq!(trace.origin.as_deref(), Some("auto.http.tower"));
+    assert_eq!(trace.status, Some(SpanStatus::NotFound));
+    assert_eq!(
+        trace.data.get("http.response.status_code"),
+        Some(&404.into())
+    );
+}
 
 #[test]
 fn test_tower_hub() {
