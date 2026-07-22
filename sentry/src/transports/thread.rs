@@ -191,6 +191,10 @@ impl TransportThread {
 
 impl Drop for TransportThread {
     fn drop(&mut self) {
+        let (sender, receiver) = bounded(1);
+        if self.control_sender.send(ControlTask::Flush(sender)).is_ok() {
+            let _ = receiver.recv();
+        }
         let _ = self.control_sender.send(ControlTask::Shutdown);
         if let Some(handle) = self.handle.take() {
             handle.join().unwrap();
@@ -204,7 +208,7 @@ mod tests {
     use std::sync::mpsc::sync_channel;
     use std::sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
-        Arc,
+        Arc, Mutex,
     };
     use std::time::Instant;
 
@@ -313,5 +317,28 @@ mod tests {
         );
         assert_eq!(sent.load(Ordering::SeqCst), 2);
         handle.join().unwrap();
+    }
+
+    #[test]
+    fn drop_drains_queued_envelopes() {
+        let gate = Arc::new(Mutex::new(()));
+        let guard = gate.lock().unwrap();
+        let sent = Arc::new(AtomicUsize::new(0));
+        let sent_worker = sent.clone();
+        let gate_worker = gate.clone();
+        let transport = TransportThreadOptions::new(move |_: Envelope, _: &mut RateLimiter| {
+            let _guard = gate_worker.lock().unwrap();
+            sent_worker.fetch_add(1, Ordering::SeqCst);
+        })
+        .with_channel_capacity(1)
+        .spawn_thread();
+
+        send_rendezvous(&transport);
+        send_rendezvous(&transport);
+        let handle = thread::spawn(move || drop(transport));
+        drop(guard);
+        handle.join().unwrap();
+
+        assert_eq!(sent.load(Ordering::SeqCst), 2);
     }
 }

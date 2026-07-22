@@ -219,6 +219,10 @@ impl TransportThread {
 
 impl Drop for TransportThread {
     fn drop(&mut self) {
+        let (sender, receiver) = bounded(1);
+        if self.control_sender.send(ControlTask::Flush(sender)).is_ok() {
+            let _ = receiver.recv();
+        }
         let _ = self.control_sender.send(ControlTask::Shutdown);
         if let Some(handle) = self.handle.take() {
             handle.join().unwrap();
