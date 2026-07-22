@@ -5,10 +5,9 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
 
+use super::{feedback::Feedback, v7 as protocol};
 use crate::Dsn;
 use crate::{protocol::v7::ClientReport, utils::ts_rfc3339_opt};
-
-use super::v7 as protocol;
 
 use protocol::{
     Attachment, AttachmentType, ClientSdkInfo, DynamicSamplingContext, Event, Log, Metric,
@@ -135,6 +134,9 @@ enum EnvelopeItemType {
     /// A client report.
     #[serde(rename = "client_report")]
     ClientReport,
+    /// A User Feedback Item type.
+    #[serde(rename = "feedback")]
+    Feedback,
 }
 
 /// An Envelope Item Header.
@@ -188,6 +190,12 @@ pub enum EnvelopeItem {
     ClientReport(ClientReport),
     /// A container for a list of multiple items.
     ItemContainer(ItemContainer),
+    /// A User Feedback item.
+    ///
+    /// Feedback is transmitted as an [`Event`] carrying a `feedback` context, so this variant
+    /// wraps an `Event` rather than a [`Feedback`]. Construct it via `EnvelopeItem::from(feedback)`
+    /// rather than the raw variant, and use [`EnvelopeItem::as_feedback`] to recover the feedback.
+    Feedback(Event<'static>),
     /// This is a sentinel item used to `filter` raw envelopes.
     Raw,
     // TODO:
@@ -276,7 +284,22 @@ impl EnvelopeItem {
             Self::MonitorCheckIn(_) => Some(EnvelopeItemType::MonitorCheckIn),
             Self::ClientReport(_) => Some(EnvelopeItemType::ClientReport),
             Self::ItemContainer(container) => Some(container.item_type()),
+            Self::Feedback(_) => Some(EnvelopeItemType::Feedback),
             Self::Raw => None,
+        }
+    }
+
+    /// Returns the [`Feedback`] carried by this item.
+    ///
+    /// Returns `None` for any item that is not a feedback item, or whose wrapped event is missing
+    /// its `feedback` context.
+    pub fn as_feedback(&self) -> Option<&Feedback> {
+        let Self::Feedback(event) = self else {
+            return None;
+        };
+        match event.contexts.get("feedback") {
+            Some(protocol::Context::Feedback(feedback)) => Some(feedback.as_ref()),
+            _ => None,
         }
     }
 }
@@ -338,6 +361,12 @@ impl From<Vec<Metric>> for EnvelopeItem {
 impl From<ClientReport> for EnvelopeItem {
     fn from(value: ClientReport) -> Self {
         EnvelopeItem::ClientReport(value)
+    }
+}
+
+impl From<Feedback> for EnvelopeItem {
+    fn from(feedback: Feedback) -> Self {
+        EnvelopeItem::Feedback(feedback.to_new_event())
     }
 }
 
@@ -457,10 +486,16 @@ impl Envelope {
         };
 
         if self.headers.event_id.is_none() {
-            if let EnvelopeItem::Event(ref event) = item {
-                self.headers.event_id = Some(event.event_id);
-            } else if let EnvelopeItem::Transaction(ref transaction) = item {
-                self.headers.event_id = Some(transaction.event_id);
+            match item {
+                // Feedback wraps an event with its own id, so it sets the envelope `event_id` too;
+                // otherwise `filter` would drop attachments from a feedback-only envelope.
+                EnvelopeItem::Event(ref event) | EnvelopeItem::Feedback(ref event) => {
+                    self.headers.event_id = Some(event.event_id);
+                }
+                EnvelopeItem::Transaction(ref transaction) => {
+                    self.headers.event_id = Some(transaction.event_id);
+                }
+                _ => {}
             }
         }
         items.push(item);
@@ -626,6 +661,7 @@ impl Envelope {
                         serde_json::to_writer(&mut item_buf, &wrapper)?
                     }
                 },
+                EnvelopeItem::Feedback(feedback) => serde_json::to_writer(&mut item_buf, feedback)?,
                 EnvelopeItem::Raw => {
                     continue;
                 }
@@ -823,6 +859,21 @@ impl Envelope {
                 serde_json::from_slice::<ItemsSerdeWrapper<_>>(payload)
                     .map(|x| EnvelopeItem::ItemContainer(ItemContainer::Metrics(x.items.into())))
             }
+            EnvelopeItemType::Feedback => {
+                serde_json::from_slice(payload).and_then(|event: Event| {
+                    // A feedback item and a plain event share the same payload type, so guard
+                    // against a `feedback`-typed item whose event is missing the feedback context;
+                    // otherwise a mislabeled event would be silently accepted as feedback.
+                    let item = EnvelopeItem::Feedback(event);
+                    if item.as_feedback().is_some() {
+                        Ok(item)
+                    } else {
+                        Err(<serde_json::Error as serde::de::Error>::custom(
+                            "feedback item is missing its feedback context",
+                        ))
+                    }
+                })
+            }
         }
         .map_err(EnvelopeError::InvalidItemPayload)?;
 
@@ -981,6 +1032,111 @@ mod test {
 {"event_id":"22d00b3fd1b14b5d8d2049d138cd8a9c","timestamp":1595256674.296}
 "#
         )
+    }
+
+    #[test]
+    fn test_feedback() {
+        let feedback = Feedback::new("It broke.")
+            .with_contact_email("john.doe@example.com")
+            .with_name("John Doe");
+        // `to_new_event` fills in a random event id and the current timestamp, so
+        // overwrite them here to keep the serialized output deterministic.
+        let mut event = feedback.to_new_event();
+        event.event_id = Uuid::parse_str("22d00b3f-d1b1-4b5d-8d20-49d138cd8a9c").unwrap();
+        event.timestamp = timestamp("2020-07-20T14:51:14.296Z");
+
+        let mut envelope = Envelope::new();
+        envelope.add_item(EnvelopeItem::Feedback(event));
+        assert_eq!(
+            to_str(envelope),
+            r#"{"event_id":"22d00b3f-d1b1-4b5d-8d20-49d138cd8a9c"}
+{"type":"feedback","length":212}
+{"event_id":"22d00b3fd1b14b5d8d2049d138cd8a9c","level":"info","timestamp":1595256674.296,"contexts":{"feedback":{"type":"feedback","contact_email":"john.doe@example.com","name":"John Doe","message":"It broke."}}}
+"#
+        )
+    }
+
+    #[test]
+    fn test_feedback_omits_empty_optional_fields() {
+        let feedback = Feedback::new("It broke.");
+        // `to_new_event` fills in a random event id and the current timestamp, so
+        // overwrite them here to keep the serialized output deterministic.
+        let mut event = feedback.to_new_event();
+        event.event_id = Uuid::parse_str("22d00b3f-d1b1-4b5d-8d20-49d138cd8a9c").unwrap();
+        event.timestamp = timestamp("2020-07-20T14:51:14.296Z");
+
+        let mut envelope = Envelope::new();
+        envelope.add_item(EnvelopeItem::Feedback(event));
+        // The absent optional fields are omitted rather than serialized as `null`.
+        let serialized = to_str(envelope);
+        assert_eq!(
+            serialized,
+            r#"{"event_id":"22d00b3f-d1b1-4b5d-8d20-49d138cd8a9c"}
+{"type":"feedback","length":155}
+{"event_id":"22d00b3fd1b14b5d8d2049d138cd8a9c","level":"info","timestamp":1595256674.296,"contexts":{"feedback":{"type":"feedback","message":"It broke."}}}
+"#
+        );
+
+        // The item round-trips back into a feedback item, and the feedback is recoverable.
+        let deserialized = Envelope::from_slice(serialized.as_bytes()).unwrap();
+        let item = deserialized.items().next().unwrap();
+        assert!(matches!(item, EnvelopeItem::Feedback(_)));
+        let recovered = item.as_feedback().unwrap();
+        assert_eq!(recovered.message, "It broke.");
+        assert_eq!(recovered.contact_email, None);
+        assert_eq!(recovered.name, None);
+    }
+
+    #[test]
+    fn test_feedback_without_context_is_rejected() {
+        // A `feedback`-typed item whose payload is a plain event with no feedback context must be
+        // rejected rather than silently accepted as feedback.
+        let bytes = b"\
+            {}\n\
+            {\"type\":\"feedback\"}\n\
+            {\"event_id\":\"22d00b3fd1b14b5d8d2049d138cd8a9c\"}\n\
+            ";
+
+        let err = Envelope::from_slice(bytes).unwrap_err();
+        assert!(matches!(err, EnvelopeError::InvalidItemPayload(_)));
+    }
+
+    #[test]
+    fn test_feedback_context_type_inferred() {
+        // A feedback context without an explicit `type` is inferred from its `feedback` key, so the
+        // item deserializes as feedback rather than being rejected.
+        let bytes = b"\
+            {}\n\
+            {\"type\":\"feedback\"}\n\
+            {\"event_id\":\"22d00b3fd1b14b5d8d2049d138cd8a9c\",\"contexts\":{\"feedback\":{\"message\":\"It broke.\"}}}\n\
+            ";
+
+        let envelope = Envelope::from_slice(bytes).unwrap();
+        let item = envelope.items().next().unwrap();
+        assert_eq!(item.as_feedback().unwrap().message, "It broke.");
+    }
+
+    #[test]
+    fn test_feedback_sets_envelope_event_id() {
+        let event_id = Uuid::parse_str("22d00b3f-d1b1-4b5d-8d20-49d138cd8a9c").unwrap();
+        let mut event = Feedback::new("It broke.").to_new_event();
+        event.event_id = event_id;
+
+        let mut envelope = Envelope::new();
+        envelope.add_item(EnvelopeItem::Feedback(event));
+        envelope.add_item(Attachment {
+            buffer: b"screenshot".to_vec(),
+            filename: "screenshot.png".to_owned(),
+            ..Default::default()
+        });
+
+        // The feedback item populates the envelope `event_id`.
+        assert_eq!(envelope.uuid(), Some(&event_id));
+
+        // Because the envelope has an `event_id`, `filter` keeps the feedback's attachment instead
+        // of dropping it as an orphan.
+        let filtered = envelope.filter(|_item: &EnvelopeItem| true).unwrap();
+        assert_eq!(filtered.items().count(), 2);
     }
 
     #[test]
@@ -1465,6 +1621,11 @@ some content
         }]
         .into();
 
+        // Feedback
+        let feedback = Feedback::new("It broke.")
+            .with_contact_email("john.doe@example.com")
+            .with_name("John Doe");
+
         let mut envelope: Envelope = Envelope::new();
         envelope.add_item(event);
         envelope.add_item(transaction);
@@ -1472,6 +1633,7 @@ some content
         envelope.add_item(attachment);
         envelope.add_item(logs);
         envelope.add_item(metrics);
+        envelope.add_item(feedback);
 
         let serialized = to_str(envelope);
         let deserialized = Envelope::from_slice(serialized.as_bytes()).unwrap();
@@ -1683,6 +1845,13 @@ some content
     }
 
     #[test]
+    fn losses_on_drop_maps_feedback_to_feedback() {
+        let envelope: Envelope = Feedback::new("It broke.").into();
+
+        assert_eq!(collect_losses(&envelope), vec![(Category::Feedback, 1)]);
+    }
+
+    #[test]
     fn losses_on_drop_skips_client_reports() {
         let envelope: Envelope = ClientReport::new(<[Item; 0]>::default()).into();
 
@@ -1723,6 +1892,7 @@ some content
             unit: None,
             attributes: Map::new(),
         }]);
+        envelope.add_item(Feedback::new("flattened feedback"));
 
         assert_eq!(
             collect_losses(&envelope),
@@ -1734,6 +1904,7 @@ some content
                 (Category::LogByte, 9),
                 (Category::TraceMetric, 1),
                 (Category::TraceMetricByte, 24),
+                (Category::Feedback, 1),
             ]
         );
     }
