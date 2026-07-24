@@ -549,20 +549,20 @@ impl Envelope {
 
         // filter again, removing attachments which do not make any sense without
         // an event/transaction
-        if filtered.uuid().is_none() {
-            if let Items::EnvelopeItems(ref mut items) = filtered.items {
-                let old_items = mem::take(items);
-                *items = old_items
-                    .into_iter()
-                    .filter_map(|item| match item {
-                        EnvelopeItem::Attachment(..) => {
-                            filter.on_filtered(item);
-                            None
-                        }
-                        _ => Some(item),
-                    })
-                    .collect();
-            }
+        if filtered.uuid().is_none()
+            && let Items::EnvelopeItems(ref mut items) = filtered.items
+        {
+            let old_items = mem::take(items);
+            *items = old_items
+                .into_iter()
+                .filter_map(|item| match item {
+                    EnvelopeItem::Attachment(..) => {
+                        filter.on_filtered(item);
+                        None
+                    }
+                    _ => Some(item),
+                })
+                .collect();
         }
 
         if filtered.items.is_empty() {

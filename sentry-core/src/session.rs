@@ -91,11 +91,11 @@ mod session_impl {
             let mut is_crash = false;
             for exc in &event.exception.values {
                 has_error = true;
-                if let Some(mechanism) = &exc.mechanism {
-                    if let Some(false) = mechanism.handled {
-                        is_crash = true;
-                        break;
-                    }
+                if let Some(mechanism) = &exc.mechanism
+                    && let Some(false) = mechanism.handled
+                {
+                    is_crash = true;
+                    break;
                 }
             }
 

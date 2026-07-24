@@ -82,12 +82,11 @@ impl Integration for ContextIntegration {
         mut event: Event<'static>,
         _cfg: &ClientOptions,
     ) -> Option<Event<'static>> {
-        if self.add_os {
-            if let Entry::Vacant(entry) = event.contexts.entry("os".to_string()) {
-                if let Some(os) = os_context() {
-                    entry.insert(os);
-                }
-            }
+        if self.add_os
+            && let Entry::Vacant(entry) = event.contexts.entry("os".to_string())
+            && let Some(os) = os_context()
+        {
+            entry.insert(os);
         }
         if self.add_rust {
             event

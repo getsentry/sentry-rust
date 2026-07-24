@@ -90,11 +90,10 @@ impl Hub {
     {
         use_without_client!(f);
         with_client_impl! {{
-            if let Some(client) = self.client() {
-                if let Some(integration) = client.get_integration::<I>() {
+            if let Some(client) = self.client()
+                && let Some(integration) = client.get_integration::<I>() {
                     return f(integration);
                 }
-            }
             Default::default()
         }}
     }

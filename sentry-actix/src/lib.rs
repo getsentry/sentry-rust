@@ -371,16 +371,17 @@ where
             };
 
             // Response errors
-            if inner.capture_server_errors && res.response().status().is_server_error() {
-                if let Some(e) = res.response().error() {
-                    let event_id = hub.capture_error(e);
+            if inner.capture_server_errors
+                && res.response().status().is_server_error()
+                && let Some(e) = res.response().error()
+            {
+                let event_id = hub.capture_error(e);
 
-                    if inner.emit_header {
-                        res.response_mut().headers_mut().insert(
-                            "x-sentry-event".parse().unwrap(),
-                            event_id.simple().to_string().parse().unwrap(),
-                        );
-                    }
+                if inner.emit_header {
+                    res.response_mut().headers_mut().insert(
+                        "x-sentry-event".parse().unwrap(),
+                        event_id.simple().to_string().parse().unwrap(),
+                    );
                 }
             }
 
@@ -445,10 +446,8 @@ fn sentry_request_from_http(request: &ServiceRequest, with_pii: bool) -> Request
     };
 
     // If PII is enabled, include the remote address
-    if with_pii {
-        if let Some(remote) = request.connection_info().remote_addr() {
-            sentry_req.env.insert("REMOTE_ADDR".into(), remote.into());
-        }
+    if with_pii && let Some(remote) = request.connection_info().remote_addr() {
+        sentry_req.env.insert("REMOTE_ADDR".into(), remote.into());
     };
 
     sentry_req
