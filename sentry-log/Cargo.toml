@@ -21,9 +21,9 @@ logs = ["sentry-core/logs"]
 
 [dependencies]
 sentry-core = { version = "0.48.5", path = "../sentry-core" }
-log = { version = "0.4.8", features = ["std", "kv"] }
-bitflags = "2.9.4"
+log = { workspace = true, features = ["std", "kv"] }
+bitflags = { workspace = true }
 
 [dev-dependencies]
-sentry = { path = "../sentry", default-features = false, features = ["test"] }
-pretty_env_logger = "0.5.0"
+sentry = { workspace = true, features = ["test"] }
+pretty_env_logger = { workspace = true }

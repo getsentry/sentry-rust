@@ -24,15 +24,15 @@ default = ["protocol"]
 protocol = []
 
 [dependencies]
-debugid = { version = "0.8.0", features = ["serde"] }
-hex = "0.4.3"
-rand = "0.9.3"
-serde = { version = "1.0.104", features = ["derive"] }
-serde_json = "1.0.46"
-thiserror = "2.0.12"
-time = { version = "0.3.47", features = ["formatting", "parsing"] }
-url = { version = "2.1.1", features = ["serde"] }
-uuid = { version = "1.0.0", features = ["serde"] }
+debugid = { workspace = true, features = ["serde"] }
+hex = { workspace = true }
+rand = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+time = { workspace = true, features = ["formatting", "parsing"] }
+url = { workspace = true, features = ["serde"] }
+uuid = { workspace = true, features = ["serde"] }
 
 [dev-dependencies]
-rstest = "0.25.0"
+rstest = { workspace = true }

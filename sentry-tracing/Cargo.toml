@@ -27,17 +27,15 @@ logs = ["sentry-core/logs"]
 sentry-core = { version = "0.48.5", path = "../sentry-core", features = [
     "client",
 ] }
-tracing-core = "0.1"
-tracing-subscriber = { version = "0.3.20", default-features = false, features = [
-    "std",
-] }
-sentry-backtrace = { version = "0.48.5", path = "../sentry-backtrace", optional = true }
-bitflags = "2.9.4"
+tracing-core = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["std"] }
+sentry-backtrace = { workspace = true, optional = true }
+bitflags = { workspace = true }
 
 [dev-dependencies]
-log = "0.4"
-sentry = { path = "../sentry", default-features = false, features = ["test", "tracing"] }
-serde_json = "1"
-tracing = "0.1"
-tracing-subscriber = { version = "0.3.20", features = ["fmt", "registry"] }
-tokio = { version = "1.44", features = ["rt-multi-thread", "macros", "time"] }
+log = { workspace = true }
+sentry = { workspace = true, features = ["test", "tracing"] }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["fmt", "registry"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time"] }

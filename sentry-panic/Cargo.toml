@@ -17,7 +17,7 @@ workspace = true
 
 [dependencies]
 sentry-core = { version = "0.48.5", path = "../sentry-core", features = ["client"] }
-sentry-backtrace = { version = "0.48.5", path = "../sentry-backtrace" }
+sentry-backtrace = { workspace = true }
 
 [dev-dependencies]
-sentry = { path = "../sentry", default-features = false, features = ["test"] }
+sentry = { workspace = true, features = ["test"] }
