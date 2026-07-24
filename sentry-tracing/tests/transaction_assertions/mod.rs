@@ -1,4 +1,4 @@
-use sentry::protocol::{EnvelopeItem, Transaction};
+use sentry::protocol::EnvelopeItem;
 use sentry::Envelope;
 
 /// Assert that the given envelopes contain exactly one `Envelope`, containing
@@ -7,15 +7,14 @@ pub fn assert_transaction(envelopes: Vec<Envelope>, name: &str) {
     let envelope = get_and_assert_only_item(envelopes, "expected exactly one envelope");
     let item = get_and_assert_only_item(envelope.into_items(), "expected exactly one item");
 
-    assert!(
-        matches!(
-            item,
-            EnvelopeItem::Transaction(Transaction {
-                name: Some(expected_name),
-                ..
-            }) if expected_name == name
-        ),
-        "expected a Transaction item with name {name:?}"
+    let EnvelopeItem::Transaction(transaction) = item else {
+        panic!("expected a Transaction item, got {item:?}");
+    };
+
+    assert_eq!(
+        transaction.name.as_deref(),
+        Some(name),
+        "did not get expected transaction name"
     );
 }
 
