@@ -72,28 +72,25 @@ sentry-core = { version = "0.48.5", path = "../sentry-core", features = [
     "client",
 ] }
 sentry-anyhow = { version = "0.48.5", path = "../sentry-anyhow", optional = true }
-sentry-actix = { version = "0.48.5", path = "../sentry-actix", optional = true, default-features = false }
-sentry-backtrace = { version = "0.48.5", path = "../sentry-backtrace", optional = true }
-sentry-contexts = { version = "0.48.5", path = "../sentry-contexts", optional = true }
-sentry-debug-images = { version = "0.48.5", path = "../sentry-debug-images", optional = true }
+sentry-actix = { workspace = true, optional = true }
+sentry-backtrace = { workspace = true, optional = true }
+sentry-contexts = { workspace = true, optional = true }
+sentry-debug-images = { workspace = true, optional = true }
 sentry-log = { version = "0.48.5", path = "../sentry-log", optional = true }
-sentry-panic = { version = "0.48.5", path = "../sentry-panic", optional = true }
+sentry-panic = { workspace = true, optional = true }
 sentry-slog = { version = "0.48.5", path = "../sentry-slog", optional = true }
 sentry-tower = { version = "0.48.5", path = "../sentry-tower", optional = true }
 sentry-tracing = { version = "0.48.5", path = "../sentry-tracing", optional = true }
-sentry-opentelemetry = { version = "0.48.5", path = "../sentry-opentelemetry", optional = true }
-reqwest = { version = "0.13.2", optional = true, features = [
-    "blocking",
-    "json",
-], default-features = false }
-curl = { version = "0.4.25", optional = true }
-httpdate = { version = "1.0.0", optional = true }
-serde_json = { version = "1.0.48", optional = true }
-tokio = { version = "1.44", features = ["rt"], optional = true }
-ureq = { version = "3.0.11", optional = true, default-features = false }
-native-tls = { version = "0.2.8", optional = true }
-rustls = { version = "0.23.18", optional = true, default-features = false }
-embedded-svc = { version = "0.28.1", optional = true }
+sentry-opentelemetry = { workspace = true, optional = true }
+reqwest = { workspace = true, features = ["blocking", "json"], optional = true }
+curl = { workspace = true, optional = true }
+httpdate = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
+tokio = { workspace = true, features = ["rt"], optional = true }
+ureq = { workspace = true, optional = true }
+native-tls = { workspace = true, optional = true }
+rustls = { workspace = true, optional = true }
+embedded-svc = { workspace = true, optional = true }
 [target.'cfg(target_os = "espidf")'.dependencies]
 esp-idf-svc = { version = "0.51.0", optional = true }
 
@@ -103,18 +100,18 @@ sentry-log = { path = "../sentry-log" }
 sentry-slog = { path = "../sentry-slog" }
 sentry-tower = { path = "../sentry-tower" }
 sentry-tracing = { path = "../sentry-tracing" }
-actix-web = { version = "4", default-features = false }
-anyhow = { version = "1.0.30" }
-log = { version = "0.4.8", features = ["std"] }
-pretty_env_logger = "0.5.0"
-slog = { version = "2.5.2" }
-tokio = { version = "1.44", features = ["macros"] }
-tower = { version = "0.5.2", features = ["util"] }
-tracing = { version = "0.1" }
-tracing-subscriber = { version = "0.3", features = ["fmt", "tracing-log"] }
+actix-web = { workspace = true }
+anyhow = { workspace = true }
+log = { workspace = true, features = ["std"] }
+pretty_env_logger = { workspace = true }
+slog = { workspace = true }
+tokio = { workspace = true, features = ["macros"] }
+tower = { workspace = true, features = ["util"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["fmt", "tracing-log"] }
 
 [lints]
 workspace = true
 
 [build-dependencies]
-cfg_aliases = "0.2.1"
+cfg_aliases = { workspace = true }

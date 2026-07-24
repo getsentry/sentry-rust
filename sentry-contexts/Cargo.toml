@@ -18,8 +18,8 @@ workspace = true
 
 [dependencies]
 sentry-core = { version = "0.48.5", path = "../sentry-core" }
-libc = "0.2.66"
-hostname = "0.4"
+libc = { workspace = true }
+hostname = { workspace = true }
 
 [target."cfg(not(windows))".dependencies]
 uname = "0.1.1"
@@ -28,7 +28,7 @@ uname = "0.1.1"
 os_info = "3.5.0"
 
 [build-dependencies]
-rustc_version = "0.4.0"
+rustc_version = { workspace = true }
 
 [dev-dependencies]
-sentry = { path = "../sentry", default-features = false, features = ["test"] }
+sentry = { workspace = true, features = ["test"] }

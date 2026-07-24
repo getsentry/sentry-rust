@@ -20,9 +20,9 @@ default = ["backtrace"]
 backtrace = []
 
 [dependencies]
-sentry-backtrace = { version = "0.48.5", path = "../sentry-backtrace" }
+sentry-backtrace = { workspace = true }
 sentry-core = { version = "0.48.5", path = "../sentry-core" }
-anyhow = "1.0.77"
+anyhow = { workspace = true }
 
 [dev-dependencies]
-sentry = { path = "../sentry", default-features = false, features = ["test"] }
+sentry = { workspace = true, features = ["test"] }
