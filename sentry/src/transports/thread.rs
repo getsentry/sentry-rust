@@ -1,3 +1,5 @@
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
@@ -19,6 +21,8 @@ enum ControlTask {
 pub struct TransportThread {
     sender: Sender<Envelope>,
     control_sender: Sender<ControlTask>,
+    shutdown_requested: Arc<AtomicBool>,
+    shutdown_timed_out: AtomicBool,
     handle: Option<JoinHandle<()>>,
     client_report_recorder: ClientReportRecorder,
 }
@@ -100,6 +104,8 @@ impl TransportThread {
         } = options;
         let (sender, receiver) = bounded(channel_capacity);
         let (control_sender, control_receiver) = unbounded();
+        let shutdown_requested = Arc::new(AtomicBool::new(false));
+        let handle_shutdown_requested = shutdown_requested.clone();
         let handle_client_report_recorder = client_report_recorder.clone();
         let handle = thread::Builder::new()
             .name("sentry-transport".into())
@@ -129,7 +135,10 @@ impl TransportThread {
                     select_biased! {
                         recv(control_receiver) -> task => match task {
                             Ok(ControlTask::Flush(sender)) => {
-                                for envelope in receiver.try_iter() {
+                                while !handle_shutdown_requested.load(Ordering::SeqCst) {
+                                    let Ok(envelope) = receiver.try_recv() else {
+                                        break;
+                                    };
                                     send_envelope(envelope);
                                 }
                                 sender.send(()).ok();
@@ -148,6 +157,8 @@ impl TransportThread {
         Self {
             sender,
             control_sender,
+            shutdown_requested,
+            shutdown_timed_out: AtomicBool::new(false),
             handle,
             client_report_recorder,
         }
@@ -187,17 +198,32 @@ impl TransportThread {
         }
         receiver.recv_timeout(timeout).is_ok()
     }
+
+    pub(crate) fn shutdown(&self, timeout: Duration) -> bool {
+        let flushed = self.flush(timeout);
+        if !flushed {
+            self.shutdown_timed_out.store(true, Ordering::SeqCst);
+        }
+        self.shutdown_requested.store(true, Ordering::SeqCst);
+        let _ = self.control_sender.send(ControlTask::Shutdown);
+        flushed
+    }
 }
 
 impl Drop for TransportThread {
     fn drop(&mut self) {
-        let (sender, receiver) = bounded(1);
-        if self.control_sender.send(ControlTask::Flush(sender)).is_ok() {
-            let _ = receiver.recv();
+        if !self.shutdown_requested.load(Ordering::SeqCst) {
+            let (sender, receiver) = bounded(1);
+            if self.control_sender.send(ControlTask::Flush(sender)).is_ok() {
+                let _ = receiver.recv();
+            }
         }
+        self.shutdown_requested.store(true, Ordering::SeqCst);
         let _ = self.control_sender.send(ControlTask::Shutdown);
-        if let Some(handle) = self.handle.take() {
-            handle.join().unwrap();
+        if !self.shutdown_timed_out.load(Ordering::SeqCst) {
+            if let Some(handle) = self.handle.take() {
+                handle.join().unwrap();
+            }
         }
     }
 }
@@ -340,5 +366,50 @@ mod tests {
         handle.join().unwrap();
 
         assert_eq!(sent.load(Ordering::SeqCst), 2);
+    }
+
+    #[test]
+    fn timed_out_shutdown_does_not_block_drop_or_drain_queued_envelopes() {
+        let (started_sender, started_receiver) = sync_channel(1);
+        let (release_sender, release_receiver) = sync_channel(1);
+        let (completed_sender, completed_receiver) = sync_channel(2);
+        let block_first = Arc::new(AtomicBool::new(true));
+        let block_first_worker = block_first.clone();
+        let transport = TransportThreadOptions::new(move |_: Envelope, _: &mut RateLimiter| {
+            if block_first_worker.swap(false, Ordering::SeqCst) {
+                started_sender.send(()).unwrap();
+                release_receiver.recv().unwrap();
+            }
+            completed_sender.send(()).unwrap();
+        })
+        .with_channel_capacity(1)
+        .spawn_thread();
+
+        transport.send(envelope());
+        started_receiver
+            .recv_timeout(Duration::from_secs(1))
+            .unwrap();
+        transport.send(envelope());
+        assert!(!transport.shutdown(Duration::from_millis(20)));
+
+        let (dropped_sender, dropped_receiver) = sync_channel(1);
+        let handle = thread::spawn(move || {
+            drop(transport);
+            dropped_sender.send(()).unwrap();
+        });
+
+        assert_eq!(
+            dropped_receiver.recv_timeout(Duration::from_secs(1)),
+            Ok(())
+        );
+        release_sender.send(()).unwrap();
+        assert_eq!(
+            completed_receiver.recv_timeout(Duration::from_secs(1)),
+            Ok(())
+        );
+        assert!(completed_receiver
+            .recv_timeout(Duration::from_millis(50))
+            .is_err());
+        handle.join().unwrap();
     }
 }

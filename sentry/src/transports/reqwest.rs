@@ -209,7 +209,7 @@ impl Transport for ReqwestHttpTransport {
     }
 
     fn shutdown(&self, timeout: Duration) -> bool {
-        self.flush(timeout)
+        self.thread.shutdown(timeout)
     }
 }
 
