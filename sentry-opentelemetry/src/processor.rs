@@ -12,9 +12,9 @@ use std::collections::HashMap;
 use std::sync::{Arc, LazyLock, Mutex};
 use std::time::{Duration, SystemTime};
 
-use opentelemetry::global::ObjectSafeSpan;
-use opentelemetry::trace::{get_active_span, SpanId};
 use opentelemetry::Context;
+use opentelemetry::global::ObjectSafeSpan;
+use opentelemetry::trace::{SpanId, get_active_span};
 use opentelemetry_sdk::error::OTelSdkResult;
 use opentelemetry_sdk::trace::{Span, SpanData, SpanProcessor};
 

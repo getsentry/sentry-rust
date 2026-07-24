@@ -6,8 +6,8 @@ use anyhow::{Context, Result};
 
 use sentry::protocol::{MetricType, Unit, Value};
 use sentry_core::protocol::{EnvelopeItem, ItemContainer};
-use sentry_core::{metrics, test};
 use sentry_core::{ClientOptions, TransactionContext};
+use sentry_core::{metrics, test};
 use sentry_types::protocol::v7::{Envelope, LogAttribute, Metric, User};
 
 /// Test that metrics are sent when metrics are enabled.

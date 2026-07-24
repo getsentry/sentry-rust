@@ -14,7 +14,7 @@ mod trim;
 mod utils;
 
 pub use crate::integration::{
-    current_thread, AttachStacktraceIntegration, ProcessStacktraceIntegration,
+    AttachStacktraceIntegration, ProcessStacktraceIntegration, current_thread,
 };
 pub use crate::parse::parse_stacktrace;
 pub use crate::process::{backtrace_to_stacktrace, process_event_stacktrace};

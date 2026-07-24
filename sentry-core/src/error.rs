@@ -1,8 +1,8 @@
 use std::error::Error;
 
+use crate::Hub;
 use crate::protocol::{Event, Exception, Level};
 use crate::types::Uuid;
-use crate::Hub;
 
 impl Hub {
     /// Capture any `std::error::Error`.

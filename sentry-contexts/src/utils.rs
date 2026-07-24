@@ -92,9 +92,10 @@ mod model_support {
         let dot_count = v.split('.').count() - 1;
         assert_eq!(dot_count, 2);
         let b = get_macos_build().unwrap();
-        assert!(b
-            .chars()
-            .all(|c| c.is_ascii_alphabetic() || c.is_ascii_digit()));
+        assert!(
+            b.chars()
+                .all(|c| c.is_ascii_alphabetic() || c.is_ascii_digit())
+        );
     }
 }
 

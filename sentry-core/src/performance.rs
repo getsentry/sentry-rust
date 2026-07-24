@@ -4,13 +4,13 @@ use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::SystemTime;
 
+use sentry_types::protocol::v7::SpanId;
 #[cfg(feature = "client")]
 use sentry_types::protocol::v7::client_report::Reason as ClientReportReason;
-use sentry_types::protocol::v7::SpanId;
 
 #[cfg(feature = "client")]
 use crate::clientoptions::TracesSamplingStrategy;
-use crate::{protocol, Hub};
+use crate::{Hub, protocol};
 
 #[cfg(feature = "client")]
 use crate::Client;
@@ -855,16 +855,15 @@ impl Transaction {
 
             // Discard `Transaction` unless sampled.
             if !inner.sampled {
-                if let Some(transaction) = inner.transaction.take() {
-                    if let Some(client) = inner.client.as_ref() {
+                if let Some(transaction) = inner.transaction.take()
+                    && let Some(client) = inner.client.as_ref() {
                         client.record_lost_data(&transaction, ClientReportReason::SampleRate);
                     }
-                }
                 return;
             }
 
-            if let Some(mut transaction) = inner.transaction.take() {
-                if let Some(client) = inner.client.take() {
+            if let Some(mut transaction) = inner.transaction.take()
+                && let Some(client) = inner.client.take() {
                     transaction.finish_with_timestamp(_timestamp);
                     transaction
                         .contexts
@@ -894,7 +893,6 @@ impl Transaction {
 
                     client.send_envelope(envelope)
                 }
-            }
         }}
     }
 
@@ -1100,15 +1098,15 @@ impl Span {
         if let Some(cookies) = request.cookies {
             span.data.insert("cookies".into(), cookies.into());
         }
-        if !request.headers.is_empty() {
-            if let Ok(headers) = serde_json::to_value(request.headers) {
-                span.data.insert("headers".into(), headers);
-            }
+        if !request.headers.is_empty()
+            && let Ok(headers) = serde_json::to_value(request.headers)
+        {
+            span.data.insert("headers".into(), headers);
         }
-        if !request.env.is_empty() {
-            if let Ok(env) = serde_json::to_value(request.env) {
-                span.data.insert("env".into(), env);
-            }
+        if !request.env.is_empty()
+            && let Ok(env) = serde_json::to_value(request.env)
+        {
+            span.data.insert("env".into(), env);
         }
     }
 
@@ -1436,12 +1434,11 @@ mod tests {
                 return 1.0;
             }
 
-            if let Some(custom) = ctx.custom() {
-                if let Some(rate) = custom.get("rate") {
-                    if let Some(rate) = rate.as_f64() {
-                        return rate as f32;
-                    }
-                }
+            if let Some(custom) = ctx.custom()
+                && let Some(rate) = custom.get("rate")
+                && let Some(rate) = rate.as_f64()
+            {
+                return rate as f32;
             }
 
             0.1

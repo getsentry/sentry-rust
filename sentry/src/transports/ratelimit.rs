@@ -3,9 +3,9 @@ use sentry_core::client_report::{Reason as ClientReportReason, Recorder as Clien
 use sentry_core::protocol::EnvelopeFilterCallbacks;
 use std::time::{Duration, SystemTime};
 
+use crate::Envelope;
 use crate::protocol::EnvelopeItem;
 use crate::protocol::ItemContainer;
-use crate::Envelope;
 
 /// A Utility that helps with rate limiting sentry requests.
 #[derive(Debug, Default)]

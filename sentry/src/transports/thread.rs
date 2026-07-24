@@ -1,6 +1,6 @@
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{sync_channel, SyncSender, TrySendError};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::{SyncSender, TrySendError, sync_channel};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
@@ -9,7 +9,7 @@ use sentry_core::client_report::{Reason as ClientReportReason, Recorder as Clien
 use super::ratelimit::{RateLimiter, RateLimitingCategory};
 #[cfg(doc)]
 use super::{StdTransportThread, StdTransportThreadOptions}; // so we can use pub re-exports in docs
-use crate::{sentry_debug, Envelope};
+use crate::{Envelope, sentry_debug};
 
 #[expect(
     clippy::large_enum_variant,

@@ -1,9 +1,8 @@
 mod shared;
 
 use opentelemetry::{
-    global,
+    KeyValue, global,
     trace::{Status, TraceContextExt, Tracer, TracerProvider},
-    KeyValue,
 };
 use opentelemetry_sdk::trace::SdkTracerProvider;
 use sentry_opentelemetry::{SentryPropagator, SentrySpanProcessor};

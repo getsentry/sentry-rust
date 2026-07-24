@@ -282,10 +282,10 @@ impl Scope {
             event.level = level;
         }
 
-        if event.user.is_none() {
-            if let Some(user) = self.user.as_deref() {
-                event.user = Some(user.clone());
-            }
+        if event.user.is_none()
+            && let Some(user) = self.user.as_deref()
+        {
+            event.user = Some(user.clone());
         }
 
         event.breadcrumbs.extend(self.breadcrumbs.iter().cloned());
@@ -307,18 +307,17 @@ impl Scope {
             self.apply_propagation_context(&mut event);
         }
 
-        if event.transaction.is_none() {
-            if let Some(txn) = self.transaction.as_deref() {
-                event.transaction = Some(txn.to_owned());
-            }
+        if event.transaction.is_none()
+            && let Some(txn) = self.transaction.as_deref()
+        {
+            event.transaction = Some(txn.to_owned());
         }
 
         if event.fingerprint.len() == 1
             && (event.fingerprint[0] == "{{ default }}" || event.fingerprint[0] == "{{default}}")
+            && let Some(fp) = self.fingerprint.as_deref()
         {
-            if let Some(fp) = self.fingerprint.as_deref() {
-                event.fingerprint = Cow::Owned(fp.to_owned());
-            }
+            event.fingerprint = Cow::Owned(fp.to_owned());
         }
 
         for processor in self.event_processors.as_ref() {
@@ -337,10 +336,10 @@ impl Scope {
 
     /// Applies the contained scoped data to fill a transaction.
     pub fn apply_to_transaction(&self, transaction: &mut Transaction<'static>) {
-        if transaction.user.is_none() {
-            if let Some(user) = self.user.as_deref() {
-                transaction.user = Some(user.clone());
-            }
+        if transaction.user.is_none()
+            && let Some(user) = self.user.as_deref()
+        {
+            transaction.user = Some(user.clone());
         }
 
         transaction
@@ -366,43 +365,43 @@ impl Scope {
             log.trace_id = Some(self.propagation_context.trace_id);
         }
 
-        if !log.attributes.contains_key("sentry.trace.parent_span_id") {
-            if let Some(span) = self.get_span() {
-                let span_id = match span {
-                    crate::TransactionOrSpan::Transaction(transaction) => {
-                        transaction.get_trace_context().span_id
-                    }
-                    crate::TransactionOrSpan::Span(span) => span.get_span_id(),
-                };
-                log.attributes.insert(
-                    "parent_span_id".to_owned(),
-                    LogAttribute(span_id.to_string().into()),
-                );
-            }
+        if !log.attributes.contains_key("sentry.trace.parent_span_id")
+            && let Some(span) = self.get_span()
+        {
+            let span_id = match span {
+                crate::TransactionOrSpan::Transaction(transaction) => {
+                    transaction.get_trace_context().span_id
+                }
+                crate::TransactionOrSpan::Span(span) => span.get_span_id(),
+            };
+            log.attributes.insert(
+                "parent_span_id".to_owned(),
+                LogAttribute(span_id.to_string().into()),
+            );
         }
 
         if let Some(user) = self.user.as_ref() {
-            if !log.attributes.contains_key("user.id") {
-                if let Some(id) = user.id.as_ref() {
-                    log.attributes
-                        .insert("user.id".to_owned(), LogAttribute(id.to_owned().into()));
-                }
+            if !log.attributes.contains_key("user.id")
+                && let Some(id) = user.id.as_ref()
+            {
+                log.attributes
+                    .insert("user.id".to_owned(), LogAttribute(id.to_owned().into()));
             }
 
-            if !log.attributes.contains_key("user.name") {
-                if let Some(name) = user.username.as_ref() {
-                    log.attributes
-                        .insert("user.name".to_owned(), LogAttribute(name.to_owned().into()));
-                }
+            if !log.attributes.contains_key("user.name")
+                && let Some(name) = user.username.as_ref()
+            {
+                log.attributes
+                    .insert("user.name".to_owned(), LogAttribute(name.to_owned().into()));
             }
 
-            if !log.attributes.contains_key("user.email") {
-                if let Some(email) = user.email.as_ref() {
-                    log.attributes.insert(
-                        "user.email".to_owned(),
-                        LogAttribute(email.to_owned().into()),
-                    );
-                }
+            if !log.attributes.contains_key("user.email")
+                && let Some(email) = user.email.as_ref()
+            {
+                log.attributes.insert(
+                    "user.email".to_owned(),
+                    LogAttribute(email.to_owned().into()),
+                );
             }
         }
     }

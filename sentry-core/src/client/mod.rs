@@ -22,13 +22,13 @@ use sentry_types::random_uuid;
 
 #[cfg(any(feature = "logs", feature = "metrics"))]
 use self::batcher::Batcher;
+#[cfg(feature = "release-health")]
+use crate::SessionMode;
 use crate::constants::SDK_INFO;
 use crate::protocol::{ClientSdkInfo, Event};
 #[cfg(feature = "release-health")]
 use crate::session::SessionFlusher;
 use crate::types::{Dsn, Uuid};
-#[cfg(feature = "release-health")]
-use crate::SessionMode;
 use crate::{ClientOptions, Envelope, EventSamplingStrategy, Hub, Integration, Scope};
 
 #[cfg(feature = "logs")]
@@ -559,10 +559,10 @@ impl Client {
             sentry_debug!("[Client] called capture_log, but options.enable_logs is set to false");
             return;
         }
-        if let Some(log) = self.prepare_log(log, scope) {
-            if let Some(ref batcher) = *self.logs_batcher.read().unwrap() {
-                batcher.enqueue(log);
-            }
+        if let Some(log) = self.prepare_log(log, scope)
+            && let Some(ref batcher) = *self.logs_batcher.read().unwrap()
+        {
+            batcher.enqueue(log);
         }
     }
 
@@ -600,15 +600,14 @@ impl Client {
             return;
         }
 
-        if let Some(metric) = self.prepare_metric(metric, scope) {
-            if let Some(batcher) = self
+        if let Some(metric) = self.prepare_metric(metric, scope)
+            && let Some(batcher) = self
                 .metrics_batcher
                 .read()
                 .expect("metrics batcher lock could not be acquired")
                 .as_ref()
-            {
-                batcher.enqueue(metric);
-            }
+        {
+            batcher.enqueue(metric);
         }
     }
 

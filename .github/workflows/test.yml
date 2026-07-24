@@ -5,6 +5,9 @@ on:
 
 env:
   RUSTFLAGS: -Dwarnings
+  # anyhow backtrace capture (and some SDK tests) require this to already be set;
+  # mutating the process environment from tests via std::env::set_var is unsound.
+  RUST_BACKTRACE: "1"
 
 jobs:
   test:

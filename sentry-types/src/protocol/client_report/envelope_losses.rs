@@ -8,7 +8,7 @@ use crate::protocol::v7::{
 };
 
 use super::list::Iter as ClientReportItemIter;
-use super::{relay_size, Category, Item as ClientReportItem, Reason};
+use super::{Category, Item as ClientReportItem, Reason, relay_size};
 
 /// A trait for protocol types which can be a source of lost Sentry data if discarded.
 pub trait LossSource: private::Sealed {
