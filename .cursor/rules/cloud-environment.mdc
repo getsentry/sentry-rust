@@ -1,12 +1,15 @@
-# AGENTS.md
+---
+description: Cursor Cloud dev environment, build/test commands, and commit/PR workflow for the sentry-rust workspace
+alwaysApply: true
+---
 
-## Cursor Cloud specific instructions
+# Cursor Cloud environment & workflow
 
 This repo is the **Sentry SDK for Rust** — a Cargo workspace of library crates (`sentry`,
 `sentry-core`, `sentry-types`, and integration crates). There is no long-running server or
 GUI; the "applications" are the examples under `sentry/examples/` and `sentry-actix/examples/`.
 
-### Toolchain / environment (already provisioned by the update script + snapshot)
+## Toolchain / environment (already provisioned by the update script + snapshot)
 - MSRV is **1.88** (`Cargo.toml` `rust-version`), so the default toolchain is Rust **stable**
   (>= 1.88). The base image's older 1.83 toolchain is not sufficient — stable is installed and
   set as default in the snapshot, with `rustfmt` and `clippy` components.
@@ -15,7 +18,7 @@ GUI; the "applications" are the examples under `sentry/examples/` and `sentry-ac
   "system library `openssl` was not found", reinstall with
   `sudo apt-get install -y libssl-dev pkg-config`.
 
-### Standard commands (mirror CI in `.github/workflows/`)
+## Standard commands (mirror CI in `.github/workflows/`)
 - Lint: `cargo fmt --all -- --check` and
   `cargo clippy --all-features --workspace --tests --examples --locked -- -D clippy::all`
 - Build/check: `cargo check --all-features --locked`
@@ -23,7 +26,7 @@ GUI; the "applications" are the examples under `sentry/examples/` and `sentry-ac
   `cargo test --workspace --all-features --doc --locked`
 - CI sets `RUSTFLAGS: -Dwarnings`; export it when reproducing CI locally.
 
-### Running an example (the "app")
+## Running an example (the "app")
 - `cargo run --example message-demo` runs, but with **no DSN the client is disabled** and no
   event is transmitted (it just logs "initialized disabled sentry client").
 - To exercise the full capture → serialize → transport path, provide a DSN via the
@@ -31,7 +34,7 @@ GUI; the "applications" are the examples under `sentry/examples/` and `sentry-ac
   ingest server: `SENTRY_DSN="http://key@127.0.0.1:9999/42" cargo run --example message-demo`.
   A real event envelope is then POSTed to `/api/<project_id>/envelope/`.
 
-### Pre-commit hooks
+## Pre-commit hooks
 - Always commit with pre-commit hooks enabled. `pre-commit` (the tool) is installed in the
   snapshot and the repo's `commit-msg` hook is installed at `.git/hooks/commit-msg`.
 - Cursor sets `core.hooksPath` to its own dispatcher, which chains to the repo hooks in
@@ -43,7 +46,7 @@ GUI; the "applications" are the examples under `sentry/examples/` and `sentry-ac
   like `Closes #123` into Markdown links (and Linear links) via `gh`. It is a no-op when the
   message has no issue footer. Do NOT manually add Linear links — let the hook do it.
 
-### Commit messages & pull requests
+## Commit messages & pull requests
 - Commit messages are reused as PR descriptions (see `.agents/skills/commit/SKILL.md`). Write
   each commit's subject + body for human reviewers/maintainers.
 - When opening a PR, use the commit message as the PR **title and description** verbatim. Do
