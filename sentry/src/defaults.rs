@@ -28,18 +28,16 @@ use crate::{ClientOptions, Integration};
 ///
 /// # Examples
 /// ```
-/// unsafe {
-///     std::env::set_var("SENTRY_RELEASE", "release-from-env");
-/// }
-///
 /// let options = sentry::ClientOptions::default();
-/// assert_eq!(options.release, None);
 /// assert!(options.transport.is_none());
 ///
 /// let options = sentry::apply_defaults(options);
-/// assert_eq!(options.release, Some("release-from-env".into()));
 /// assert!(options.transport.is_some());
 /// ```
+///
+/// When `SENTRY_RELEASE` / `SENTRY_ENVIRONMENT` / `SENTRY_DSN` are set in the
+/// process environment, `apply_defaults` also fills those fields if they were
+/// left unset.
 ///
 /// [`AttachStacktraceIntegration`]: integrations/backtrace/struct.AttachStacktraceIntegration.html
 /// [`DebugImagesIntegration`]: integrations/debug_images/struct.DebugImagesIntegration.html
@@ -127,14 +125,15 @@ mod tests {
         let opts = apply_defaults(opts);
         assert_eq!(opts.environment.unwrap(), "explicit-env");
 
-        let opts = apply_defaults(Default::default());
-        // I doubt anyone runs test code without debug assertions
-        assert_eq!(opts.environment.unwrap(), "development");
-
-        unsafe {
-            env::set_var("SENTRY_ENVIRONMENT", "env-from-env");
+        // Do not call std::env::set_var here: it is unsound if any other thread
+        // may touch the environment. Cover the env-var path only when already set.
+        if let Ok(env_from_env) = env::var("SENTRY_ENVIRONMENT") {
+            let opts = apply_defaults(Default::default());
+            assert_eq!(opts.environment.unwrap(), env_from_env);
+        } else {
+            let opts = apply_defaults(Default::default());
+            // I doubt anyone runs test code without debug assertions
+            assert_eq!(opts.environment.unwrap(), "development");
         }
-        let opts = apply_defaults(Default::default());
-        assert_eq!(opts.environment.unwrap(), "env-from-env");
     }
 }

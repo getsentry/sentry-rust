@@ -98,17 +98,23 @@ impl AnyhowHubExt for Hub {
 }
 
 #[cfg(all(feature = "backtrace", test))]
-#[allow(unsafe_code)]
 mod tests {
     use super::*;
 
+    fn anyhow_with_captured_backtrace() -> anyhow::Error {
+        let err = anyhow::anyhow!("Oh jeez");
+        assert_eq!(
+            err.backtrace().status(),
+            std::backtrace::BacktraceStatus::Captured,
+            "run with RUST_BACKTRACE=1 (anyhow captures only when that is preset; \
+             tests must not call std::env::set_var)"
+        );
+        err
+    }
+
     #[test]
     fn test_event_from_error_with_backtrace() {
-        unsafe {
-            std::env::set_var("RUST_BACKTRACE", "1");
-        }
-
-        let event = event_from_error(&anyhow::anyhow!("Oh jeez"));
+        let event = event_from_error(&anyhow_with_captured_backtrace());
 
         let stacktrace = event.exception[0].stacktrace.as_ref().unwrap();
         let found_test_fn = stacktrace
@@ -124,11 +130,7 @@ mod tests {
 
     #[test]
     fn test_capture_anyhow_uses_event_from_error_helper() {
-        unsafe {
-            std::env::set_var("RUST_BACKTRACE", "1");
-        }
-
-        let err = &anyhow::anyhow!("Oh jeez");
+        let err = &anyhow_with_captured_backtrace();
 
         let event = event_from_error(err);
         let events = sentry::test::with_captured_events(|| {

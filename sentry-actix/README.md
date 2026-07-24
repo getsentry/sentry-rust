@@ -29,9 +29,6 @@ fn main() -> io::Result<()> {
     let _guard = sentry::init(
         sentry::ClientOptions::new().maybe_release(sentry::release_name!()),
     );
-    unsafe {
-        std::env::set_var("RUST_BACKTRACE", "1");
-    }
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()

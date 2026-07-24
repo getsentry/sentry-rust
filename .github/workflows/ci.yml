@@ -30,6 +30,9 @@ jobs:
   codecov:
     name: Code Coverage
     runs-on: ubuntu-latest
+    env:
+      # Keep in sync with test.yml: anyhow backtrace tests require this preset.
+      RUST_BACKTRACE: "1"
 
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4

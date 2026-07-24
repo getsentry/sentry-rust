@@ -1,4 +1,3 @@
-use std::env;
 use std::io;
 
 use actix_web::{App, Error, HttpRequest, HttpServer, get};
@@ -30,9 +29,6 @@ fn main() -> io::Result<()> {
             .session_mode(sentry::SessionMode::Request)
             .debug(true),
     );
-    unsafe {
-        env::set_var("RUST_BACKTRACE", "1");
-    }
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
