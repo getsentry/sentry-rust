@@ -27,18 +27,32 @@ bitflags! {
 
 /// The type of Data Sentry should ingest for a [`log::Record`].
 #[derive(Debug)]
-#[non_exhaustive]
-#[expect(clippy::large_enum_variant)]
-pub enum RecordMapping {
-    /// Ignore the [`Record`].
-    Ignore,
+pub struct RecordMapping {
+    inner: RecordMappingInner,
+}
+
+/// The inner representation of a [`RecordMapping`].
+#[derive(Debug)]
+enum RecordMappingInner {
     /// Adds the [`Breadcrumb`] to the Sentry scope.
     Breadcrumb(Breadcrumb),
     /// Captures the [`Event`] to Sentry.
-    Event(Event<'static>),
+    Event(Box<Event<'static>>),
     /// Captures the [`sentry_core::protocol::Log`] to Sentry.
     #[cfg(feature = "logs")]
     Log(sentry_core::protocol::Log),
+}
+
+impl From<RecordMappingInner> for RecordMapping {
+    fn from(inner: RecordMappingInner) -> Self {
+        Self { inner }
+    }
+}
+
+impl From<RecordMapping> for RecordMappingInner {
+    fn from(mapping: RecordMapping) -> Self {
+        mapping.inner
+    }
 }
 
 impl From<RecordMapping> for Vec<RecordMapping> {
@@ -161,31 +175,36 @@ impl<L: log::Log> log::Log for SentryLogger<L> {
                 let filter = (self.filter)(record.metadata());
                 let mut items = vec![];
                 if filter.contains(LogFilter::Breadcrumb) {
-                    items.push(RecordMapping::Breadcrumb(breadcrumb_from_record(record)));
+                    items.push(
+                        RecordMappingInner::Breadcrumb(breadcrumb_from_record(record)).into(),
+                    );
                 }
                 if filter.contains(LogFilter::Event) {
-                    items.push(RecordMapping::Event(event_from_record(record)));
+                    items.push(RecordMappingInner::Event(event_from_record(record).into()).into());
                 }
                 if filter.contains(LogFilter::Exception) {
-                    items.push(RecordMapping::Event(exception_from_record(record)));
+                    items.push(
+                        RecordMappingInner::Event(exception_from_record(record).into()).into(),
+                    );
                 }
                 #[cfg(feature = "logs")]
                 if filter.contains(LogFilter::Log) {
-                    items.push(RecordMapping::Log(log_from_record(record)));
+                    items.push(RecordMappingInner::Log(log_from_record(record)).into());
                 }
                 items
             }
         };
 
         for mapping in items {
-            match mapping {
-                RecordMapping::Ignore => {}
-                RecordMapping::Breadcrumb(breadcrumb) => sentry_core::add_breadcrumb(breadcrumb),
-                RecordMapping::Event(event) => {
-                    sentry_core::capture_event(event);
+            match mapping.inner {
+                RecordMappingInner::Breadcrumb(breadcrumb) => {
+                    sentry_core::add_breadcrumb(breadcrumb)
+                }
+                RecordMappingInner::Event(event) => {
+                    sentry_core::capture_event(*event);
                 }
                 #[cfg(feature = "logs")]
-                RecordMapping::Log(log) => {
+                RecordMappingInner::Log(log) => {
                     sentry_core::Hub::with_active(|hub| hub.capture_log(log))
                 }
             }
