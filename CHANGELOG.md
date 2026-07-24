@@ -21,6 +21,7 @@
       .debug(true)
       .release("my-app@1.0.0");
   ```
+- Updated the `sentry-opentelemetry` integration to support OpenTelemetry 0.32. Users of the integration must update their OpenTelemetry dependencies from 0.29 to 0.32 ([#1262](https://github.com/getsentry/sentry-rust/pull/1262)).
 - The `logs` and `metrics` features are now enabled by default in the `sentry` crate. This does not break the API, but may cause new telemetry to be sent to Sentry: log and tracing integrations can send structured logs, and applications can send metrics without adding the feature flags. Disable these features explicitly if this additional telemetry is not desired ([#1251](https://github.com/getsentry/sentry-rust/pull/1251)).
 - Removed the public `ClientOptions::sample_rate` field. Use `ClientOptions::event_sampling_strategy` to inspect the configured event sampling strategy, and use the existing `ClientOptions::sample_rate(...)` builder setter to configure fixed-rate sampling.
 - Removed the public `ClientOptions::sample_rate` field. Use `ClientOptions::event_sampling_strategy` to inspect the configured event sampling strategy, and use the existing `ClientOptions::sample_rate(...)` builder setter to configure fixed-rate sampling ([#1228](https://github.com/getsentry/sentry-rust/pull/1228)).

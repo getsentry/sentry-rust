@@ -10,7 +10,7 @@
 
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock, Mutex};
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 
 use opentelemetry::global::ObjectSafeSpan;
 use opentelemetry::trace::{get_active_span, SpanId};
@@ -186,6 +186,10 @@ impl SpanProcessor for SentrySpanProcessor {
     }
 
     fn shutdown(&self) -> OTelSdkResult {
+        Ok(())
+    }
+
+    fn shutdown_with_timeout(&self, _timeout: Duration) -> OTelSdkResult {
         Ok(())
     }
 
