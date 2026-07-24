@@ -134,6 +134,38 @@ fn start_transaction_rejects_when_org_ids_mismatch_and_strict() {
 }
 
 #[test]
+fn start_transaction_continues_local_span_in_strict_mode() {
+    let options = ClientOptions::new()
+        .org_id("42".parse().unwrap())
+        .strict_trace_continuation(true)
+        .traces_sample_rate(1.0)
+        .transport(Arc::new(TestTransport::new()));
+    let hub = Arc::new(Hub::new(
+        Some(Arc::new(Client::with_options(options))),
+        Arc::new(Default::default()),
+    ));
+
+    Hub::run(hub, || {
+        let parent =
+            sentry_core::start_transaction(sentry_core::TransactionContext::new("parent", "test"));
+        let parent_context = parent.get_trace_context();
+        let ctx = sentry_core::TransactionContext::continue_from_span(
+            "continued",
+            "test",
+            Some(parent.into()),
+        );
+        let continued = sentry_core::start_transaction(ctx);
+        let continued_context = continued.get_trace_context();
+
+        assert_eq!(continued_context.trace_id, parent_context.trace_id);
+        assert_eq!(
+            continued_context.parent_span_id,
+            Some(parent_context.span_id)
+        );
+    });
+}
+
+#[test]
 fn start_transaction_prefers_explicit_org_id_over_dsn_org_id() {
     TraceContinuationScenario::run_with_options(
         Some("42"),
