@@ -38,7 +38,7 @@ bitflags! {
 /// The type of data Sentry should ingest for an [`Event`].
 #[derive(Debug)]
 #[non_exhaustive]
-#[allow(clippy::large_enum_variant)]
+#[expect(clippy::large_enum_variant)]
 pub enum EventMapping {
     /// Ignore the [`Event`]
     Ignore,

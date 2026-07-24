@@ -93,7 +93,7 @@ macro_rules! debug_assert_or_log {
     }};
 }
 
-#[allow(unused_macros)]
+#[cfg(not(feature = "client"))]
 macro_rules! minimal_unreachable {
     () => {
         panic!(

@@ -49,7 +49,6 @@ pub struct TestTransport {
 
 impl TestTransport {
     /// Creates a new test transport.
-    #[allow(clippy::new_ret_no_self)]
     pub fn new() -> Arc<TestTransport> {
         Arc::new(TestTransport {
             collected: Mutex::new(vec![]),

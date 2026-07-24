@@ -132,7 +132,7 @@ pub struct SessionUpdate<'a> {
     pub attributes: SessionAttributes<'a>,
 }
 
-#[allow(clippy::trivially_copy_pass_by_ref)]
+#[expect(clippy::trivially_copy_pass_by_ref, reason = "serde requires this API")]
 fn is_zero(val: &u32) -> bool {
     *val == 0
 }
