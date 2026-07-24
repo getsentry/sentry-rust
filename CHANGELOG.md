@@ -29,6 +29,7 @@
 ### New Features
 
 - Added [`Dsn::org_id`](https://docs.rs/sentry-types/latest/sentry_types/struct.Dsn.html#method.org_id), which parses the Sentry SaaS organization ID from DSN hosts such as `o123.ingest.sentry.io` ([#1202](https://github.com/getsentry/sentry-rust/pull/1202)).
+- Added [`ClientOptions::org_id`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html#method.org_id) and [`ClientOptions::strict_trace_continuation`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html#method.strict_trace_continuation) ([#1203](https://github.com/getsentry/sentry-rust/pull/1203)). These options control how traces are continued and can help prevent traces from third-party services, which happen to be instrumented with Sentry, from being continued.
 
 ### Fixes
 
