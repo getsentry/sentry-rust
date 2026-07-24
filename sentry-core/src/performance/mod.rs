@@ -105,6 +105,15 @@ impl Hub {
 /// Represents arbitrary JSON data, the top level of which must be a map.
 pub type CustomTransactionContext = serde_json::Map<String, serde_json::Value>;
 
+/// Information from an incoming trace.
+///
+/// Currently this just contains the org ID supplied by the incoming trace.
+#[cfg(feature = "client")]
+#[derive(Debug, Clone, Copy)]
+struct IncomingTrace {
+    org_id: Option<OrganizationId>,
+}
+
 /// The Transaction Context used to start a new Performance Monitoring Transaction.
 ///
 /// The Transaction Context defines the metadata for a Performance Monitoring
@@ -119,7 +128,7 @@ pub struct TransactionContext {
     span_id: protocol::SpanId,
     sampled: Option<bool>,
     #[cfg(feature = "client")]
-    incoming_org_id: Option<OrganizationId>,
+    incoming_trace: Option<IncomingTrace>,
     custom: Option<CustomTransactionContext>,
 }
 
@@ -156,7 +165,7 @@ impl TransactionContext {
             span_id: Default::default(),
             sampled: None,
             #[cfg(feature = "client")]
-            incoming_org_id: None,
+            incoming_trace: None,
             custom: None,
         }
     }
@@ -204,7 +213,7 @@ impl TransactionContext {
                 span_id: Default::default(),
                 sampled: None,
                 #[cfg(feature = "client")]
-                incoming_org_id: None,
+                incoming_trace: None,
                 custom: None,
             })
     }
@@ -246,7 +255,7 @@ impl TransactionContext {
             parent_span_id: Some(context_span_id),
             sampled,
             #[cfg(feature = "client")]
-            incoming_org_id: org_id,
+            incoming_trace: Some(IncomingTrace { org_id }),
             span_id: span_id.unwrap_or_default(),
             custom: None,
         }
@@ -287,7 +296,7 @@ impl TransactionContext {
             span_id: protocol::SpanId::default(),
             sampled,
             #[cfg(feature = "client")]
-            incoming_org_id: None,
+            incoming_trace: None,
             custom: None,
         }
     }
@@ -381,7 +390,7 @@ impl TransactionContext {
             self.trace_id,
             self.parent_span_id,
             self.sampled,
-            self.incoming_org_id,
+            self.incoming_trace,
         ) = Default::default();
     }
 }
@@ -752,13 +761,18 @@ impl Transaction {
         let ((sampled, sample_rate), transaction) = match client.as_ref() {
             Some(client) => {
                 let options = client.options();
-                let incoming_org_id = ctx.incoming_org_id;
                 let sdk_org_id = options.org_id.or_else(|| options.dsn.as_ref()?.org_id());
 
-                if !should_continue_trace(
-                    incoming_org_id,
-                    sdk_org_id,
-                    options.strict_trace_continuation,
+                if ctx.incoming_trace.is_some_and(
+                    |IncomingTrace {
+                         org_id: incoming_org_id,
+                     }| {
+                        !should_continue_trace(
+                            incoming_org_id,
+                            sdk_org_id,
+                            options.strict_trace_continuation,
+                        )
+                    },
                 ) {
                     ctx.reject_incoming_trace();
                 }
@@ -1379,7 +1393,10 @@ mod tests {
             ],
         );
 
-        assert_eq!(ctx.incoming_org_id, Some("123".parse().unwrap()));
+        assert_eq!(
+            ctx.incoming_trace.map(|incoming| incoming.org_id),
+            Some(Some("123".parse().unwrap()))
+        );
     }
 
     #[test]
@@ -1390,7 +1407,7 @@ mod tests {
             [("baggage", "sentry-org_id=123")],
         );
 
-        assert_eq!(ctx.incoming_org_id, None);
+        assert!(ctx.incoming_trace.is_none());
         assert_eq!(ctx.parent_span_id, None);
     }
 
