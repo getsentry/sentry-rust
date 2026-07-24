@@ -3,6 +3,7 @@
 use std::error::Error;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
+#[cfg(feature = "client")]
 use sentry_types::protocol::v7::OrganizationId;
 
 use crate::protocol::{SpanId, TraceId};
@@ -11,6 +12,7 @@ use crate::protocol::{SpanId, TraceId};
 type Header<'h> = (&'h str, &'h str);
 
 /// The baggage key for the Sentry org ID.
+#[cfg(feature = "client")]
 const SENTRY_ORG_ID: &str = "sentry-org_id";
 
 /// The [trace propagation] context.
@@ -31,6 +33,7 @@ pub struct TracePropagationContext {
     pub(crate) trace_id: TraceId,
     pub(crate) span_id: SpanId,
     pub(super) sampled: Option<bool>,
+    #[cfg(feature = "client")]
     pub(super) org_id: Option<OrganizationId>,
 }
 
@@ -60,6 +63,7 @@ impl TracePropagationContext {
             trace_id,
             span_id,
             sampled: None,
+            #[cfg(feature = "client")]
             org_id: None,
         }
     }
@@ -76,7 +80,8 @@ impl TracePropagationContext {
             trace_id,
             span_id,
             sampled,
-            org_id: _,
+            #[cfg(feature = "client")]
+                org_id: _,
         } = self;
 
         let sampled_suffix = sampled
@@ -94,6 +99,7 @@ impl TracePropagationContext {
         I: IntoIterator<Item = Header<'a>>,
     {
         let mut context_result = Err(HeaderParseError::Missing);
+        #[cfg(feature = "client")]
         let mut baggage = SentryBaggage::default();
 
         for (header, value) in headers {
@@ -104,14 +110,20 @@ impl TracePropagationContext {
                     .map_or(context_result, Ok)
                     .map_err(|_| HeaderParseError::Invalid);
             } else if header.eq_ignore_ascii_case("baggage") {
+                #[cfg(feature = "client")]
                 baggage.update_from_header(value);
             }
         }
 
         let context = context_result?;
 
+        #[cfg(feature = "client")]
         let SentryBaggage { org_id } = baggage;
-        Ok(TracePropagationContext { org_id, ..context })
+        Ok(TracePropagationContext {
+            #[cfg(feature = "client")]
+            org_id,
+            ..context
+        })
     }
 
     /// Attempts to construct a [`TracePropagationContext`] from the given Sentry trace header.
@@ -133,6 +145,7 @@ impl TracePropagationContext {
             trace_id,
             span_id,
             sampled,
+            #[cfg(feature = "client")]
             org_id: None,
         })
     }
@@ -150,7 +163,8 @@ where
         trace_id,
         span_id,
         sampled,
-        org_id: _,
+        #[cfg(feature = "client")]
+            org_id: _,
     } = TracePropagationContext::try_from_headers(headers).ok()?;
 
     Some(SentryTrace {
@@ -192,6 +206,7 @@ impl From<SentryTrace> for TracePropagationContext {
             trace_id: trace.trace_id,
             span_id: trace.span_id,
             sampled: trace.sampled,
+            #[cfg(feature = "client")]
             org_id: None,
         }
     }
@@ -211,11 +226,13 @@ impl std::fmt::Display for SentryTrace {
 /// A struct containing known Sentry baggage values.
 ///
 /// For now, this only includes the `org_id`, but we can add more values as we support them.
+#[cfg(feature = "client")]
 #[derive(Debug, Default)]
 struct SentryBaggage {
     org_id: Option<OrganizationId>,
 }
 
+#[cfg(feature = "client")]
 impl SentryBaggage {
     /// Update `self` with the known Sentry baggage values in the provided [baggage header].
     ///
@@ -264,6 +281,7 @@ mod tests {
                 trace_id,
                 span_id: parent_trace_id,
                 sampled: Some(false),
+                #[cfg(feature = "client")]
                 org_id: None,
             }
         );
@@ -277,6 +295,7 @@ mod tests {
         assert_eq!(parsed, trace);
     }
 
+    #[cfg(feature = "client")]
     #[test]
     fn parses_baggage_org_id() {
         let trace = TracePropagationContext::try_from_headers([
@@ -291,6 +310,7 @@ mod tests {
         assert_eq!(trace.org_id, Some("123".parse().unwrap()));
     }
 
+    #[cfg(feature = "client")]
     #[test]
     fn parses_baggage_org_id_with_unrelated_fields() {
         let trace = TracePropagationContext::try_from_headers([
@@ -308,6 +328,7 @@ mod tests {
         assert_eq!(trace.org_id, Some("123".parse().unwrap()));
     }
 
+    #[cfg(feature = "client")]
     #[test]
     fn accepts_mixed_case_baggage_header_name() {
         let trace = TracePropagationContext::try_from_headers([
@@ -322,6 +343,7 @@ mod tests {
         assert_eq!(trace.org_id, Some("123".parse().unwrap()));
     }
 
+    #[cfg(feature = "client")]
     #[test]
     fn treats_malformed_baggage_org_id_as_absent() {
         let trace = TracePropagationContext::try_from_headers([

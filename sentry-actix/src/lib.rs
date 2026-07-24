@@ -482,6 +482,8 @@ mod tests {
 
     use futures::future::join_all;
     use sentry::Level;
+    use sentry_core::protocol::{Context, EnvelopeItem, TraceContext};
+    use sentry_core::Envelope;
 
     use super::*;
 
@@ -705,6 +707,83 @@ mod tests {
         });
 
         assert_eq!(events.len(), 1);
+    }
+
+    fn trace_context_from_single_transaction(envelopes: &[Envelope]) -> TraceContext {
+        let [envelope] = envelopes else {
+            panic!("Expected exactly one envelope");
+        };
+
+        let mut items = envelope.items();
+        let Some(EnvelopeItem::Transaction(transaction)) = items.next() else {
+            panic!("Expected a transaction envelope item");
+        };
+        assert!(items.next().is_none(), "expected only one envelope item");
+
+        match transaction.contexts.get("trace") {
+            Some(Context::Trace(trace)) => *trace.clone(),
+            unexpected => panic!("expected trace context, got {unexpected:#?}"),
+        }
+    }
+
+    fn run_request_with_org_ids(incoming_org_id: &str, client_org_id: &str) -> Vec<Envelope> {
+        sentry::test::with_captured_envelopes_options(
+            || {
+                block_on(async {
+                    let app = init_service(
+                        App::new()
+                            .wrap(
+                                Sentry::builder()
+                                    .with_hub(Hub::current())
+                                    .start_transaction(true)
+                                    .finish(),
+                            )
+                            .service(web::resource("/test").to(HttpResponse::Ok)),
+                    )
+                    .await;
+
+                    let req = TestRequest::get()
+                        .uri("/test")
+                        .insert_header((
+                            "sentry-trace",
+                            "09e04486820349518ac7b5d2adbf6ba5-9cf635fa5b870b3a-1",
+                        ))
+                        .insert_header(("baggage", format!("sentry-org_id={incoming_org_id}")))
+                        .to_request();
+                    let res = call_service(&app, req).await;
+                    assert!(res.status().is_success());
+                })
+            },
+            sentry::ClientOptions::new()
+                .org_id(client_org_id.parse().unwrap())
+                .strict_trace_continuation(true)
+                .traces_sample_rate(1.0),
+        )
+    }
+
+    #[actix_web::test]
+    async fn test_transaction_continues_matching_org_id() {
+        let envelopes = run_request_with_org_ids("42", "42");
+        let trace = trace_context_from_single_transaction(&envelopes);
+        assert_eq!(
+            trace.trace_id.to_string(),
+            "09e04486820349518ac7b5d2adbf6ba5"
+        );
+        assert_eq!(
+            trace.parent_span_id.map(|span_id| span_id.to_string()),
+            Some("9cf635fa5b870b3a".to_owned())
+        );
+    }
+
+    #[actix_web::test]
+    async fn test_transaction_rejects_mismatched_org_id() {
+        let envelopes = run_request_with_org_ids("43", "42");
+        let trace = trace_context_from_single_transaction(&envelopes);
+        assert_ne!(
+            trace.trace_id.to_string(),
+            "09e04486820349518ac7b5d2adbf6ba5"
+        );
+        assert_eq!(trace.parent_span_id, None);
     }
 
     /// Ensures transaction name can be overridden in handler scope.
