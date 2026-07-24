@@ -15,7 +15,7 @@ jobs:
       matrix:
         rust: [nightly, beta]
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.repository_owner == 'getsentry'
 
     steps:
@@ -32,7 +32,7 @@ jobs:
 
   weekly-audit:
     name: Audit
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.repository_owner == 'getsentry'
 
     steps:

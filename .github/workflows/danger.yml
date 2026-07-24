@@ -11,6 +11,6 @@ permissions:
 
 jobs:
   danger:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: getsentry/github-workflows/danger@26f565c05d0dd49f703d238706b775883037d76b # v3

@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-24.04, macos-15, windows-2025]
         rust: [stable, 1.88.0]
 
     name: Run tests using Rust ${{ matrix.rust }} on ${{ matrix.os }}
