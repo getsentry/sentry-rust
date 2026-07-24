@@ -13,14 +13,12 @@
 //!
 //! # Configuration
 //!
-//! Add the necessary dependencies to your Cargo.toml:
-//!
-//! ```toml
-//! [dependencies]
-//! opentelemetry = { version = "0.29.1", features = ["trace"] }
-//! opentelemetry_sdk = { version = "0.29.0", features = ["trace"] }
-//! sentry = { version = "0.38.0", features = ["opentelemetry"] }
-//! ```
+//! Use the `opentelemetry` feature of the [`sentry`](https://crates.io/crates/sentry) crate to
+//! enable this integration. Your application must also depend directly on
+//! [`opentelemetry` 0.32](https://crates.io/crates/opentelemetry) and
+//! [`opentelemetry_sdk` 0.32](https://crates.io/crates/opentelemetry_sdk), with the `trace` feature
+//! enabled for both. The integration is available as
+//! `sentry::integrations::opentelemetry`.
 //!
 //! Initialize Sentry with a `traces_sample_rate`, then register the [`SentryPropagator`] and the
 //! [`SentrySpanProcessor`]:
