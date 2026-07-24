@@ -41,9 +41,9 @@
 #![warn(missing_docs)]
 #![deny(unsafe_code)]
 
+use sentry_core::Hub;
 use sentry_core::protocol::Event;
 use sentry_core::types::Uuid;
-use sentry_core::Hub;
 
 /// Captures an [`anyhow::Error`].
 ///
@@ -98,12 +98,15 @@ impl AnyhowHubExt for Hub {
 }
 
 #[cfg(all(feature = "backtrace", test))]
+#[allow(unsafe_code)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_event_from_error_with_backtrace() {
-        std::env::set_var("RUST_BACKTRACE", "1");
+        unsafe {
+            std::env::set_var("RUST_BACKTRACE", "1");
+        }
 
         let event = event_from_error(&anyhow::anyhow!("Oh jeez"));
 
@@ -121,7 +124,9 @@ mod tests {
 
     #[test]
     fn test_capture_anyhow_uses_event_from_error_helper() {
-        std::env::set_var("RUST_BACKTRACE", "1");
+        unsafe {
+            std::env::set_var("RUST_BACKTRACE", "1");
+        }
 
         let err = &anyhow::anyhow!("Oh jeez");
 

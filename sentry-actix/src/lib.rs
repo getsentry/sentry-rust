@@ -21,7 +21,9 @@
 //!     let _guard = sentry::init(
 //!         sentry::ClientOptions::new().maybe_release(sentry::release_name!()),
 //!     );
-//!     std::env::set_var("RUST_BACKTRACE", "1");
+//!     unsafe {
+//!         std::env::set_var("RUST_BACKTRACE", "1");
+//!     }
 //!
 //!     let runtime = tokio::runtime::Builder::new_multi_thread()
 //!         .enable_all()
@@ -79,16 +81,16 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use actix_http::header::{self, HeaderMap};
+use actix_web::Error;
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
 use actix_web::http::StatusCode;
-use actix_web::Error;
 use bytes::{Bytes, BytesMut};
-use futures_util::future::{ok, Future, Ready};
+use futures_util::future::{Future, Ready, ok};
 use futures_util::{FutureExt as _, TryStreamExt as _};
 
+use sentry_core::MaxRequestBodySize;
 use sentry_core::protocol::{self, ClientSdkPackage, Event, Request};
 use sentry_core::utils::{is_sensitive_header, scrub_pii_from_url};
-use sentry_core::MaxRequestBodySize;
 use sentry_core::{Hub, SentryFutureExt};
 
 /// A helper construct that can be used to reconfigure and build the middleware.
@@ -476,8 +478,8 @@ mod tests {
     use std::io;
 
     use actix_web::body::BoxBody;
-    use actix_web::test::{call_service, init_service, TestRequest};
-    use actix_web::{get, web, App, HttpRequest, HttpResponse};
+    use actix_web::test::{TestRequest, call_service, init_service};
+    use actix_web::{App, HttpRequest, HttpResponse, get, web};
     use futures::executor::block_on;
 
     use futures::future::join_all;

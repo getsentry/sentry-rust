@@ -7,10 +7,10 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use sentry_types::protocol::v7::EnvelopeItem;
 use sentry_types::protocol::v7::client_report::{
     Category as ClientReportCategory, LossSource, Reason as ClientReportReason,
 };
-use sentry_types::protocol::v7::EnvelopeItem;
 
 use self::slot::TransportSlot;
 use super::client_reports::{ClientReportAggregator, Recorder};

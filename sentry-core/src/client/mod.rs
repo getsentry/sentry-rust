@@ -22,13 +22,13 @@ use sentry_types::random_uuid;
 
 #[cfg(any(feature = "logs", feature = "metrics"))]
 use self::batcher::Batcher;
+#[cfg(feature = "release-health")]
+use crate::SessionMode;
 use crate::constants::SDK_INFO;
 use crate::protocol::{ClientSdkInfo, Event};
 #[cfg(feature = "release-health")]
 use crate::session::SessionFlusher;
 use crate::types::{Dsn, Uuid};
-#[cfg(feature = "release-health")]
-use crate::SessionMode;
 use crate::{ClientOptions, Envelope, EventSamplingStrategy, Hub, Integration, Scope};
 
 #[cfg(feature = "logs")]

@@ -4,13 +4,13 @@ use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::SystemTime;
 
+use sentry_types::protocol::v7::SpanId;
 #[cfg(feature = "client")]
 use sentry_types::protocol::v7::client_report::Reason as ClientReportReason;
-use sentry_types::protocol::v7::SpanId;
 
 #[cfg(feature = "client")]
 use crate::clientoptions::TracesSamplingStrategy;
-use crate::{protocol, Hub};
+use crate::{Hub, protocol};
 
 #[cfg(feature = "client")]
 use crate::Client;

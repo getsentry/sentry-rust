@@ -28,7 +28,9 @@ use crate::{ClientOptions, Integration};
 ///
 /// # Examples
 /// ```
-/// std::env::set_var("SENTRY_RELEASE", "release-from-env");
+/// unsafe {
+///     std::env::set_var("SENTRY_RELEASE", "release-from-env");
+/// }
 ///
 /// let options = sentry::ClientOptions::default();
 /// assert_eq!(options.release, None);
@@ -129,7 +131,9 @@ mod tests {
         // I doubt anyone runs test code without debug assertions
         assert_eq!(opts.environment.unwrap(), "development");
 
-        env::set_var("SENTRY_ENVIRONMENT", "env-from-env");
+        unsafe {
+            env::set_var("SENTRY_ENVIRONMENT", "env-from-env");
+        }
         let opts = apply_defaults(Default::default());
         assert_eq!(opts.environment.unwrap(), "env-from-env");
     }

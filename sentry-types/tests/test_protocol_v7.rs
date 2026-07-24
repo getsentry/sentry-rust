@@ -1563,7 +1563,7 @@ fn test_orientation() {
 
 mod test_logs {
     use sentry_types::protocol::v7::LogAttribute;
-    use serde_json::{json, Value};
+    use serde_json::{Value, json};
 
     #[test]
     fn test_log_attribute_serialization() {

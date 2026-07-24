@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
-use sentry_core::protocol::map::Entry;
 use sentry_core::protocol::Event;
+use sentry_core::protocol::map::Entry;
 use sentry_core::{ClientOptions, Integration};
 
 use crate::utils::{device_context, os_context, rust_context, server_name};

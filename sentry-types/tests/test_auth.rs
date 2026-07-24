@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime};
 
-use sentry_types::{protocol, Auth, Dsn};
+use sentry_types::{Auth, Dsn, protocol};
 
 #[test]
 fn test_auth_parsing() {
@@ -92,7 +92,9 @@ fn test_auth_to_json() {
 
     let auth = Auth::from_pairs(cont).unwrap();
     assert_eq!(
-        serde_json::to_string(&auth).expect("could not serialize").as_str(),
+        serde_json::to_string(&auth)
+            .expect("could not serialize")
+            .as_str(),
         "{\"sentry_client\":\"raven-js/3.23.3\",\"sentry_version\":7,\"sentry_key\":\"4bb5d94de752a36b8b87851a3f82726a\",\"sentry_secret\":null}"
     );
 }

@@ -1,7 +1,7 @@
 #![cfg(feature = "test")]
 
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use sentry::protocol::{
     Attachment, Context, DynamicSamplingContext, EnvelopeHeaders, EnvelopeItem,
@@ -267,7 +267,7 @@ fn test_panic_scope_pop() {
 fn test_basic_capture_log() {
     use std::time::SystemTime;
 
-    use sentry::{protocol::Log, protocol::LogAttribute, protocol::Map, Hub};
+    use sentry::{Hub, protocol::Log, protocol::LogAttribute, protocol::Map};
 
     let options = sentry::ClientOptions::new().enable_logs(true);
     let envelopes = sentry::test::with_captured_envelopes_options(

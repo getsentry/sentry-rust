@@ -900,8 +900,8 @@ mod test {
 
     use protocol::Map;
     use serde_json::Value;
-    use time::format_description::well_known::Rfc3339;
     use time::OffsetDateTime;
+    use time::format_description::well_known::Rfc3339;
     use uuid::Uuid;
 
     use super::*;

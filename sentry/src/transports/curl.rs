@@ -2,15 +2,15 @@ use std::io::{Cursor, Read};
 use std::time::Duration;
 
 use curl::easy::Easy as CurlClient;
-use sentry_core::client_report::Reason as LossReason;
 use sentry_core::TransportOptions;
+use sentry_core::client_report::Reason as LossReason;
 
 use super::{
+    HTTP_PAYLOAD_TOO_LARGE, HTTP_PAYLOAD_TOO_LARGE_MESSAGE, RateLimiter,
     thread::{TransportThread, TransportThreadOptions},
-    RateLimiter, HTTP_PAYLOAD_TOO_LARGE, HTTP_PAYLOAD_TOO_LARGE_MESSAGE,
 };
 
-use crate::{sentry_debug, types::Scheme, ClientOptions, Envelope, Transport};
+use crate::{ClientOptions, Envelope, Transport, sentry_debug, types::Scheme};
 
 /// The status code returned for rate-limited envelopes.
 const HTTP_RATE_LIMIT_STATUS: u32 = 429;

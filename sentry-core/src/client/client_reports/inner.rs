@@ -6,8 +6,8 @@
 
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
-use sentry_types::protocol::v7::client_report::{Category, Item, Reason, Report};
 use sentry_types::IndexedEnum;
+use sentry_types::protocol::v7::client_report::{Category, Item, Reason, Report};
 
 const ARRAY_SIZE: usize = Reason::VARIANTS.len() * Category::VARIANTS.len();
 

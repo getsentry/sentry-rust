@@ -3,9 +3,9 @@
 use std::sync::Arc;
 
 use sentry::{
+    ClientOptions, Hub,
     protocol::{Breadcrumb, Level},
     test::TestTransport,
-    ClientOptions, Hub,
 };
 use sentry_tower::SentryLayer;
 use tower::{ServiceBuilder, ServiceExt};

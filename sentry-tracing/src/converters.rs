@@ -4,11 +4,11 @@ use std::error::Error;
 use sentry_core::protocol::{Event, Exception, Mechanism, Value};
 #[cfg(feature = "logs")]
 use sentry_core::protocol::{Log, LogAttribute, LogLevel};
-use sentry_core::{event_from_error, Breadcrumb, Level, TransactionOrSpan};
+use sentry_core::{Breadcrumb, Level, TransactionOrSpan, event_from_error};
 #[cfg(feature = "logs")]
 use std::time::SystemTime;
-use tracing_core::field::{Field, Visit};
 use tracing_core::Subscriber;
+use tracing_core::field::{Field, Visit};
 use tracing_subscriber::layer::Context;
 use tracing_subscriber::registry::LookupSpan;
 

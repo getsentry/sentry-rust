@@ -1,5 +1,5 @@
-use sentry::protocol::{EnvelopeItem, Transaction};
 use sentry::Envelope;
+use sentry::protocol::{EnvelopeItem, Transaction};
 
 /// Assert that the given envelopes contain exactly one `Envelope`, containing
 /// exactly one `EnvelopeItem`, which is a `Transaction` with the given name.

@@ -31,6 +31,10 @@
 
 - Restored the reqwest transport's pre-0.13 protocol features by disabling HTTP/2 and native-TLS ALPN ([#1258](https://github.com/getsentry/sentry-rust/pull/1258)).
 
+### Internal
+
+- Updated the Rust edition to 2024 ([#971](https://github.com/getsentry/sentry-rust/issues/971)).
+
 ## 0.48.5
 
 ### Fixes
