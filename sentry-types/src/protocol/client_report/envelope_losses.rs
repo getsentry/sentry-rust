@@ -171,6 +171,7 @@ fn envelope_item_losses(envelope_item: &EnvelopeItem) -> ItemLossIter<'_> {
         EnvelopeItem::MonitorCheckIn(check_in) => monitor_check_in_losses(check_in),
         EnvelopeItem::ClientReport(client_report) => client_report_losses(client_report),
         EnvelopeItem::ItemContainer(item_container) => item_container_losses(item_container),
+        EnvelopeItem::Feedback(feedback) => feedback_losses(feedback),
         EnvelopeItem::Raw => ItemLossIter::new([]),
     }
 }
@@ -237,6 +238,11 @@ fn attachment_losses(attachment: &Attachment) -> ItemLossIter<'static> {
 /// Returns monitor losses for a discarded check-in.
 fn monitor_check_in_losses(_check_in: &MonitorCheckIn) -> ItemLossIter<'static> {
     ItemLossIter::new([ItemLoss::new(Category::Monitor, 1)])
+}
+
+/// Returns feedback losses for a discarded feedback event.
+fn feedback_losses(_feedback: &Event<'_>) -> ItemLossIter<'static> {
+    ItemLossIter::new([ItemLoss::new(Category::Feedback, 1)])
 }
 
 /// Returns the losses for a discarded client report.

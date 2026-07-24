@@ -27,6 +27,7 @@ use crate::utils::{display_from_str_opt, ts_rfc3339_opt, ts_seconds_float};
 pub use self::client_report::Report as ClientReport;
 pub use super::attachment::*;
 pub use super::envelope::*;
+pub use super::feedback::*;
 pub use super::monitor::*;
 pub use super::session::*;
 pub use super::unit::Unit;
@@ -1111,6 +1112,8 @@ pub enum Context {
     Otel(Box<OtelContext>),
     /// HTTP response data.
     Response(Box<ResponseContext>),
+    /// User feedback
+    Feedback(Box<Feedback>),
     /// Generic other context data.
     #[serde(rename = "unknown")]
     Other(Map<String, Value>),
@@ -1129,6 +1132,7 @@ impl Context {
             Context::Gpu(..) => "gpu",
             Context::Otel(..) => "otel",
             Context::Response(..) => "response",
+            Context::Feedback(..) => "feedback",
             Context::Other(..) => "unknown",
         }
     }
@@ -1543,7 +1547,7 @@ into_context!(Otel, OtelContext);
 into_context!(Response, ResponseContext);
 
 const INFERABLE_CONTEXTS: &[&str] = &[
-    "device", "os", "runtime", "app", "browser", "trace", "gpu", "otel", "response",
+    "device", "os", "runtime", "app", "browser", "trace", "gpu", "otel", "response", "feedback",
 ];
 
 struct ContextsVisitor;
