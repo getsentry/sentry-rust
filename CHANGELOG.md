@@ -33,7 +33,7 @@
 
 ### Internal
 
-- Updated the Rust edition to 2024 ([#971](https://github.com/getsentry/sentry-rust/issues/971)).
+- Updated the Rust edition to 2024 ([#1265](https://github.com/getsentry/sentry-rust/pull/1265)).
 
 ## 0.48.5
 
