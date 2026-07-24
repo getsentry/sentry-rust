@@ -23,3 +23,30 @@ jobs:
 
       - name: Run cargo clippy
         run: cargo clippy --all-features --workspace --tests --examples --locked -- -D clippy::all
+
+  autoinherit:
+    name: Check workspace dependency inheritance
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - uses: Swatinem/rust-cache@42dc69e1aa15d09112580998cf2ef0119e2e91ae # v2
+        with:
+          cache-bin: true
+
+      - name: Install cargo-autoinherit
+        run: cargo install cargo-autoinherit --version 0.1.6 --locked
+
+      - name: Check workspace dependency inheritance
+        run: |
+          cargo autoinherit
+          if ! git diff --exit-code; then
+            echo "::error title=Workspace dependencies are not centralized::cargo autoinherit found dependency declarations that are not inherited from " \
+              "workspace.dependencies. Run 'cargo autoinherit' locally and commit the resulting Cargo.toml changes."
+            exit 1
+          fi
