@@ -30,6 +30,7 @@
 ### Fixes
 
 - Restored the reqwest transport's pre-0.13 protocol features by disabling HTTP/2 and native-TLS ALPN ([#1258](https://github.com/getsentry/sentry-rust/pull/1258)).
+- Added support for source map debug images and preserved unknown debug image types when deserializing events.
 
 ## 0.48.5
 

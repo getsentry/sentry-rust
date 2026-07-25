@@ -908,8 +908,7 @@ pub struct SystemSdkInfo {
 }
 
 /// Represents a debug image.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[serde(rename_all = "snake_case", tag = "type")]
+#[derive(Debug, Clone, PartialEq)]
 pub enum DebugImage {
     /// Apple debug images (machos).  This is currently also used for
     /// non apple platforms with similar debug setups.
@@ -921,6 +920,76 @@ pub enum DebugImage {
     /// Image used for WebAssembly. Their structure is identical to other native
     /// images.
     Wasm(WasmDebugImage),
+    /// A source map debug image.
+    SourceMap(SourceMapDebugImage),
+    /// A debug image type that is not yet known to this SDK.
+    Other(Map<String, Value>),
+}
+
+impl Serialize for DebugImage {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        #[derive(Serialize)]
+        #[serde(rename_all = "snake_case", tag = "type")]
+        enum TaggedDebugImage<'a> {
+            Apple(&'a AppleDebugImage),
+            Symbolic(&'a SymbolicDebugImage),
+            Proguard(&'a ProguardDebugImage),
+            Wasm(&'a WasmDebugImage),
+            #[serde(rename = "sourcemap")]
+            SourceMap(&'a SourceMapDebugImage),
+        }
+
+        match self {
+            Self::Apple(image) => TaggedDebugImage::Apple(image).serialize(serializer),
+            Self::Symbolic(image) => TaggedDebugImage::Symbolic(image).serialize(serializer),
+            Self::Proguard(image) => TaggedDebugImage::Proguard(image).serialize(serializer),
+            Self::Wasm(image) => TaggedDebugImage::Wasm(image).serialize(serializer),
+            Self::SourceMap(image) => TaggedDebugImage::SourceMap(image).serialize(serializer),
+            Self::Other(image) => image.serialize(serializer),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for DebugImage {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = Value::deserialize(deserializer)?;
+        let Value::Object(mut image) = value else {
+            return Err(de::Error::custom("debug image must be an object"));
+        };
+        let type_name = image
+            .get("type")
+            .ok_or_else(|| de::Error::missing_field("type"))?
+            .as_str()
+            .ok_or_else(|| de::Error::custom("debug image type must be a string"))?
+            .to_owned();
+
+        match type_name.as_str() {
+            "apple" => deserialize_debug_image(&mut image, Self::Apple),
+            "symbolic" => deserialize_debug_image(&mut image, Self::Symbolic),
+            "proguard" => deserialize_debug_image(&mut image, Self::Proguard),
+            "wasm" => deserialize_debug_image(&mut image, Self::Wasm),
+            "sourcemap" => deserialize_debug_image(&mut image, Self::SourceMap),
+            _ => Ok(Self::Other(image.into_iter().collect())),
+        }
+        .map_err(de::Error::custom)
+    }
+}
+
+fn deserialize_debug_image<T>(
+    image: &mut serde_json::Map<String, Value>,
+    wrap: impl FnOnce(T) -> DebugImage,
+) -> serde_json::Result<DebugImage>
+where
+    T: serde::de::DeserializeOwned,
+{
+    image.remove("type");
+    serde_json::from_value(Value::Object(std::mem::take(image))).map(wrap)
 }
 
 impl DebugImage {
@@ -931,6 +1000,11 @@ impl DebugImage {
             DebugImage::Symbolic(..) => "symbolic",
             DebugImage::Proguard(..) => "proguard",
             DebugImage::Wasm(..) => "wasm",
+            DebugImage::SourceMap(..) => "sourcemap",
+            DebugImage::Other(ref image) => image
+                .get("type")
+                .and_then(Value::as_str)
+                .unwrap_or("unknown"),
         }
     }
 }
@@ -1036,10 +1110,26 @@ pub struct WasmDebugImage {
     pub code_file: String,
 }
 
+/// Represents a source map debug image.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct SourceMapDebugImage {
+    /// The absolute path or URL to the minified JavaScript file.
+    pub code_file: String,
+    /// Unique debug identifier of the source map.
+    pub debug_id: DebugId,
+    /// Path or URL to the associated source map.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub debug_file: Option<String>,
+    /// Additional arbitrary fields for forwards compatibility.
+    #[serde(flatten)]
+    pub other: Map<String, Value>,
+}
+
 into_debug_image!(Apple, AppleDebugImage);
 into_debug_image!(Symbolic, SymbolicDebugImage);
 into_debug_image!(Proguard, ProguardDebugImage);
 into_debug_image!(Wasm, WasmDebugImage);
+into_debug_image!(SourceMap, SourceMapDebugImage);
 
 /// Represents debug meta information.
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]

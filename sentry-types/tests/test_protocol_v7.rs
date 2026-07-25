@@ -815,6 +815,49 @@ mod test_debug_meta {
              \"8c954262-f905-4992-8a61-f60825f4553b\"}]}}"
         );
     }
+
+    #[test]
+    fn test_sourcemap_debug_image_roundtrip() {
+        let json = serde_json::json!({
+            "type": "sourcemap",
+            "code_file": "https://example.com/static/app.min.js",
+            "debug_id": "395835f4-03e0-4436-80d3-136f0749a893",
+            "debug_file": "https://example.com/static/app.min.js.map",
+            "source": "browser",
+        });
+
+        let image: v7::DebugImage = serde_json::from_value(json.clone()).unwrap();
+
+        let v7::DebugImage::SourceMap(ref source_map) = image else {
+            panic!("expected a source map debug image");
+        };
+        assert!(!source_map.other.contains_key("type"));
+        assert_eq!(image.type_name(), "sourcemap");
+        assert_eq!(
+            serde_json::to_string(&image)
+                .unwrap()
+                .match_indices("\"type\"")
+                .count(),
+            1
+        );
+        assert_eq!(serde_json::to_value(image).unwrap(), json);
+    }
+
+    #[test]
+    fn test_unknown_debug_image_roundtrip() {
+        let json = serde_json::json!({
+            "type": "future_image",
+            "debug_id": "395835f4-03e0-4436-80d3-136f0749a893",
+            "metadata": {
+                "revision": 2,
+            },
+        });
+
+        let image: v7::DebugImage = serde_json::from_value(json.clone()).unwrap();
+
+        assert_eq!(image.type_name(), "future_image");
+        assert_eq!(serde_json::to_value(image).unwrap(), json);
+    }
 }
 
 mod test_exception {
