@@ -1,5 +1,6 @@
 use std::convert::TryInto;
 use std::future::Future;
+use std::net::{IpAddr, SocketAddr};
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
@@ -185,23 +186,7 @@ where
     }
 
     fn call(&mut self, request: Request<ReqBody>) -> Self::Future {
-        let sentry_req = sentry_core::protocol::Request {
-            method: Some(request.method().to_string()),
-            url: get_url_from_request(&request).map(scrub_pii_from_url),
-            headers: request
-                .headers()
-                .into_iter()
-                .filter(|(_, value)| !value.is_sensitive())
-                .filter(|(header, _)| self.with_pii || !is_sensitive_header(header.as_str()))
-                .map(|(header, value)| {
-                    (
-                        header.to_string(),
-                        value.to_str().unwrap_or_default().into(),
-                    )
-                })
-                .collect(),
-            ..Default::default()
-        };
+        let sentry_req = sentry_request_from_http(&request, self.with_pii);
         let trx_ctx = if self.start_transaction {
             let headers = request.headers().into_iter().flat_map(|(header, value)| {
                 value.to_str().ok().map(|value| (header.as_str(), value))
@@ -222,6 +207,65 @@ where
             future: self.service.call(request),
         }
     }
+}
+
+fn sentry_request_from_http<B>(request: &Request<B>, with_pii: bool) -> protocol::Request {
+    let mut sentry_req = protocol::Request {
+        method: Some(request.method().to_string()),
+        url: get_url_from_request(request).map(scrub_pii_from_url),
+        headers: request
+            .headers()
+            .into_iter()
+            .filter(|(_, value)| !value.is_sensitive())
+            .filter(|(header, _)| with_pii || !is_sensitive_header(header.as_str()))
+            .map(|(header, value)| {
+                (
+                    header.to_string(),
+                    value.to_str().unwrap_or_default().into(),
+                )
+            })
+            .collect(),
+        ..Default::default()
+    };
+
+    if with_pii {
+        if let Some(remote_addr) = remote_addr_from_request(request) {
+            sentry_req.env.insert("REMOTE_ADDR".into(), remote_addr);
+        }
+    }
+
+    sentry_req
+}
+
+fn remote_addr_from_request<B>(request: &Request<B>) -> Option<String> {
+    request
+        .headers()
+        .get("x-forwarded-for")
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.split(',').next())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .or_else(|| {
+            request
+                .headers()
+                .get("x-real-ip")
+                .and_then(|value| value.to_str().ok())
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+        })
+        .map(ToOwned::to_owned)
+        .or_else(|| {
+            request
+                .extensions()
+                .get::<SocketAddr>()
+                .map(|address| address.ip().to_string())
+        })
+        .or_else(|| {
+            request
+                .extensions()
+                .get::<IpAddr>()
+                .map(ToString::to_string)
+        })
 }
 
 fn path_from_request<B>(request: &Request<B>) -> &str {
@@ -259,4 +303,74 @@ fn get_url_from_request<B>(request: &Request<B>) -> Option<url::Url> {
     }
     let uri = uri::Uri::from_parts(uri_parts).ok()?;
     uri.to_string().parse().ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn captures_first_forwarded_address_with_pii() {
+        let request = Request::builder()
+            .header("host", "example.com")
+            .header("x-forwarded-for", " 203.0.113.9, 10.0.0.1")
+            .body(())
+            .unwrap();
+
+        let sentry_req = sentry_request_from_http(&request, true);
+
+        assert_eq!(
+            sentry_req.env.get("REMOTE_ADDR").map(String::as_str),
+            Some("203.0.113.9")
+        );
+    }
+
+    #[test]
+    fn captures_real_ip_when_forwarded_address_is_empty() {
+        let request = Request::builder()
+            .header("host", "example.com")
+            .header("x-forwarded-for", " ")
+            .header("x-real-ip", "198.51.100.7")
+            .body(())
+            .unwrap();
+
+        let sentry_req = sentry_request_from_http(&request, true);
+
+        assert_eq!(
+            sentry_req.env.get("REMOTE_ADDR").map(String::as_str),
+            Some("198.51.100.7")
+        );
+    }
+
+    #[test]
+    fn captures_socket_address_when_proxy_headers_are_absent() {
+        let mut request = Request::builder()
+            .header("host", "example.com")
+            .body(())
+            .unwrap();
+        request
+            .extensions_mut()
+            .insert("192.0.2.4:8080".parse::<SocketAddr>().unwrap());
+
+        let sentry_req = sentry_request_from_http(&request, true);
+
+        assert_eq!(
+            sentry_req.env.get("REMOTE_ADDR").map(String::as_str),
+            Some("192.0.2.4")
+        );
+    }
+
+    #[test]
+    fn omits_remote_address_without_pii() {
+        let request = Request::builder()
+            .header("host", "example.com")
+            .header("x-forwarded-for", "203.0.113.9")
+            .body(())
+            .unwrap();
+
+        let sentry_req = sentry_request_from_http(&request, false);
+
+        assert!(!sentry_req.env.contains_key("REMOTE_ADDR"));
+        assert!(!sentry_req.headers.contains_key("x-forwarded-for"));
+    }
 }
