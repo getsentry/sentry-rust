@@ -16,8 +16,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // See https://github.com/rust-lang/rust/issues/46871
     let arch = target_bits.next().unwrap();
     target_bits.next();
-    #[cfg(windows)]
-    let platform = target_bits.next().unwrap();
 
     writeln!(
         f,
@@ -52,10 +50,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     )?;
 
-    #[cfg(windows)]
-    {
+    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows") {
         writeln!(f, "/// The platform identifier.")?;
-        writeln!(f, "pub const PLATFORM: &str = \"{platform}\";")?;
+        writeln!(f, "pub const PLATFORM: &str = \"windows\";")?;
     }
 
     writeln!(f, "/// The CPU architecture identifier.")?;
