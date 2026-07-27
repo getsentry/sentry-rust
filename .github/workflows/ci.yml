@@ -31,7 +31,6 @@ jobs:
     name: Code Coverage
     runs-on: ubuntu-latest
     env:
-      # Keep in sync with test.yml: anyhow backtrace tests require this preset.
       RUST_BACKTRACE: "1"
 
     steps:
