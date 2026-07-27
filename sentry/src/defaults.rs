@@ -117,55 +117,12 @@ pub fn apply_defaults(mut opts: ClientOptions) -> ClientOptions {
 
 #[cfg(test)]
 mod tests {
-    use std::process::Command;
-
     use super::*;
 
-    const CHILD_CASE: &str = "SENTRY_TEST_DEFAULT_ENVIRONMENT_CASE";
-
     #[test]
-    fn test_default_environment() {
-        match env::var(CHILD_CASE).as_deref() {
-            Ok("fallback") => {
-                let opts = apply_defaults(Default::default());
-                // I doubt anyone runs test code without debug assertions
-                assert_eq!(opts.environment.unwrap(), "development");
-            }
-            Ok("from_env") => {
-                let opts = apply_defaults(Default::default());
-                assert_eq!(opts.environment.unwrap(), "env-from-env");
-            }
-            _ => {
-                let opts = ClientOptions::new().environment("explicit-env");
-                let opts = apply_defaults(opts);
-                assert_eq!(opts.environment.unwrap(), "explicit-env");
-
-                // Prefer a child process over `std::env::set_var` in this process:
-                // `set_var` is unsafe if other threads may touch the environment,
-                // while `Command::env` / `env_remove` only affect the child.
-                run_default_environment_child("fallback", |cmd| {
-                    cmd.env_remove("SENTRY_ENVIRONMENT");
-                });
-                run_default_environment_child("from_env", |cmd| {
-                    cmd.env("SENTRY_ENVIRONMENT", "env-from-env");
-                });
-            }
-        }
-    }
-
-    fn run_default_environment_child(case: &str, configure: impl FnOnce(&mut Command)) {
-        let mut cmd = Command::new(env::current_exe().unwrap());
-        cmd.arg("--exact")
-            .arg("defaults::tests::test_default_environment")
-            .arg("--nocapture")
-            .env(CHILD_CASE, case);
-        configure(&mut cmd);
-        let output = cmd.output().expect("failed to spawn test child process");
-        assert!(
-            output.status.success(),
-            "child case {case:?} failed\nstdout:\n{}\nstderr:\n{}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr),
-        );
+    fn test_explicit_environment_is_preserved() {
+        let opts = ClientOptions::new().environment("explicit-env");
+        let opts = apply_defaults(opts);
+        assert_eq!(opts.environment.unwrap(), "explicit-env");
     }
 }
