@@ -26,4 +26,3 @@ anyhow = { workspace = true }
 
 [dev-dependencies]
 sentry = { workspace = true, features = ["test"] }
-temp-env = { workspace = true }

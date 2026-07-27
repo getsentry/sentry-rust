@@ -3383,7 +3383,6 @@ dependencies = [
  "sentry-tracing",
  "serde_json",
  "slog",
- "temp-env",
  "tokio",
  "tower 0.5.3",
  "tracing",
@@ -3413,7 +3412,6 @@ dependencies = [
  "sentry",
  "sentry-backtrace",
  "sentry-core",
- "temp-env",
 ]
 
 [[package]]
@@ -3780,15 +3778,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.117",
-]
-
-[[package]]
-name = "temp-env"
-version = "0.3.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96374855068f47402c3121c6eed88d29cb1de8f3ab27090e273e420bdabcf050"
-dependencies = [
- "parking_lot",
 ]
 
 [[package]]

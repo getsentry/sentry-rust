@@ -99,55 +99,82 @@ impl AnyhowHubExt for Hub {
 
 #[cfg(all(feature = "backtrace", test))]
 mod tests {
+    use std::process::Command;
+
     use super::*;
 
-    fn with_captured_anyhow_backtrace<F>(f: F)
-    where
-        F: FnOnce(&anyhow::Error),
-    {
-        temp_env::with_vars(
-            [
-                ("RUST_BACKTRACE", Some("1")),
-                ("RUST_LIB_BACKTRACE", None::<&str>),
-            ],
-            || {
-                let err = anyhow::anyhow!("Oh jeez");
-                assert_eq!(
-                    err.backtrace().status(),
-                    std::backtrace::BacktraceStatus::Captured
-                );
-                f(&err);
-            },
+    const CHILD_MARKER: &str = "SENTRY_TEST_ANYHOW_BACKTRACE_CHILD";
+
+    /// Prefer a child process over `std::env::set_var` in this process: `set_var`
+    /// is unsafe if other threads may touch the environment, while `Command::env`
+    /// only affects the child. anyhow captures backtraces only when
+    /// `RUST_BACKTRACE` / `RUST_LIB_BACKTRACE` is set before the error is created.
+    fn run_with_rust_backtrace(test_name: &str) {
+        let output = Command::new(std::env::current_exe().unwrap())
+            .arg("--exact")
+            .arg(test_name)
+            .arg("--nocapture")
+            .env(CHILD_MARKER, "1")
+            .env("RUST_BACKTRACE", "1")
+            .env_remove("RUST_LIB_BACKTRACE")
+            .output()
+            .expect("failed to spawn test child process");
+        assert!(
+            output.status.success(),
+            "child {test_name} failed\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr),
         );
+    }
+
+    fn in_backtrace_child() -> bool {
+        std::env::var_os(CHILD_MARKER).is_some()
     }
 
     #[test]
     fn test_event_from_error_with_backtrace() {
-        with_captured_anyhow_backtrace(|err| {
-            let event = event_from_error(err);
+        if !in_backtrace_child() {
+            run_with_rust_backtrace("tests::test_event_from_error_with_backtrace");
+            return;
+        }
 
-            let stacktrace = event.exception[0].stacktrace.as_ref().unwrap();
-            let found_test_fn = stacktrace
-                .frames
-                .iter()
-                .find(|frame| match &frame.function {
-                    Some(f) => f.contains("test_event_from_error_with_backtrace"),
-                    None => false,
-                });
+        let err = anyhow::anyhow!("Oh jeez");
+        assert_eq!(
+            err.backtrace().status(),
+            std::backtrace::BacktraceStatus::Captured
+        );
+        let event = event_from_error(&err);
 
-            assert!(found_test_fn.is_some());
-        });
+        let stacktrace = event.exception[0].stacktrace.as_ref().unwrap();
+        let found_test_fn = stacktrace
+            .frames
+            .iter()
+            .find(|frame| match &frame.function {
+                Some(f) => f.contains("test_event_from_error_with_backtrace"),
+                None => false,
+            });
+
+        assert!(found_test_fn.is_some());
     }
 
     #[test]
     fn test_capture_anyhow_uses_event_from_error_helper() {
-        with_captured_anyhow_backtrace(|err| {
-            let event = event_from_error(err);
-            let events = sentry::test::with_captured_events(|| {
-                capture_anyhow(err);
-            });
+        if !in_backtrace_child() {
+            run_with_rust_backtrace("tests::test_capture_anyhow_uses_event_from_error_helper");
+            return;
+        }
 
-            assert_eq!(event.exception, events[0].exception);
+        let err = &anyhow::anyhow!("Oh jeez");
+        assert_eq!(
+            err.backtrace().status(),
+            std::backtrace::BacktraceStatus::Captured
+        );
+
+        let event = event_from_error(err);
+        let events = sentry::test::with_captured_events(|| {
+            capture_anyhow(err);
         });
+
+        assert_eq!(event.exception, events[0].exception);
     }
 }
