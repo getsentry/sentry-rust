@@ -314,14 +314,14 @@ fn test_combined_event_mapper() {
                 sentry_tracing::EventMapping::Combined(
                     vec![
                         sentry_tracing::EventMapping::Breadcrumb(breadcrumb),
-                        sentry_tracing::EventMapping::Event(sentry_event),
+                        sentry_tracing::EventMapping::Event(sentry_event.into()),
                     ]
                     .into(),
                 )
             }
             tracing::Level::WARN => {
                 let sentry_event = sentry_tracing::event_from_event(event, Some(&ctx));
-                sentry_tracing::EventMapping::Event(sentry_event)
+                sentry_tracing::EventMapping::Event(sentry_event.into())
             }
             _ => sentry_tracing::EventMapping::Ignore,
         });

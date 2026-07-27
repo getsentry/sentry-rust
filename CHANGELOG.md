@@ -29,6 +29,7 @@
 - [`EnvelopeItem`](https://docs.rs/sentry-types/0.49.0/sentry_types/protocol/envelope/enum.EnvelopeItem.html) now stores `Event` and `Transaction` payloads in `Box` values. Code that constructs or pattern-matches these variants must account for the additional indirection ([#1255](https://github.com/getsentry/sentry-rust/pull/1255)).
 - The `sentry_log::RecordMapping` enum's `Event` now stores the event in a `Box` ([#1269](https://github.com/getsentry/sentry-rust/pull/1269)).
 - `sentry_slog::RecordMapping` is now `#[non_exhaustive]` and the `Event` variant now stores a boxed `Event<'static>` ([#1270](https://github.com/getsentry/sentry-rust/pull/1270))
+- The `sentry_tracing::EventMapping` enum's `Event` variant is now stored in a `Box` ([#1272](https://github.com/getsentry/sentry-rust/pull/1272))
 
 ### Fixes
 
