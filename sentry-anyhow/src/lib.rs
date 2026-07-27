@@ -97,9 +97,28 @@ impl AnyhowHubExt for Hub {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(feature = "backtrace", test))]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_event_from_error_with_backtrace() {
+        let event = event_from_error(&anyhow::anyhow!("Oh jeez"));
+
+        let stacktrace = event.exception[0]
+            .stacktrace
+            .as_ref()
+            .expect("run with RUST_BACKTRACE=1");
+        let found_test_fn = stacktrace
+            .frames
+            .iter()
+            .find(|frame| match &frame.function {
+                Some(f) => f.contains("test_event_from_error_with_backtrace"),
+                None => false,
+            });
+
+        assert!(found_test_fn.is_some());
+    }
 
     #[test]
     fn test_capture_anyhow_uses_event_from_error_helper() {
