@@ -13,6 +13,12 @@ type Header<'h> = (&'h str, &'h str);
 /// The baggage key for the Sentry org ID.
 const SENTRY_ORG_ID: &str = "sentry-org_id";
 
+/// The Sentry Trace header
+const SENTRY_TRACE: &str = "sentry-trace";
+
+/// The Baggage header
+const BAGGAGE: &str = "baggage";
+
 /// The [trace propagation] context.
 ///
 /// Contains the information necessary for propagating Sentry traces and continuing traces from
@@ -97,13 +103,13 @@ impl TracePropagationContext {
         let mut baggage = SentryBaggage::default();
 
         for (header, value) in headers {
-            if header.eq_ignore_ascii_case("sentry-trace") {
+            if header.eq_ignore_ascii_case(SENTRY_TRACE) {
                 // Parse the header, falling back to the previous header value if Ok (headers not
                 // guaranteed unique), only falling back to invalid error if there's no prev value.
                 context_result = TracePropagationContext::from_sentry_trace(value)
                     .map_or(context_result, Ok)
                     .map_err(|_| HeaderParseError::Invalid);
-            } else if header.eq_ignore_ascii_case("baggage") {
+            } else if header.eq_ignore_ascii_case(BAGGAGE) {
                 baggage.update_from_header(value);
             }
         }
@@ -167,7 +173,7 @@ impl Display for HeaderParseError {
             HeaderParseError::Invalid => "invalid",
         };
 
-        write!(f, "{msg} sentry-trace header")
+        write!(f, "{msg} {SENTRY_TRACE} header")
     }
 }
 
