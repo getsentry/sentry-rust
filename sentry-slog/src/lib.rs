@@ -61,7 +61,7 @@
 //!     })
 //!     .mapper(|record, kv| match record.level() {
 //!         slog::Level::Critical | slog::Level::Error => {
-//!             RecordMapping::Event(exception_from_record(record, kv))
+//!             RecordMapping::Event(exception_from_record(record, kv).into())
 //!         }
 //!         _ => RecordMapping::Ignore,
 //!     });
