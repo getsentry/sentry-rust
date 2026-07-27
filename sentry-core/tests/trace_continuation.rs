@@ -170,7 +170,7 @@ fn start_transaction_continues_when_dsn_org_id_matches_incoming() {
     TraceContinuationScenario::run_with_options(
         Some("42"),
         ClientOptions::new()
-            .dsn("https://public@o42.us.ingest.sentry.io/1")
+            .dsn("https://public@o42.ingest.us.sentry.io/1")
             .strict_trace_continuation(true)
             .traces_sample_rate(0.0),
     )
@@ -182,7 +182,7 @@ fn start_transaction_rejects_when_dsn_org_id_mismatches_incoming() {
     TraceContinuationScenario::run_with_options(
         Some("43"),
         ClientOptions::new()
-            .dsn("https://public@o42.us.ingest.sentry.io/1")
+            .dsn("https://public@o42.ingest.us.sentry.io/1")
             .strict_trace_continuation(true)
             .traces_sample_rate(0.0),
     )
@@ -194,7 +194,7 @@ fn start_transaction_prefers_explicit_org_id_over_dsn_org_id() {
     TraceContinuationScenario::run_with_options(
         Some("42"),
         ClientOptions::new()
-            .dsn("https://public@o43.ingest.sentry.io/1")
+            .dsn("https://public@o43.ingest.us.sentry.io/1")
             .org_id("42".parse().unwrap())
             .strict_trace_continuation(true)
             .traces_sample_rate(0.0),
