@@ -105,6 +105,7 @@ anyhow = { workspace = true }
 log = { workspace = true, features = ["std"] }
 pretty_env_logger = { workspace = true }
 slog = { workspace = true }
+temp-env = { workspace = true }
 tokio = { workspace = true, features = ["macros"] }
 tower = { workspace = true, features = ["util"] }
 tracing = { workspace = true }

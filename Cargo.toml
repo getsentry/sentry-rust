@@ -77,6 +77,7 @@ sentry-types = { version = "0.48.5", path = "sentry-types" }
 serde = "1.0.117"
 serde_json = "1.0.48"
 slog = "2.5.2"
+temp-env = "0.3.6"
 thiserror = "2.0.12"
 time = "0.3.47"
 tokio = "1.44"

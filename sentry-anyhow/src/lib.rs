@@ -101,42 +101,55 @@ impl AnyhowHubExt for Hub {
 mod tests {
     use super::*;
 
-    fn anyhow_with_captured_backtrace() -> anyhow::Error {
-        let err = anyhow::anyhow!("Oh jeez");
-        assert_eq!(
-            err.backtrace().status(),
-            std::backtrace::BacktraceStatus::Captured,
-            "run with RUST_BACKTRACE=1 (anyhow captures only when that is preset; \
-             tests must not call std::env::set_var)"
+    fn with_captured_anyhow_backtrace<F>(f: F)
+    where
+        F: FnOnce(&anyhow::Error),
+    {
+        // anyhow only captures when RUST_BACKTRACE/RUST_LIB_BACKTRACE is set.
+        // temp-env serializes mutation so tests do not use a bare set_var.
+        temp_env::with_vars(
+            [
+                ("RUST_BACKTRACE", Some("1")),
+                ("RUST_LIB_BACKTRACE", None::<&str>),
+            ],
+            || {
+                let err = anyhow::anyhow!("Oh jeez");
+                assert_eq!(
+                    err.backtrace().status(),
+                    std::backtrace::BacktraceStatus::Captured
+                );
+                f(&err);
+            },
         );
-        err
     }
 
     #[test]
     fn test_event_from_error_with_backtrace() {
-        let event = event_from_error(&anyhow_with_captured_backtrace());
+        with_captured_anyhow_backtrace(|err| {
+            let event = event_from_error(err);
 
-        let stacktrace = event.exception[0].stacktrace.as_ref().unwrap();
-        let found_test_fn = stacktrace
-            .frames
-            .iter()
-            .find(|frame| match &frame.function {
-                Some(f) => f.contains("test_event_from_error_with_backtrace"),
-                None => false,
-            });
+            let stacktrace = event.exception[0].stacktrace.as_ref().unwrap();
+            let found_test_fn = stacktrace
+                .frames
+                .iter()
+                .find(|frame| match &frame.function {
+                    Some(f) => f.contains("test_event_from_error_with_backtrace"),
+                    None => false,
+                });
 
-        assert!(found_test_fn.is_some());
+            assert!(found_test_fn.is_some());
+        });
     }
 
     #[test]
     fn test_capture_anyhow_uses_event_from_error_helper() {
-        let err = &anyhow_with_captured_backtrace();
+        with_captured_anyhow_backtrace(|err| {
+            let event = event_from_error(err);
+            let events = sentry::test::with_captured_events(|| {
+                capture_anyhow(err);
+            });
 
-        let event = event_from_error(err);
-        let events = sentry::test::with_captured_events(|| {
-            capture_anyhow(err);
+            assert_eq!(event.exception, events[0].exception);
         });
-
-        assert_eq!(event.exception, events[0].exception);
     }
 }
