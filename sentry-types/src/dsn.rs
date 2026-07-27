@@ -442,6 +442,12 @@ mod test {
         );
     }
 
+    #[cfg(feature = "protocol")]
+    #[test]
+    fn test_dsn_org_id_ignores_host_with_extra_segment() {
+        assert_org_id("https://username@o123.ingest.de.sentry.io.com/42", None);
+    }
+
     #[test]
     #[should_panic(expected = "NoUsername")]
     fn test_dsn_no_username() {
