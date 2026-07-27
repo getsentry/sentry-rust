@@ -17,7 +17,7 @@ pub enum LevelFilter {
 }
 
 /// The type of Data Sentry should ingest for a [`slog::Record`].
-#[allow(clippy::large_enum_variant)]
+#[expect(clippy::large_enum_variant)]
 pub enum RecordMapping {
     /// Ignore the [`Record`].
     Ignore,
@@ -44,7 +44,7 @@ pub fn default_filter(level: slog::Level) -> LevelFilter {
 pub struct SentryDrain<D: Drain> {
     drain: D,
     filter: Box<dyn Fn(slog::Level) -> LevelFilter + Send + Sync>,
-    #[allow(clippy::type_complexity)]
+    #[expect(clippy::type_complexity)]
     mapper: Option<Box<dyn Fn(&Record, &OwnedKVList) -> RecordMapping + Send + Sync>>,
 }
 

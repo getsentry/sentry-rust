@@ -205,7 +205,6 @@ pub enum ItemContainer {
     Metrics(Vec<Metric>),
 }
 
-#[allow(clippy::len_without_is_empty, reason = "is_empty is not needed")]
 impl ItemContainer {
     /// The number of items in this item container.
     pub fn len(&self) -> usize {
@@ -228,6 +227,14 @@ impl ItemContainer {
         match self {
             Self::Logs(_) => "application/vnd.sentry.items.log+json",
             Self::Metrics(_) => "application/vnd.sentry.items.trace-metric+json",
+        }
+    }
+
+    /// Determine if the item container is empty.
+    pub fn is_empty(&self) -> bool {
+        match self {
+            Self::Logs(logs) => logs.is_empty(),
+            Self::Metrics(metrics) => metrics.is_empty(),
         }
     }
 }

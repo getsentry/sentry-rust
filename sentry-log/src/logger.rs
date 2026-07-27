@@ -28,7 +28,7 @@ bitflags! {
 /// The type of Data Sentry should ingest for a [`log::Record`].
 #[derive(Debug)]
 #[non_exhaustive]
-#[allow(clippy::large_enum_variant)]
+#[expect(clippy::large_enum_variant)]
 pub enum RecordMapping {
     /// Ignore the [`Record`].
     Ignore,
@@ -89,7 +89,7 @@ impl log::Log for NoopLogger {
 pub struct SentryLogger<L: log::Log> {
     dest: L,
     filter: Box<dyn Fn(&log::Metadata<'_>) -> LogFilter + Send + Sync>,
-    #[allow(clippy::type_complexity)]
+    #[expect(clippy::type_complexity)]
     mapper: Option<Box<dyn Fn(&Record<'_>) -> Vec<RecordMapping> + Send + Sync>>,
 }
 
