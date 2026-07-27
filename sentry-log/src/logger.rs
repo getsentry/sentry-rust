@@ -27,13 +27,10 @@ bitflags! {
 
 /// The type of Data Sentry should ingest for a [`log::Record`].
 #[derive(Debug)]
-pub struct RecordMapping {
-    inner: RecordMappingInner,
-}
-
-/// The inner representation of a [`RecordMapping`].
-#[derive(Debug)]
-enum RecordMappingInner {
+#[non_exhaustive]
+pub enum RecordMapping {
+    /// Ignore the [`Record`].
+    Ignore,
     /// Adds the [`Breadcrumb`] to the Sentry scope.
     Breadcrumb(Breadcrumb),
     /// Captures the [`Event`] to Sentry.
@@ -41,18 +38,6 @@ enum RecordMappingInner {
     /// Captures the [`sentry_core::protocol::Log`] to Sentry.
     #[cfg(feature = "logs")]
     Log(sentry_core::protocol::Log),
-}
-
-impl From<RecordMappingInner> for RecordMapping {
-    fn from(inner: RecordMappingInner) -> Self {
-        Self { inner }
-    }
-}
-
-impl From<RecordMapping> for RecordMappingInner {
-    fn from(mapping: RecordMapping) -> Self {
-        mapping.inner
-    }
 }
 
 impl From<RecordMapping> for Vec<RecordMapping> {
@@ -175,36 +160,31 @@ impl<L: log::Log> log::Log for SentryLogger<L> {
                 let filter = (self.filter)(record.metadata());
                 let mut items = vec![];
                 if filter.contains(LogFilter::Breadcrumb) {
-                    items.push(
-                        RecordMappingInner::Breadcrumb(breadcrumb_from_record(record)).into(),
-                    );
+                    items.push(RecordMapping::Breadcrumb(breadcrumb_from_record(record)));
                 }
                 if filter.contains(LogFilter::Event) {
-                    items.push(RecordMappingInner::Event(event_from_record(record).into()).into());
+                    items.push(RecordMapping::Event(event_from_record(record).into()));
                 }
                 if filter.contains(LogFilter::Exception) {
-                    items.push(
-                        RecordMappingInner::Event(exception_from_record(record).into()).into(),
-                    );
+                    items.push(RecordMapping::Event(exception_from_record(record).into()));
                 }
                 #[cfg(feature = "logs")]
                 if filter.contains(LogFilter::Log) {
-                    items.push(RecordMappingInner::Log(log_from_record(record)).into());
+                    items.push(RecordMapping::Log(log_from_record(record)));
                 }
                 items
             }
         };
 
         for mapping in items {
-            match mapping.inner {
-                RecordMappingInner::Breadcrumb(breadcrumb) => {
-                    sentry_core::add_breadcrumb(breadcrumb)
-                }
-                RecordMappingInner::Event(event) => {
+            match mapping {
+                RecordMapping::Ignore => {}
+                RecordMapping::Breadcrumb(breadcrumb) => sentry_core::add_breadcrumb(breadcrumb),
+                RecordMapping::Event(event) => {
                     sentry_core::capture_event(*event);
                 }
                 #[cfg(feature = "logs")]
-                RecordMappingInner::Log(log) => {
+                RecordMapping::Log(log) => {
                     sentry_core::Hub::with_active(|hub| hub.capture_log(log))
                 }
             }
