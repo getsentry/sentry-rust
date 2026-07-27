@@ -20,8 +20,7 @@ async fn captures_message(_req: HttpRequest) -> Result<String, Error> {
 }
 
 // cargo run -p sentry-actix --example basic
-// For full backtraces, run with RUST_BACKTRACE=1. Avoid std::env::set_var here:
-// it is not sound if other threads may access the process environment.
+// For full backtraces, run with RUST_BACKTRACE=1.
 fn main() -> io::Result<()> {
     let _guard = sentry::init(
         sentry::ClientOptions::new()

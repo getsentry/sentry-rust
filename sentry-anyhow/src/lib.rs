@@ -105,8 +105,6 @@ mod tests {
     where
         F: FnOnce(&anyhow::Error),
     {
-        // anyhow only captures when RUST_BACKTRACE/RUST_LIB_BACKTRACE is set.
-        // temp-env serializes mutation so tests do not use a bare set_var.
         temp_env::with_vars(
             [
                 ("RUST_BACKTRACE", Some("1")),

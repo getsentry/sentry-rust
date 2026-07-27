@@ -37,9 +37,7 @@ use crate::{ClientOptions, Integration};
 ///
 /// When `SENTRY_RELEASE` / `SENTRY_ENVIRONMENT` / `SENTRY_DSN` are set in the
 /// process environment, `apply_defaults` also fills those fields if they were
-/// left unset. Set those variables in the shell (or process supervisor) rather
-/// than via [`std::env::set_var`], which is not sound if other threads may
-/// access the process environment.
+/// left unset.
 ///
 /// [`AttachStacktraceIntegration`]: integrations/backtrace/struct.AttachStacktraceIntegration.html
 /// [`DebugImagesIntegration`]: integrations/debug_images/struct.DebugImagesIntegration.html
@@ -127,8 +125,6 @@ mod tests {
         let opts = apply_defaults(opts);
         assert_eq!(opts.environment.unwrap(), "explicit-env");
 
-        // temp-env serializes environment mutation across tests so we can cover
-        // both the fallback and SENTRY_ENVIRONMENT paths without a bare set_var.
         temp_env::with_var("SENTRY_ENVIRONMENT", None::<&str>, || {
             let opts = apply_defaults(Default::default());
             // I doubt anyone runs test code without debug assertions

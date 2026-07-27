@@ -38,9 +38,7 @@
 //! }
 //! ```
 //!
-//! Run with `RUST_BACKTRACE=1` to get full backtraces. This example does not call
-//! [`std::env::set_var`]: that API is not sound if other threads may access the
-//! process environment, which is typical for multithreaded servers.
+//! Run with `RUST_BACKTRACE=1` to get full backtraces.
 //!
 //! # Using Release Health
 //!
