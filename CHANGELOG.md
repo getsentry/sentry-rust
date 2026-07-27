@@ -28,6 +28,7 @@
 - Removed the public `ClientOptions::traces_sample_rate` and `ClientOptions::traces_sampler` fields. Use `ClientOptions::traces_sampling_strategy` to inspect the configured traces sampling strategy, and use the existing `ClientOptions::traces_sample_rate(...)` and `ClientOptions::traces_sampler(...)` builder setters to configure fixed-rate and callback-based sampling ([#1227](https://github.com/getsentry/sentry-rust/pull/1227)).
 - [`EnvelopeItem`](https://docs.rs/sentry-types/0.49.0/sentry_types/protocol/envelope/enum.EnvelopeItem.html) now stores `Event` and `Transaction` payloads in `Box` values. Code that constructs or pattern-matches these variants must account for the additional indirection ([#1255](https://github.com/getsentry/sentry-rust/pull/1255)).
 - The `sentry_log::RecordMapping` enum's `Event` now stores the event in a `Box` ([#1269](https://github.com/getsentry/sentry-rust/pull/1269)).
+- `sentry_slog::RecordMapping` is now `#[non_exhaustive]` and the `Event` variant now stores a boxed `Event<'static>` ([#1270](https://github.com/getsentry/sentry-rust/pull/1270))
 
 ### Fixes
 
