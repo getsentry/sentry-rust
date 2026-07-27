@@ -1,7 +1,7 @@
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 
-use crate::protocol::Event;
 use crate::ClientOptions;
+use crate::protocol::Event;
 
 /// Integration abstraction.
 ///

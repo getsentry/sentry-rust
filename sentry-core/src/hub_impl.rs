@@ -5,7 +5,7 @@ use std::thread;
 use std::thread::ThreadId;
 
 use crate::Scope;
-use crate::{scope::Stack, Client, Hub};
+use crate::{Client, Hub, scope::Stack};
 
 static PROCESS_HUB: LazyLock<ProcessHub> = LazyLock::new(|| ProcessHub {
     hub: Arc::new(Hub::new(None, Arc::new(Default::default()))),

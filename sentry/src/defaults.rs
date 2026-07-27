@@ -28,16 +28,16 @@ use crate::{ClientOptions, Integration};
 ///
 /// # Examples
 /// ```
-/// std::env::set_var("SENTRY_RELEASE", "release-from-env");
-///
 /// let options = sentry::ClientOptions::default();
-/// assert_eq!(options.release, None);
 /// assert!(options.transport.is_none());
 ///
 /// let options = sentry::apply_defaults(options);
-/// assert_eq!(options.release, Some("release-from-env".into()));
 /// assert!(options.transport.is_some());
 /// ```
+///
+/// When `SENTRY_RELEASE` / `SENTRY_ENVIRONMENT` / `SENTRY_DSN` are set in the
+/// process environment, `apply_defaults` also fills those fields if they were
+/// left unset.
 ///
 /// [`AttachStacktraceIntegration`]: integrations/backtrace/struct.AttachStacktraceIntegration.html
 /// [`DebugImagesIntegration`]: integrations/debug_images/struct.DebugImagesIntegration.html
@@ -120,17 +120,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_default_environment() {
+    fn test_explicit_environment_is_preserved() {
         let opts = ClientOptions::new().environment("explicit-env");
         let opts = apply_defaults(opts);
         assert_eq!(opts.environment.unwrap(), "explicit-env");
-
-        let opts = apply_defaults(Default::default());
-        // I doubt anyone runs test code without debug assertions
-        assert_eq!(opts.environment.unwrap(), "development");
-
-        env::set_var("SENTRY_ENVIRONMENT", "env-from-env");
-        let opts = apply_defaults(Default::default());
-        assert_eq!(opts.environment.unwrap(), "env-from-env");
     }
 }

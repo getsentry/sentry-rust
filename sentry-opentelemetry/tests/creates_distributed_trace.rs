@@ -1,10 +1,9 @@
 mod shared;
 
 use opentelemetry::{
-    global,
+    Context, global,
     propagation::TextMapPropagator,
     trace::{TraceContextExt, Tracer, TracerProvider},
-    Context,
 };
 use opentelemetry_sdk::trace::SdkTracerProvider;
 use sentry_opentelemetry::{SentryPropagator, SentrySpanProcessor};

@@ -1,7 +1,6 @@
-use std::env;
 use std::io;
 
-use actix_web::{get, App, Error, HttpRequest, HttpServer};
+use actix_web::{App, Error, HttpRequest, HttpServer, get};
 use sentry::Level;
 
 #[get("/")]
@@ -21,6 +20,7 @@ async fn captures_message(_req: HttpRequest) -> Result<String, Error> {
 }
 
 // cargo run -p sentry-actix --example basic
+// For full backtraces, run with RUST_BACKTRACE=1.
 fn main() -> io::Result<()> {
     let _guard = sentry::init(
         sentry::ClientOptions::new()
@@ -30,7 +30,6 @@ fn main() -> io::Result<()> {
             .session_mode(sentry::SessionMode::Request)
             .debug(true),
     );
-    env::set_var("RUST_BACKTRACE", "1");
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()

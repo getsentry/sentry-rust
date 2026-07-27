@@ -1,5 +1,5 @@
 use sentry_core::protocol::{Breadcrumb, Event, Level, Map, Value};
-use slog::{Key, OwnedKVList, Record, Serializer, KV};
+use slog::{KV, Key, OwnedKVList, Record, Serializer};
 use std::fmt;
 
 /// Converts a [`slog::Level`] to a Sentry [`Level`]
@@ -106,7 +106,7 @@ mod test {
     use super::*;
     use serde::Serialize;
 
-    use slog::{b, o, record, Level};
+    use slog::{Level, b, o, record};
 
     #[derive(Serialize, Clone)]
     struct Something {

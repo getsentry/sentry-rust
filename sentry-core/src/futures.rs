@@ -69,7 +69,7 @@ impl<F> SentryFutureExt for F where F: Future {}
 #[cfg(all(test, feature = "test"))]
 mod tests {
     use crate::test::with_captured_events;
-    use crate::{capture_message, configure_scope, Hub, Level, SentryFutureExt};
+    use crate::{Hub, Level, SentryFutureExt, capture_message, configure_scope};
     use tokio::runtime::Runtime;
 
     #[test]

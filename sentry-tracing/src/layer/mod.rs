@@ -7,15 +7,15 @@ use bitflags::bitflags;
 use sentry_core::protocol::Value;
 use sentry_core::{Breadcrumb, Hub, HubSwitchGuard, TransactionOrSpan};
 use tracing_core::field::Visit;
-use tracing_core::{span, Event, Field, Level, Metadata, Subscriber};
+use tracing_core::{Event, Field, Level, Metadata, Subscriber, span};
 use tracing_subscriber::layer::{Context, Layer};
 use tracing_subscriber::registry::LookupSpan;
 
-use crate::converters::*;
 use crate::SENTRY_NAME_FIELD;
 use crate::SENTRY_OP_FIELD;
 use crate::SENTRY_TRACE_FIELD;
 use crate::TAGS_PREFIX;
+use crate::converters::*;
 use span_guard_stack::SpanGuardStack;
 
 mod span_guard_stack;

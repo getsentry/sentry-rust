@@ -4,7 +4,7 @@ use std::str::FromStr;
 use thiserror::Error;
 use url::Url;
 
-use crate::auth::{auth_from_dsn_and_client, Auth};
+use crate::auth::{Auth, auth_from_dsn_and_client};
 use crate::project_id::{ParseProjectIdError, ProjectId};
 
 /// Represents a dsn url parsing error.

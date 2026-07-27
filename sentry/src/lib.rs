@@ -144,7 +144,7 @@ pub use sentry_core::*;
 
 // added public API
 pub use crate::defaults::apply_defaults;
-pub use crate::init::{init, ClientInitGuard};
+pub use crate::init::{ClientInitGuard, init};
 
 /// Available Sentry Integrations.
 ///

@@ -25,7 +25,7 @@ use std::ops::Range;
 #[cfg(feature = "client")]
 use std::sync::Arc;
 
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 use sentry::protocol::Breadcrumb;
 #[cfg(not(feature = "client"))]
 use sentry_core as sentry;

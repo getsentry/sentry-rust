@@ -16,7 +16,7 @@ use std::str;
 use std::time::SystemTime;
 
 use self::debugid::{CodeId, DebugId};
-use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
 use thiserror::Error;
 
 pub use url::Url;
@@ -40,7 +40,7 @@ pub mod client_report {
 
 /// An arbitrary (JSON) value.
 pub mod value {
-    pub use serde_json::value::{from_value, to_value, Index, Map, Number, Value};
+    pub use serde_json::value::{Index, Map, Number, Value, from_value, to_value};
 }
 
 /// The internally used arbitrary data map type.
@@ -2364,8 +2364,8 @@ impl<'de> Deserialize<'de> for LogAttribute {
                     }
                     _ => {
                         return Err(de::Error::custom(format!(
-                        "expected type to be 'string' | 'integer' | 'double' | 'boolean', found {type_str}"
-                    )))
+                            "expected type to be 'string' | 'integer' | 'double' | 'boolean', found {type_str}"
+                        )));
                     }
                 }
 

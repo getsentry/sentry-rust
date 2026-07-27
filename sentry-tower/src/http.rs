@@ -3,10 +3,10 @@ use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-use http::{header, uri, Request, Response, StatusCode};
+use http::{Request, Response, StatusCode, header, uri};
 use pin_project::pinned_drop;
 use sentry_core::utils::{is_sensitive_header, scrub_pii_from_url};
-use sentry_core::{protocol, Hub};
+use sentry_core::{Hub, protocol};
 use tower_layer::Layer;
 use tower_service::Service;
 

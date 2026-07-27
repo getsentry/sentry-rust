@@ -1,8 +1,8 @@
 use std::convert::{TryFrom, TryInto};
 use std::time::{Duration, SystemTime};
 
-use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
+use time::format_description::well_known::Rfc3339;
 
 /// Converts a `SystemTime` object into a float timestamp.
 pub fn datetime_to_timestamp(st: &SystemTime) -> f64 {
@@ -218,7 +218,7 @@ pub mod ts_rfc3339_opt {
 /// assert_eq!(deserialized, config);
 /// ```
 pub(crate) mod display_from_str_opt {
-    use serde::{de, ser, Deserialize};
+    use serde::{Deserialize, de, ser};
 
     pub fn serialize<T, S>(value: &Option<T>, serializer: S) -> Result<S::Ok, S::Error>
     where

@@ -5,6 +5,7 @@ on:
 
 env:
   RUSTFLAGS: -Dwarnings
+  RUST_BACKTRACE: "1"
 
 jobs:
   test:

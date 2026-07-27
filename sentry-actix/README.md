@@ -29,7 +29,6 @@ fn main() -> io::Result<()> {
     let _guard = sentry::init(
         sentry::ClientOptions::new().maybe_release(sentry::release_name!()),
     );
-    std::env::set_var("RUST_BACKTRACE", "1");
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -46,6 +45,8 @@ fn main() -> io::Result<()> {
     })
 }
 ```
+
+Run with `RUST_BACKTRACE=1` to get full backtraces.
 
 ## Using Release Health
 

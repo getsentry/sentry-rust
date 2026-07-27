@@ -1,4 +1,4 @@
-use sentry_core::protocol::{value::Number, SpanId, SpanStatus, TraceId, Value};
+use sentry_core::protocol::{SpanId, SpanStatus, TraceId, Value, value::Number};
 
 pub(crate) fn convert_span_id(span_id: &opentelemetry::SpanId) -> SpanId {
     span_id.to_bytes().into()

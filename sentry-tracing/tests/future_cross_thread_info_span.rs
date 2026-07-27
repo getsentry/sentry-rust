@@ -32,9 +32,8 @@ fn future_cross_thread_info_span() {
             .expect("expected thread2 to panic with a String message");
 
         assert!(
-            thread2_panic_message.starts_with(
-                "[SentryLayer] missing HubSwitchGuard on exit for span"
-            ),
+            thread2_panic_message
+                .starts_with("[SentryLayer] missing HubSwitchGuard on exit for span"),
             "Thread 2 panicked, but not for the expected reason. It is also possible that the panic \
             message was changed without updating this test."
         );

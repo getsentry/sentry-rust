@@ -1,15 +1,15 @@
 use std::time::Duration;
 
-use reqwest::{header as ReqwestHeaders, Client as ReqwestClient, Proxy, StatusCode};
-use sentry_core::client_report::Reason as LossReason;
+use reqwest::{Client as ReqwestClient, Proxy, StatusCode, header as ReqwestHeaders};
 use sentry_core::TransportOptions;
+use sentry_core::client_report::Reason as LossReason;
 
 use super::{
+    HTTP_PAYLOAD_TOO_LARGE, HTTP_PAYLOAD_TOO_LARGE_MESSAGE, RateLimiter,
     tokio_thread::{TransportThread, TransportThreadOptions},
-    RateLimiter, HTTP_PAYLOAD_TOO_LARGE, HTTP_PAYLOAD_TOO_LARGE_MESSAGE,
 };
 
-use crate::{sentry_debug, ClientOptions, Envelope, Transport};
+use crate::{ClientOptions, Envelope, Transport, sentry_debug};
 
 /// The status code returned for rate-limited envelopes.
 const HTTP_RATE_LIMIT_STATUS: u16 = 429;

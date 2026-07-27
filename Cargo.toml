@@ -1,5 +1,5 @@
 [workspace]
-resolver = "2"
+resolver = "3"
 members = [
     "sentry",
     "sentry-actix",
@@ -21,7 +21,7 @@ members = [
 authors = ["Sentry <hello@sentry.io>"]
 repository = "https://github.com/getsentry/sentry-rust"
 homepage = "https://sentry.io/welcome/"
-edition = "2021"
+edition = "2024"
 rust-version = "1.88"
 
 [workspace.lints.clippy]

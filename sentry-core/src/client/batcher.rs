@@ -7,8 +7,8 @@ use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 use super::EnvelopeSender;
-use crate::protocol::EnvelopeItem;
 use crate::Envelope;
+use crate::protocol::EnvelopeItem;
 use sentry_types::protocol::v7::Log;
 #[cfg(feature = "metrics")]
 use sentry_types::protocol::v7::Metric;

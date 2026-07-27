@@ -15,12 +15,12 @@
 use std::sync::LazyLock;
 
 use opentelemetry::{
-    propagation::{text_map_propagator::FieldIter, Extractor, Injector, TextMapPropagator},
-    trace::TraceContextExt,
     Context, SpanId, TraceId,
+    propagation::{Extractor, Injector, TextMapPropagator, text_map_propagator::FieldIter},
+    trace::TraceContextExt,
 };
-use sentry_core::parse_headers;
 use sentry_core::SentryTrace;
+use sentry_core::parse_headers;
 
 use crate::converters::{convert_span_id, convert_trace_id};
 

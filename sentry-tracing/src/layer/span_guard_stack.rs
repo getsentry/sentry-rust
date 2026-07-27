@@ -1,8 +1,8 @@
 //! This module contains code for stack-like storage for `HubSwitchGuard`s keyed
 //! by tracing span ID.
 
-use std::collections::hash_map::Entry;
 use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 
 use sentry_core::HubSwitchGuard;
 use tracing_core::span::Id as SpanId;

@@ -1,7 +1,7 @@
 use sentry_core::TransportOptions;
 
 use super::{HTTP_PAYLOAD_TOO_LARGE, HTTP_PAYLOAD_TOO_LARGE_MESSAGE};
-use crate::{sentry_debug, ClientOptions, Transport};
+use crate::{ClientOptions, Transport, sentry_debug};
 use embedded_svc::http::client::Client as HttpClient;
 use esp_idf_svc::{http::client::EspHttpConnection, io::Write};
 

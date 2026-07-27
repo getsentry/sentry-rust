@@ -79,4 +79,4 @@ mod converters;
 mod drain;
 
 pub use converters::*;
-pub use drain::{default_filter, LevelFilter, RecordMapping, SentryDrain};
+pub use drain::{LevelFilter, RecordMapping, SentryDrain, default_filter};

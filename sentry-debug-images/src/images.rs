@@ -3,7 +3,7 @@ use std::env;
 use sentry_core::protocol::{DebugImage, SymbolicDebugImage};
 use sentry_core::types::{CodeId, DebugId, Uuid};
 
-use findshlibs::{SharedLibrary, SharedLibraryId, TargetSharedLibrary, TARGET_SUPPORTED};
+use findshlibs::{SharedLibrary, SharedLibraryId, TARGET_SUPPORTED, TargetSharedLibrary};
 
 const UUID_SIZE: usize = 16;
 

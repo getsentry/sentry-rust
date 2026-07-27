@@ -228,7 +228,12 @@ mod tests {
             &strip_symbol("<fn() as core[bb3d6b31f0e973c8]::ops::function::FnOnce<()>>::call_once"),
             "<fn() as core::ops::function::FnOnce<()>>::call_once"
         );
-        assert_eq!(&strip_symbol("<std[550525b9dd91a68e]::thread::local::LocalKey<(arc_swap[1d34a79be67db79e]::ArcSwapAny<alloc[bc7f897b574022f6]::sync::Arc<sentry_core[1d5336878cce1456]::hub::Hub>>, core[bb3d6b31f0e973c8]::cell::Cell<bool>)>>::with::<<sentry_core[1d5336878cce1456]::hub::Hub>::with<<sentry_core[1d5336878cce1456]::hub::Hub>::with_active<sentry_core[1d5336878cce1456]::api::with_integration<sentry_panic[c87c9124ff32f50e]::PanicIntegration, sentry_panic[c87c9124ff32f50e]::panic_handler::{closure#0}, ()>::{closure#0}, ()>::{closure#0}, ()>::{closure#0}, ()>"), "<std::thread::local::LocalKey<(arc_swap::ArcSwapAny<alloc::sync::Arc<sentry_core::hub::Hub>>, core::cell::Cell<bool>)>>::with::<<sentry_core::hub::Hub>::with<<sentry_core::hub::Hub>::with_active<sentry_core::api::with_integration<sentry_panic::PanicIntegration, sentry_panic::panic_handler::{closure#0}, ()>::{closure#0}, ()>::{closure#0}, ()>::{closure#0}, ()>");
+        assert_eq!(
+            &strip_symbol(
+                "<std[550525b9dd91a68e]::thread::local::LocalKey<(arc_swap[1d34a79be67db79e]::ArcSwapAny<alloc[bc7f897b574022f6]::sync::Arc<sentry_core[1d5336878cce1456]::hub::Hub>>, core[bb3d6b31f0e973c8]::cell::Cell<bool>)>>::with::<<sentry_core[1d5336878cce1456]::hub::Hub>::with<<sentry_core[1d5336878cce1456]::hub::Hub>::with_active<sentry_core[1d5336878cce1456]::api::with_integration<sentry_panic[c87c9124ff32f50e]::PanicIntegration, sentry_panic[c87c9124ff32f50e]::panic_handler::{closure#0}, ()>::{closure#0}, ()>::{closure#0}, ()>::{closure#0}, ()>"
+            ),
+            "<std::thread::local::LocalKey<(arc_swap::ArcSwapAny<alloc::sync::Arc<sentry_core::hub::Hub>>, core::cell::Cell<bool>)>>::with::<<sentry_core::hub::Hub>::with<<sentry_core::hub::Hub>::with_active<sentry_core::api::with_integration<sentry_panic::PanicIntegration, sentry_panic::panic_handler::{closure#0}, ()>::{closure#0}, ()>::{closure#0}, ()>::{closure#0}, ()>"
+        );
     }
 
     #[test]

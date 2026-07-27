@@ -4,11 +4,11 @@ use std::error::Error;
 use sentry_core::protocol::{Event, Exception, Mechanism, Value};
 #[cfg(feature = "logs")]
 use sentry_core::protocol::{Log, LogAttribute, LogLevel};
-use sentry_core::{event_from_error, Breadcrumb, Level, TransactionOrSpan};
+use sentry_core::{Breadcrumb, Level, TransactionOrSpan, event_from_error};
 #[cfg(feature = "logs")]
 use std::time::SystemTime;
-use tracing_core::field::{Field, Visit};
 use tracing_core::Subscriber;
+use tracing_core::field::{Field, Visit};
 use tracing_subscriber::layer::Context;
 use tracing_subscriber::registry::LookupSpan;
 
@@ -299,25 +299,25 @@ where
     // We should only do this if we're capturing stack traces, otherwise the issue title will be `<unknown>`
     // as Sentry will attempt to use missing stack trace to determine the title.
     #[cfg(feature = "backtrace")]
-    if !exceptions.is_empty() && message.is_some() {
-        if let Some(client) = sentry_core::Hub::current().client() {
-            if client.options().attach_stacktrace {
-                let thread = sentry_backtrace::current_thread(true);
-                let exception = Exception {
-                    ty: level_to_exception_type(event.metadata().level()).to_owned(),
-                    value: message.take(),
-                    module: event.metadata().module_path().map(str::to_owned),
-                    stacktrace: thread.stacktrace,
-                    raw_stacktrace: thread.raw_stacktrace,
-                    thread_id: thread.id,
-                    mechanism: Some(Mechanism {
-                        synthetic: Some(true),
-                        ..Mechanism::default()
-                    }),
-                };
-                exceptions.push(exception)
-            }
-        }
+    if !exceptions.is_empty()
+        && message.is_some()
+        && let Some(client) = sentry_core::Hub::current().client()
+        && client.options().attach_stacktrace
+    {
+        let thread = sentry_backtrace::current_thread(true);
+        let exception = Exception {
+            ty: level_to_exception_type(event.metadata().level()).to_owned(),
+            value: message.take(),
+            module: event.metadata().module_path().map(str::to_owned),
+            stacktrace: thread.stacktrace,
+            raw_stacktrace: thread.raw_stacktrace,
+            thread_id: thread.id,
+            mechanism: Some(Mechanism {
+                synthetic: Some(true),
+                ..Mechanism::default()
+            }),
+        };
+        exceptions.push(exception)
     }
 
     if let Some(exception) = exceptions.last_mut() {

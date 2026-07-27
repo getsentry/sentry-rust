@@ -41,9 +41,9 @@
 #![warn(missing_docs)]
 #![deny(unsafe_code)]
 
+use sentry_core::Hub;
 use sentry_core::protocol::Event;
 use sentry_core::types::Uuid;
-use sentry_core::Hub;
 
 /// Captures an [`anyhow::Error`].
 ///
@@ -103,11 +103,12 @@ mod tests {
 
     #[test]
     fn test_event_from_error_with_backtrace() {
-        std::env::set_var("RUST_BACKTRACE", "1");
-
         let event = event_from_error(&anyhow::anyhow!("Oh jeez"));
 
-        let stacktrace = event.exception[0].stacktrace.as_ref().unwrap();
+        let stacktrace = event.exception[0]
+            .stacktrace
+            .as_ref()
+            .expect("run with RUST_BACKTRACE=1");
         let found_test_fn = stacktrace
             .frames
             .iter()
@@ -121,8 +122,6 @@ mod tests {
 
     #[test]
     fn test_capture_anyhow_uses_event_from_error_helper() {
-        std::env::set_var("RUST_BACKTRACE", "1");
-
         let err = &anyhow::anyhow!("Oh jeez");
 
         let event = event_from_error(err);

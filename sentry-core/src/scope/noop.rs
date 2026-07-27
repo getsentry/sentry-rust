@@ -1,10 +1,10 @@
 use std::fmt;
 use std::panic::RefUnwindSafe;
 
+use crate::TransactionOrSpan;
 #[cfg(feature = "logs")]
 use crate::protocol::Log;
 use crate::protocol::{Context, Event, Level, User, Value};
-use crate::TransactionOrSpan;
 
 /// A minimal API scope guard.
 ///
