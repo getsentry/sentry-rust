@@ -31,6 +31,10 @@
 - `sentry_slog::RecordMapping` is now `#[non_exhaustive]` and the `Event` variant now stores a boxed `Event<'static>` ([#1270](https://github.com/getsentry/sentry-rust/pull/1270))
 - The `sentry_tracing::EventMapping` enum's `Event` variant is now stored in a `Box` ([#1272](https://github.com/getsentry/sentry-rust/pull/1272))
 
+### New Features
+
+- Added [`Dsn::org_id`](https://docs.rs/sentry-types/latest/sentry_types/struct.Dsn.html#method.org_id), which parses the Sentry SaaS organization ID from DSN hosts such as `o123.ingest.sentry.io` ([#1202](https://github.com/getsentry/sentry-rust/pull/1202)).
+
 ### Fixes
 
 - Restored the reqwest transport's pre-0.13 protocol features by disabling HTTP/2 and native-TLS ALPN ([#1258](https://github.com/getsentry/sentry-rust/pull/1258)).
