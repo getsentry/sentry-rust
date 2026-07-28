@@ -24,9 +24,7 @@ backtrace = ["dep:sentry-backtrace"]
 logs = ["sentry-core/logs"]
 
 [dependencies]
-sentry-core = { version = "0.48.5", path = "../sentry-core", features = [
-    "client",
-] }
+sentry-core = { workspace = true, features = ["client"] }
 tracing-core = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["std"] }
 sentry-backtrace = { workspace = true, optional = true }

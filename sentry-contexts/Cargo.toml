@@ -17,15 +17,15 @@ rust-version = { workspace = true }
 workspace = true
 
 [dependencies]
-sentry-core = { version = "0.48.5", path = "../sentry-core" }
+sentry-core = { workspace = true }
 libc = { workspace = true }
 hostname = { workspace = true }
 
 [target."cfg(not(windows))".dependencies]
-uname = "0.1.1"
+uname = { workspace = true }
 
 [target."cfg(windows)".dependencies]
-os_info = "3.5.0"
+os_info = { workspace = true }
 
 [build-dependencies]
 rustc_version = { workspace = true }

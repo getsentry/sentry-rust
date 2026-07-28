@@ -19,13 +19,11 @@ workspace = true
 all-features = true
 
 [dependencies]
-sentry-core = { version = "0.48.5", path = "../sentry-core", features = [
-    "client",
-] }
+sentry-core = { workspace = true, features = ["client"] }
 opentelemetry = { workspace = true }
 opentelemetry_sdk = { workspace = true, features = ["trace"] }
 
 [dev-dependencies]
 sentry = { workspace = true, features = ["test", "opentelemetry"] }
-sentry-core = { path = "../sentry-core", features = [ "test" ] }
+sentry-core = { workspace = true, features = ["test"] }
 opentelemetry_sdk = { workspace = true, features = ["trace", "testing"] }
