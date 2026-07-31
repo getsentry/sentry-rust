@@ -554,6 +554,10 @@ impl Visit for SpanFieldVisitor<'_> {
         self.record(field, value);
     }
 
+    fn record_f64(&mut self, field: &Field, value: f64) {
+        self.record(field, value);
+    }
+
     fn record_str(&mut self, field: &Field, value: &str) {
         self.record(field, value);
     }
