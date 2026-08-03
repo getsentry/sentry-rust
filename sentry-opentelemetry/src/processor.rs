@@ -10,7 +10,7 @@
 
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock, Mutex};
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 
 use opentelemetry::global::ObjectSafeSpan;
 use opentelemetry::trace::{get_active_span, SpanId};
@@ -19,8 +19,7 @@ use opentelemetry_sdk::error::OTelSdkResult;
 use opentelemetry_sdk::trace::{Span, SpanData, SpanProcessor};
 
 use opentelemetry_sdk::Resource;
-use sentry_core::SentryTrace;
-use sentry_core::{TransactionContext, TransactionOrSpan};
+use sentry_core::{TracePropagationContext, TransactionContext, TransactionOrSpan};
 
 use crate::converters::{
     convert_span_id, convert_span_kind, convert_span_status, convert_trace_id, convert_value,
@@ -128,12 +127,12 @@ impl SpanProcessor for SentrySpanProcessor {
                 ))
             } else {
                 let sentry_ctx = {
-                    if let Some(sentry_trace) = ctx.get::<SentryTrace>() {
+                    if let Some(trace_context) = ctx.get::<TracePropagationContext>() {
                         // continue remote trace
-                        TransactionContext::continue_from_sentry_trace(
+                        TransactionContext::continue_from_trace_propagation_context(
                             span_description,
                             span_op,
-                            sentry_trace,
+                            trace_context,
                             Some(convert_span_id(&span_id)),
                         )
                     } else {
@@ -186,6 +185,10 @@ impl SpanProcessor for SentrySpanProcessor {
     }
 
     fn shutdown(&self) -> OTelSdkResult {
+        Ok(())
+    }
+
+    fn shutdown_with_timeout(&self, _timeout: Duration) -> OTelSdkResult {
         Ok(())
     }
 

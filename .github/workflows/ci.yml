@@ -29,7 +29,7 @@ jobs:
 
   codecov:
     name: Code Coverage
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -53,7 +53,7 @@ jobs:
 
   required:
     name: Check required jobs
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: ${{ always() }}
     # Keep this list in sync with all CI jobs that should be required.
     # `codecov` is intentionally excluded from this aggregator.

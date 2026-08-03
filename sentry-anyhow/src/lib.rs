@@ -63,12 +63,11 @@ pub fn capture_anyhow(e: &anyhow::Error) -> Uuid {
 pub fn event_from_error(err: &anyhow::Error) -> Event<'static> {
     let dyn_err: &dyn std::error::Error = err.as_ref();
 
-    // It's not mutated for not(feature = "backtrace")
-    #[allow(unused_mut)]
-    let mut event = sentry_core::event_from_error(dyn_err);
+    let event = sentry_core::event_from_error(dyn_err);
 
     #[cfg(feature = "backtrace")]
-    {
+    let event = {
+        let mut event = event;
         // exception records are sorted in reverse
         if let Some(exc) = event.exception.iter_mut().last() {
             let backtrace = err.backtrace();
@@ -79,7 +78,8 @@ pub fn event_from_error(err: &anyhow::Error) -> Event<'static> {
                 exc.stacktrace = sentry_backtrace::parse_stacktrace(&format!("{backtrace:#}"));
             }
         }
-    }
+        event
+    };
 
     event
 }

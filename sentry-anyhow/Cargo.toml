@@ -1,6 +1,6 @@
 [package]
 name = "sentry-anyhow"
-version = "0.48.4"
+version = "0.49.0"
 authors = { workspace = true }
 license = "MIT"
 readme = "README.md"
@@ -20,9 +20,9 @@ default = ["backtrace"]
 backtrace = []
 
 [dependencies]
-sentry-backtrace = { version = "0.48.4", path = "../sentry-backtrace" }
-sentry-core = { version = "0.48.4", path = "../sentry-core" }
-anyhow = "1.0.77"
+sentry-backtrace = { workspace = true }
+sentry-core = { workspace = true }
+anyhow = { workspace = true }
 
 [dev-dependencies]
-sentry = { path = "../sentry", default-features = false, features = ["test"] }
+sentry = { workspace = true, features = ["test"] }

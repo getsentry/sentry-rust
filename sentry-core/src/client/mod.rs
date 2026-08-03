@@ -29,7 +29,7 @@ use crate::session::SessionFlusher;
 use crate::types::{Dsn, Uuid};
 #[cfg(feature = "release-health")]
 use crate::SessionMode;
-use crate::{ClientOptions, Envelope, Hub, Integration, Scope};
+use crate::{ClientOptions, Envelope, EventSamplingStrategy, Hub, Integration, Scope};
 
 #[cfg(feature = "logs")]
 use sentry_types::protocol::v7::Context;
@@ -46,6 +46,13 @@ mod envelope_sender;
 pub(crate) mod client_reports;
 
 pub(crate) use self::envelope_sender::EnvelopeSender;
+
+/// Functional implementation of how an event's sample rate is chosen.
+fn event_sample_rate(event_sampling_strategy: &EventSamplingStrategy) -> f32 {
+    match event_sampling_strategy {
+        &EventSamplingStrategy::FixedRate(rate) => rate,
+    }
+}
 
 impl<T: Into<ClientOptions>> From<T> for Client {
     fn from(o: T) -> Client {
@@ -209,8 +216,7 @@ impl Client {
                 .then(|| Batcher::new(envelope_sender.clone())),
         );
 
-        #[allow(unused_mut)]
-        let mut client = Client {
+        let client = Client {
             options,
             envelope_sender,
             #[cfg(feature = "release-health")]
@@ -228,16 +234,16 @@ impl Client {
         };
 
         #[cfg(feature = "logs")]
-        client.cache_default_log_attributes();
+        let client = client.with_cached_default_log_attributes();
 
         #[cfg(feature = "metrics")]
-        client.cache_default_metric_attributes();
+        let client = client.with_cached_default_metric_attributes();
 
         client
     }
 
     #[cfg(feature = "logs")]
-    fn cache_default_log_attributes(&mut self) {
+    fn with_cached_default_log_attributes(mut self) -> Self {
         let mut attributes = BTreeMap::new();
 
         if let Some(environment) = self.options.environment.as_ref() {
@@ -285,10 +291,12 @@ impl Client {
         }
 
         self.default_log_attributes = Some(attributes);
+
+        self
     }
 
     #[cfg(feature = "metrics")]
-    fn cache_default_metric_attributes(&mut self) {
+    fn with_cached_default_metric_attributes(mut self) -> Self {
         let always_present_attributes = [
             ("sentry.sdk.name", &self.sdk_info.name),
             ("sentry.sdk.version", &self.sdk_info.version),
@@ -307,6 +315,8 @@ impl Client {
         self.default_metric_attributes = maybe_present_attributes
             .chain(always_present_attributes)
             .collect();
+
+        self
     }
 
     pub(crate) fn get_integration<I>(&self) -> Option<&I>
@@ -382,11 +392,13 @@ impl Client {
             }
         }
 
+        #[cfg(feature = "release-health")]
         if let Some(scope) = scope {
             scope.update_session_from_event(&event);
         }
 
-        if !self.sample_should_send(self.options.sample_rate) {
+        let sample_rate = event_sample_rate(&self.options.event_sampling_strategy);
+        if !self.sample_should_send(sample_rate) {
             self.record_lost_event(ClientReportReason::SampleRate);
             None
         } else {

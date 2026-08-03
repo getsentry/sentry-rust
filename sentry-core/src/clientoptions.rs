@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use crate::constants::USER_AGENT;
 use crate::performance::{TracesSampler, TransactionContext};
-use crate::protocol::{Breadcrumb, Event, Log, Metric};
+use crate::protocol::{Breadcrumb, Event, Log, Metric, OrganizationId};
 use crate::types::Dsn;
 use crate::{Integration, IntoDsn, TransportFactory};
 
@@ -79,6 +79,53 @@ impl MaxRequestBodySize {
     }
 }
 
+/// Defines how traces should be sampled.
+///
+/// Leaving this at [`Disabled`](Self::Disabled) is distinct from explicitly configuring
+/// [`FixedRate`](Self::FixedRate) with a rate of `0.0`. Both disable local transaction sampling
+/// when there is no parent sampling decision, but an explicit fixed-rate strategy can still honor
+/// an inherited sampling decision.
+#[derive(Clone, Default)]
+#[non_exhaustive]
+pub enum TracesSamplingStrategy {
+    /// Sample the trace at a fixed sample rate. The rate should be between 0.0 and 1.0, inclusive.
+    FixedRate(f32),
+    /// Sample the traces using a [`TracesSampler`] function.
+    Function(Arc<TracesSampler>),
+    /// Disable tracing.
+    #[default]
+    Disabled,
+}
+
+impl fmt::Debug for TracesSamplingStrategy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::FixedRate(rate) => f.debug_tuple("FixedRate").field(rate).finish(),
+            Self::Function(callback) => f
+                .debug_tuple("Function")
+                .field(&format_args!("{:p}", Arc::as_ptr(callback)))
+                .finish(),
+            Self::Disabled => f.write_str("Disabled"),
+        }
+    }
+}
+
+/// The sampling strategy for events.
+///
+/// Currently, we only support fixed rates. This defaults to `Self::FixedRate(1.0)`.
+#[derive(Clone, Debug)]
+#[non_exhaustive]
+pub enum EventSamplingStrategy {
+    /// Sample events at a fixed sample rate. The rate should be between 0.0 and 1.0, inclusive.
+    FixedRate(f32),
+}
+
+impl Default for EventSamplingStrategy {
+    fn default() -> Self {
+        Self::FixedRate(1.0)
+    }
+}
+
 /// Configuration settings for the client.
 ///
 /// These options are explained in more detail in the general
@@ -91,6 +138,7 @@ impl MaxRequestBodySize {
 /// ```
 #[derive(Clone)]
 #[must_use = "ClientOptions must be passed to sentry::init to have any effect"]
+#[non_exhaustive]
 pub struct ClientOptions {
     // Common options
     /// The DSN to use.
@@ -109,18 +157,26 @@ pub struct ClientOptions {
     ///
     /// See [`environment`](method@ClientOptions::environment) for details.
     pub environment: Option<Cow<'static, str>>,
-    /// The sample rate for event submission.
+    /// The sampling strategy for event submission.
     ///
-    /// See [`sample_rate`](method@ClientOptions::sample_rate) for details.
-    pub sample_rate: f32,
-    /// The sample rate for tracing transactions.
+    /// This can be set to with [`sample_rate`](method@ClientOptions::sample_rate).
+    pub event_sampling_strategy: EventSamplingStrategy,
+    /// The traces sampling strategy.
     ///
-    /// See [`traces_sample_rate`](method@ClientOptions::traces_sample_rate) for details.
-    pub traces_sample_rate: f32,
-    /// The sampler callback for tracing transactions.
+    /// This can be set to a fixed rate with
+    /// [`traces_sample_rate`](method@ClientOptions::traces_sample_rate), a function with
+    /// [`traces_sampler`](method@ClientOptions::traces_sampler), or can be left at the default
+    /// disabled value.
+    pub traces_sampling_strategy: TracesSamplingStrategy,
+    /// The organization ID used for trace continuation.
     ///
-    /// See [`traces_sampler`](method@ClientOptions::traces_sampler) for details.
-    pub traces_sampler: Option<Arc<TracesSampler>>,
+    /// See [`org_id`](method@ClientOptions::org_id) for details.
+    pub org_id: Option<OrganizationId>,
+    /// Enables strict trace continuation.
+    ///
+    /// See [`strict_trace_continuation`](method@ClientOptions::strict_trace_continuation) for
+    /// details.
+    pub strict_trace_continuation: bool,
     /// Maximum number of breadcrumbs.
     ///
     /// See [`max_breadcrumbs`](method@ClientOptions::max_breadcrumbs) for details.
@@ -288,7 +344,8 @@ impl ClientOptions {
         }
     }
 
-    /// Sets the [sample rate](field@ClientOptions::sample_rate) for event submission.
+    /// Sets the [event sampling strategy](field@ClientOptions::event_sampling_strategy) to a fixed
+    /// sample rate for event submission.
     ///
     /// Must be between `0.0` and `1.0`. Defaults to `1.0`.
     ///
@@ -301,15 +358,22 @@ impl ClientOptions {
             panic!("Sample rate {sample_rate} is outside the allowed range [0.0, 1.0].")
         }
 
+        let event_sampling_strategy = EventSamplingStrategy::FixedRate(sample_rate);
+
         Self {
-            sample_rate,
+            event_sampling_strategy,
             ..self
         }
     }
 
-    /// Sets the [sample rate](field@ClientOptions::traces_sample_rate) for tracing transactions.
+    /// Sets the [traces sampling strategy](field@ClientOptions::traces_sampling_strategy) to a
+    /// fixed sample rate for tracing transactions.
     ///
-    /// Must be between `0.0` and `1.0`. Defaults to `0.0`.
+    /// Must be between `0.0` and `1.0`.
+    ///
+    /// Calling this method stores an explicit fixed-rate traces sampling strategy, even when the
+    /// rate is `0.0`. That is distinct from leaving traces sampling unset, which uses
+    /// [`TracesSamplingStrategy::Disabled`].
     ///
     /// # Panics
     ///
@@ -322,24 +386,62 @@ impl ClientOptions {
             )
         }
 
+        let traces_sampling_strategy = TracesSamplingStrategy::FixedRate(traces_sample_rate);
+
         Self {
-            traces_sample_rate,
+            traces_sampling_strategy,
             ..self
         }
     }
 
-    /// Sets the [sampler callback](field@ClientOptions::traces_sampler) for tracing transactions.
+    /// Sets the [traces sampling strategy](field@ClientOptions::traces_sampling_strategy) to a
+    /// sampler callback for tracing transactions.
     ///
-    /// Return a sample rate between `0.0` and `1.0` for the transaction in question. Takes
-    /// priority over [`traces_sample_rate`](method@ClientOptions::traces_sample_rate).
+    /// Return a sample rate between `0.0` and `1.0` for the transaction in question. This replaces
+    /// any fixed-rate strategy configured with [`Self::traces_sample_rate`] and is distinct from
+    /// leaving traces sampling unset.
     #[inline]
     pub fn traces_sampler<F>(self, traces_sampler: F) -> Self
     where
         F: Fn(&TransactionContext) -> f32 + Send + Sync + 'static,
     {
-        let traces_sampler = Some(Arc::new(traces_sampler) as Arc<TracesSampler>);
+        let traces_sampling_strategy =
+            TracesSamplingStrategy::Function(Arc::new(traces_sampler) as Arc<TracesSampler>);
+
         Self {
-            traces_sampler,
+            traces_sampling_strategy,
+            ..self
+        }
+    }
+
+    /// Sets the [organization ID](field@ClientOptions::org_id) used for trace continuation.
+    ///
+    /// By default, we infer the organization ID from the DSN when available. Setting this option
+    /// overrides the DSN-derived organization ID.
+    ///
+    /// This option should be used in local Relay and self-hosted setups, as the organization ID
+    /// cannot be inferred from the DSN in these cases.
+    #[inline]
+    pub fn org_id(self, org_id: OrganizationId) -> Self {
+        let org_id = Some(org_id);
+        Self { org_id, ..self }
+    }
+
+    /// Enables or disables [strict trace continuation](field@ClientOptions::strict_trace_continuation).
+    ///
+    /// Strict trace continuation helps prevent the SDK from continuing traces that originate from
+    /// services instrumented with Sentry by another organization.
+    ///
+    /// By default, the SDK will always continue incoming traces, unless this SDK has an org ID
+    /// embedded in the DSN or explicitly set with [`Self::org_id`] **and** the incoming trace
+    /// includes a different org ID.
+    ///
+    /// When strict trace continuation is enabled, the SDK additionally will not continue traces in
+    /// the case where one of the SDK's org ID or the incoming trace org ID are missing.
+    #[inline]
+    pub fn strict_trace_continuation(self, strict_trace_continuation: bool) -> Self {
+        Self {
+            strict_trace_continuation,
             ..self
         }
     }
@@ -694,15 +796,8 @@ impl fmt::Debug for ClientOptions {
             .field("debug", &self.debug)
             .field("release", &self.release)
             .field("environment", &self.environment)
-            .field("sample_rate", &self.sample_rate)
-            .field("traces_sample_rate", &self.traces_sample_rate)
-            .field(
-                "traces_sampler",
-                &self
-                    .traces_sampler
-                    .as_ref()
-                    .map(|arc| std::ptr::addr_of!(**arc)),
-            )
+            .field("event_sampling_strategy", &self.event_sampling_strategy)
+            .field("traces_sampling_strategy", &self.traces_sampling_strategy)
             .field("max_breadcrumbs", &self.max_breadcrumbs)
             .field("attach_stacktrace", &self.attach_stacktrace)
             .field("send_default_pii", &self.send_default_pii)
@@ -724,6 +819,8 @@ impl fmt::Debug for ClientOptions {
             .field("before_send_log", &before_send_log)
             .field("enable_metrics", &self.enable_metrics)
             .field("before_send_metric", &before_send_metric)
+            .field("org_id", &self.org_id)
+            .field("strict_trace_continuation", &self.strict_trace_continuation)
             .field("user_agent", &self.user_agent)
             .finish()
     }
@@ -733,12 +830,13 @@ impl Default for ClientOptions {
     fn default() -> ClientOptions {
         ClientOptions {
             dsn: None,
+            org_id: None,
+            strict_trace_continuation: false,
             debug: false,
             release: None,
             environment: None,
-            sample_rate: 1.0,
-            traces_sample_rate: 0.0,
-            traces_sampler: None,
+            event_sampling_strategy: Default::default(),
+            traces_sampling_strategy: Default::default(),
             max_breadcrumbs: 100,
             attach_stacktrace: false,
             send_default_pii: false,

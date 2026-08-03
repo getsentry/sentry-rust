@@ -201,7 +201,6 @@ mod session_impl {
         /// Creates a new Flusher that will submit envelopes to the transport.
         pub fn new(envelope_sender: EnvelopeSender, mode: SessionMode) -> Self {
             let queue = Arc::new(Mutex::new(Default::default()));
-            #[allow(clippy::mutex_atomic)]
             let shutdown = Arc::new((Mutex::new(false), Condvar::new()));
 
             let worker_envelope_sender = envelope_sender.clone();

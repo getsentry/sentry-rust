@@ -1,6 +1,6 @@
 [package]
 name = "sentry-debug-images"
-version = "0.48.4"
+version = "0.49.0"
 authors = { workspace = true }
 license = "MIT"
 readme = "README.md"
@@ -16,5 +16,5 @@ rust-version = { workspace = true }
 workspace = true
 
 [dependencies]
-findshlibs = "=0.10.2"
-sentry-core = { version = "0.48.4", path = "../sentry-core" }
+findshlibs = { workspace = true }
+sentry-core = { workspace = true }

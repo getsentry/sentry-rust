@@ -38,14 +38,13 @@ bitflags! {
 /// The type of data Sentry should ingest for an [`Event`].
 #[derive(Debug)]
 #[non_exhaustive]
-#[allow(clippy::large_enum_variant)]
 pub enum EventMapping {
     /// Ignore the [`Event`]
     Ignore,
     /// Adds the [`Breadcrumb`] to the Sentry scope.
     Breadcrumb(Breadcrumb),
     /// Captures the [`sentry_core::protocol::Event`] to Sentry.
-    Event(sentry_core::protocol::Event<'static>),
+    Event(Box<sentry_core::protocol::Event<'static>>),
     /// Captures the [`sentry_core::protocol::Log`] to Sentry.
     #[cfg(feature = "logs")]
     Log(sentry_core::protocol::Log),
@@ -259,10 +258,9 @@ where
                     )));
                 }
                 if filter.contains(EventFilter::Event) {
-                    items.push(EventMapping::Event(event_from_event(
-                        event,
-                        span_ctx.as_ref(),
-                    )));
+                    items.push(EventMapping::Event(
+                        event_from_event(event, span_ctx.as_ref()).into(),
+                    ));
                 }
                 #[cfg(feature = "logs")]
                 if filter.contains(EventFilter::Log) {
@@ -278,7 +276,7 @@ where
                 EventMapping::Ignore => (),
                 EventMapping::Breadcrumb(breadcrumb) => sentry_core::add_breadcrumb(breadcrumb),
                 EventMapping::Event(event) => {
-                    sentry_core::capture_event(event);
+                    sentry_core::capture_event(*event);
                 }
                 #[cfg(feature = "logs")]
                 EventMapping::Log(log) => sentry_core::Hub::with_active(|hub| hub.capture_log(log)),
@@ -553,6 +551,10 @@ impl Visit for SpanFieldVisitor<'_> {
     }
 
     fn record_bool(&mut self, field: &Field, value: bool) {
+        self.record(field, value);
+    }
+
+    fn record_f64(&mut self, field: &Field, value: f64) {
         self.record(field, value);
     }
 

@@ -1,6 +1,6 @@
 [package]
 name = "sentry-opentelemetry"
-version = "0.48.4"
+version = "0.49.0"
 authors = { workspace = true }
 license = "MIT"
 readme = "README.md"
@@ -19,18 +19,11 @@ workspace = true
 all-features = true
 
 [dependencies]
-sentry-core = { version = "0.48.4", path = "../sentry-core", features = [
-    "client",
-] }
-opentelemetry = { version = "0.29.0", default-features = false }
-opentelemetry_sdk = { version = "0.29.0", default-features = false, features = [
-    "trace",
-] }
+sentry-core = { workspace = true, features = ["client"] }
+opentelemetry = { workspace = true }
+opentelemetry_sdk = { workspace = true, features = ["trace"] }
 
 [dev-dependencies]
-sentry = { path = "../sentry", features = ["test", "opentelemetry"] }
-sentry-core = { path = "../sentry-core", features = [ "test" ] }
-opentelemetry_sdk = { version = "0.29.0", default-features = false, features = [
-    "trace",
-    "testing",
-] }
+sentry = { workspace = true, features = ["test", "opentelemetry"] }
+sentry-core = { workspace = true, features = ["test"] }
+opentelemetry_sdk = { workspace = true, features = ["trace", "testing"] }

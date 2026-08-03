@@ -70,12 +70,19 @@ impl SwitchGuard {
     }
 
     fn swap(&mut self) -> Option<Arc<Hub>> {
-        self.inner.take().map(|mut hub| {
-            THREAD_HUB.with(|thread_hub| {
-                let mut thread_hub = thread_hub.borrow_mut();
-                std::mem::swap(&mut *thread_hub, &mut hub);
-                hub
-            })
+        self.inner.take().and_then(|mut hub| {
+            // We use `try_with` to access the `THREAD_HUB`, intentionally ignoring any errors that
+            // result. If `try_with` errors, this is because the `THREAD_HUB` local key has been
+            // destroyed, which means that there is nothing to swap with, making this operation
+            // pointless. Further, the destruction of the thread-local indicates that the thread
+            // is likely shutting down.
+            THREAD_HUB
+                .try_with(|thread_hub| {
+                    let mut thread_hub = thread_hub.borrow_mut();
+                    std::mem::swap(&mut *thread_hub, &mut hub);
+                    hub
+                })
+                .ok()
         })
     }
 }
