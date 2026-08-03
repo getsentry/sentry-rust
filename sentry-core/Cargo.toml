@@ -41,7 +41,6 @@ url = { workspace = true }
 uuid = { workspace = true, features = ["v4", "serde"], optional = true }
 
 [dev-dependencies]
-futures = "0.3.24"
 # Because we re-export all the public API in `sentry`, we actually run all the
 # doctests using the `sentry` crate. This also takes care of the doctest
 # limitation documented in https://github.com/rust-lang/rust/issues/45599.
