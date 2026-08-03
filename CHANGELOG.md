@@ -5,6 +5,7 @@
 ### Fixes
 
 - Preserve floating-point fields in tracing logs as numeric attributes ([#1278](https://github.com/getsentry/sentry-rust/pull/1278)).
+- Fix a bug that prevented the Curl transport from respecting Sentry rate limits ([#1279](https://github.com/getsentry/sentry-rust/pull/1279)).
 
 ## 0.49.0
 
