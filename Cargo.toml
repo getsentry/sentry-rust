@@ -100,3 +100,4 @@ uname = "0.1.1"
 ureq = { version = "3.0.11", default-features = false }
 url = "2.2.2"
 uuid = "1.0.0"
+futures-core = "0.3.24"
