@@ -3428,6 +3428,7 @@ dependencies = [
  "anyhow",
  "criterion",
  "futures",
+ "futures-core",
  "log",
  "rand 0.9.5",
  "rayon",
