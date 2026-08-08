@@ -2,11 +2,14 @@
 //!
 //! This module exposes all transports that are compiled into the sentry
 //! library.  The `reqwest`, `curl`, and `ureq` features turn on these transports.
+//! Transport channel capacities are clamped to a minimum of one envelope.
 
 use sentry_core::TransportOptions;
 
 use crate::{Transport, TransportFactory};
 use std::sync::Arc;
+#[cfg(sentry_any_http_transport)]
+use std::time::Duration;
 
 #[cfg(feature = "httpdate")]
 mod ratelimit;
@@ -53,6 +56,17 @@ pub(crate) const HTTP_PAYLOAD_TOO_LARGE: u16 = 413;
 #[cfg(sentry_any_http_transport)]
 pub(crate) const HTTP_PAYLOAD_TOO_LARGE_MESSAGE: &str =
     "Envelope was discarded due to size limits (HTTP 413).";
+
+#[cfg(sentry_any_http_transport)]
+pub(crate) const DEFAULT_CHANNEL_CAPACITY: usize = 30;
+
+#[cfg(sentry_any_http_transport)]
+pub(crate) const DROP_FLUSH_TIMEOUT: Duration = Duration::from_secs(2);
+
+#[cfg(sentry_any_http_transport)]
+fn normalize_channel_capacity(channel_capacity: usize) -> usize {
+    channel_capacity.max(1)
+}
 
 #[cfg(feature = "reqwest")]
 type DefaultTransport = ReqwestHttpTransport;
