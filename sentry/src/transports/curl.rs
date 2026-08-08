@@ -265,10 +265,9 @@ impl CurlHttpTransportOptions {
     /// Set the capacity of the channel that queues envelopes for the background
     /// transport thread (default: 30).
     ///
-    /// A capacity of `0` creates a rendezvous channel: an envelope is accepted
-    /// only when the transport thread is currently waiting on the receiver,
-    /// otherwise it is dropped. A higher capacity reduces the chance of dropped
-    /// events in high-throughput scenarios at the cost of memory.
+    /// A capacity of `0` is clamped to `1`. A higher capacity reduces the
+    /// chance of dropped events in high-throughput scenarios at the cost of
+    /// memory.
     #[inline]
     pub fn with_channel_capacity(self, channel_capacity: usize) -> Self {
         Self {
