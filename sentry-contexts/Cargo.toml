@@ -19,9 +19,11 @@ workspace = true
 [dependencies]
 sentry-core = { workspace = true }
 libc = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 hostname = { workspace = true }
 
-[target."cfg(not(windows))".dependencies]
+[target.'cfg(all(not(windows), not(target_arch = "wasm32")))'.dependencies]
 uname = { workspace = true }
 
 [target."cfg(windows)".dependencies]

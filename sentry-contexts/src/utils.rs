@@ -110,12 +110,19 @@ mod model_support {
 }
 
 /// Returns the server name (hostname) if available.
+#[cfg(not(target_arch = "wasm32"))]
 pub fn server_name() -> Option<String> {
     hostname::get().ok().and_then(|s| s.into_string().ok())
 }
 
+#[cfg(target_arch = "wasm32")]
+pub fn server_name() -> Option<String> {
+    // TODO: What other options are available?
+    None
+}
+
 /// Returns the OS context
-#[cfg(not(windows))]
+#[cfg(all(not(windows), not(target_arch = "wasm32")))]
 pub fn os_context() -> Option<Context> {
     use uname::uname;
     if let Ok(info) = uname() {
@@ -162,6 +169,17 @@ pub fn os_context() -> Option<Context> {
         OsContext {
             name: Some(PLATFORM.into()),
             version,
+            ..Default::default()
+        }
+        .into(),
+    )
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn os_context() -> Option<Context> {
+    Some(
+        OsContext {
+            name: Some("WASM".into()),
             ..Default::default()
         }
         .into(),

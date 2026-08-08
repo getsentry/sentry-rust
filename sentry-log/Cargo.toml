@@ -21,6 +21,7 @@ logs = ["sentry-core/logs"]
 
 [dependencies]
 sentry-core = { workspace = true }
+sentry-time = { workspace = true }
 log = { workspace = true, features = ["std", "kv"] }
 bitflags = { workspace = true }
 

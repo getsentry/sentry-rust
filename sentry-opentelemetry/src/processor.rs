@@ -10,7 +10,7 @@
 
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock, Mutex};
-use std::time::{Duration, SystemTime};
+use std::time::Duration;
 
 use opentelemetry::global::ObjectSafeSpan;
 use opentelemetry::trace::{get_active_span, SpanId};
@@ -20,6 +20,7 @@ use opentelemetry_sdk::trace::{Span, SpanData, SpanProcessor};
 
 use opentelemetry_sdk::Resource;
 use sentry_core::{TracePropagationContext, TransactionContext, TransactionOrSpan};
+use sentry_time::now_system_time;
 
 use crate::converters::{
     convert_span_id, convert_span_kind, convert_span_status, convert_trace_id, convert_value,
@@ -103,7 +104,7 @@ impl SpanProcessor for SentrySpanProcessor {
 
         let mut span_description = String::new();
         let mut span_op = String::new();
-        let mut span_start_timestamp = SystemTime::now();
+        let mut span_start_timestamp = now_system_time();
         let mut parent_sentry_span = None;
         if let Some(data) = span.exported_data() {
             span_description = data.name.to_string();
