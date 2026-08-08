@@ -15,7 +15,6 @@ mod session_impl {
     use std::thread::JoinHandle;
     use std::time::{Duration, SystemTime};
 
-    use chrono::{DateTime, Utc};
     use sentry_time::now_system_time;
 
     use crate::client::EnvelopeSender;
@@ -34,7 +33,7 @@ mod session_impl {
     pub struct Session {
         client: Arc<Client>,
         session_update: SessionUpdate<'static>,
-        started: DateTime<Utc>,
+        started: sentry_time::Instant,
         dirty: bool,
     }
 
@@ -79,7 +78,7 @@ mod session_impl {
                         user_agent: None,
                     },
                 },
-                started: Utc::now(),
+                started: sentry_time::Instant::now(),
                 dirty: true,
             })
         }
@@ -117,8 +116,7 @@ mod session_impl {
                     SessionStatus::Ok => SessionStatus::Exited,
                     s => s,
                 };
-                let elapsed = Utc::now() - self.started;
-                self.session_update.duration = Some(elapsed.as_seconds_f64());
+                self.session_update.duration = Some(self.started.elapsed().as_secs_f64());
                 self.session_update.status = status;
                 self.dirty = true;
             }
@@ -219,27 +217,23 @@ mod session_impl {
                     if *shutdown {
                         return;
                     }
-                    let mut last_flush = Utc::now();
-                    let flush_interval = chrono::Duration::from_std(FLUSH_INTERVAL).unwrap();
+                    let mut last_flush = sentry_time::Instant::now();
                     loop {
-                        let elapsed = Utc::now() - last_flush;
-                        let timeout = flush_interval
-                            .checked_sub(&elapsed)
-                            .unwrap_or_else(|| chrono::Duration::seconds(0))
-                            .to_std()
-                            .unwrap_or_else(|_| Duration::from_secs(0));
+                        let timeout = FLUSH_INTERVAL
+                            .checked_sub(last_flush.elapsed())
+                            .unwrap_or_else(|| Duration::from_secs(0));
                         shutdown = cvar.wait_timeout(shutdown, timeout).unwrap().0;
                         if *shutdown {
                             return;
                         }
-                        if Utc::now() - last_flush < flush_interval {
+                        if last_flush.elapsed() < FLUSH_INTERVAL {
                             continue;
                         }
                         SessionFlusher::flush_queue_internal(
                             worker_queue.lock().unwrap(),
                             &worker_envelope_sender,
                         );
-                        last_flush = Utc::now();
+                        last_flush = sentry_time::Instant::now()
                     }
                 })
                 .unwrap();

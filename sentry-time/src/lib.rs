@@ -1,19 +1,19 @@
 use std::time::SystemTime;
 
+pub use web_time::Instant;
+
 /// Returns the current wall-clock time as a [`std::time::SystemTime`], sourced from
-/// [`chrono::Utc::now`] so it works on `wasm32-unknown-unknown` (where
+/// [`web_time::SystemTime`] so it works on `wasm32-unknown-unknown` (where
 /// [`std::time::SystemTime::now`] panics).
 pub fn now_system_time() -> SystemTime {
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
     {
         SystemTime::now()
     }
 
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(all(target_family = "wasm", target_os = "unknown"))]
     {
-        let now = chrono::Utc::now();
-        let secs = now.timestamp() as u64;
-        let nanos = now.timestamp_subsec_nanos();
-        SystemTime::UNIX_EPOCH + std::time::Duration::new(secs, nanos)
+        use web_time::web::SystemTimeExt as _;
+        web_time::SystemTime::now().to_std()
     }
 }

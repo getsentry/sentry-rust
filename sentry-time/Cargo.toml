@@ -12,6 +12,4 @@ repository.workspace = true
 license = "MIT"
 
 [dependencies]
-
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-chrono.workspace = true
+web-time = "1"

@@ -20,7 +20,7 @@ harness = false
 name = "scope_benchmark"
 
 [dependencies]
-chrono.workspace = true
+# chrono.workspace = true
 log = { workspace = true, features = ["std"], optional = true }
 rand = { workspace = true, optional = true }
 sentry-time = { workspace = true }
