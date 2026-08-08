@@ -39,6 +39,7 @@ axum = { version = "0.8", default-features = false }
 backtrace = "0.3.44"
 bitflags = "2.9.4"
 bytes = "1.11.1"
+crossbeam-channel = "0.5.16"
 cfg_aliases = "0.2.1"
 criterion = "0.5"
 curl = "0.4.25"

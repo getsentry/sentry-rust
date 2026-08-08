@@ -7,7 +7,7 @@ use sentry_core::TransportOptions;
 
 use super::{
     thread::{TransportThread, TransportThreadOptions},
-    RateLimiter, HTTP_PAYLOAD_TOO_LARGE, HTTP_PAYLOAD_TOO_LARGE_MESSAGE,
+    RateLimiter, DEFAULT_CHANNEL_CAPACITY, HTTP_PAYLOAD_TOO_LARGE, HTTP_PAYLOAD_TOO_LARGE_MESSAGE,
 };
 
 use crate::{sentry_debug, types::Scheme, ClientOptions, Envelope, Transport};
@@ -33,6 +33,7 @@ pub struct CurlHttpTransport {
 pub struct CurlHttpTransportOptions {
     general_options: TransportOptions,
     client: Option<CurlClient>,
+    channel_capacity: usize,
 }
 
 impl CurlHttpTransport {
@@ -86,6 +87,7 @@ impl CurlHttpTransport {
                     ..
                 },
             client,
+            channel_capacity,
         } = options;
 
         let client = client.unwrap_or_else(CurlClient::new);
@@ -222,6 +224,7 @@ impl CurlHttpTransport {
 
         let thread = TransportThreadOptions::new(send_fn)
             .with_client_report_recorder(client_report_recorder)
+            .with_channel_capacity(channel_capacity)
             .spawn_thread();
         Self { thread }
     }
@@ -236,7 +239,7 @@ impl Transport for CurlHttpTransport {
     }
 
     fn shutdown(&self, timeout: Duration) -> bool {
-        self.flush(timeout)
+        self.thread.shutdown(timeout)
     }
 }
 
@@ -246,6 +249,7 @@ impl From<TransportOptions> for CurlHttpTransportOptions {
         Self {
             general_options: value,
             client: None,
+            channel_capacity: DEFAULT_CHANNEL_CAPACITY,
         }
     }
 }
@@ -256,6 +260,20 @@ impl CurlHttpTransportOptions {
     pub fn with_client(self, client: CurlClient) -> Self {
         let client = Some(client);
         Self { client, ..self }
+    }
+
+    /// Set the capacity of the channel that queues envelopes for the background
+    /// transport thread (default: 30).
+    ///
+    /// A capacity of `0` is clamped to `1`. A higher capacity reduces the
+    /// chance of dropped events in high-throughput scenarios at the cost of
+    /// memory.
+    #[inline]
+    pub fn with_channel_capacity(self, channel_capacity: usize) -> Self {
+        Self {
+            channel_capacity,
+            ..self
+        }
     }
 
     /// Create a [`CurlHttpTransport`] using these options.

@@ -54,9 +54,9 @@ logs = ["sentry-core/logs", "sentry-tracing?/logs", "sentry-log?/logs"]
 metrics = ["sentry-core/metrics"]
 # transports
 transport = ["reqwest", "native-tls"]
-reqwest = ["dep:reqwest", "httpdate", "tokio"]
-curl = ["dep:curl", "httpdate"]
-ureq = ["dep:ureq", "httpdate"]
+reqwest = ["dep:reqwest", "dep:crossbeam-channel", "httpdate", "tokio"]
+curl = ["dep:curl", "dep:crossbeam-channel", "httpdate"]
+ureq = ["dep:ureq", "dep:crossbeam-channel", "httpdate"]
 # transport settings
 native-tls = [
     "dep:native-tls",
@@ -69,6 +69,7 @@ embedded-svc-http = ["dep:embedded-svc", "dep:esp-idf-svc"]
 
 [dependencies]
 sentry-core = { workspace = true, features = ["client"] }
+crossbeam-channel = { workspace = true, optional = true }
 sentry-anyhow = { workspace = true, optional = true }
 sentry-actix = { workspace = true, optional = true }
 sentry-backtrace = { workspace = true, optional = true }
