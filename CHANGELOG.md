@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### New Features
+
+- Added [`DynamicSamplingContext::with_maybe_sample_rate`](https://docs.rs/sentry-types/0.49.2/sentry_types/protocol/v7/struct.DynamicSamplingContext.html#method.with_maybe_sample_rate) and [`DynamicSamplingContext::with_maybe_sampled`](https://docs.rs/sentry-types/0.49.2/sentry_types/protocol/v7/struct.DynamicSamplingContext.html#method.with_maybe_sampled), which set or clear the corresponding fields from `Option` values.
+
 ## 0.49.1
 
 ### Fixes
