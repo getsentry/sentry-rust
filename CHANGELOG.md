@@ -6,6 +6,10 @@
 
 - Added [`DynamicSamplingContext::with_maybe_sample_rate`](https://docs.rs/sentry-types/0.49.2/sentry_types/protocol/v7/struct.DynamicSamplingContext.html#method.with_maybe_sample_rate) and [`DynamicSamplingContext::with_maybe_sampled`](https://docs.rs/sentry-types/0.49.2/sentry_types/protocol/v7/struct.DynamicSamplingContext.html#method.with_maybe_sampled), which set or clear the corresponding fields from `Option` values.
 
+### Improvements
+
+- The SDK no longer reports transactions and spans discarded while tracing is disabled as sampling losses. Tracing is disabled when no tracing sample rate or sampling function is configured ([#1290](https://github.com/getsentry/sentry-rust/pull/1290)).
+
 ## 0.49.1
 
 ### Fixes

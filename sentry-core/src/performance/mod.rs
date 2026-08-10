@@ -947,24 +947,18 @@ impl Transaction {
         with_client_impl! {{
             let mut inner = self.inner.lock().unwrap();
 
-            // Discard `Transaction` unless sampled.
-            if !inner.sampled.unwrap_or_default() {
-                if let Some(transaction) = inner.transaction.take() {
-                    if let Some(client) = inner.client.as_ref() {
-                        client.record_lost_data(&transaction, ClientReportReason::SampleRate);
-                    }
-                }
-                return;
-            }
-
-            if let Some(mut transaction) = inner.transaction.take() {
-                if let Some(client) = inner.client.take() {
+            if let (Some(sampled), Some(mut transaction), Some(client)) =
+                (inner.sampled, inner.transaction.take(), inner.client.take())
+            {
+                if sampled {
                     transaction.finish_with_timestamp(_timestamp);
                     transaction
                         .contexts
                         .insert("trace".into(), inner.context.clone().into());
 
-                    Hub::current().with_current_scope(|scope| scope.apply_to_transaction(&mut transaction));
+                    Hub::current()
+                        .with_current_scope(|scope| scope.apply_to_transaction(&mut transaction));
+
                     let opts = client.options();
                     transaction.release.clone_from(&opts.release);
                     transaction.environment.clone_from(&opts.environment);
@@ -974,19 +968,22 @@ impl Transaction {
                     let mut dsc = protocol::DynamicSamplingContext::new()
                         .with_trace_id(inner.context.trace_id)
                         .with_sample_rate(self.metadata.sample_rate.unwrap_or_default())
-                        .with_sampled(inner.sampled.unwrap_or_default());
+                        .with_sampled(sampled);
                     if let Some(public_key) = client.dsn().map(|dsn| dsn.public_key()) {
                         dsc = dsc.with_public_key(public_key.to_owned());
                     }
 
                     drop(inner);
 
-                    let mut envelope = protocol::Envelope::new().with_headers(
-                        protocol::EnvelopeHeaders::new().with_trace(dsc)
-                    );
+                    let mut envelope = protocol::Envelope::new()
+                        .with_headers(protocol::EnvelopeHeaders::new().with_trace(dsc));
                     envelope.add_item(transaction);
 
                     client.send_envelope(envelope)
+                } else {
+                    // Client reports should only be recorded when tracing is enabled. They should
+                    // not be recorded when inner.sampled is None.
+                    client.record_lost_data(&transaction, ClientReportReason::SampleRate);
                 }
             }
         }}
