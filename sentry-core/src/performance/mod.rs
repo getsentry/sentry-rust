@@ -564,10 +564,30 @@ impl TransactionOrSpan {
     }
 
     /// Get the sampling decision for this Transaction/Span.
+    ///
+    /// The returned `bool` does not fully represent the sampling state of this
+    /// Transaction/Span. Although `true` reliably indicates that the
+    /// Transaction/Span is sampled, a value of `false` can mean either that the
+    /// Transaction/Span is not sampled, or that tracing is disabled and the
+    /// sampling decision is deferred. This method therefore should no longer be
+    /// used, especially not for trace continuation purposes.
+    ///
+    /// For trace propagation, use [`Self::iter_headers`] or
+    /// [`crate::Scope::iter_trace_propagation_headers`] instead, to ensure
+    /// correct results.
+    #[deprecated = "the returned value may not accurately represent the sampling decision"]
     pub fn is_sampled(&self) -> bool {
         match self {
-            TransactionOrSpan::Transaction(transaction) => transaction.is_sampled(),
-            TransactionOrSpan::Span(span) => span.is_sampled(),
+            TransactionOrSpan::Transaction(transaction) =>
+            {
+                #[expect(deprecated)]
+                transaction.is_sampled()
+            }
+            TransactionOrSpan::Span(span) =>
+            {
+                #[expect(deprecated)]
+                span.is_sampled()
+            }
         }
     }
 
@@ -930,6 +950,18 @@ impl Transaction {
     }
 
     /// Get the sampling decision for this Transaction.
+    ///
+    /// The returned `bool` does not fully represent the Transaction's sampling
+    /// state. Although `true` reliably indicates that the Transaction is
+    /// sampled, a value of `false` can mean either that the Transaction is not
+    /// sampled, or that tracing is disabled and the sampling decision is
+    /// deferred. This method therefore should no longer be used, especially not
+    /// for trace continuation purposes.
+    ///
+    /// For trace propagation, use [`Self::iter_headers`] or
+    /// [`crate::Scope::iter_trace_propagation_headers`] instead, to ensure
+    /// correct results.
+    #[deprecated = "the returned value may not accurately represent the sampling decision"]
     pub fn is_sampled(&self) -> bool {
         self.inner.lock().unwrap().sampled
     }
@@ -1214,6 +1246,17 @@ impl Span {
     }
 
     /// Get the sampling decision for this Span.
+    ///
+    /// The returned `bool` does not fully represent the Span's sampling state.
+    /// Although `true` reliably indicates that the Span is sampled, a value of
+    /// `false` can mean either that the Span is not sampled, or that tracing is
+    /// disabled and the sampling decision is deferred. This method therefore
+    /// should no longer be used, especially not for trace continuation purposes.
+    ///
+    /// For trace propagation, use [`Self::iter_headers`] or
+    /// [`crate::Scope::iter_trace_propagation_headers`] instead, to ensure
+    /// correct results.
+    #[deprecated = "the returned value may not accurately represent the sampling decision"]
     pub fn is_sampled(&self) -> bool {
         self.sampled
     }
