@@ -959,12 +959,19 @@ impl Transaction {
     /// correct results.
     #[deprecated = "the returned value may not accurately represent the sampling decision"]
     pub fn is_sampled(&self) -> bool {
-        self.inner
-            .lock()
-            .unwrap()
-            .tracing_state
-            .trace_sampled()
-            .unwrap_or_default()
+        // Checking that we have a `Send` finish action should at least roughly match the old
+        // behavior of this function: we only return true for sampled spans when tracing is
+        // enabled, and false otherwise.
+        #[cfg(feature = "client")]
+        {
+            matches!(
+                self.inner.lock().unwrap().tracing_state.finish_action(),
+                FinishAction::Send { .. }
+            )
+        }
+
+        #[cfg(not(feature = "client"))]
+        false
     }
 
     /// Finishes the Transaction with the provided end timestamp.
