@@ -21,9 +21,13 @@ use sentry_types::protocol::v7::client_report;
 /// trace propagated a sampling decision. As tracing is disabled, the SDK will not sample any
 /// spans regardless of the sampling decision, but the incoming tracing decision will again get
 /// propagated outwards.
+///
+/// When compiled without the `client` crate feature, only disabled traces can be represented,
+/// as enabling tracing requires a client.
 #[derive(Debug, Clone, Copy)]
 pub(super) enum TracingState {
     /// Tracing is enabled. In this case, there must be a sampling decision.
+    #[cfg(feature = "client")]
     Enabled(SamplingDecision),
     /// Tracing is disabled. In this case, we only have a tracing decision when continuing a trace
     /// that has a sampling decision.
@@ -33,6 +37,7 @@ pub(super) enum TracingState {
 impl TracingState {
     /// Create a new [`TracingState::Enabled`] with the given sampling decision made at the given
     /// sample rate.
+    #[cfg(feature = "client")]
     pub(super) fn new_enabled(sampled: bool, sample_rate: f32) -> Self {
         Self::Enabled(SamplingDecision {
             sampled,
@@ -51,6 +56,7 @@ impl TracingState {
     pub(super) fn new_disabled(sampled: Option<bool>) -> Self {
         let decision = sampled.map(|sampled| SamplingDecision {
             sampled,
+            #[cfg(feature = "client")]
             sample_rate: sampled.into(),
         });
 
@@ -65,15 +71,17 @@ impl TracingState {
     /// may return `Some(true)` when tracing is disabled, namely, when continuing a sampled trace
     /// in TwP mode. Use [`Self::finish_action`] for this purpose.
     pub(super) fn trace_sampled(&self) -> Option<bool> {
-        match self {
-            Self::Enabled(decision) | Self::Disabled(Some(decision)) => Some(decision.sampled),
-            Self::Disabled(None) => None,
+        match *self {
+            #[cfg(feature = "client")]
+            Self::Enabled(SamplingDecision { sampled, .. }) => Some(sampled),
+            Self::Disabled(decision) => decision.map(|SamplingDecision { sampled, .. }| sampled),
         }
     }
 
     /// Determine the correct action to take when spans/transactions in this trace are finished.
     ///
     /// See [`FinishAction`] for more details.
+    #[cfg(feature = "client")]
     pub(super) fn finish_action(&self) -> FinishAction {
         match *self {
             Self::Enabled(SamplingDecision {
@@ -97,10 +105,15 @@ pub(super) struct SamplingDecision {
     /// The sampling decision.
     pub(super) sampled: bool,
     /// The sample rate at which the decision was made.
+    ///
+    /// Currently, we only use this on the `client` feature, but if needed we can also provide
+    /// this on non-`client` builds.
+    #[cfg(feature = "client")]
     pub(super) sample_rate: f32,
 }
 
 /// What the SDK should do with spans/transactions when they are finished.
+#[cfg(feature = "client")]
 #[derive(Debug, Clone, Copy)]
 pub(super) enum FinishAction {
     /// Send spans/transactions to Sentry.

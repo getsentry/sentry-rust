@@ -10,11 +10,11 @@ use sentry_types::protocol::v7::client_report::Reason as ClientReportReason;
 use sentry_types::protocol::v7::OrganizationId;
 use sentry_types::protocol::v7::SpanId;
 
+#[cfg(feature = "client")]
+use self::sampling::FinishAction;
 use self::sampling::TracingState;
 #[cfg(feature = "client")]
 use crate::clientoptions::TracesSamplingStrategy;
-#[cfg(feature = "client")]
-use crate::performance::sampling::FinishAction;
 use crate::{protocol, Hub};
 
 #[cfg(feature = "client")]
@@ -837,11 +837,11 @@ impl Transaction {
             op: Some(ctx.op),
             ..Default::default()
         };
-        let sampled = ctx.sampled;
+        let tracing_state = TracingState::new_disabled(ctx.sampled);
 
         Self {
             inner: Arc::new(Mutex::new(TransactionInner {
-                sampled,
+                tracing_state,
                 context,
                 transaction: None,
             })),
@@ -1259,10 +1259,16 @@ impl Span {
         // Checking that we have a `Send` finish action should at least roughly match the old
         // behavior of this function: we only return true for sampled spans when tracing is
         // enabled, and false otherwise.
-        matches!(
-            self.tracing_state.finish_action(),
-            FinishAction::Send { .. }
-        )
+        #[cfg(feature = "client")]
+        {
+            matches!(
+                self.tracing_state.finish_action(),
+                FinishAction::Send { .. }
+            )
+        }
+
+        #[cfg(not(feature = "client"))]
+        false
     }
 
     /// Finishes the Span with the provided end timestamp.
