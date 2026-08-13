@@ -245,9 +245,11 @@ pub struct ClientOptions {
     ///
     /// See [`max_request_body_size`](method@ClientOptions::max_request_body_size) for details.
     pub max_request_body_size: MaxRequestBodySize,
-    /// Whether captured structured logs should be sent to Sentry.
+    /// Deprecated no-op.
     ///
-    /// See [`enable_logs`](method@ClientOptions::enable_logs) for details.
+    /// In debug builds, we panic if the Sentry client is initialized with this option set to
+    /// `false`. The panic occurs at initialization-time.
+    #[deprecated = "this option is a deprecated no-op"]
     pub enable_logs: bool,
     /// Whether metric capture APIs should capture metrics.
     ///
@@ -676,12 +678,21 @@ impl ClientOptions {
         }
     }
 
-    /// Enables or disables sending [structured logs](field@ClientOptions::enable_logs).
+    /// This function is effectively a no-op, as it sets the deprecated, no-op field
+    /// [`enable_logs`](field@ClientOptions::enable_logs).
     ///
-    /// The `logs` feature is required to capture logs. Defaults to `true`.
+    /// To stop sending logs, simply remove any calls to our logging APIs. We only capture
+    /// logs if you explicitly call the relevant APIs or if you enable an integration that
+    /// captures logs. Alternatively, use [`Self::before_send_log`] to configure a callback that
+    /// drops all logs.
+    ///
+    /// In debug builds, we panic if the Sentry client is initialized with this option set to
+    /// `false`. The panic occurs at initialization-time.
+    #[deprecated = "this is a deprecated no-op"]
     #[inline]
     pub fn enable_logs(self, enable_logs: bool) -> Self {
         Self {
+            #[expect(deprecated, reason = "need to set deprecated field")]
             enable_logs,
             ..self
         }
@@ -815,7 +826,11 @@ impl fmt::Debug for ClientOptions {
             .field("accept_invalid_certs", &self.accept_invalid_certs)
             .field("auto_session_tracking", &self.auto_session_tracking)
             .field("session_mode", &self.session_mode)
-            .field("enable_logs", &self.enable_logs)
+            .field(
+                "enable_logs",
+                #[expect(deprecated, reason = "still need to debug-log this field")]
+                &self.enable_logs,
+            )
             .field("before_send_log", &before_send_log)
             .field("enable_metrics", &self.enable_metrics)
             .field("before_send_metric", &before_send_metric)
@@ -856,6 +871,7 @@ impl Default for ClientOptions {
             session_mode: SessionMode::Application,
             user_agent: Cow::Borrowed(USER_AGENT),
             max_request_body_size: MaxRequestBodySize::Medium,
+            #[expect(deprecated, reason = "still need to set deprecated fields")]
             enable_logs: true,
             before_send_log: None,
             enable_metrics: true,

@@ -114,11 +114,7 @@ impl Clone for Client {
         )));
 
         #[cfg(feature = "logs")]
-        let logs_batcher = RwLock::new(if self.options.enable_logs {
-            Some(Batcher::new(envelope_sender.clone()))
-        } else {
-            None
-        });
+        let logs_batcher = RwLock::new(Some(Batcher::new(envelope_sender.clone())));
 
         #[cfg(feature = "metrics")]
         let metrics_batcher = RwLock::new(
@@ -175,7 +171,21 @@ impl Client {
     ///
     /// If the DSN on the options is set to `None` the client will be entirely
     /// disabled.
+    ///
+    /// # Panics
+    ///
+    /// Panics in debug builds if the deprecated no-op field
+    /// [`enable_logs`](field@ClientOptions::enable_logs) is set to `false`.
     pub fn with_options(mut options: ClientOptions) -> Client {
+        #[expect(deprecated, reason = "need to check deprecated field")]
+        {
+            debug_assert!(
+                options.enable_logs,
+                "invalid initialization options: the Sentry SDK no longer supports disabling logs \
+                 via the `enable_logs` field: {options:?}"
+            );
+        }
+
         // Create the main hub eagerly to avoid problems with the background thread
         // See https://github.com/getsentry/sentry-rust/issues/237
         Hub::with_current(|_| {});
@@ -203,11 +213,7 @@ impl Client {
         )));
 
         #[cfg(feature = "logs")]
-        let logs_batcher = RwLock::new(if options.enable_logs {
-            Some(Batcher::new(envelope_sender.clone()))
-        } else {
-            None
-        });
+        let logs_batcher = RwLock::new(Some(Batcher::new(envelope_sender.clone())));
 
         #[cfg(feature = "metrics")]
         let metrics_batcher = RwLock::new(
@@ -537,7 +543,7 @@ impl Client {
         #[cfg(feature = "release-health")]
         drop(self.session_flusher.write().unwrap().take());
         #[cfg(feature = "logs")]
-        drop(self.logs_batcher.write().unwrap().take());
+        drop(self.logs_batcher.write().unwrap());
         #[cfg(feature = "metrics")]
         drop(self.metrics_batcher.write().unwrap().take());
         self.envelope_sender
@@ -559,10 +565,6 @@ impl Client {
     /// Captures a log and sends it to Sentry.
     #[cfg(feature = "logs")]
     pub fn capture_log(&self, log: Log, scope: &Scope) {
-        if !self.options.enable_logs {
-            sentry_debug!("[Client] called capture_log, but options.enable_logs is set to false");
-            return;
-        }
         if let Some(log) = self.prepare_log(log, scope) {
             if let Some(ref batcher) = *self.logs_batcher.read().unwrap() {
                 batcher.enqueue(log);

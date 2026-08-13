@@ -269,7 +269,7 @@ fn test_basic_capture_log() {
 
     use sentry::{protocol::Log, protocol::LogAttribute, protocol::Map, Hub};
 
-    let options = sentry::ClientOptions::new().enable_logs(true);
+    let options = sentry::ClientOptions::new();
     let envelopes = sentry::test::with_captured_envelopes_options(
         || {
             let mut attributes: Map<String, LogAttribute> = Map::new();
@@ -313,7 +313,7 @@ fn test_basic_capture_log() {
 fn test_basic_capture_log_macro_message() {
     use sentry_core::logger_info;
 
-    let options = sentry::ClientOptions::new().enable_logs(true);
+    let options = sentry::ClientOptions::new();
     let envelopes = sentry::test::with_captured_envelopes_options(
         || {
             logger_info!("Hello, world!");
@@ -346,7 +346,7 @@ fn test_basic_capture_log_macro_message_formatted() {
     use sentry::protocol::LogAttribute;
     use sentry_core::logger_warn;
 
-    let options = sentry::ClientOptions::new().enable_logs(true);
+    let options = sentry::ClientOptions::new();
     let envelopes = sentry::test::with_captured_envelopes_options(
         || {
             let failed_requests = ["request1", "request2", "request3"];
@@ -410,7 +410,7 @@ fn test_basic_capture_log_macro_message_with_attributes() {
     use sentry::protocol::LogAttribute;
     use sentry_core::logger_error;
 
-    let options = sentry::ClientOptions::new().enable_logs(true);
+    let options = sentry::ClientOptions::new();
     let envelopes = sentry::test::with_captured_envelopes_options(
         || {
             logger_error!(
@@ -466,7 +466,7 @@ fn test_basic_capture_log_macro_message_formatted_with_attributes() {
     use sentry::protocol::LogAttribute;
     use sentry_core::logger_debug;
 
-    let options = sentry::ClientOptions::new().enable_logs(true);
+    let options = sentry::ClientOptions::new();
     let envelopes = sentry::test::with_captured_envelopes_options(
         || {
             logger_debug!(

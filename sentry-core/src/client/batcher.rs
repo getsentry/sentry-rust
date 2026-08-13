@@ -177,7 +177,7 @@ mod tests {
                     logger_info!("test log {}", i);
                 }
             },
-            crate::ClientOptions::new().enable_logs(true),
+            crate::ClientOptions::new(),
         );
 
         assert_eq!(2, envelopes.len());
@@ -206,7 +206,7 @@ mod tests {
                     logger_info!("test log {}", i);
                 }
             },
-            crate::ClientOptions::new().enable_logs(true),
+            crate::ClientOptions::new(),
         );
 
         assert_eq!(1, envelopes.len());
