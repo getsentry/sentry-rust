@@ -121,11 +121,7 @@ impl Clone for Client {
         });
 
         #[cfg(feature = "metrics")]
-        let metrics_batcher = RwLock::new(
-            self.options
-                .enable_metrics
-                .then(|| Batcher::new(envelope_sender.clone())),
-        );
+        let metrics_batcher = RwLock::new(Some(Batcher::new(envelope_sender.clone())));
 
         Client {
             options: self.options.clone(),
@@ -176,6 +172,15 @@ impl Client {
     /// If the DSN on the options is set to `None` the client will be entirely
     /// disabled.
     pub fn with_options(mut options: ClientOptions) -> Client {
+        #[expect(deprecated, reason = "need to check deprecated fields")]
+        {
+            debug_assert!(
+                options.enable_metrics,
+                "invalid initialization options: the Sentry SDK no longer supports disabling \
+                 metrics via the `enable_metrics` field: {options:?}"
+            )
+        }
+
         // Create the main hub eagerly to avoid problems with the background thread
         // See https://github.com/getsentry/sentry-rust/issues/237
         Hub::with_current(|_| {});
@@ -210,11 +215,7 @@ impl Client {
         });
 
         #[cfg(feature = "metrics")]
-        let metrics_batcher = RwLock::new(
-            options
-                .enable_metrics
-                .then(|| Batcher::new(envelope_sender.clone())),
-        );
+        let metrics_batcher = RwLock::new(Some(Batcher::new(envelope_sender.clone())));
 
         let client = Client {
             options,
@@ -599,11 +600,6 @@ impl Client {
     /// Captures a metric and sends it to Sentry.
     #[cfg(feature = "metrics")]
     pub fn capture_metric<M: IntoProtocolMetric>(&self, metric: M, scope: &Scope) {
-        if !self.options.enable_metrics {
-            // Skip preparing the metric if we don't send it anyways.
-            return;
-        }
-
         if let Some(metric) = self.prepare_metric(metric, scope) {
             if let Some(batcher) = self
                 .metrics_batcher
