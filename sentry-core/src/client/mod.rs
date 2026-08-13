@@ -83,7 +83,7 @@ pub struct Client {
     #[cfg(feature = "release-health")]
     session_flusher: RwLock<Option<SessionFlusher>>,
     #[cfg(feature = "logs")]
-    logs_batcher: RwLock<Option<Batcher<Log>>>,
+    logs_batcher: RwLock<Batcher<Log>>,
     #[cfg(feature = "metrics")]
     metrics_batcher: RwLock<Option<Batcher<Metric>>>,
     #[cfg(feature = "logs")]
@@ -114,7 +114,7 @@ impl Clone for Client {
         )));
 
         #[cfg(feature = "logs")]
-        let logs_batcher = RwLock::new(Some(Batcher::new(envelope_sender.clone())));
+        let logs_batcher = RwLock::new(Batcher::new(envelope_sender.clone()));
 
         #[cfg(feature = "metrics")]
         let metrics_batcher = RwLock::new(
@@ -213,7 +213,7 @@ impl Client {
         )));
 
         #[cfg(feature = "logs")]
-        let logs_batcher = RwLock::new(Some(Batcher::new(envelope_sender.clone())));
+        let logs_batcher = RwLock::new(Batcher::new(envelope_sender.clone()));
 
         #[cfg(feature = "metrics")]
         let metrics_batcher = RwLock::new(
@@ -521,9 +521,7 @@ impl Client {
             flusher.flush();
         }
         #[cfg(feature = "logs")]
-        if let Some(ref batcher) = *self.logs_batcher.read().unwrap() {
-            batcher.flush();
-        }
+        self.logs_batcher.read().unwrap().flush();
         #[cfg(feature = "metrics")]
         if let Some(ref batcher) = *self.metrics_batcher.read().unwrap() {
             batcher.flush();
@@ -566,9 +564,7 @@ impl Client {
     #[cfg(feature = "logs")]
     pub fn capture_log(&self, log: Log, scope: &Scope) {
         if let Some(log) = self.prepare_log(log, scope) {
-            if let Some(ref batcher) = *self.logs_batcher.read().unwrap() {
-                batcher.enqueue(log);
-            }
+            self.logs_batcher.read().unwrap().enqueue(log);
         }
     }
 
