@@ -245,11 +245,14 @@ pub struct ClientOptions {
     ///
     /// See [`max_request_body_size`](method@ClientOptions::max_request_body_size) for details.
     pub max_request_body_size: MaxRequestBodySize,
-    /// Deprecated no-op.
+    /// Deprecated. Setting this to `false` only disables automatic log capture by the
+    /// log-capturing integrations (`log` and `tracing` with the `logs` feature); it does not
+    /// disable logs captured manually via [`Hub::capture_log`](crate::Hub::capture_log) and the
+    /// `logger_*` macros. Defaults to `true`.
     ///
-    /// In debug builds, we panic if the Sentry client is initialized with this option set to
-    /// `false`. The panic occurs at initialization-time.
-    #[deprecated = "this option is a deprecated no-op"]
+    /// To stop an integration from sending logs, use its own options to configure what it
+    /// captures.
+    #[deprecated = "logs captured manually are always sent; only automatic capture by integrations respects this option"]
     pub enable_logs: bool,
     /// Deprecated no-op. Metrics are always enabled, regardless of this option's value.
     #[deprecated = "this option is a deprecated no-op"]
@@ -677,17 +680,14 @@ impl ClientOptions {
         }
     }
 
-    /// This function is effectively a no-op, as it sets the deprecated, no-op field
-    /// [`enable_logs`](field@ClientOptions::enable_logs).
+    /// Deprecated. Setting [`enable_logs`](field@ClientOptions::enable_logs) to `false` only
+    /// disables automatic log capture by the log-capturing integrations (`log` and `tracing`
+    /// with the `logs` feature); it does not disable logs captured manually via
+    /// [`Hub::capture_log`](crate::Hub::capture_log) and the `logger_*` macros.
     ///
-    /// To stop sending logs, simply remove any calls to our logging APIs. We only capture
-    /// logs if you explicitly call the relevant APIs or if you enable an integration that
-    /// captures logs. Alternatively, use [`Self::before_send_log`] to configure a callback that
-    /// drops all logs.
-    ///
-    /// In debug builds, we panic if the Sentry client is initialized with this option set to
-    /// `false`. The panic occurs at initialization-time.
-    #[deprecated = "this is a deprecated no-op"]
+    /// To stop an integration from sending logs, use its own options to configure what it
+    /// captures. Alternatively, use [`Self::before_send_log`] to filter logs.
+    #[deprecated = "logs captured manually are always sent; only automatic capture by integrations respects this option"]
     #[inline]
     pub fn enable_logs(self, enable_logs: bool) -> Self {
         Self {

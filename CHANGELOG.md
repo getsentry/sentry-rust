@@ -4,7 +4,7 @@
 
 ### Deprecations
 
-- Deprecated `ClientOptions::enable_logs`. The option is now a no-op; logs are always enabled. To stop sending logs, stop calling the logging APIs or disable the log-capturing integrations (`tracing`, `log`, or `slog`) ([#1299](https://github.com/getsentry/sentry-rust/pull/1299)).
+- Deprecated `ClientOptions::enable_logs`. The option no longer disables manually captured logs (via the logging APIs); it now only disables automatic log capture by the log-capturing integrations (`tracing` and `log` with the `logs` feature). To stop an integration from sending logs, configure it via its own options ([#1299](https://github.com/getsentry/sentry-rust/pull/1299)).
 - Deprecated `ClientOptions::enable_metrics`. The option is now a no-op; metrics are always enabled. To stop sending metrics, stop calling the metrics APIs ([#1300](https://github.com/getsentry/sentry-rust/pull/1300)).
 
 ## 0.49.1

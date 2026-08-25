@@ -279,7 +279,17 @@ where
                     sentry_core::capture_event(*event);
                 }
                 #[cfg(feature = "logs")]
-                EventMapping::Log(log) => sentry_core::Hub::with_active(|hub| hub.capture_log(log)),
+                EventMapping::Log(log) => sentry_core::Hub::with_active(|hub| {
+                    let enabled = hub.client().is_none_or(|client| {
+                        let options = client.options();
+
+                        #[expect(deprecated, reason = "checking a deprecated field")]
+                        options.enable_logs
+                    });
+                    if enabled {
+                        hub.capture_log(log);
+                    }
+                }),
                 EventMapping::Combined(_) => {
                     sentry_core::sentry_debug!(
                         "[SentryLayer] found nested CombinedEventMapping, ignoring"

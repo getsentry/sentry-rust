@@ -167,21 +167,7 @@ impl Client {
     ///
     /// If the DSN on the options is set to `None` the client will be entirely
     /// disabled.
-    ///
-    /// # Panics
-    ///
-    /// Panics in debug builds if the deprecated no-op field
-    /// [`enable_logs`](field@ClientOptions::enable_logs) is set to `false`.
     pub fn with_options(mut options: ClientOptions) -> Client {
-        #[expect(deprecated, reason = "need to check deprecated fields")]
-        {
-            debug_assert!(
-                options.enable_logs,
-                "invalid initialization options: the Sentry SDK no longer supports disabling logs \
-                 via the `enable_logs` field: {options:?}"
-            );
-        }
-
         // Create the main hub eagerly to avoid problems with the background thread
         // See https://github.com/getsentry/sentry-rust/issues/237
         Hub::with_current(|_| {});
