@@ -249,10 +249,7 @@ pub struct ClientOptions {
     ///
     /// See [`enable_logs`](method@ClientOptions::enable_logs) for details.
     pub enable_logs: bool,
-    /// Deprecated no-op.
-    ///
-    /// In debug builds, we panic if the Sentry client is initialized with this option set to
-    /// `false`. The panic occurs at initialization-time.
+    /// Deprecated no-op. Metrics are always enabled, regardless of this option's value.
     #[deprecated = "this option is a deprecated no-op"]
     pub enable_metrics: bool,
     /// Callback that is executed for each [`Metric`] before sending.
@@ -689,14 +686,10 @@ impl ClientOptions {
         }
     }
 
-    /// This function is effectively a no-op, as it sets the deprecated, no-op field
-    /// [`enable_metrics`](field@ClientOptions::enable_metrics).
+    /// This function is a no-op, as it sets the deprecated field
+    /// [`enable_metrics`](field@ClientOptions::enable_metrics). Metrics are always enabled.
     ///
-    /// To stop sending metrics, simply remove any calls to our metrics APIs. We only capture
-    /// logs if you explicitly call the relevant APIs.
-    ///
-    /// In debug builds, we panic if the Sentry client is initialized with this option set to
-    /// `false`. The panic occurs at initialization-time.
+    /// To stop sending metrics, simply remove any calls to our metrics APIs.
     #[deprecated = "this function sets a no-op option"]
     #[inline]
     pub fn enable_metrics(self, enable_metrics: bool) -> Self {

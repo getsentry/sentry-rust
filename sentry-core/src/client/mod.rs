@@ -172,15 +172,6 @@ impl Client {
     /// If the DSN on the options is set to `None` the client will be entirely
     /// disabled.
     pub fn with_options(mut options: ClientOptions) -> Client {
-        #[expect(deprecated, reason = "need to check deprecated fields")]
-        {
-            debug_assert!(
-                options.enable_metrics,
-                "invalid initialization options: the Sentry SDK no longer supports disabling \
-                 metrics via the `enable_metrics` field: {options:?}"
-            )
-        }
-
         // Create the main hub eagerly to avoid problems with the background thread
         // See https://github.com/getsentry/sentry-rust/issues/237
         Hub::with_current(|_| {});
