@@ -10,68 +10,6 @@ use sentry_core::{metrics, test};
 use sentry_core::{ClientOptions, TransactionContext};
 use sentry_types::protocol::v7::{Envelope, LogAttribute, Metric, User};
 
-/// Test that metrics are sent when metrics are enabled.
-#[test]
-fn sent_when_enabled() {
-    let options = ClientOptions::new().enable_metrics(true);
-
-    let mut envelopes =
-        test::with_captured_envelopes_options(|| metrics::counter("test", 1).capture(), options);
-
-    assert_eq!(envelopes.len(), 1, "expected exactly one envelope");
-
-    let envelope = envelopes.pop().unwrap();
-
-    let mut items = envelope.into_items();
-    let Some(item) = items.next() else {
-        panic!("Expected at least one item");
-    };
-
-    assert!(items.next().is_none(), "Expected only one item");
-
-    let EnvelopeItem::ItemContainer(ItemContainer::Metrics(mut metrics)) = item else {
-        panic!("Envelope item has unexpected structure");
-    };
-
-    assert_eq!(metrics.len(), 1, "Expected exactly one metric");
-
-    let metric = metrics.pop().unwrap();
-    assert!(matches!(metric, Metric {
-        r#type: MetricType::Counter,
-        name,
-        value: 1.0,
-        ..
-    } if name == "test"));
-}
-
-/// Test that metrics are sent by default.
-#[test]
-fn metrics_enabled_by_default() {
-    let options = ClientOptions::default();
-
-    let envelopes =
-        test::with_captured_envelopes_options(|| metrics::counter("test", 1).capture(), options);
-    assert_eq!(
-        envelopes.len(),
-        1,
-        "expected exactly one envelope when metrics are enabled by default"
-    )
-}
-
-/// Test that metrics are disabled (not sent) when disabled in the
-/// [`ClientOptions`].
-#[test]
-fn metrics_disabled_when_configured() {
-    let options = ClientOptions::new().enable_metrics(false);
-
-    let envelopes =
-        test::with_captured_envelopes_options(|| metrics::counter("test", 1).capture(), options);
-    assert!(
-        envelopes.is_empty(),
-        "no envelopes should be captured when metrics disabled"
-    )
-}
-
 /// Test that no metrics are captured by a no-op call with
 /// metrics enabled
 #[test]

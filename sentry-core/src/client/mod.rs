@@ -121,11 +121,7 @@ impl Clone for Client {
         });
 
         #[cfg(feature = "metrics")]
-        let metrics_batcher = RwLock::new(
-            self.options
-                .enable_metrics
-                .then(|| Batcher::new(envelope_sender.clone())),
-        );
+        let metrics_batcher = RwLock::new(Some(Batcher::new(envelope_sender.clone())));
 
         Client {
             options: self.options.clone(),
@@ -210,11 +206,7 @@ impl Client {
         });
 
         #[cfg(feature = "metrics")]
-        let metrics_batcher = RwLock::new(
-            options
-                .enable_metrics
-                .then(|| Batcher::new(envelope_sender.clone())),
-        );
+        let metrics_batcher = RwLock::new(Some(Batcher::new(envelope_sender.clone())));
 
         let client = Client {
             options,
@@ -599,11 +591,6 @@ impl Client {
     /// Captures a metric and sends it to Sentry.
     #[cfg(feature = "metrics")]
     pub fn capture_metric<M: IntoProtocolMetric>(&self, metric: M, scope: &Scope) {
-        if !self.options.enable_metrics {
-            // Skip preparing the metric if we don't send it anyways.
-            return;
-        }
-
         if let Some(metric) = self.prepare_metric(metric, scope) {
             if let Some(batcher) = self
                 .metrics_batcher
