@@ -7,6 +7,13 @@
 //! The integration also supports [`slog::KV`] pairs. They will be added to the
 //! breadcrumb `data` or the event `extra` properties respectively.
 //!
+//! If the `logs` feature is enabled and the `sentry` crate is used with its own
+//! `logs` feature, records can also be captured as Sentry
+//! [structured logs](https://docs.sentry.io/product/explore/logs/) by mapping
+//! them to `LevelFilter::Log` in a custom `filter`, or by returning a
+//! `RecordMapping::Log` from a custom `mapper` (see `log_from_record`). The
+//! `KV` pairs are attached as log attributes.
+//!
 //! # Examples
 //!
 //! ```

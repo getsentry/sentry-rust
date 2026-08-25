@@ -15,6 +15,10 @@ rust-version = { workspace = true }
 [lints]
 workspace = true
 
+[features]
+# Enables capturing slog records as Sentry structured logs.
+logs = ["sentry-core/logs"]
+
 [dependencies]
 sentry-core = { workspace = true }
 slog = { workspace = true, features = ["nested-values"] }

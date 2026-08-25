@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Features
+
+- Add support for capturing `slog` records as Sentry structured logs behind the `logs` feature ([#1307](https://github.com/getsentry/sentry-rust/pull/1307)).
+
 ### Deprecations
 
 - Deprecated `ClientOptions::enable_metrics`. The option is now a no-op; metrics are always enabled. To stop sending metrics, stop calling the metrics APIs ([#1300](https://github.com/getsentry/sentry-rust/pull/1300)).

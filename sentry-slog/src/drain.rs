@@ -1,6 +1,8 @@
 use sentry_core::protocol::{Breadcrumb, Event};
 use slog::{Drain, OwnedKVList, Record};
 
+#[cfg(feature = "logs")]
+use crate::log_from_record;
 use crate::{breadcrumb_from_record, event_from_record, exception_from_record};
 
 /// The action that Sentry should perform for a [`slog::Level`].
@@ -14,6 +16,9 @@ pub enum LevelFilter {
     Event,
     /// Create an exception [`Event`] from this [`Record`].
     Exception,
+    /// Create a [`sentry_core::protocol::Log`] from this [`Record`].
+    #[cfg(feature = "logs")]
+    Log,
 }
 
 /// The type of Data Sentry should ingest for a [`slog::Record`].
@@ -25,6 +30,9 @@ pub enum RecordMapping {
     Breadcrumb(Breadcrumb),
     /// Captures the [`Event`] to Sentry.
     Event(Box<Event<'static>>),
+    /// Captures the [`sentry_core::protocol::Log`] to Sentry.
+    #[cfg(feature = "logs")]
+    Log(sentry_core::protocol::Log),
 }
 
 /// The default slog filter.
@@ -117,6 +125,8 @@ impl<D: Drain> slog::Drain for SentryDrain<D> {
                 LevelFilter::Exception => {
                     RecordMapping::Event(exception_from_record(record, values).into())
                 }
+                #[cfg(feature = "logs")]
+                LevelFilter::Log => RecordMapping::Log(log_from_record(record, values)),
             },
         };
 
@@ -125,6 +135,10 @@ impl<D: Drain> slog::Drain for SentryDrain<D> {
             RecordMapping::Breadcrumb(b) => sentry_core::add_breadcrumb(b),
             RecordMapping::Event(e) => {
                 sentry_core::capture_event(*e);
+            }
+            #[cfg(feature = "logs")]
+            RecordMapping::Log(log) => {
+                sentry_core::Hub::with_active(|hub| hub.capture_log(log));
             }
         }
 

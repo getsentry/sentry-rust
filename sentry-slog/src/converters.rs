@@ -1,6 +1,12 @@
 use sentry_core::protocol::{Breadcrumb, Event, Level, Map, Value};
+#[cfg(feature = "logs")]
+use sentry_core::protocol::{Log, LogAttribute, LogLevel};
 use slog::{Key, OwnedKVList, Record, Serializer, KV};
+#[cfg(feature = "logs")]
+use std::collections::BTreeMap;
 use std::fmt;
+#[cfg(feature = "logs")]
+use std::time::SystemTime;
 
 /// Converts a [`slog::Level`] to a Sentry [`Level`]
 pub fn convert_log_level(level: slog::Level) -> Level {
@@ -9,6 +15,19 @@ pub fn convert_log_level(level: slog::Level) -> Level {
         slog::Level::Info => Level::Info,
         slog::Level::Warning => Level::Warning,
         slog::Level::Error | slog::Level::Critical => Level::Error,
+    }
+}
+
+/// Converts a [`slog::Level`] to a Sentry [`LogLevel`], used for [`Log`].
+#[cfg(feature = "logs")]
+pub fn convert_to_sentry_log_level(level: slog::Level) -> LogLevel {
+    match level {
+        slog::Level::Trace => LogLevel::Trace,
+        slog::Level::Debug => LogLevel::Debug,
+        slog::Level::Info => LogLevel::Info,
+        slog::Level::Warning => LogLevel::Warn,
+        slog::Level::Error => LogLevel::Error,
+        slog::Level::Critical => LogLevel::Fatal,
     }
 }
 
@@ -101,6 +120,41 @@ pub fn exception_from_record(record: &Record, values: &OwnedKVList) -> Event<'st
     event_from_record(record, values)
 }
 
+/// Creates a [`Log`] from the [`Record`].
+///
+/// The record's key-value pairs are attached as log attributes, alongside the
+/// source code location the record originated from.
+#[cfg(feature = "logs")]
+pub fn log_from_record(record: &Record, values: &OwnedKVList) -> Log {
+    let mut kvs = Map::new();
+    add_kv_to_map(&mut kvs, record, values);
+
+    let mut attributes: BTreeMap<String, LogAttribute> = kvs
+        .into_iter()
+        .map(|(key, val)| (key, val.into()))
+        .collect();
+
+    attributes.insert("code.file.path".into(), record.file().into());
+    attributes.insert("code.line.number".into(), record.line().into());
+    attributes.insert("code.module.name".into(), record.module().into());
+
+    let tag = record.tag();
+    if !tag.is_empty() {
+        attributes.insert("logger.name".into(), tag.into());
+    }
+
+    attributes.insert("sentry.origin".into(), "auto.logger.slog".into());
+
+    Log {
+        level: convert_to_sentry_log_level(record.level()),
+        body: record.msg().to_string(),
+        trace_id: None,
+        timestamp: SystemTime::now(),
+        severity_number: None,
+        attributes,
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -169,5 +223,32 @@ mod test {
                 .collect()
             ))
         )
+    }
+
+    #[cfg(feature = "logs")]
+    #[test]
+    fn test_log_from_record() {
+        let kv = o!("user_id" => 42, "request_id" => "abc123");
+        let args = format_args!("Hello, world!");
+        let record = record!(Level::Info, "some_tag", &args, b!());
+
+        let log = log_from_record(&record, &kv.into());
+
+        assert_eq!(log.level, LogLevel::Info);
+        assert_eq!(log.body, "Hello, world!");
+        assert_eq!(log.attributes.get("user_id").unwrap().0, Value::from(42));
+        assert_eq!(
+            log.attributes.get("request_id").unwrap().0,
+            Value::from("abc123")
+        );
+        assert_eq!(
+            log.attributes.get("logger.name").unwrap().0,
+            Value::from("some_tag")
+        );
+        assert_eq!(
+            log.attributes.get("sentry.origin").unwrap().0,
+            Value::from("auto.logger.slog")
+        );
+        assert!(log.attributes.contains_key("code.module.name"));
     }
 }
