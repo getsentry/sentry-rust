@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixes
+
+- Fix a bug that prevented the Curl transport from respecting Sentry rate limits ([#1279](https://github.com/getsentry/sentry-rust/pull/1279)).
+
 ### Deprecations
 
 - Deprecated `ClientOptions::enable_logs`. The option no longer disables manually captured logs (via the logging APIs); it now only disables automatic log capture by the log-capturing integrations (`tracing` and `log` with the `logs` feature). To stop an integration from sending logs, configure it via its own options ([#1299](https://github.com/getsentry/sentry-rust/pull/1299)).
@@ -12,7 +16,6 @@
 ### Fixes
 
 - Preserve floating-point fields in tracing logs as numeric attributes ([#1278](https://github.com/getsentry/sentry-rust/pull/1278)).
-- Fix a bug that prevented the Curl transport from respecting Sentry rate limits ([#1279](https://github.com/getsentry/sentry-rust/pull/1279)).
 
 ## 0.49.0
 
