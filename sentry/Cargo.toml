@@ -1,6 +1,6 @@
 [package]
 name = "sentry"
-version = "0.49.1"
+version = "0.49.2"
 authors = { workspace = true }
 license = "MIT"
 readme = "README.md"
