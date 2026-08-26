@@ -1291,6 +1291,10 @@ impl Span {
             }
             span.finish_with_timestamp(_timestamp);
             let mut inner = self.transaction.lock().unwrap();
+            // Disabled traces do not retain finished spans or report span losses.
+            if matches!(inner.tracing_state.finish_action(), FinishAction::Ignore) {
+                return;
+            }
             if let Some(transaction) = inner.transaction.as_mut() {
                 if transaction.spans.len() <= MAX_SPANS {
                     transaction.spans.push(span.clone());
