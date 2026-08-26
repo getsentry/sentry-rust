@@ -114,11 +114,7 @@ impl Clone for Client {
         )));
 
         #[cfg(feature = "logs")]
-        let logs_batcher = RwLock::new(if self.options.enable_logs {
-            Some(Batcher::new(envelope_sender.clone()))
-        } else {
-            None
-        });
+        let logs_batcher = RwLock::new(Some(Batcher::new(envelope_sender.clone())));
 
         #[cfg(feature = "metrics")]
         let metrics_batcher = RwLock::new(Some(Batcher::new(envelope_sender.clone())));
@@ -199,11 +195,7 @@ impl Client {
         )));
 
         #[cfg(feature = "logs")]
-        let logs_batcher = RwLock::new(if options.enable_logs {
-            Some(Batcher::new(envelope_sender.clone()))
-        } else {
-            None
-        });
+        let logs_batcher = RwLock::new(Some(Batcher::new(envelope_sender.clone())));
 
         #[cfg(feature = "metrics")]
         let metrics_batcher = RwLock::new(Some(Batcher::new(envelope_sender.clone())));
@@ -551,10 +543,6 @@ impl Client {
     /// Captures a log and sends it to Sentry.
     #[cfg(feature = "logs")]
     pub fn capture_log(&self, log: Log, scope: &Scope) {
-        if !self.options.enable_logs {
-            sentry_debug!("[Client] called capture_log, but options.enable_logs is set to false");
-            return;
-        }
         if let Some(log) = self.prepare_log(log, scope) {
             if let Some(ref batcher) = *self.logs_batcher.read().unwrap() {
                 batcher.enqueue(log);

@@ -245,9 +245,14 @@ pub struct ClientOptions {
     ///
     /// See [`max_request_body_size`](method@ClientOptions::max_request_body_size) for details.
     pub max_request_body_size: MaxRequestBodySize,
-    /// Whether captured structured logs should be sent to Sentry.
+    /// Deprecated. Setting this to `false` only disables automatic log capture by the
+    /// log-capturing integrations (`log` and `tracing` with the `logs` feature); it does not
+    /// disable logs captured manually via [`Hub::capture_log`](crate::Hub::capture_log) and the
+    /// `logger_*` macros. Defaults to `true`.
     ///
-    /// See [`enable_logs`](method@ClientOptions::enable_logs) for details.
+    /// To stop an integration from sending logs, use its own options to configure what it
+    /// captures.
+    #[deprecated = "logs captured manually are always sent; only automatic capture by integrations respects this option"]
     pub enable_logs: bool,
     /// Deprecated no-op. Metrics are always enabled, regardless of this option's value.
     #[deprecated = "this option is a deprecated no-op"]
@@ -675,12 +680,18 @@ impl ClientOptions {
         }
     }
 
-    /// Enables or disables sending [structured logs](field@ClientOptions::enable_logs).
+    /// Deprecated. Setting [`enable_logs`](field@ClientOptions::enable_logs) to `false` only
+    /// disables automatic log capture by the log-capturing integrations (`log` and `tracing`
+    /// with the `logs` feature); it does not disable logs captured manually via
+    /// [`Hub::capture_log`](crate::Hub::capture_log) and the `logger_*` macros.
     ///
-    /// The `logs` feature is required to capture logs. Defaults to `true`.
+    /// To stop an integration from sending logs, use its own options to configure what it
+    /// captures. Alternatively, use [`Self::before_send_log`] to filter logs.
+    #[deprecated = "logs captured manually are always sent; only automatic capture by integrations respects this option"]
     #[inline]
     pub fn enable_logs(self, enable_logs: bool) -> Self {
         Self {
+            #[expect(deprecated, reason = "need to set deprecated field")]
             enable_logs,
             ..self
         }
@@ -817,7 +828,11 @@ impl fmt::Debug for ClientOptions {
             .field("accept_invalid_certs", &self.accept_invalid_certs)
             .field("auto_session_tracking", &self.auto_session_tracking)
             .field("session_mode", &self.session_mode)
-            .field("enable_logs", &self.enable_logs)
+            .field(
+                "enable_logs",
+                #[expect(deprecated, reason = "still need to debug-log this field")]
+                &self.enable_logs,
+            )
             .field("before_send_log", &before_send_log)
             .field(
                 "enable_metrics",
@@ -862,6 +877,7 @@ impl Default for ClientOptions {
             session_mode: SessionMode::Application,
             user_agent: Cow::Borrowed(USER_AGENT),
             max_request_body_size: MaxRequestBodySize::Medium,
+            #[expect(deprecated, reason = "still need to set deprecated fields")]
             enable_logs: true,
             before_send_log: None,
             #[expect(deprecated, reason = "still need to set deprecated fields")]
