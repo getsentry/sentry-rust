@@ -13,6 +13,10 @@
 
 ## 0.49.1
 
+### New Features
+
+- Added `SentryStream` and `SentryStreamExt` to `sentry-core`, which bind a `Hub` to a `Stream` so that it is polled within the given hub, mirroring the existing `SentryFuture` and `SentryFutureExt`. Use by bringing `SentryStreamExt` in scope and calling `bind_hub` on a stream ([#1214](https://github.com/getsentry/sentry-rust/pull/1214)).
+
 ### Fixes
 
 - Preserve floating-point fields in tracing logs as numeric attributes ([#1278](https://github.com/getsentry/sentry-rust/pull/1278)).
