@@ -96,10 +96,11 @@ esp-idf-svc = { workspace = true, optional = true }
 sentry-anyhow = { workspace = true }
 sentry-log = { workspace = true }
 sentry-slog = { workspace = true }
-sentry-tower = { workspace = true }
+sentry-tower = { workspace = true, features = ["http"] }
 sentry-tracing = { workspace = true }
 actix-web = { workspace = true }
 anyhow = { workspace = true }
+http = { workspace = true }
 log = { workspace = true, features = ["std"] }
 pretty_env_logger = { workspace = true }
 slog = { workspace = true }
