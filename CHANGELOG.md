@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+- The Tower integration's [`SentryHttpLayer`](https://docs.rs/sentry-tower/0.49.3/sentry_tower/struct.SentryHttpLayer.html) now records the [`http.response.status_code`](https://getsentry.github.io/sentry-conventions/attributes/http/) attribute on transactions ([#1253](https://github.com/getsentry/sentry-rust/pull/1253)).
+
 ## 0.49.2
 
 ### Fixes
@@ -63,9 +69,7 @@
 - Restored the reqwest transport's pre-0.13 protocol features by disabling HTTP/2 and native-TLS ALPN ([#1258](https://github.com/getsentry/sentry-rust/pull/1258)).
 - [`EnvelopeError`](https://docs.rs/sentry-types/0.49.0/sentry_types/protocol/envelope/enum.EnvelopeError.html) is now `#[non_exhaustive]` to allow adding new error variants without a breaking change ([#1254](https://github.com/getsentry/sentry-rust/pull/1254)).
 
-### Features
 
-- `SentryHttpLayer` now records the [`http.response.status_code`](https://getsentry.github.io/sentry-conventions/attributes/http/) attribute on transactions ([#1253](https://github.com/getsentry/sentry-rust/pull/1253)).
 
 ## 0.48.5
 
