@@ -28,14 +28,13 @@ bitflags! {
 /// The type of Data Sentry should ingest for a [`log::Record`].
 #[derive(Debug)]
 #[non_exhaustive]
-#[allow(clippy::large_enum_variant)]
 pub enum RecordMapping {
     /// Ignore the [`Record`].
     Ignore,
     /// Adds the [`Breadcrumb`] to the Sentry scope.
     Breadcrumb(Breadcrumb),
     /// Captures the [`Event`] to Sentry.
-    Event(Event<'static>),
+    Event(Box<Event<'static>>),
     /// Captures the [`sentry_core::protocol::Log`] to Sentry.
     #[cfg(feature = "logs")]
     Log(sentry_core::protocol::Log),
@@ -89,7 +88,7 @@ impl log::Log for NoopLogger {
 pub struct SentryLogger<L: log::Log> {
     dest: L,
     filter: Box<dyn Fn(&log::Metadata<'_>) -> LogFilter + Send + Sync>,
-    #[allow(clippy::type_complexity)]
+    #[expect(clippy::type_complexity)]
     mapper: Option<Box<dyn Fn(&Record<'_>) -> Vec<RecordMapping> + Send + Sync>>,
 }
 
@@ -164,10 +163,10 @@ impl<L: log::Log> log::Log for SentryLogger<L> {
                     items.push(RecordMapping::Breadcrumb(breadcrumb_from_record(record)));
                 }
                 if filter.contains(LogFilter::Event) {
-                    items.push(RecordMapping::Event(event_from_record(record)));
+                    items.push(RecordMapping::Event(event_from_record(record).into()));
                 }
                 if filter.contains(LogFilter::Exception) {
-                    items.push(RecordMapping::Event(exception_from_record(record)));
+                    items.push(RecordMapping::Event(exception_from_record(record).into()));
                 }
                 #[cfg(feature = "logs")]
                 if filter.contains(LogFilter::Log) {
@@ -182,12 +181,20 @@ impl<L: log::Log> log::Log for SentryLogger<L> {
                 RecordMapping::Ignore => {}
                 RecordMapping::Breadcrumb(breadcrumb) => sentry_core::add_breadcrumb(breadcrumb),
                 RecordMapping::Event(event) => {
-                    sentry_core::capture_event(event);
+                    sentry_core::capture_event(*event);
                 }
                 #[cfg(feature = "logs")]
-                RecordMapping::Log(log) => {
-                    sentry_core::Hub::with_active(|hub| hub.capture_log(log))
-                }
+                RecordMapping::Log(log) => sentry_core::Hub::with_active(|hub| {
+                    let enabled = hub.client().is_none_or(|client| {
+                        let options = client.options();
+
+                        #[expect(deprecated, reason = "checking a deprecated field")]
+                        options.enable_logs
+                    });
+                    if enabled {
+                        hub.capture_log(log);
+                    }
+                }),
             }
         }
 

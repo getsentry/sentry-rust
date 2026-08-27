@@ -17,14 +17,14 @@ pub enum LevelFilter {
 }
 
 /// The type of Data Sentry should ingest for a [`slog::Record`].
-#[allow(clippy::large_enum_variant)]
+#[non_exhaustive]
 pub enum RecordMapping {
     /// Ignore the [`Record`].
     Ignore,
     /// Adds the [`Breadcrumb`] to the Sentry scope.
     Breadcrumb(Breadcrumb),
     /// Captures the [`Event`] to Sentry.
-    Event(Event<'static>),
+    Event(Box<Event<'static>>),
 }
 
 /// The default slog filter.
@@ -44,7 +44,7 @@ pub fn default_filter(level: slog::Level) -> LevelFilter {
 pub struct SentryDrain<D: Drain> {
     drain: D,
     filter: Box<dyn Fn(slog::Level) -> LevelFilter + Send + Sync>,
-    #[allow(clippy::type_complexity)]
+    #[expect(clippy::type_complexity)]
     mapper: Option<Box<dyn Fn(&Record, &OwnedKVList) -> RecordMapping + Send + Sync>>,
 }
 
@@ -111,9 +111,11 @@ impl<D: Drain> slog::Drain for SentryDrain<D> {
                 LevelFilter::Breadcrumb => {
                     RecordMapping::Breadcrumb(breadcrumb_from_record(record, values))
                 }
-                LevelFilter::Event => RecordMapping::Event(event_from_record(record, values)),
+                LevelFilter::Event => {
+                    RecordMapping::Event(event_from_record(record, values).into())
+                }
                 LevelFilter::Exception => {
-                    RecordMapping::Event(exception_from_record(record, values))
+                    RecordMapping::Event(exception_from_record(record, values).into())
                 }
             },
         };
@@ -122,7 +124,7 @@ impl<D: Drain> slog::Drain for SentryDrain<D> {
             RecordMapping::Ignore => {}
             RecordMapping::Breadcrumb(b) => sentry_core::add_breadcrumb(b),
             RecordMapping::Event(e) => {
-                sentry_core::capture_event(e);
+                sentry_core::capture_event(*e);
             }
         }
 

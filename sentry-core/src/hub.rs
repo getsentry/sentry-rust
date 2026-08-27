@@ -21,8 +21,9 @@ macro_rules! use_without_client {
 
 /// The central object that can manage scopes and clients.
 ///
-/// This can be used to capture events and manage the scope.  This object is [`Send`] and
-/// [`Sync`] so it can be used from multiple threads if needed.
+/// This can be used to capture events and manage the scope. Although `Hub` is [`Send`] and
+/// [`Sync`], sharing a hub between concurrent threads or tasks can lead to unexpected behavior,
+/// including panics. Prefer using a separate hub for each concurrent thread or task.
 ///
 /// Each thread has its own thread-local ( see [`Hub::current`]) hub, which is
 /// automatically derived from the main hub ([`Hub::main`]).
@@ -217,6 +218,9 @@ impl Hub {
     }
 
     /// Invokes a function that can modify the current scope.
+    ///
+    /// This method should not be called concurrently on the same hub, as updates are not atomic
+    /// and may be lost.
     ///
     /// See the global [`configure_scope`](fn.configure_scope.html)
     /// for more documentation.

@@ -17,6 +17,7 @@ use protocol::{
 
 /// Raised if a envelope cannot be parsed from a given input.
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum EnvelopeError {
     /// Unexpected end of file
     #[error("unexpected end of file")]
@@ -155,13 +156,12 @@ struct EnvelopeItemHeader {
 /// for more details.
 #[derive(Clone, Debug, PartialEq)]
 #[non_exhaustive]
-#[allow(clippy::large_enum_variant)]
 pub enum EnvelopeItem {
     /// An Event Item.
     ///
     /// See the [Event Item documentation](https://develop.sentry.dev/sdk/envelopes/#event)
     /// for more details.
-    Event(Event<'static>),
+    Event(Box<Event<'static>>),
     /// A Session Item.
     ///
     /// See the [Session Item documentation](https://develop.sentry.dev/sdk/envelopes/#session)
@@ -176,7 +176,7 @@ pub enum EnvelopeItem {
     ///
     /// See the [Transaction Item documentation](https://develop.sentry.dev/sdk/envelopes/#transaction)
     /// for more details.
-    Transaction(Transaction<'static>),
+    Transaction(Box<Transaction<'static>>),
     /// An Attachment Item.
     ///
     /// See the [Attachment Item documentation](https://develop.sentry.dev/sdk/envelopes/#attachment)
@@ -206,7 +206,6 @@ pub enum ItemContainer {
     Metrics(Vec<Metric>),
 }
 
-#[allow(clippy::len_without_is_empty, reason = "is_empty is not needed")]
 impl ItemContainer {
     /// The number of items in this item container.
     pub fn len(&self) -> usize {
@@ -229,6 +228,14 @@ impl ItemContainer {
         match self {
             Self::Logs(_) => "application/vnd.sentry.items.log+json",
             Self::Metrics(_) => "application/vnd.sentry.items.trace-metric+json",
+        }
+    }
+
+    /// Determine if the item container is empty.
+    pub fn is_empty(&self) -> bool {
+        match self {
+            Self::Logs(logs) => logs.is_empty(),
+            Self::Metrics(metrics) => metrics.is_empty(),
         }
     }
 }
@@ -283,7 +290,7 @@ impl EnvelopeItem {
 
 impl From<Event<'static>> for EnvelopeItem {
     fn from(event: Event<'static>) -> Self {
-        EnvelopeItem::Event(event)
+        EnvelopeItem::Event(event.into())
     }
 }
 
@@ -301,7 +308,7 @@ impl From<SessionAggregates<'static>> for EnvelopeItem {
 
 impl From<Transaction<'static>> for EnvelopeItem {
     fn from(transaction: Transaction<'static>) -> Self {
-        EnvelopeItem::Transaction(transaction)
+        EnvelopeItem::Transaction(transaction.into())
     }
 }
 
@@ -513,7 +520,7 @@ impl Envelope {
         };
 
         items.iter().find_map(|item| match item {
-            EnvelopeItem::Event(event) => Some(event),
+            EnvelopeItem::Event(event) => Some(&**event),
             _ => None,
         })
     }

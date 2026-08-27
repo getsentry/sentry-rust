@@ -1,6 +1,23 @@
 # Changelog
 
-## Unreleased
+## 0.49.2
+
+### Fixes
+
+- Fix a bug that prevented the Curl transport from respecting Sentry rate limits ([#1279](https://github.com/getsentry/sentry-rust/pull/1279)).
+
+### Deprecations
+
+- Deprecated [`ClientOptions::enable_logs`](https://docs.rs/sentry-core/0.49.2/sentry_core/struct.ClientOptions.html#method.enable_logs). The option no longer disables manually captured logs (via the logging APIs); it now only disables automatic log capture by the log-capturing integrations (`tracing` and `log` with the `logs` feature). To stop an integration from sending logs, configure it via its own options ([#1299](https://github.com/getsentry/sentry-rust/pull/1299)).
+- Deprecated [`ClientOptions::enable_metrics`](https://docs.rs/sentry-core/0.49.2/sentry_core/struct.ClientOptions.html#method.enable_metrics). The option is now a no-op; metrics are always enabled. To stop sending metrics, stop calling the metrics APIs ([#1300](https://github.com/getsentry/sentry-rust/pull/1300)).
+
+## 0.49.1
+
+### Fixes
+
+- Preserve floating-point fields in tracing logs as numeric attributes ([#1278](https://github.com/getsentry/sentry-rust/pull/1278)).
+
+## 0.49.0
 
 ### Breaking Changes
 
@@ -21,10 +38,30 @@
       .debug(true)
       .release("my-app@1.0.0");
   ```
+- Updated the `sentry-opentelemetry` integration to support OpenTelemetry 0.32. Users of the integration must update their OpenTelemetry dependencies from 0.29 to 0.32 ([#1262](https://github.com/getsentry/sentry-rust/pull/1262)).
 - The `logs` and `metrics` features are now enabled by default in the `sentry` crate. This does not break the API, but may cause new telemetry to be sent to Sentry: log and tracing integrations can send structured logs, and applications can send metrics without adding the feature flags. Disable these features explicitly if this additional telemetry is not desired ([#1251](https://github.com/getsentry/sentry-rust/pull/1251)).
 - Removed the public `ClientOptions::sample_rate` field. Use `ClientOptions::event_sampling_strategy` to inspect the configured event sampling strategy, and use the existing `ClientOptions::sample_rate(...)` builder setter to configure fixed-rate sampling.
 - Removed the public `ClientOptions::sample_rate` field. Use `ClientOptions::event_sampling_strategy` to inspect the configured event sampling strategy, and use the existing `ClientOptions::sample_rate(...)` builder setter to configure fixed-rate sampling ([#1228](https://github.com/getsentry/sentry-rust/pull/1228)).
 - Removed the public `ClientOptions::traces_sample_rate` and `ClientOptions::traces_sampler` fields. Use `ClientOptions::traces_sampling_strategy` to inspect the configured traces sampling strategy, and use the existing `ClientOptions::traces_sample_rate(...)` and `ClientOptions::traces_sampler(...)` builder setters to configure fixed-rate and callback-based sampling ([#1227](https://github.com/getsentry/sentry-rust/pull/1227)).
+- [`EnvelopeItem`](https://docs.rs/sentry-types/0.49.0/sentry_types/protocol/envelope/enum.EnvelopeItem.html) now stores `Event` and `Transaction` payloads in `Box` values. Code that constructs or pattern-matches these variants must account for the additional indirection ([#1255](https://github.com/getsentry/sentry-rust/pull/1255)).
+- The `sentry_log::RecordMapping` enum's `Event` now stores the event in a `Box` ([#1269](https://github.com/getsentry/sentry-rust/pull/1269)).
+- `sentry_slog::RecordMapping` is now `#[non_exhaustive]` and the `Event` variant now stores a boxed `Event<'static>` ([#1270](https://github.com/getsentry/sentry-rust/pull/1270))
+- The `sentry_tracing::EventMapping` enum's `Event` variant is now stored in a `Box` ([#1272](https://github.com/getsentry/sentry-rust/pull/1272))
+
+### New Features
+
+- Added [`TracePropagationContext`](https://docs.rs/sentry-core/latest/sentry_core/struct.TracePropagationContext.html) as the preferred type for Sentry trace propagation metadata. The existing [`SentryTrace`](https://docs.rs/sentry-core/latest/sentry_core/struct.SentryTrace.html) type remains available for backwards compatibility ([#1212](https://github.com/getsentry/sentry-rust/pull/1212)).
+- Added [`Dsn::org_id`](https://docs.rs/sentry-types/latest/sentry_types/struct.Dsn.html#method.org_id), which parses the Sentry SaaS organization ID from DSN hosts such as `o123.ingest.sentry.io` ([#1202](https://github.com/getsentry/sentry-rust/pull/1202)).
+- Added [`ClientOptions::org_id`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html#method.org_id) and [`ClientOptions::strict_trace_continuation`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html#method.strict_trace_continuation) ([#1203](https://github.com/getsentry/sentry-rust/pull/1203)). These options control how traces are continued and can help prevent traces from third-party services, which happen to be instrumented with Sentry, from being continued.
+
+### Improvements
+
+- Improved trace continuation safety by rejecting incoming traces with incompatible `sentry-org_id` values when starting transactions, according to [strict trace continuation rules](https://develop.sentry.dev/sdk/foundations/trace-propagation/#continuing-traces) ([#1218](https://github.com/getsentry/sentry-rust/pull/1218)).
+
+### Fixes
+
+- Restored the reqwest transport's pre-0.13 protocol features by disabling HTTP/2 and native-TLS ALPN ([#1258](https://github.com/getsentry/sentry-rust/pull/1258)).
+- [`EnvelopeError`](https://docs.rs/sentry-types/0.49.0/sentry_types/protocol/envelope/enum.EnvelopeError.html) is now `#[non_exhaustive]` to allow adding new error variants without a breaking change ([#1254](https://github.com/getsentry/sentry-rust/pull/1254)).
 
 ### Features
 
