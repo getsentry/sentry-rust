@@ -1,0 +1,45 @@
+# Warden Configuration
+# https://github.com/getsentry/warden
+# https://warden.sentry.dev/
+#
+# Org-wide CI runs Warden via getsentry/.github. This file adds repo-local
+# skills on top of the org base config.
+#
+# Skills live in .agents/skills/ (or .claude/skills/). Add more with:
+#   warden add <skill-name>
+
+version = 1
+
+[defaults]
+# Keep report-only by default; docs findings should not block merges until the
+# skill's false-positive rate is understood.
+failOn = "off"
+reportOn = "medium"
+
+[[skills]]
+name = "docs-review"
+# Review public Rust API docs drift: missed rustdoc/README updates and
+# inaccurate new documentation.
+paths = [
+  "**/*.rs",
+  "**/README.md",
+  "README.md",
+]
+ignorePaths = [
+  "**/tests/**",
+  "**/benches/**",
+  # Example apps are illustrative; do not treat them as API docs sources.
+  "**/examples/**",
+  # Warden / agent infrastructure
+  ".agents/**",
+  ".claude/**",
+  ".warden/**",
+  "warden.toml",
+]
+
+[[skills.triggers]]
+type = "pull_request"
+actions = ["opened", "synchronize", "reopened"]
+
+[[skills.triggers]]
+type = "local"

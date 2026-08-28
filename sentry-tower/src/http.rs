@@ -138,12 +138,27 @@ where
         match slf.future.poll(cx) {
             Poll::Ready(res) => {
                 if let Some((transaction, parent_span)) = slf.transaction.take() {
-                    if transaction.get_status().is_none() {
-                        let status = match &res {
-                            Ok(res) => map_status(res.status()),
-                            Err(_) => protocol::SpanStatus::UnknownError,
-                        };
-                        transaction.set_status(status);
+                    match &res {
+                        Ok(res) => {
+                            if !transaction
+                                .get_trace_context()
+                                .data
+                                .contains_key("http.response.status_code")
+                            {
+                                transaction.set_data(
+                                    "http.response.status_code",
+                                    res.status().as_u16().into(),
+                                );
+                            }
+                            if transaction.get_status().is_none() {
+                                transaction.set_status(map_status(res.status()));
+                            }
+                        }
+                        Err(_) => {
+                            if transaction.get_status().is_none() {
+                                transaction.set_status(protocol::SpanStatus::UnknownError);
+                            }
+                        }
                     }
                     transaction.finish();
                     sentry_core::configure_scope(|scope| scope.set_span(parent_span));
@@ -259,4 +274,86 @@ fn get_url_from_request<B>(request: &Request<B>) -> Option<url::Url> {
     }
     let uri = uri::Uri::from_parts(uri_parts).ok()?;
     uri.to_string().parse().ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use sentry_core::protocol::{Context, EnvelopeItem, TraceContext};
+    use sentry_core::{ClientOptions, Envelope};
+
+    use super::*;
+
+    fn trace_context_from_single_transaction(envelopes: &[Envelope]) -> TraceContext {
+        let [envelope] = envelopes else {
+            panic!("Expected exactly one envelope");
+        };
+
+        let mut items = envelope.items();
+        let Some(EnvelopeItem::Transaction(transaction)) = items.next() else {
+            panic!("Expected a transaction envelope item");
+        };
+        assert!(items.next().is_none(), "expected only one envelope item");
+
+        match transaction.contexts.get("trace") {
+            Some(Context::Trace(trace)) => *trace.clone(),
+            unexpected => panic!("expected trace context, got {unexpected:#?}"),
+        }
+    }
+
+    fn run_request_with_org_ids(incoming_org_id: &str, client_org_id: &str) -> Vec<Envelope> {
+        sentry::test::with_captured_envelopes_options(
+            || {
+                tokio::runtime::Runtime::new().unwrap().block_on(async {
+                    let mut service =
+                        SentryHttpLayer::new()
+                            .enable_transaction()
+                            .layer(tower::service_fn(|_request| async {
+                                Ok::<_, std::convert::Infallible>(Response::new(()))
+                            }));
+                    let request = Request::builder()
+                        .uri("http://example.com/test")
+                        .header(
+                            "sentry-trace",
+                            "09e04486820349518ac7b5d2adbf6ba5-9cf635fa5b870b3a-1",
+                        )
+                        .header("baggage", format!("sentry-org_id={incoming_org_id}"))
+                        .body(())
+                        .unwrap();
+
+                    service.call(request).await.unwrap();
+                });
+            },
+            ClientOptions::new()
+                .org_id(client_org_id.parse().unwrap())
+                .strict_trace_continuation(true)
+                .traces_sample_rate(1.0),
+        )
+    }
+
+    #[test]
+    fn transaction_continues_matching_org_id() {
+        let envelopes = run_request_with_org_ids("42", "42");
+        let trace = trace_context_from_single_transaction(&envelopes);
+
+        assert_eq!(
+            trace.trace_id.to_string(),
+            "09e04486820349518ac7b5d2adbf6ba5"
+        );
+        assert_eq!(
+            trace.parent_span_id.map(|span_id| span_id.to_string()),
+            Some("9cf635fa5b870b3a".to_owned())
+        );
+    }
+
+    #[test]
+    fn transaction_rejects_mismatched_org_id() {
+        let envelopes = run_request_with_org_ids("43", "42");
+        let trace = trace_context_from_single_transaction(&envelopes);
+
+        assert_ne!(
+            trace.trace_id.to_string(),
+            "09e04486820349518ac7b5d2adbf6ba5"
+        );
+        assert_eq!(trace.parent_span_id, None);
+    }
 }

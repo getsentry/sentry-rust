@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-24.04, macos-15, windows-2025]
         rust: [stable, 1.88.0]
 
     name: Check compile errors using Rust ${{ matrix.rust }} on ${{ matrix.os }}
@@ -57,7 +57,7 @@ jobs:
   embedded-esp-idf-check:
     # This checks the `sentry-core` and `sentry` crates on ESP-IDF.
     name: Check ESP-IDF compile errors
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout sources

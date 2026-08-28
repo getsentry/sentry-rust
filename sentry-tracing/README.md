@@ -94,7 +94,7 @@ for i in 0..10 {
 
 Tracing events can be captured as traditional structured logs in Sentry.
 This is gated by the `logs` feature flag and requires setting up a custom Event filter/mapper
-to capture logs. You also need to pass `enable_logs: true` in your `sentry::init` call.
+to capture logs.
 
 ```rust
 // assuming `tracing::Level::INFO => EventFilter::Log` in your `event_filter`
@@ -121,7 +121,7 @@ tracing::error!(
 );
 ```
 
-To track [error structs](https://docs.rs/sentry-tracing/0.48.4/sentry_tracing/std::error::Error), assign a reference to error trait object as field
+To track [error structs](https://docs.rs/sentry-tracing/0.49.2/sentry_tracing/std::error::Error), assign a reference to error trait object as field
 in one of the logging macros. By convention, it is recommended to use the `ERROR` level and
 assign it to a field called `error`, although the integration will also work with all other
 levels and field names.

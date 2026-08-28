@@ -197,7 +197,7 @@ fn test_tracing_logs() {
         .with(sentry_layer)
         .set_default();
 
-    let options = sentry::ClientOptions::new().enable_logs(true);
+    let options = sentry::ClientOptions::new();
 
     let envelopes = sentry::test::with_captured_envelopes_options(
         || {
@@ -269,6 +269,38 @@ fn test_tracing_logs() {
     }
 }
 
+#[cfg(feature = "logs")]
+#[test]
+fn test_tracing_log_floating_point_field() {
+    let sentry_layer = sentry_tracing::layer().event_filter(|_| sentry_tracing::EventFilter::Log);
+
+    let _dispatcher = tracing_subscriber::registry()
+        .with(sentry_layer)
+        .set_default();
+
+    let options = sentry::ClientOptions::new();
+    let envelopes = sentry::test::with_captured_envelopes_options(
+        || tracing::error!(floating_point = 1.0_f64),
+        options,
+    );
+
+    assert_eq!(envelopes.len(), 1);
+    let item = envelopes[0].items().next().expect("expected envelope item");
+
+    match item {
+        sentry::protocol::EnvelopeItem::ItemContainer(sentry::protocol::ItemContainer::Logs(
+            logs,
+        )) => {
+            assert_eq!(logs.len(), 1);
+            assert_eq!(
+                logs[0].attributes.get("floating_point").unwrap().clone(),
+                sentry::protocol::LogAttribute::from(1.0_f64)
+            );
+        }
+        _ => panic!("expected logs container"),
+    }
+}
+
 #[test]
 fn test_combined_event_filters() {
     let sentry_layer = sentry_tracing::layer().event_filter(|md| match *md.level() {
@@ -314,14 +346,14 @@ fn test_combined_event_mapper() {
                 sentry_tracing::EventMapping::Combined(
                     vec![
                         sentry_tracing::EventMapping::Breadcrumb(breadcrumb),
-                        sentry_tracing::EventMapping::Event(sentry_event),
+                        sentry_tracing::EventMapping::Event(sentry_event.into()),
                     ]
                     .into(),
                 )
             }
             tracing::Level::WARN => {
                 let sentry_event = sentry_tracing::event_from_event(event, Some(&ctx));
-                sentry_tracing::EventMapping::Event(sentry_event)
+                sentry_tracing::EventMapping::Event(sentry_event.into())
             }
             _ => sentry_tracing::EventMapping::Ignore,
         });

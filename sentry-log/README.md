@@ -78,7 +78,7 @@ let logger = SentryLogger::new().mapper(|record| {
         log::Level::Error => {
             // Send both an event and a breadcrumb for errors
             vec![
-                RecordMapping::Event(event_from_record(record)),
+                RecordMapping::Event(event_from_record(record).into()),
                 RecordMapping::Breadcrumb(breadcrumb_from_record(record)),
             ]
         }

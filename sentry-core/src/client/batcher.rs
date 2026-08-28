@@ -65,7 +65,6 @@ where
     /// Creates a new Batcher that will submit envelopes to the transport.
     pub(super) fn new(envelope_sender: EnvelopeSender) -> Self {
         let queue = Arc::new(Mutex::new(BatchQueue { items: Vec::new() }));
-        #[allow(clippy::mutex_atomic)]
         let shutdown = Arc::new((Mutex::new(false), Condvar::new()));
 
         let worker_envelope_sender = envelope_sender.clone();
@@ -178,7 +177,7 @@ mod tests {
                     logger_info!("test log {}", i);
                 }
             },
-            crate::ClientOptions::new().enable_logs(true),
+            crate::ClientOptions::new(),
         );
 
         assert_eq!(2, envelopes.len());
@@ -207,7 +206,7 @@ mod tests {
                     logger_info!("test log {}", i);
                 }
             },
-            crate::ClientOptions::new().enable_logs(true),
+            crate::ClientOptions::new(),
         );
 
         assert_eq!(1, envelopes.len());

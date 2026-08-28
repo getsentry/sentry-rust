@@ -6,12 +6,22 @@ use std::time::SystemTime;
 
 #[cfg(feature = "client")]
 use sentry_types::protocol::v7::client_report::Reason as ClientReportReason;
+#[cfg(feature = "client")]
+use sentry_types::protocol::v7::OrganizationId;
 use sentry_types::protocol::v7::SpanId;
 
+#[cfg(feature = "client")]
+use crate::clientoptions::TracesSamplingStrategy;
 use crate::{protocol, Hub};
 
 #[cfg(feature = "client")]
 use crate::Client;
+
+#[expect(deprecated, reason = "backwards-compatibility re-export")]
+pub use self::headers::{parse_sentry_trace_header as parse_headers, SentryTrace};
+pub use self::headers::{HeaderParseError, TracePropagationContext};
+
+mod headers;
 
 #[cfg(feature = "client")]
 const MAX_SPANS: usize = 1_000;
@@ -95,6 +105,15 @@ impl Hub {
 /// Represents arbitrary JSON data, the top level of which must be a map.
 pub type CustomTransactionContext = serde_json::Map<String, serde_json::Value>;
 
+/// Information from an incoming trace.
+///
+/// Currently this just contains the org ID supplied by the incoming trace.
+#[cfg(feature = "client")]
+#[derive(Debug, Clone, Copy)]
+struct IncomingTrace {
+    org_id: Option<OrganizationId>,
+}
+
 /// The Transaction Context used to start a new Performance Monitoring Transaction.
 ///
 /// The Transaction Context defines the metadata for a Performance Monitoring
@@ -108,6 +127,8 @@ pub struct TransactionContext {
     parent_span_id: Option<protocol::SpanId>,
     span_id: protocol::SpanId,
     sampled: Option<bool>,
+    #[cfg(feature = "client")]
+    incoming_trace: Option<IncomingTrace>,
     custom: Option<CustomTransactionContext>,
 }
 
@@ -143,6 +164,8 @@ impl TransactionContext {
             parent_span_id: None,
             span_id: Default::default(),
             sampled: None,
+            #[cfg(feature = "client")]
+            incoming_trace: None,
             custom: None,
         }
     }
@@ -180,33 +203,59 @@ impl TransactionContext {
         op: &str,
         headers: I,
     ) -> Self {
-        parse_headers(headers)
-            .map(|sentry_trace| Self::continue_from_sentry_trace(name, op, &sentry_trace, None))
-            .unwrap_or_else(|| Self {
+        TracePropagationContext::try_from_headers(headers)
+            .map(|context| Self::continue_from_trace_propagation_context(name, op, &context, None))
+            .unwrap_or_else(|_| Self {
                 name: name.into(),
                 op: op.into(),
                 trace_id: Default::default(),
                 parent_span_id: None,
                 span_id: Default::default(),
                 sampled: None,
+                #[cfg(feature = "client")]
+                incoming_trace: None,
                 custom: None,
             })
     }
 
     /// Creates a new Transaction Context based on the provided distributed tracing data,
     /// optionally creating the `TransactionContext` with the provided `span_id`.
+    #[deprecated = "use `TransactionContext::continue_from_trace_propagation_context` instead"]
+    #[expect(deprecated, reason = "backwards-compatible method")]
     pub fn continue_from_sentry_trace(
         name: &str,
         op: &str,
         sentry_trace: &SentryTrace,
         span_id: Option<SpanId>,
     ) -> Self {
+        let context = (*sentry_trace).into();
+        Self::continue_from_trace_propagation_context(name, op, &context, span_id)
+    }
+
+    /// Creates a new Transaction Context based on the provided trace propagation context,
+    /// optionally creating the `TransactionContext` with the provided `span_id`.
+    pub fn continue_from_trace_propagation_context(
+        name: &str,
+        op: &str,
+        context: &TracePropagationContext,
+        span_id: Option<SpanId>,
+    ) -> Self {
+        let &TracePropagationContext {
+            trace_id,
+            span_id: context_span_id,
+            sampled,
+            #[cfg(feature = "client")]
+            org_id,
+        } = context;
+
         Self {
             name: name.into(),
             op: op.into(),
-            trace_id: sentry_trace.trace_id,
-            parent_span_id: Some(sentry_trace.span_id),
-            sampled: sentry_trace.sampled,
+            trace_id,
+            parent_span_id: Some(context_span_id),
+            sampled,
+            #[cfg(feature = "client")]
+            incoming_trace: Some(IncomingTrace { org_id }),
             span_id: span_id.unwrap_or_default(),
             custom: None,
         }
@@ -246,14 +295,16 @@ impl TransactionContext {
             parent_span_id: Some(parent_span_id),
             span_id: protocol::SpanId::default(),
             sampled,
+            #[cfg(feature = "client")]
+            incoming_trace: None,
             custom: None,
         }
     }
 
     /// Set the sampling decision for this Transaction.
     ///
-    /// This can be either an explicit boolean flag, or [`None`], which will fall
-    /// back to use the configured `traces_sample_rate` option.
+    /// This can be either an explicit boolean flag, or [`None`], which leaves
+    /// the decision to the configured traces sampling strategy.
     pub fn set_sampled(&mut self, sampled: impl Into<Option<bool>>) {
         self.sampled = sampled.into();
     }
@@ -330,6 +381,17 @@ impl TransactionContext {
         TransactionContextBuilder {
             ctx: TransactionContext::new(name, op),
         }
+    }
+
+    /// Clears incoming trace state so the transaction starts a new trace.
+    #[cfg(feature = "client")]
+    fn reject_incoming_trace(&mut self) {
+        (
+            self.trace_id,
+            self.parent_span_id,
+            self.sampled,
+            self.incoming_trace,
+        ) = Default::default();
     }
 }
 
@@ -606,13 +668,26 @@ type TransactionArc = Arc<Mutex<TransactionInner>>;
 /// Split out from `Client.is_transaction_sampled` for testing.
 #[cfg(feature = "client")]
 fn transaction_sample_rate(
-    traces_sampler: Option<&TracesSampler>,
+    traces_sampling_strategy: &TracesSamplingStrategy,
     ctx: &TransactionContext,
-    traces_sample_rate: f32,
 ) -> f32 {
-    match (traces_sampler, traces_sample_rate) {
-        (Some(traces_sampler), _) => traces_sampler(ctx),
-        (None, traces_sample_rate) => ctx.sampled.map(f32::from).unwrap_or(traces_sample_rate),
+    match traces_sampling_strategy {
+        &TracesSamplingStrategy::FixedRate(rate) => ctx.sampled.map_or(rate, f32::from),
+        TracesSamplingStrategy::Function(traces_sampler) => traces_sampler(ctx),
+        TracesSamplingStrategy::Disabled => 0.0,
+    }
+}
+
+#[cfg(feature = "client")]
+fn should_continue_trace(
+    incoming: Option<OrganizationId>,
+    sdk: Option<OrganizationId>,
+    strict: bool,
+) -> bool {
+    match (incoming, sdk) {
+        (Some(incoming), Some(sdk)) => incoming == sdk,
+        (Some(_), None) | (None, Some(_)) => !strict,
+        (None, None) => true,
     }
 }
 
@@ -621,11 +696,7 @@ fn transaction_sample_rate(
 impl Client {
     fn determine_sampling_decision(&self, ctx: &TransactionContext) -> (bool, f32) {
         let client_options = self.options();
-        let sample_rate = transaction_sample_rate(
-            client_options.traces_sampler.as_deref(),
-            ctx,
-            client_options.traces_sample_rate,
-        );
+        let sample_rate = transaction_sample_rate(&client_options.traces_sampling_strategy, ctx);
         let sampled = self.sample_should_send(sample_rate);
         (sampled, sample_rate)
     }
@@ -686,15 +757,34 @@ impl<'a> TransactionData<'a> {
 
 impl Transaction {
     #[cfg(feature = "client")]
-    fn new(client: Option<Arc<Client>>, ctx: TransactionContext) -> Self {
+    fn new(client: Option<Arc<Client>>, mut ctx: TransactionContext) -> Self {
         let ((sampled, sample_rate), transaction) = match client.as_ref() {
-            Some(client) => (
-                client.determine_sampling_decision(&ctx),
-                Some(protocol::Transaction {
-                    name: Some(ctx.name),
-                    ..Default::default()
-                }),
-            ),
+            Some(client) => {
+                let options = client.options();
+                let sdk_org_id = options.org_id.or_else(|| options.dsn.as_ref()?.org_id());
+
+                if ctx.incoming_trace.is_some_and(
+                    |IncomingTrace {
+                         org_id: incoming_org_id,
+                     }| {
+                        !should_continue_trace(
+                            incoming_org_id,
+                            sdk_org_id,
+                            options.strict_trace_continuation,
+                        )
+                    },
+                ) {
+                    ctx.reject_incoming_trace();
+                }
+
+                (
+                    client.determine_sampling_decision(&ctx),
+                    Some(protocol::Transaction {
+                        name: Some(ctx.name),
+                        ..Default::default()
+                    }),
+                )
+            }
             None => (
                 (
                     ctx.sampled.unwrap_or(false),
@@ -832,13 +922,10 @@ impl Transaction {
     /// trace's distributed tracing headers.
     pub fn iter_headers(&self) -> TraceHeadersIter {
         let inner = self.inner.lock().unwrap();
-        let trace = SentryTrace::new(
-            inner.context.trace_id,
-            inner.context.span_id,
-            Some(inner.sampled),
-        );
+        let trace = TracePropagationContext::new(inner.context.trace_id, inner.context.span_id)
+            .with_sampled(inner.sampled);
         TraceHeadersIter {
-            sentry_trace: Some(trace.to_string()),
+            sentry_trace: Some(trace.sentry_trace_header()),
         }
     }
 
@@ -1119,9 +1206,10 @@ impl Span {
     /// trace's distributed tracing headers.
     pub fn iter_headers(&self) -> TraceHeadersIter {
         let span = self.span.lock().unwrap();
-        let trace = SentryTrace::new(span.trace_id, span.span_id, Some(self.sampled));
+        let trace =
+            TracePropagationContext::new(span.trace_id, span.span_id).with_sampled(self.sampled);
         TraceHeadersIter {
-            sentry_trace: Some(trace.to_string()),
+            sentry_trace: Some(trace.sentry_trace_header()),
         }
     }
 
@@ -1252,91 +1340,11 @@ impl Iterator for TraceHeadersIter {
     }
 }
 
-/// A container for distributed tracing metadata that can be extracted from e.g. the `sentry-trace`
-/// HTTP header.
-#[derive(Debug, PartialEq, Clone, Copy, Default)]
-pub struct SentryTrace {
-    pub(crate) trace_id: protocol::TraceId,
-    pub(crate) span_id: protocol::SpanId,
-    pub(crate) sampled: Option<bool>,
-}
-
-impl SentryTrace {
-    /// Creates a new [`SentryTrace`] from the provided parameters
-    pub fn new(
-        trace_id: protocol::TraceId,
-        span_id: protocol::SpanId,
-        sampled: Option<bool>,
-    ) -> Self {
-        SentryTrace {
-            trace_id,
-            span_id,
-            sampled,
-        }
-    }
-}
-
-fn parse_sentry_trace(header: &str) -> Option<SentryTrace> {
-    let header = header.trim();
-    let mut parts = header.splitn(3, '-');
-
-    let trace_id = parts.next()?.parse().ok()?;
-    let parent_span_id = parts.next()?.parse().ok()?;
-    let parent_sampled = parts.next().and_then(|sampled| match sampled {
-        "1" => Some(true),
-        "0" => Some(false),
-        _ => None,
-    });
-
-    Some(SentryTrace::new(trace_id, parent_span_id, parent_sampled))
-}
-
-/// Extracts distributed tracing metadata from headers (or, generally, key-value pairs),
-/// considering the values for `sentry-trace`.
-pub fn parse_headers<'a, I: IntoIterator<Item = (&'a str, &'a str)>>(
-    headers: I,
-) -> Option<SentryTrace> {
-    let mut trace = None;
-    for (k, v) in headers.into_iter() {
-        if k.eq_ignore_ascii_case("sentry-trace") {
-            trace = parse_sentry_trace(v);
-            break;
-        }
-    }
-    trace
-}
-
-impl std::fmt::Display for SentryTrace {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}-{}", self.trace_id, self.span_id)?;
-        if let Some(sampled) = self.sampled {
-            write!(f, "-{}", if sampled { '1' } else { '0' })?;
-        }
-        Ok(())
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
+    use std::sync::Arc;
 
     use super::*;
-
-    #[test]
-    fn parses_sentry_trace() {
-        let trace_id = protocol::TraceId::from_str("09e04486820349518ac7b5d2adbf6ba5").unwrap();
-        let parent_trace_id = protocol::SpanId::from_str("9cf635fa5b870b3a").unwrap();
-
-        let trace = parse_sentry_trace("09e04486820349518ac7b5d2adbf6ba5-9cf635fa5b870b3a-0");
-        assert_eq!(
-            trace,
-            Some(SentryTrace::new(trace_id, parent_trace_id, Some(false)))
-        );
-
-        let trace = SentryTrace::new(Default::default(), Default::default(), None);
-        let parsed = parse_sentry_trace(&trace.to_string());
-        assert_eq!(parsed, Some(trace));
-    }
 
     #[test]
     fn disabled_forwards_trace_id() {
@@ -1350,7 +1358,8 @@ mod tests {
         let span = trx.start_child("noop", "noop");
 
         let header = span.iter_headers().next().unwrap().1;
-        let parsed = parse_sentry_trace(&header).unwrap();
+        let parsed =
+            TracePropagationContext::try_from_headers([("sentry-trace", header.as_str())]).unwrap();
 
         assert_eq!(
             &parsed.trace_id.to_string(),
@@ -1370,38 +1379,100 @@ mod tests {
         assert_eq!(ctx.sampled(), Some(true));
     }
 
+    #[test]
+    fn continue_from_headers_stores_incoming_org_id() {
+        let ctx = TransactionContext::continue_from_headers(
+            "noop",
+            "noop",
+            [
+                (
+                    "sentry-trace",
+                    "09e04486820349518ac7b5d2adbf6ba5-9cf635fa5b870b3a-1",
+                ),
+                ("baggage", "sentry-org_id=123"),
+            ],
+        );
+
+        assert_eq!(
+            ctx.incoming_trace.map(|incoming| incoming.org_id),
+            Some(Some("123".parse().unwrap()))
+        );
+    }
+
+    #[test]
+    fn continue_from_headers_does_not_keep_org_id_without_sentry_trace() {
+        let ctx = TransactionContext::continue_from_headers(
+            "noop",
+            "noop",
+            [("baggage", "sentry-org_id=123")],
+        );
+
+        assert!(ctx.incoming_trace.is_none());
+        assert_eq!(ctx.parent_span_id, None);
+    }
+
     #[cfg(feature = "client")]
     #[test]
     fn compute_transaction_sample_rate() {
-        // Global rate used as fallback.
         let ctx = TransactionContext::new("noop", "noop");
-        assert_eq!(transaction_sample_rate(None, &ctx, 0.3), 0.3);
-        assert_eq!(transaction_sample_rate(None, &ctx, 0.7), 0.7);
+        assert_eq!(
+            transaction_sample_rate(&TracesSamplingStrategy::FixedRate(0.3), &ctx),
+            0.3
+        );
+        assert_eq!(
+            transaction_sample_rate(&TracesSamplingStrategy::FixedRate(0.7), &ctx),
+            0.7
+        );
 
-        // If only global rate, setting sampled overrides it
         let mut ctx = TransactionContext::new("noop", "noop");
         ctx.set_sampled(true);
-        assert_eq!(transaction_sample_rate(None, &ctx, 0.3), 1.0);
+        assert_eq!(
+            transaction_sample_rate(&TracesSamplingStrategy::FixedRate(0.3), &ctx),
+            1.0
+        );
         ctx.set_sampled(false);
-        assert_eq!(transaction_sample_rate(None, &ctx, 0.3), 0.0);
+        assert_eq!(
+            transaction_sample_rate(&TracesSamplingStrategy::FixedRate(0.3), &ctx),
+            0.0
+        );
 
-        // If given, sampler function overrides everything else.
+        let ctx = TransactionContext::new("noop", "noop");
+        assert_eq!(
+            transaction_sample_rate(&TracesSamplingStrategy::Disabled, &ctx),
+            0.0
+        );
         let mut ctx = TransactionContext::new("noop", "noop");
-        assert_eq!(transaction_sample_rate(Some(&|_| { 0.7 }), &ctx, 0.3), 0.7);
+        ctx.set_sampled(true);
+        assert_eq!(
+            transaction_sample_rate(&TracesSamplingStrategy::Disabled, &ctx),
+            0.0
+        );
         ctx.set_sampled(false);
-        assert_eq!(transaction_sample_rate(Some(&|_| { 0.7 }), &ctx, 0.3), 0.7);
-        // But the sampler may choose to inspect parent sampling
+        assert_eq!(
+            transaction_sample_rate(&TracesSamplingStrategy::Disabled, &ctx),
+            0.0
+        );
+
+        // Function and FixedRate are mutually exclusive strategy variants. A function
+        // strategy can ignore parent sampling or choose to inspect it.
+        let mut ctx = TransactionContext::new("noop", "noop");
+        let sampler = |_: &TransactionContext| 0.7_f32;
+        let strategy = TracesSamplingStrategy::Function(Arc::new(sampler) as Arc<TracesSampler>);
+        assert_eq!(transaction_sample_rate(&strategy, &ctx), 0.7);
+        ctx.set_sampled(false);
+        assert_eq!(transaction_sample_rate(&strategy, &ctx), 0.7);
+
         let sampler = |ctx: &TransactionContext| match ctx.sampled() {
-            Some(true) => 0.8,
-            Some(false) => 0.4,
-            None => 0.6,
+            Some(true) => 0.8_f32,
+            Some(false) => 0.4_f32,
+            None => 0.6_f32,
         };
+        let strategy = TracesSamplingStrategy::Function(Arc::new(sampler) as Arc<TracesSampler>);
         ctx.set_sampled(true);
-        assert_eq!(transaction_sample_rate(Some(&sampler), &ctx, 0.3), 0.8);
+        assert_eq!(transaction_sample_rate(&strategy, &ctx), 0.8);
         ctx.set_sampled(None);
-        assert_eq!(transaction_sample_rate(Some(&sampler), &ctx, 0.3), 0.6);
+        assert_eq!(transaction_sample_rate(&strategy, &ctx), 0.6);
 
-        // Can use first-class and custom attributes of the context.
         let sampler = |ctx: &TransactionContext| {
             if ctx.name() == "must-name" || ctx.operation() == "must-operation" {
                 return 1.0;
@@ -1417,14 +1488,13 @@ mod tests {
 
             0.1
         };
-        // First class attributes
+        let strategy = TracesSamplingStrategy::Function(Arc::new(sampler) as Arc<TracesSampler>);
         let ctx = TransactionContext::new("noop", "must-operation");
-        assert_eq!(transaction_sample_rate(Some(&sampler), &ctx, 0.3), 1.0);
+        assert_eq!(transaction_sample_rate(&strategy, &ctx), 1.0);
         let ctx = TransactionContext::new("must-name", "noop");
-        assert_eq!(transaction_sample_rate(Some(&sampler), &ctx, 0.3), 1.0);
-        // Custom data payload
+        assert_eq!(transaction_sample_rate(&strategy, &ctx), 1.0);
         let mut ctx = TransactionContext::new("noop", "noop");
         ctx.custom_insert("rate".to_owned(), serde_json::json!(0.7));
-        assert_eq!(transaction_sample_rate(Some(&sampler), &ctx, 0.3), 0.7);
+        assert_eq!(transaction_sample_rate(&strategy, &ctx), 0.7);
     }
 }

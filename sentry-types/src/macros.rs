@@ -23,7 +23,6 @@ macro_rules! impl_str_ser {
 /// If a type implements `FromStr` then this automatically
 /// implements a deserializer for that type that dispatches
 /// appropriately.
-#[allow(unused_macros)]
 macro_rules! impl_str_de {
     ($type:ty) => {
         impl<'de> ::serde::de::Deserialize<'de> for $type {
@@ -44,7 +43,6 @@ macro_rules! impl_str_de {
 /// If a type implements `FromStr` and `Display` then this automatically
 /// implements a serializer/deserializer for that type that dispatches
 /// appropriately.
-#[allow(unused_macros)]
 macro_rules! impl_str_serde {
     ($type:ty) => {
         impl_str_ser!($type);
