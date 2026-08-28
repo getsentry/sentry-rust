@@ -3430,7 +3430,7 @@ dependencies = [
  "criterion",
  "futures",
  "log",
- "rand 0.9.5",
+ "rand 0.10.2",
  "rayon",
  "sentry",
  "sentry-types",
@@ -3534,7 +3534,7 @@ version = "0.49.2"
 dependencies = [
  "debugid",
  "hex",
- "rand 0.9.5",
+ "rand 0.10.2",
  "rstest",
  "serde",
  "serde_json",
