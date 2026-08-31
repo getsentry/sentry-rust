@@ -6,6 +6,10 @@
 
 - The Tower integration's [`SentryHttpLayer`](https://docs.rs/sentry-tower/0.49.3/sentry_tower/struct.SentryHttpLayer.html) now records the [`http.response.status_code`](https://getsentry.github.io/sentry-conventions/attributes/http/) attribute on transactions ([#1253](https://github.com/getsentry/sentry-rust/pull/1253)).
 
+### Deprecations
+
+- Deprecated [`Transaction::is_sampled`](https://docs.rs/sentry-core/0.49.3/sentry_core/struct.Transaction.html#method.is_sampled), [`Span::is_sampled`](https://docs.rs/sentry-core/0.49.3/sentry_core/struct.Span.html#method.is_sampled), and [`TransactionOrSpan::is_sampled`](https://docs.rs/sentry-core/0.49.3/sentry_core/enum.TransactionOrSpan.html#method.is_sampled). These methods cannot distinguish between an unsampled transaction or span and a deferred sampling decision when tracing is disabled ([#1293](https://github.com/getsentry/sentry-rust/pull/1293)).
+
 ## 0.49.2
 
 ### Fixes

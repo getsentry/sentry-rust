@@ -71,7 +71,6 @@ impl TraceContinuationScenario {
         let context = self.transaction.get_trace_context();
         assert_eq!(context.trace_id, self.incoming_trace_id);
         assert_eq!(context.parent_span_id, Some(self.incoming_parent_span_id));
-        assert!(self.transaction.is_sampled());
     }
 
     /// Asserts that the transaction rejected the incoming trace and parent sampling.
@@ -79,7 +78,6 @@ impl TraceContinuationScenario {
         let context = self.transaction.get_trace_context();
         assert_ne!(context.trace_id, self.incoming_trace_id);
         assert_eq!(context.parent_span_id, None);
-        assert!(!self.transaction.is_sampled());
     }
 }
 
