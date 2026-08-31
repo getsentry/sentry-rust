@@ -1,31 +1,28 @@
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{sync_channel, SyncSender, TrySendError};
 use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
+use crossbeam_channel::{bounded, select_biased, unbounded, Sender, TrySendError};
 use sentry_core::client_report::{Reason as ClientReportReason, Recorder as ClientReportRecorder};
 
 use super::ratelimit::{RateLimiter, RateLimitingCategory};
+use super::{normalize_channel_capacity, DEFAULT_CHANNEL_CAPACITY, DROP_FLUSH_TIMEOUT};
 #[cfg(doc)]
 use super::{TokioTransportThread, TokioTransportThreadOptions}; // so we can use pub re-exports in docs
 use crate::{sentry_debug, Envelope};
 
-#[expect(
-    clippy::large_enum_variant,
-    reason = "In normal usage this is usually SendEnvelope, the other variants are only used when \
-    the user manually calls transport.flush() or when the transport is shut down."
-)]
-enum Task {
-    SendEnvelope(Envelope),
-    Flush(SyncSender<()>),
+enum ControlTask {
+    Flush(Sender<()>),
     Shutdown,
 }
 
 /// A background-thread powered by [`tokio`] dedicated to sending [`Envelope`]s while respecting the rate limits imposed in the responses.
 pub struct TransportThread {
-    sender: SyncSender<Task>,
-    shutdown: Arc<AtomicBool>,
+    sender: Sender<Envelope>,
+    control_sender: Sender<ControlTask>,
+    shutdown_requested: Arc<AtomicBool>,
+    shutdown_timed_out: AtomicBool,
     handle: Option<JoinHandle<()>>,
     client_report_recorder: ClientReportRecorder,
 }
@@ -35,6 +32,7 @@ pub struct TransportThread {
 pub struct TransportThreadOptions<F> {
     send_fn: F,
     client_report_recorder: ClientReportRecorder,
+    channel_capacity: usize,
 }
 
 impl<F> TransportThreadOptions<F> {
@@ -43,6 +41,7 @@ impl<F> TransportThreadOptions<F> {
         Self {
             send_fn,
             client_report_recorder: Default::default(),
+            channel_capacity: DEFAULT_CHANNEL_CAPACITY,
         }
     }
 
@@ -50,6 +49,18 @@ impl<F> TransportThreadOptions<F> {
     pub fn with_client_report_recorder(self, client_report_recorder: ClientReportRecorder) -> Self {
         Self {
             client_report_recorder,
+            ..self
+        }
+    }
+
+    /// Set the capacity of the channel that queues envelopes for the background
+    /// thread.
+    ///
+    /// The capacity bounds how many envelopes may be queued before `send`
+    /// starts dropping them. A capacity of `0` is clamped to `1`.
+    pub(crate) fn with_channel_capacity(self, channel_capacity: usize) -> Self {
+        Self {
+            channel_capacity,
             ..self
         }
     }
@@ -91,10 +102,12 @@ impl TransportThread {
         let TransportThreadOptions {
             send_fn: mut send,
             client_report_recorder,
+            channel_capacity,
         } = options;
-        let (sender, receiver) = sync_channel(30);
-        let shutdown = Arc::new(AtomicBool::new(false));
-        let shutdown_worker = shutdown.clone();
+        let (sender, receiver) = bounded(normalize_channel_capacity(channel_capacity));
+        let (control_sender, control_receiver) = unbounded();
+        let shutdown_requested = Arc::new(AtomicBool::new(false));
+        let handle_shutdown_requested = shutdown_requested.clone();
         let handle_client_report_recorder = client_report_recorder.clone();
         let handle = thread::Builder::new()
             .name("sentry-transport".into())
@@ -109,38 +122,57 @@ impl TransportThread {
 
                 // and block on an async fn in this runtime/thread
                 rt.block_on(async move {
-                    for task in receiver.into_iter() {
-                        if shutdown_worker.load(Ordering::SeqCst) {
-                            return;
+                    loop {
+                        select_biased! {
+                            recv(control_receiver) -> task => match task {
+                                Ok(ControlTask::Flush(sender)) => {
+                                    while !handle_shutdown_requested.load(Ordering::SeqCst) {
+                                        let Ok(envelope) = receiver.try_recv() else {
+                                            break;
+                                        };
+                                        if let Some(time_left) = rl.is_disabled(RateLimitingCategory::Any) {
+                                            sentry_debug!(
+                                                "Skipping event send because we're disabled due to rate limits for {}s",
+                                                time_left.as_secs()
+                                            );
+                                            handle_client_report_recorder.record_lost_data(
+                                                &envelope,
+                                                ClientReportReason::RatelimitBackoff,
+                                            );
+                                        } else if let Some(envelope) =
+                                            rl.filter(envelope, &handle_client_report_recorder)
+                                        {
+                                            rl = send(envelope, rl).await;
+                                        } else {
+                                            sentry_debug!("Envelope was discarded due to per-item rate limits");
+                                        }
+                                    }
+                                    sender.send(()).ok();
+                                }
+                                Ok(ControlTask::Shutdown) | Err(_) => return,
+                            },
+                            recv(receiver) -> envelope => match envelope {
+                                Ok(envelope) => {
+                                    if let Some(time_left) = rl.is_disabled(RateLimitingCategory::Any) {
+                                        sentry_debug!(
+                                            "Skipping event send because we're disabled due to rate limits for {}s",
+                                            time_left.as_secs()
+                                        );
+                                        handle_client_report_recorder.record_lost_data(
+                                            &envelope,
+                                            ClientReportReason::RatelimitBackoff,
+                                        );
+                                    } else if let Some(envelope) =
+                                        rl.filter(envelope, &handle_client_report_recorder)
+                                    {
+                                        rl = send(envelope, rl).await;
+                                    } else {
+                                        sentry_debug!("Envelope was discarded due to per-item rate limits");
+                                    }
+                                }
+                                Err(_) => return,
+                            },
                         }
-                        let envelope = match task {
-                            Task::SendEnvelope(envelope) => envelope,
-                            Task::Flush(sender) => {
-                                sender.send(()).ok();
-                                continue;
-                            }
-                            Task::Shutdown => {
-                                return;
-                            }
-                        };
-
-                        if let Some(time_left) = rl.is_disabled(RateLimitingCategory::Any) {
-                            sentry_debug!(
-                                "Skipping event send because we're disabled due to rate limits for {}s",
-                                time_left.as_secs()
-                            );
-                            handle_client_report_recorder
-                                .record_lost_data(&envelope, ClientReportReason::RatelimitBackoff);
-                            continue;
-                        }
-                        match rl.filter(envelope, &handle_client_report_recorder) {
-                            Some(envelope) => {
-                                rl = send(envelope, rl).await;
-                            }
-                            None => {
-                                sentry_debug!("Envelope was discarded due to per-item rate limits");
-                            }
-                        };
                     }
                 })
             })
@@ -148,7 +180,9 @@ impl TransportThread {
 
         Self {
             sender,
-            shutdown,
+            control_sender,
+            shutdown_requested,
+            shutdown_timed_out: AtomicBool::new(false),
             handle,
             client_report_recorder,
         }
@@ -161,18 +195,14 @@ impl TransportThread {
         // Using send here would mean that when the channel fills up for whatever
         // reason, trying to send an envelope would block everything. We'd rather
         // drop the envelope in that case.
-        if let Err(e) = self.sender.try_send(Task::SendEnvelope(envelope)) {
+        if let Err(e) = self.sender.try_send(envelope) {
             sentry_debug!("envelope dropped: {e}");
 
             // Get back the envelope from the TrySendError so we can record it as lost.
-            let (task, reason) = match e {
+            let (envelope, reason) = match e {
                 TrySendError::Full(task) => (task, ClientReportReason::QueueOverflow),
                 TrySendError::Disconnected(task) => (task, ClientReportReason::InternalError),
             };
-            let Task::SendEnvelope(envelope) = task else {
-                unreachable!("we sent a `SendEnvelope` task");
-            };
-
             self.client_report_recorder
                 .record_lost_data(&envelope, reason);
         }
@@ -182,18 +212,290 @@ impl TransportThread {
     ///
     /// Returns true if successful within given timeout.
     pub fn flush(&self, timeout: Duration) -> bool {
-        let (sender, receiver) = sync_channel(1);
-        let _ = self.sender.send(Task::Flush(sender));
+        let (sender, receiver) = bounded(1);
+        if self
+            .control_sender
+            .send(ControlTask::Flush(sender))
+            .is_err()
+        {
+            return false;
+        }
         receiver.recv_timeout(timeout).is_ok()
+    }
+
+    pub(crate) fn shutdown(&self, timeout: Duration) -> bool {
+        let flushed = self.flush(timeout);
+        if !flushed {
+            self.shutdown_timed_out.store(true, Ordering::SeqCst);
+        }
+        self.shutdown_requested.store(true, Ordering::SeqCst);
+        let _ = self.control_sender.send(ControlTask::Shutdown);
+        flushed
     }
 }
 
 impl Drop for TransportThread {
     fn drop(&mut self) {
-        self.shutdown.store(true, Ordering::SeqCst);
-        let _ = self.sender.send(Task::Shutdown);
-        if let Some(handle) = self.handle.take() {
-            handle.join().unwrap();
+        if !self.shutdown_requested.load(Ordering::SeqCst) {
+            self.shutdown(DROP_FLUSH_TIMEOUT);
         }
+        // Join only when the flush actually completed. A timed-out flush means
+        // the worker is still stuck, and `join` has no timeout, so joining
+        // there would reintroduce the unbounded wait this fix removes.
+        if !self.shutdown_timed_out.load(Ordering::SeqCst) {
+            if let Some(handle) = self.handle.take() {
+                handle.join().unwrap();
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::mpsc::sync_channel;
+    use std::sync::{
+        atomic::{AtomicBool, AtomicUsize, Ordering},
+        Arc, Mutex,
+    };
+    use std::time::Instant;
+
+    fn envelope() -> Envelope {
+        let mut envelope = Envelope::new();
+        envelope.add_item(crate::protocol::Event::default());
+        envelope
+    }
+
+    fn send_rendezvous(transport: &TransportThread) {
+        let mut envelope = envelope();
+        let deadline = Instant::now()
+            .checked_add(Duration::from_secs(1))
+            .expect("one-second deadline is representable");
+        loop {
+            match transport.sender.try_send(envelope) {
+                Ok(()) => return,
+                Err(TrySendError::Full(returned)) if Instant::now() < deadline => {
+                    envelope = returned;
+                    thread::yield_now();
+                }
+                Err(TrySendError::Full(_)) => panic!("worker did not receive rendezvous event"),
+                Err(TrySendError::Disconnected(_)) => panic!("worker disconnected"),
+            }
+        }
+    }
+
+    #[test]
+    fn flush_wakes_an_idle_transport_thread() {
+        let transport =
+            TransportThreadOptions::new(|_: Envelope, rl: RateLimiter| async move { rl })
+                .spawn_thread();
+
+        thread::sleep(Duration::from_millis(1));
+        assert!(transport.flush(Duration::from_millis(5)));
+    }
+
+    #[test]
+    fn zero_capacity_is_clamped_and_queues_envelopes() {
+        let (started_sender, started_receiver) = sync_channel(1);
+        let (release_sender, release_receiver) = sync_channel(1);
+        let release_receiver = Arc::new(Mutex::new(release_receiver));
+        let sent = Arc::new(AtomicUsize::new(0));
+        let sent_worker = sent.clone();
+        let block_first = Arc::new(AtomicBool::new(true));
+        let block_first_worker = block_first.clone();
+        let transport = TransportThreadOptions::new(move |_: Envelope, rl: RateLimiter| {
+            let started_sender = started_sender.clone();
+            let release_receiver = release_receiver.clone();
+            let sent_worker = sent_worker.clone();
+            let block_first_worker = block_first_worker.clone();
+            async move {
+                if block_first_worker.swap(false, Ordering::SeqCst) {
+                    started_sender.send(()).unwrap();
+                    release_receiver.lock().unwrap().recv().unwrap();
+                }
+                sent_worker.fetch_add(1, Ordering::SeqCst);
+                rl
+            }
+        })
+        .with_channel_capacity(0)
+        .spawn_thread();
+
+        assert_eq!(transport.sender.capacity(), Some(1));
+
+        send_rendezvous(&transport);
+        started_receiver
+            .recv_timeout(Duration::from_secs(1))
+            .unwrap();
+        transport.send(envelope());
+        release_sender.send(()).unwrap();
+        drop(transport);
+
+        assert_eq!(sent.load(Ordering::SeqCst), 2);
+    }
+
+    #[test]
+    fn flush_drains_queued_envelopes() {
+        let (started_sender, started_receiver) = sync_channel(1);
+        let (release_sender, release_receiver) = sync_channel(1);
+        let release_receiver = Arc::new(Mutex::new(release_receiver));
+        let sent = Arc::new(AtomicUsize::new(0));
+        let sent_worker = sent.clone();
+        let block_first = Arc::new(AtomicBool::new(true));
+        let block_first_worker = block_first.clone();
+        let transport = TransportThreadOptions::new(move |_: Envelope, rl: RateLimiter| {
+            let sent_worker = sent_worker.clone();
+            let block_first_worker = block_first_worker.clone();
+            let started_sender = started_sender.clone();
+            let release_receiver = release_receiver.clone();
+            async move {
+                if block_first_worker.swap(false, Ordering::SeqCst) {
+                    started_sender.send(()).unwrap();
+                    release_receiver.lock().unwrap().recv().unwrap();
+                }
+                sent_worker.fetch_add(1, Ordering::SeqCst);
+                rl
+            }
+        })
+        .with_channel_capacity(1)
+        .spawn_thread();
+        let (result_sender, result_receiver) = sync_channel(1);
+
+        transport.send(envelope());
+        started_receiver
+            .recv_timeout(Duration::from_secs(1))
+            .unwrap();
+        transport.send(envelope());
+        let handle = thread::spawn(move || {
+            result_sender
+                .send(transport.flush(Duration::from_secs(1)))
+                .unwrap();
+        });
+
+        assert!(result_receiver
+            .recv_timeout(Duration::from_millis(20))
+            .is_err());
+        release_sender.send(()).unwrap();
+        assert_eq!(
+            result_receiver.recv_timeout(Duration::from_secs(1)),
+            Ok(true)
+        );
+        assert_eq!(sent.load(Ordering::SeqCst), 2);
+        handle.join().unwrap();
+    }
+
+    #[test]
+    fn drop_drains_queued_envelopes() {
+        let gate = Arc::new(Mutex::new(()));
+        let guard = gate.lock().unwrap();
+        let sent = Arc::new(AtomicUsize::new(0));
+        let sent_worker = sent.clone();
+        let gate_worker = gate.clone();
+        let transport = TransportThreadOptions::new(move |_: Envelope, rl: RateLimiter| {
+            let sent_worker = sent_worker.clone();
+            let gate_worker = gate_worker.clone();
+            async move {
+                let _guard = gate_worker.lock().unwrap();
+                sent_worker.fetch_add(1, Ordering::SeqCst);
+                rl
+            }
+        })
+        .with_channel_capacity(1)
+        .spawn_thread();
+
+        send_rendezvous(&transport);
+        send_rendezvous(&transport);
+        let handle = thread::spawn(move || drop(transport));
+        drop(guard);
+        handle.join().unwrap();
+
+        assert_eq!(sent.load(Ordering::SeqCst), 2);
+    }
+
+    #[test]
+    fn drop_does_not_wait_for_a_stuck_worker() {
+        let (started_sender, started_receiver) = sync_channel(1);
+        let (release_sender, release_receiver) = sync_channel(1);
+        let release_receiver = Arc::new(Mutex::new(release_receiver));
+        let transport = TransportThreadOptions::new(move |_: Envelope, rl: RateLimiter| {
+            let started_sender = started_sender.clone();
+            let release_receiver = release_receiver.clone();
+            async move {
+                started_sender.send(()).unwrap();
+                release_receiver.lock().unwrap().recv().unwrap();
+                rl
+            }
+        })
+        .with_channel_capacity(1)
+        .spawn_thread();
+
+        send_rendezvous(&transport);
+        started_receiver
+            .recv_timeout(Duration::from_secs(1))
+            .unwrap();
+        let (dropped_sender, dropped_receiver) = sync_channel(1);
+        let handle = thread::spawn(move || {
+            drop(transport);
+            dropped_sender.send(()).unwrap();
+        });
+
+        assert_eq!(
+            dropped_receiver.recv_timeout(Duration::from_secs(3)),
+            Ok(())
+        );
+        release_sender.send(()).unwrap();
+        handle.join().unwrap();
+    }
+
+    #[test]
+    fn timed_out_shutdown_does_not_block_drop_or_drain_queued_envelopes() {
+        let (started_sender, started_receiver) = sync_channel(1);
+        let (release_sender, release_receiver) = sync_channel(1);
+        let release_receiver = Arc::new(Mutex::new(release_receiver));
+        let (completed_sender, completed_receiver) = sync_channel(2);
+        let block_first = Arc::new(AtomicBool::new(true));
+        let block_first_worker = block_first.clone();
+        let transport = TransportThreadOptions::new(move |_: Envelope, rl: RateLimiter| {
+            let started_sender = started_sender.clone();
+            let release_receiver = release_receiver.clone();
+            let completed_sender = completed_sender.clone();
+            let block_first_worker = block_first_worker.clone();
+            async move {
+                if block_first_worker.swap(false, Ordering::SeqCst) {
+                    started_sender.send(()).unwrap();
+                    release_receiver.lock().unwrap().recv().unwrap();
+                }
+                completed_sender.send(()).unwrap();
+                rl
+            }
+        })
+        .with_channel_capacity(1)
+        .spawn_thread();
+
+        transport.send(envelope());
+        started_receiver
+            .recv_timeout(Duration::from_secs(1))
+            .unwrap();
+        transport.send(envelope());
+        assert!(!transport.shutdown(Duration::from_millis(20)));
+
+        let (dropped_sender, dropped_receiver) = sync_channel(1);
+        let handle = thread::spawn(move || {
+            drop(transport);
+            dropped_sender.send(()).unwrap();
+        });
+
+        assert_eq!(
+            dropped_receiver.recv_timeout(Duration::from_secs(1)),
+            Ok(())
+        );
+        release_sender.send(()).unwrap();
+        assert_eq!(
+            completed_receiver.recv_timeout(Duration::from_secs(1)),
+            Ok(())
+        );
+        assert!(completed_receiver
+            .recv_timeout(Duration::from_millis(50))
+            .is_err());
+        handle.join().unwrap();
     }
 }

@@ -5,6 +5,7 @@
 ### Features
 
 - The Tower integration's [`SentryHttpLayer`](https://docs.rs/sentry-tower/0.49.3/sentry_tower/struct.SentryHttpLayer.html) now records the [`http.response.status_code`](https://getsentry.github.io/sentry-conventions/attributes/http/) attribute on transactions ([#1253](https://github.com/getsentry/sentry-rust/pull/1253)).
+- Added configurable channel capacity for built-in background HTTP transports ([#1040](https://github.com/getsentry/sentry-rust/pull/1040)).
 
 ### Deprecations
 
