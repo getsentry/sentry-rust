@@ -142,6 +142,62 @@ fn client_report_records_unsampled_transaction_and_spans() {
 }
 
 #[test]
+fn disabled_tracing_does_not_record_client_report() {
+    let transport = TestTransport::new();
+    let client = Arc::new(client_with_options(
+        transport.clone(),
+        ClientOptions::default(),
+    ));
+
+    Hub::run(
+        Arc::new(Hub::new(Some(client.clone()), Arc::new(Default::default()))),
+        || {
+            sentry_core::start_transaction(TransactionContext::new("tx", "op")).finish();
+        },
+    );
+    client.send_envelope(Envelope::new());
+
+    let envelopes = transport.fetch_and_clear_envelopes();
+    assert_eq!(envelopes.len(), 1);
+    assert!(!envelopes[0]
+        .items()
+        .any(|item| matches!(item, EnvelopeItem::ClientReport(_))));
+}
+
+#[test]
+fn disabled_tracing_does_not_record_span_cap_report() {
+    // This deliberately exceeds the span buffer to ensure `Ignore` suppresses
+    // buffer-overflow reports, not only transaction-level sampling reports.
+    // Keep in sync with `MAX_SPANS` in `sentry-core/src/performance.rs`.
+    const MAX_SPANS: usize = 1_000;
+
+    let transport = TestTransport::new();
+    let client = Arc::new(client_with_options(
+        transport.clone(),
+        ClientOptions::default(),
+    ));
+
+    Hub::run(
+        Arc::new(Hub::new(Some(client.clone()), Arc::new(Default::default()))),
+        || {
+            let transaction = sentry_core::start_transaction(TransactionContext::new("tx", "op"));
+            for _ in 0..=MAX_SPANS {
+                transaction.start_child("child", "kept").finish();
+            }
+            transaction.start_child("child", "ignored").finish();
+            transaction.finish();
+        },
+    );
+    client.send_envelope(Envelope::new());
+
+    let envelopes = transport.fetch_and_clear_envelopes();
+    assert_eq!(envelopes.len(), 1);
+    assert!(!envelopes[0]
+        .items()
+        .any(|item| matches!(item, EnvelopeItem::ClientReport(_))));
+}
+
+#[test]
 fn client_report_records_transaction_span_cap_drop() {
     // Keep in sync with `MAX_SPANS` in `sentry-core/src/performance.rs`.
     const MAX_SPANS: usize = 1_000;
