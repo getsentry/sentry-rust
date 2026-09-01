@@ -72,6 +72,10 @@
 
 - Improved trace continuation safety by rejecting incoming traces with incompatible `sentry-org_id` values when starting transactions, according to [strict trace continuation rules](https://develop.sentry.dev/sdk/foundations/trace-propagation/#continuing-traces) ([#1218](https://github.com/getsentry/sentry-rust/pull/1218)).
 
+### New Features
+
+- Added support for the [User Feedback](https://docs.sentry.io/product/user-feedback/) API, allowing user feedback to be captured and sent to Sentry as a feedback envelope item ([#1259](https://github.com/getsentry/sentry-rust/pull/1259)).
+
 ### Fixes
 
 - Restored the reqwest transport's pre-0.13 protocol features by disabling HTTP/2 and native-TLS ALPN ([#1258](https://github.com/getsentry/sentry-rust/pull/1258)).
