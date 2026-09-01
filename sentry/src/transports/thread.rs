@@ -1,3 +1,4 @@
+use std::num::NonZeroUsize;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{sync_channel, SyncSender, TrySendError};
 use std::sync::Arc;
@@ -7,6 +8,7 @@ use std::time::Duration;
 use sentry_core::client_report::{Reason as ClientReportReason, Recorder as ClientReportRecorder};
 
 use super::ratelimit::{RateLimiter, RateLimitingCategory};
+use super::DEFAULT_CHANNEL_CAPACITY;
 #[cfg(doc)]
 use super::{StdTransportThread, StdTransportThreadOptions}; // so we can use pub re-exports in docs
 use crate::{sentry_debug, Envelope};
@@ -35,6 +37,8 @@ pub struct TransportThread {
 pub struct TransportThreadOptions<F> {
     send_fn: F,
     client_report_recorder: ClientReportRecorder,
+    /// The transport channel capacity. Defaults to [`DEFAULT_CHANNEL_CAPACITY`].
+    channel_capacity: NonZeroUsize,
 }
 
 impl<F> TransportThreadOptions<F> {
@@ -43,6 +47,7 @@ impl<F> TransportThreadOptions<F> {
         Self {
             send_fn,
             client_report_recorder: Default::default(),
+            channel_capacity: DEFAULT_CHANNEL_CAPACITY,
         }
     }
 
@@ -52,6 +57,31 @@ impl<F> TransportThreadOptions<F> {
             client_report_recorder,
             ..self
         }
+    }
+
+    /// Sets the transport channel capacity to the provided value.
+    pub(super) fn with_capacity(self, channel_capacity: NonZeroUsize) -> Self {
+        Self {
+            channel_capacity,
+            ..self
+        }
+    }
+
+    /// Sets the transport channel capacity to the provided value.
+    ///
+    /// The smallest usable channel capacity is `1`; if `0` is passed to this function, we clamp
+    /// the capacity to `1`.
+    pub fn with_channel_capacity(self, channel_capacity: usize) -> Self {
+        let channel_capacity = channel_capacity.try_into().unwrap_or_else(|_| {
+            sentry_debug!(
+                "Cannot initialize transport with channel capacity of 0, using channel capacity
+                of {} instead.",
+                NonZeroUsize::MIN
+            );
+            NonZeroUsize::MIN
+        });
+
+        self.with_capacity(channel_capacity)
     }
 }
 
@@ -85,8 +115,9 @@ impl TransportThread {
         let TransportThreadOptions {
             send_fn: mut send,
             client_report_recorder,
+            channel_capacity,
         } = options;
-        let (sender, receiver) = sync_channel(30);
+        let (sender, receiver) = sync_channel(channel_capacity.into());
         let shutdown = Arc::new(AtomicBool::new(false));
         let shutdown_worker = shutdown.clone();
         let handle_client_report_recorder = client_report_recorder.clone();
@@ -180,5 +211,26 @@ impl Drop for TransportThread {
         if let Some(handle) = self.handle.take() {
             handle.join().unwrap();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn noop_options() -> TransportThreadOptions<impl FnMut(Envelope, &mut RateLimiter)> {
+        TransportThreadOptions::new(|_: Envelope, _: &mut RateLimiter| {})
+    }
+
+    #[test]
+    fn with_channel_capacity_stores_capacity() {
+        let options = noop_options().with_channel_capacity(42);
+        assert_eq!(options.channel_capacity.get(), 42);
+    }
+
+    #[test]
+    fn with_channel_capacity_clamps_zero() {
+        let options = noop_options().with_channel_capacity(0);
+        assert_eq!(options.channel_capacity.get(), 1);
     }
 }
