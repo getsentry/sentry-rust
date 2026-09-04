@@ -4,6 +4,7 @@
 
 ### Features
 
+- Added a `transport_channel_capacity` option to [`ClientOptions`](https://docs.rs/sentry-core/0.49.3/sentry_core/struct.ClientOptions.html), making the transport's channel capacity configurable. When unset, each transport uses its own default (currently `30`), which is subject to change ([#1311](https://github.com/getsentry/sentry-rust/issues/1311)).
 - The Tower integration's [`SentryHttpLayer`](https://docs.rs/sentry-tower/0.49.3/sentry_tower/struct.SentryHttpLayer.html) now records the [`http.response.status_code`](https://getsentry.github.io/sentry-conventions/attributes/http/) attribute on transactions ([#1253](https://github.com/getsentry/sentry-rust/pull/1253)).
 
 ### Deprecations

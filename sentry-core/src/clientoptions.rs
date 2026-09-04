@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::fmt;
+use std::num::NonZeroUsize;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -245,6 +246,19 @@ pub struct ClientOptions {
     ///
     /// See [`max_request_body_size`](method@ClientOptions::max_request_body_size) for details.
     pub max_request_body_size: MaxRequestBodySize,
+    /// The maximum number of commands the transport channel can queue.
+    ///
+    /// The channel primarily carries envelopes, which are sent to Sentry on a background thread.
+    /// If the channel is full — for example, in high-throughput scenarios — new envelopes are
+    /// dropped and recorded as queue-overflow client reports, so increasing this value trades
+    /// memory usage for reliability. Control commands, such as flushing and shutdown, also count
+    /// against this capacity.
+    ///
+    /// If left unset, each transport uses its own default. The current default is `30` for all
+    /// built-in transports, but this is subject to change.
+    ///
+    /// See [`transport_channel_capacity`](method@ClientOptions::transport_channel_capacity).
+    pub transport_channel_capacity: Option<NonZeroUsize>,
     /// Deprecated. Setting this to `false` only disables automatic log capture by the
     /// log-capturing integrations (`log` and `tracing` with the `logs` feature); it does not
     /// disable logs captured manually via [`Hub::capture_log`](crate::Hub::capture_log) and the
@@ -680,6 +694,27 @@ impl ClientOptions {
         }
     }
 
+    /// Sets the
+    /// [transport channel capacity](field@ClientOptions::transport_channel_capacity).
+    ///
+    /// The smallest usable channel capacity is `1`. If `0` is passed, the capacity is clamped
+    /// to `1` and a debug message is emitted.
+    #[inline]
+    pub fn transport_channel_capacity(self, transport_channel_capacity: usize) -> Self {
+        #[cfg_attr(not(feature = "client"), expect(clippy::unnecessary_lazy_evaluations))]
+        let transport_channel_capacity = NonZeroUsize::new(transport_channel_capacity)
+            .unwrap_or_else(|| {
+                #[cfg(feature = "client")]
+                sentry_debug!("cannot set transport channel capacity to 0; clamping to 1");
+                NonZeroUsize::MIN
+            })
+            .into();
+        Self {
+            transport_channel_capacity,
+            ..self
+        }
+    }
+
     /// Deprecated. Setting [`enable_logs`](field@ClientOptions::enable_logs) to `false` only
     /// disables automatic log capture by the log-capturing integrations (`log` and `tracing`
     /// with the `logs` feature); it does not disable logs captured manually via
@@ -825,6 +860,10 @@ impl fmt::Debug for ClientOptions {
             .field("http_proxy", &self.http_proxy)
             .field("https_proxy", &self.https_proxy)
             .field("shutdown_timeout", &self.shutdown_timeout)
+            .field(
+                "transport_channel_capacity",
+                &self.transport_channel_capacity,
+            )
             .field("accept_invalid_certs", &self.accept_invalid_certs)
             .field("auto_session_tracking", &self.auto_session_tracking)
             .field("session_mode", &self.session_mode)
@@ -877,6 +916,7 @@ impl Default for ClientOptions {
             session_mode: SessionMode::Application,
             user_agent: Cow::Borrowed(USER_AGENT),
             max_request_body_size: MaxRequestBodySize::Medium,
+            transport_channel_capacity: None,
             #[expect(deprecated, reason = "still need to set deprecated fields")]
             enable_logs: true,
             before_send_log: None,
@@ -900,5 +940,25 @@ impl<T: IntoDsn> From<T> for ClientOptions {
             dsn: into_dsn.into_dsn().expect("invalid value for DSN"),
             ..ClientOptions::default()
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn transport_channel_capacity_stores_value() {
+        let options = ClientOptions::new().transport_channel_capacity(42);
+        assert_eq!(
+            options.transport_channel_capacity,
+            Some(NonZeroUsize::new(42).unwrap())
+        );
+    }
+
+    #[test]
+    fn transport_channel_capacity_clamps_zero() {
+        let options = ClientOptions::new().transport_channel_capacity(0);
+        assert_eq!(options.transport_channel_capacity, Some(NonZeroUsize::MIN));
     }
 }

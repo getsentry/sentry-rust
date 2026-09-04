@@ -631,6 +631,7 @@ fn build_envelope_sender(client_options: &ClientOptions) -> EnvelopeSender {
         http_proxy,
         https_proxy,
         accept_invalid_certs,
+        transport_channel_capacity,
         ..
     } = client_options;
 
@@ -643,6 +644,7 @@ fn build_envelope_sender(client_options: &ClientOptions) -> EnvelopeSender {
                 https_proxy: https_proxy.clone(),
                 accept_invalid_certs: *accept_invalid_certs,
                 client_report_recorder,
+                transport_channel_capacity: *transport_channel_capacity,
             };
 
             transport_factory.create_transport_with_options(options)
