@@ -368,9 +368,15 @@ fn run_crash_reporter(child: MinidumperChild, options: &ClientOptions, flush_tim
     let mut reporter_options = options.clone();
     // Drop this integration from the second client so its setup does not
     // recurse into the reporter path.
-    reporter_options
-        .integrations
-        .retain(|i| i.as_any().downcast_ref::<MinidumpIntegration>().is_none());
+    reporter_options.integrations.retain(|i| {
+        // `as_ref` first, so `as_any` dispatches through the
+        // `dyn Integration` vtable. Calling `as_any` on the `Arc`
+        // directly would downcast the wrapper and never match.
+        i.as_ref()
+            .as_any()
+            .downcast_ref::<MinidumpIntegration>()
+            .is_none()
+    });
 
     let client = Client::with_options(reporter_options);
     let hub = Hub::current();
