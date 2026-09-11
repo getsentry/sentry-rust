@@ -138,12 +138,27 @@ where
         match slf.future.poll(cx) {
             Poll::Ready(res) => {
                 if let Some((transaction, parent_span)) = slf.transaction.take() {
-                    if transaction.get_status().is_none() {
-                        let status = match &res {
-                            Ok(res) => map_status(res.status()),
-                            Err(_) => protocol::SpanStatus::UnknownError,
-                        };
-                        transaction.set_status(status);
+                    match &res {
+                        Ok(res) => {
+                            if !transaction
+                                .get_trace_context()
+                                .data
+                                .contains_key("http.response.status_code")
+                            {
+                                transaction.set_data(
+                                    "http.response.status_code",
+                                    res.status().as_u16().into(),
+                                );
+                            }
+                            if transaction.get_status().is_none() {
+                                transaction.set_status(map_status(res.status()));
+                            }
+                        }
+                        Err(_) => {
+                            if transaction.get_status().is_none() {
+                                transaction.set_status(protocol::SpanStatus::UnknownError);
+                            }
+                        }
                     }
                     transaction.finish();
                     sentry_core::configure_scope(|scope| scope.set_span(parent_span));

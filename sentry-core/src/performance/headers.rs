@@ -132,6 +132,11 @@ impl TracePropagationContext {
         })
     }
 
+    /// Set the `sampled` field, accepting `Option` values.
+    pub(crate) fn with_maybe_sampled(self, sampled: Option<bool>) -> Self {
+        Self { sampled, ..self }
+    }
+
     /// Attempts to construct a [`TracePropagationContext`] from the given Sentry trace header.
     ///
     /// Returns [`None`] if the header cannot be parsed.

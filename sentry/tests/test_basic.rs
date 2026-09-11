@@ -269,7 +269,7 @@ fn test_basic_capture_log() {
 
     use sentry::{protocol::Log, protocol::LogAttribute, protocol::Map, Hub};
 
-    let options = sentry::ClientOptions::new().enable_logs(true);
+    let options = sentry::ClientOptions::new();
     let envelopes = sentry::test::with_captured_envelopes_options(
         || {
             let mut attributes: Map<String, LogAttribute> = Map::new();
@@ -313,7 +313,7 @@ fn test_basic_capture_log() {
 fn test_basic_capture_log_macro_message() {
     use sentry_core::logger_info;
 
-    let options = sentry::ClientOptions::new().enable_logs(true);
+    let options = sentry::ClientOptions::new();
     let envelopes = sentry::test::with_captured_envelopes_options(
         || {
             logger_info!("Hello, world!");
@@ -342,11 +342,40 @@ fn test_basic_capture_log_macro_message() {
 
 #[cfg(feature = "logs")]
 #[test]
+fn test_basic_capture_log_macro_message_disabled() {
+    use sentry_core::logger_info;
+
+    #[expect(deprecated, reason = "testing the deprecated option")]
+    let options = sentry::ClientOptions::new().enable_logs(false);
+    let envelopes = sentry::test::with_captured_envelopes_options(
+        || {
+            logger_info!("Hello, world!");
+        },
+        options,
+    );
+    // Manually captured logs are always sent, regardless of `enable_logs`.
+    assert_eq!(envelopes.len(), 1);
+    let envelope = envelopes.first().expect("expected envelope");
+    let item = envelope.items().next().expect("expected envelope item");
+    match item {
+        EnvelopeItem::ItemContainer(container) => match container {
+            sentry::protocol::ItemContainer::Logs(logs) => {
+                let log = logs.iter().next().expect("expected log");
+                assert_eq!("Hello, world!", log.body);
+            }
+            _ => panic!("expected logs"),
+        },
+        _ => panic!("expected item container"),
+    }
+}
+
+#[cfg(feature = "logs")]
+#[test]
 fn test_basic_capture_log_macro_message_formatted() {
     use sentry::protocol::LogAttribute;
     use sentry_core::logger_warn;
 
-    let options = sentry::ClientOptions::new().enable_logs(true);
+    let options = sentry::ClientOptions::new();
     let envelopes = sentry::test::with_captured_envelopes_options(
         || {
             let failed_requests = ["request1", "request2", "request3"];
@@ -410,7 +439,7 @@ fn test_basic_capture_log_macro_message_with_attributes() {
     use sentry::protocol::LogAttribute;
     use sentry_core::logger_error;
 
-    let options = sentry::ClientOptions::new().enable_logs(true);
+    let options = sentry::ClientOptions::new();
     let envelopes = sentry::test::with_captured_envelopes_options(
         || {
             logger_error!(
@@ -466,7 +495,7 @@ fn test_basic_capture_log_macro_message_formatted_with_attributes() {
     use sentry::protocol::LogAttribute;
     use sentry_core::logger_debug;
 
-    let options = sentry::ClientOptions::new().enable_logs(true);
+    let options = sentry::ClientOptions::new();
     let envelopes = sentry::test::with_captured_envelopes_options(
         || {
             logger_debug!(

@@ -162,13 +162,11 @@ impl CurlHttpTransport {
                 handle
                     .header_function(move |data| {
                         if let Ok(data) = std::str::from_utf8(data) {
-                            let mut iter = data.split(':');
-                            if let Some(key) = iter.next().map(str::to_lowercase) {
-                                if key == "retry-after" {
-                                    *retry_after_setter = iter.next().map(|x| x.trim().to_string());
-                                } else if key == "x-sentry-rate-limits" {
-                                    *sentry_header_setter =
-                                        iter.next().map(|x| x.trim().to_string());
+                            if let Some((key, value)) = data.split_once(':') {
+                                if key.eq_ignore_ascii_case("retry-after") {
+                                    *retry_after_setter = Some(value.trim().to_string());
+                                } else if key.eq_ignore_ascii_case("x-sentry-rate-limits") {
+                                    *sentry_header_setter = Some(value.trim().to_string());
                                 }
                             }
                         }

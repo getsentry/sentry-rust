@@ -197,7 +197,7 @@ fn test_tracing_logs() {
         .with(sentry_layer)
         .set_default();
 
-    let options = sentry::ClientOptions::new().enable_logs(true);
+    let options = sentry::ClientOptions::new();
 
     let envelopes = sentry::test::with_captured_envelopes_options(
         || {
@@ -278,7 +278,7 @@ fn test_tracing_log_floating_point_field() {
         .with(sentry_layer)
         .set_default();
 
-    let options = sentry::ClientOptions::new().enable_logs(true);
+    let options = sentry::ClientOptions::new();
     let envelopes = sentry::test::with_captured_envelopes_options(
         || tracing::error!(floating_point = 1.0_f64),
         options,
