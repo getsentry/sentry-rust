@@ -70,6 +70,7 @@
 //! | `metrics`         | ✅      |                |            | Enables metrics capture APIs.                                                            |
 //! | `debug-images`    | ✅      | 🔌             |            |                                                                                          |
 //! | `log`             |         | 🔌             |            | Requires extra setup; See [`sentry-log`]'s documentation.                                |
+//! | `minidump`        |         | 🔌             |            | Linux, macOS and Windows only. See [`sentry-minidump`]'s documentation.                  |
 //! | `slog`            |         | 🔌             |            | Requires extra setup; See [`sentry-slog`]'s documentation.                               |
 //! | `reqwest`         | ✅      |                |            |                                                                                          |
 //! | `native-tls`      | ✅      |                |            | `reqwest` must be enabled.                                                               |
@@ -83,6 +84,7 @@
 //! | `opentelemetry`   |         | 🔌             |            | Requires extra setup; See [`sentry-opentelemetry`]'s documentation.                      |
 //!
 //! [`sentry-log`]: https://crates.io/crates/sentry-log
+//! [`sentry-minidump`]: https://crates.io/crates/sentry-minidump
 //! [`sentry-slog`]: https://crates.io/crates/sentry-slog
 //! [`sentry-actix`]: https://crates.io/crates/sentry-actix
 //! [`sentry-tower`]: https://crates.io/crates/sentry-tower
@@ -122,6 +124,7 @@
 //!
 //! ## Integrations
 //! - `actix`: Enables support for the `actix-web` crate.
+//! - `minidump`: Captures native crashes as minidumps. Linux, macOS and Windows only.
 //! - `tower`: Enables support for the `tower` crate and those using it.
 //! - `tracing`: Enables support for the `tracing` crate and those using it.
 //! - `opentelemetry`: Enables support for the `opentelemetry` and `opentelemetry-sdk` crates.
@@ -226,6 +229,13 @@ pub mod integrations {
     #[cfg_attr(doc_cfg, doc(cfg(feature = "opentelemetry")))]
     #[doc(inline)]
     pub use sentry_opentelemetry as opentelemetry;
+    #[cfg(all(
+        feature = "minidump",
+        any(target_os = "linux", target_os = "macos", target_os = "windows")
+    ))]
+    #[cfg_attr(doc_cfg, doc(cfg(feature = "minidump")))]
+    #[doc(inline)]
+    pub use sentry_minidump as minidump;
     #[cfg(feature = "panic")]
     #[cfg_attr(doc_cfg, doc(cfg(feature = "panic")))]
     #[doc(inline)]

@@ -4,6 +4,7 @@
 
 ### Features
 
+- Added the `sentry-minidump` integration, which captures native crashes as minidumps in a separate process and sends them to Sentry as attachments. Enable it with the `minidump` feature on `sentry`. Linux, macOS and Windows only ([#1301](https://github.com/getsentry/sentry-rust/pull/1301)).
 - The Tower integration's [`SentryHttpLayer`](https://docs.rs/sentry-tower/0.49.3/sentry_tower/struct.SentryHttpLayer.html) now records the [`http.response.status_code`](https://getsentry.github.io/sentry-conventions/attributes/http/) attribute on transactions ([#1253](https://github.com/getsentry/sentry-rust/pull/1253)).
 
 ### Deprecations
