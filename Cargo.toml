@@ -71,6 +71,7 @@ reqwest = { version = "0.13.2", default-features = false }
 rstest = "0.25.0"
 rustc_version = "0.4.0"
 rustls = { version = "0.23.18", default-features = false }
+sadness-generator = "0.7"
 sentry = { version = "0.49.2", path = "sentry", default-features = false }
 sentry-actix = { version = "0.49.2", path = "sentry-actix", default-features = false }
 sentry-anyhow = { version = "0.49.2", path = "sentry-anyhow", default-features = false, features = ["backtrace"] }

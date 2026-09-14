@@ -60,6 +60,9 @@ fn captures_minidump_from_crash() {
         let _ = tx.send(body);
     });
 
+    // Runs `examples/app.rs`, which crashes on purpose. It has to be a
+    // separate binary because the crash reporter re-executes it and the
+    // crash event is sent from that second process, not the test process.
     Command::new(env!("CARGO"))
         .args(["run", "--quiet", "--example", "minidump"])
         .current_dir(env!("CARGO_MANIFEST_DIR"))
@@ -104,5 +107,8 @@ fn captures_minidump_from_crash() {
         .expect("envelope has an attachment");
 
     assert_eq!(attachment.ty, Some(AttachmentType::Minidump));
-    assert!(attachment.buffer.starts_with(b"MDMP"), "attachment is a minidump");
+    assert!(
+        attachment.buffer.starts_with(b"MDMP"),
+        "attachment is a minidump"
+    );
 }

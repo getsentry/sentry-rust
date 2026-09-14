@@ -27,4 +27,4 @@ serde_json = { workspace = true }
 
 [dev-dependencies]
 sentry = { workspace = true, features = ["test", "ureq"] }
-sadness-generator = "0.7"
+sadness-generator = { workspace = true }

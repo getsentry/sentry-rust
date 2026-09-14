@@ -21,9 +21,25 @@
 //! ```
 //!
 //! Code before `sentry::init` runs in both processes, because the crash
-//! reporter re-executes the current binary. Use
-//! [`is_crash_reporter_process`] to skip work that should run in the app
-//! process only.
+//! reporter re-executes the current binary. Build the integration and call
+//! [`MinidumpIntegration::is_crash_reporter_process`] on it to skip work
+//! that should run only in the app process.
+//!
+//! # Scope sync
+//!
+//! Scope changes do not cross the process boundary on their own. Send them
+//! to the crash reporter through the integration:
+//!
+//! ```no_run
+//! # let user = sentry::User::default();
+//! sentry::with_integration(|minidump: &sentry_minidump::MinidumpIntegration, _| {
+//!     minidump.set_user(Some(user.clone()));
+//! });
+//! ```
+//!
+//! # Platforms
+//!
+//! `sentry-minidump` builds on Linux, macOS and Windows only.
 
 #![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
 #![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
@@ -33,32 +49,18 @@
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::{exit, Command};
-use std::sync::{Arc, Mutex, Once, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
 use minidumper_child::{ClientHandle, MinidumperChild};
 use sentry_core::protocol::{Attachment, AttachmentType, Breadcrumb, Event, User, Value};
 use sentry_core::{sentry_debug, Client, ClientOptions, Hub, Integration, Level, Scope};
 
-/// The environment variable that marks the crash reporter process.
-///
-/// Change it with [`MinidumpIntegration::server_env_var`].
-pub const DEFAULT_SERVER_ENV_VAR: &str = "_CRASH_REPORTER_SERVER";
+/// The default environment variable that marks the crash reporter process.
+const DEFAULT_SERVER_ENV_VAR: &str = "_SENTRY_CRASH_REPORTER_SERVER";
 
 /// The default time to wait for the crash event to upload.
-pub const DEFAULT_FLUSH_TIMEOUT: Duration = Duration::from_secs(5);
-
-/// Returns `true` if the current process is the crash reporter process.
-///
-/// This checks [`DEFAULT_SERVER_ENV_VAR`]. If you set a custom name with
-/// [`MinidumpIntegration::server_env_var`], use
-/// [`MinidumpIntegration::is_crash_reporter_process`] instead.
-///
-/// It is safe to call this before the Sentry client exists, for example to
-/// skip log output in the crash reporter process.
-pub fn is_crash_reporter_process() -> bool {
-    std::env::var_os(DEFAULT_SERVER_ENV_VAR).is_some()
-}
+const DEFAULT_FLUSH_TIMEOUT: Duration = Duration::from_secs(5);
 
 type OnProcess = Box<dyn FnOnce(&mut Command) + Send + Sync + 'static>;
 type BeforeCapture = dyn Fn(&mut Scope, &Path) + Send + Sync + 'static;
@@ -129,9 +131,10 @@ impl MinidumpIntegration {
 
     /// Returns `true` if the current process is the crash reporter process.
     ///
-    /// This respects [`MinidumpIntegration::server_env_var`] and does not
+    /// This respects [`server_env_var`](Self::server_env_var) and does not
     /// need a Sentry client, so it can run before logging or Sentry are set
-    /// up.
+    /// up. Build the integration, then call this on it to skip app-only
+    /// work in the crash reporter process.
     pub fn is_crash_reporter_process(&self) -> bool {
         std::env::var_os(&self.server_env_var).is_some()
     }
@@ -140,17 +143,24 @@ impl MinidumpIntegration {
     ///
     /// Defaults to `Crashes` inside the system temp directory.
     #[must_use]
-    pub fn crashes_dir(mut self, dir: impl Into<PathBuf>) -> Self {
+    pub fn crashes_dir<P>(mut self, dir: P) -> Self
+    where
+        P: Into<PathBuf>,
+    {
         self.crashes_dir = Some(dir.into());
         self
     }
 
     /// Sets the environment variable that marks the crash reporter process.
     ///
-    /// Defaults to [`DEFAULT_SERVER_ENV_VAR`]. Change it when the default
-    /// could clash with another crash reporter in the same process tree.
+    /// Defaults to `_SENTRY_CRASH_REPORTER_SERVER`. Change it when the
+    /// default could clash with another crash reporter in the same process
+    /// tree.
     #[must_use]
-    pub fn server_env_var(mut self, name: impl Into<String>) -> Self {
+    pub fn server_env_var<S>(mut self, name: S) -> Self
+    where
+        S: Into<String>,
+    {
         self.server_env_var = name.into();
         self
     }
@@ -170,7 +180,10 @@ impl MinidumpIntegration {
     ///
     /// This sets `argv[0]` on unix. It has no effect on other platforms.
     #[must_use]
-    pub fn process_name(mut self, name: impl Into<OsString>) -> Self {
+    pub fn process_name<S>(mut self, name: S) -> Self
+    where
+        S: Into<OsString>,
+    {
         self.process_name = Some(name.into());
         self
     }
@@ -182,11 +195,11 @@ impl MinidumpIntegration {
     /// environment variable is set after this callback, so `env_clear`
     /// does not break process detection.
     #[must_use]
-    pub fn on_process<F>(self, f: F) -> Self
+    pub fn on_process<F>(mut self, f: F) -> Self
     where
         F: FnOnce(&mut Command) + Send + Sync + 'static,
     {
-        *self.on_process.lock().unwrap() = Some(Box::new(f));
+        self.on_process = Mutex::new(Some(Box::new(f)));
         self
     }
 
@@ -205,7 +218,7 @@ impl MinidumpIntegration {
 
     /// Sets how long the crash reporter waits for the upload to finish.
     ///
-    /// Defaults to [`DEFAULT_FLUSH_TIMEOUT`].
+    /// Defaults to 5 seconds.
     #[must_use]
     pub fn flush_timeout(mut self, timeout: Duration) -> Self {
         self.flush_timeout = timeout;
@@ -276,7 +289,11 @@ impl MinidumpIntegration {
 
         let inherit_args = self.inherit_args;
         let process_name = self.process_name.clone();
-        let on_process = self.on_process.lock().unwrap().take();
+        let on_process = self
+            .on_process
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .take();
         child = child.on_process(move |command| {
             if inherit_args {
                 command.args(std::env::args_os().skip(1));
@@ -364,7 +381,11 @@ impl MinidumpIntegration {
 /// hub, then runs the minidump server. `spawn` exits the process with 0 in
 /// server mode. Any error means the reporter could not start, so capture it
 /// and exit with 1 rather than fall through into app code.
-fn run_crash_reporter(child: MinidumperChild, options: &ClientOptions, flush_timeout: Duration) -> ! {
+fn run_crash_reporter(
+    child: MinidumperChild,
+    options: &ClientOptions,
+    flush_timeout: Duration,
+) -> ! {
     let mut reporter_options = options.clone();
     // Drop this integration from the second client so its setup does not
     // recurse into the reporter path.
@@ -415,19 +436,24 @@ impl Integration for MinidumpIntegration {
         }
 
         // App process. Without a DSN there is nothing to report, so do not
-        // spawn a second process.
+        // spawn a process.
         if options.dsn.is_none() {
             return;
         }
 
-        static SPAWNED: Once = Once::new();
-        SPAWNED.call_once(|| match child.spawn() {
+        // Spawn once per integration instance, guarded by `handle`. A second
+        // `sentry::init` uses a new instance with an empty handle, so
+        // re-initialising the SDK starts a fresh reporter.
+        if self.handle.get().is_some() {
+            return;
+        }
+        match child.spawn() {
             Ok(handle) => {
                 let _ = self.handle.set(handle);
             }
             Err(err) => {
                 sentry_debug!("could not start crash reporter: {err}");
             }
-        });
+        }
     }
 }

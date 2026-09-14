@@ -225,10 +225,6 @@ pub mod integrations {
     #[cfg_attr(doc_cfg, doc(cfg(feature = "log")))]
     #[doc(inline)]
     pub use sentry_log as log;
-    #[cfg(feature = "opentelemetry")]
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "opentelemetry")))]
-    #[doc(inline)]
-    pub use sentry_opentelemetry as opentelemetry;
     #[cfg(all(
         feature = "minidump",
         any(target_os = "linux", target_os = "macos", target_os = "windows")
@@ -236,6 +232,10 @@ pub mod integrations {
     #[cfg_attr(doc_cfg, doc(cfg(feature = "minidump")))]
     #[doc(inline)]
     pub use sentry_minidump as minidump;
+    #[cfg(feature = "opentelemetry")]
+    #[cfg_attr(doc_cfg, doc(cfg(feature = "opentelemetry")))]
+    #[doc(inline)]
+    pub use sentry_opentelemetry as opentelemetry;
     #[cfg(feature = "panic")]
     #[cfg_attr(doc_cfg, doc(cfg(feature = "panic")))]
     #[doc(inline)]

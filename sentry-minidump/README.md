@@ -6,16 +6,16 @@
 
 # Sentry Rust SDK: sentry-minidump
 
-Captures native crashes as minidumps in a separate process and sends them to
-Sentry as attachments.
+Captures native crashes as minidumps in a separate process and sends
+them to Sentry as attachments.
 
-Add `MinidumpIntegration` to your `ClientOptions`. The integration does all of
-its work inside `sentry::init`:
+Add [`MinidumpIntegration`] to your [`ClientOptions`]. The integration
+does all of its work inside `sentry::init`:
 
-- In the app process it spawns a crash reporter process and keeps the handle
-  for the life of the client.
-- In the crash reporter process it never returns. It builds its own client
-  from the same options, runs the minidump server, and exits.
+- In the app process it spawns a crash reporter process and keeps the
+  handle for the life of the client.
+- In the crash reporter process it never returns. It builds its own
+  client from the same options, runs the minidump server, and exits.
 
 ```rust
 let _guard = sentry::init((
@@ -28,14 +28,15 @@ let _guard = sentry::init((
 // Only the app process reaches here.
 ```
 
-Code before `sentry::init` runs in both processes, because the crash reporter
-re-executes the current binary. Use `is_crash_reporter_process` to skip work
-that should run in the app process only.
+Code before `sentry::init` runs in both processes, because the crash
+reporter re-executes the current binary. Build the integration and call
+[`MinidumpIntegration::is_crash_reporter_process`] on it to skip work
+that should run only in the app process.
 
 ## Scope sync
 
-Scope changes do not cross the process boundary on their own. Send them to the
-crash reporter through the integration:
+Scope changes do not cross the process boundary on their own. Send them
+to the crash reporter through the integration:
 
 ```rust
 sentry::with_integration(|minidump: &sentry_minidump::MinidumpIntegration, _| {
