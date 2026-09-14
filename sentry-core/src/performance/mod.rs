@@ -309,6 +309,7 @@ impl TransactionContext {
     ///
     /// This can be either an explicit boolean flag, or [`None`], which leaves
     /// the decision to the configured traces sampling strategy.
+    #[expect(clippy::impl_trait_in_params, reason = "existed before lint enabled")]
     pub fn set_sampled(&mut self, sampled: impl Into<Option<bool>>) {
         self.sampled = sampled.into();
     }
