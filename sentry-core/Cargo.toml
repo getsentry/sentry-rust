@@ -31,6 +31,7 @@ logs = []
 metrics = []
 
 [dependencies]
+futures-core = { workspace = true }
 log = { workspace = true, features = ["std"], optional = true }
 rand = { workspace = true, optional = true }
 sentry-types = { workspace = true }
