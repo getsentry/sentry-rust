@@ -199,6 +199,7 @@ impl Visit for FieldVisitor {
 }
 
 /// Creates a [`Breadcrumb`] from a given [`tracing_core::Event`].
+#[expect(clippy::impl_trait_in_params, reason = "existed before lint enabled")]
 pub fn breadcrumb_from_event<'context, S>(
     event: &tracing_core::Event,
     ctx: impl Into<Option<&'context Context<'context, S>>>,
@@ -278,6 +279,7 @@ fn contexts_from_event(
 }
 
 /// Creates an [`Event`] (possibly carrying exceptions) from a given [`tracing_core::Event`].
+#[expect(clippy::impl_trait_in_params, reason = "existed before lint enabled")]
 pub fn event_from_event<'context, S>(
     event: &tracing_core::Event,
     ctx: impl Into<Option<&'context Context<'context, S>>>,
@@ -349,6 +351,7 @@ where
 
 /// Creates a [`Log`] from a given [`tracing_core::Event`]
 #[cfg(feature = "logs")]
+#[expect(clippy::impl_trait_in_params, reason = "existed before lint enabled")]
 pub fn log_from_event<'context, S>(
     event: &tracing_core::Event,
     ctx: impl Into<Option<&'context Context<'context, S>>>,
