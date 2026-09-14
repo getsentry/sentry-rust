@@ -1,6 +1,7 @@
 //! Includes the [`TransportOptions`] struct.
 
 use std::borrow::Cow;
+use std::num::NonZeroUsize;
 
 use sentry_types::Dsn;
 
@@ -26,6 +27,14 @@ pub struct TransportOptions {
     /// A handle for recording lost Sentry data.
     #[cfg(feature = "client")]
     pub client_report_recorder: ClientReportRecorder,
+    /// The maximum number of commands the transport channel can queue.
+    ///
+    /// The channel primarily carries envelopes; control commands, such as flushing and shutdown,
+    /// also count against this capacity.
+    ///
+    /// If `None`, the transport uses its own default. The current default is `30` for all
+    /// built-in transports, but this is subject to change.
+    pub transport_channel_capacity: Option<NonZeroUsize>,
 }
 
 impl TransportOptions {
@@ -43,6 +52,7 @@ impl TransportOptions {
             https_proxy,
             accept_invalid_certs,
             user_agent,
+            transport_channel_capacity,
             ..
         } = options;
 
@@ -54,6 +64,7 @@ impl TransportOptions {
             accept_invalid_certs: *accept_invalid_certs,
             #[cfg(feature = "client")]
             client_report_recorder: ClientReportRecorder::new_no_op(),
+            transport_channel_capacity: *transport_channel_capacity,
         })
     }
 
@@ -73,6 +84,7 @@ impl TransportOptions {
             accept_invalid_certs,
             #[cfg(feature = "client")]
                 client_report_recorder: _,
+            transport_channel_capacity,
         } = self;
 
         let dsn = Some(dsn);
@@ -83,6 +95,7 @@ impl TransportOptions {
             http_proxy,
             https_proxy,
             accept_invalid_certs,
+            transport_channel_capacity,
             ..Default::default()
         }
     }
