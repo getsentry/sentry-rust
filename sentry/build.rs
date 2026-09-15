@@ -1,3 +1,5 @@
+//! Build script for `sentry`.
+
 fn main() {
     // Define cfg aliases for better readability, and to reduce repetition.
     cfg_aliases::cfg_aliases! {

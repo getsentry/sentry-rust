@@ -1,3 +1,5 @@
+#![expect(missing_docs, reason = "predates lint enforcement")]
+
 use std::borrow::Cow;
 use std::convert::TryFrom;
 use std::time::{Duration, SystemTime};

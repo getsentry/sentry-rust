@@ -1,3 +1,4 @@
+#![expect(missing_docs, reason = "predates lint enforcement")]
 #![cfg(feature = "test")]
 
 use std::sync::atomic::{AtomicUsize, Ordering};

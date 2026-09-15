@@ -1,3 +1,5 @@
+#![expect(missing_docs, reason = "predates lint enforcement")]
+
 mod future_span_common;
 mod shared;
 mod transaction_assertions;
