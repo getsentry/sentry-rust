@@ -62,6 +62,9 @@ const DEFAULT_SERVER_ENV_VAR: &str = "_SENTRY_CRASH_REPORTER_SERVER";
 /// The default time to wait for the crash event to upload.
 const DEFAULT_FLUSH_TIMEOUT: Duration = Duration::from_secs(5);
 
+/// The default `argv[0]` of the crash reporter process, shown by `ps`.
+const DEFAULT_PROCESS_NAME: &str = "Crash Reporter (Sentry Rust SDK)";
+
 type OnProcess = Box<dyn FnOnce(&mut Command) + Send + Sync + 'static>;
 type BeforeCapture = dyn Fn(&mut Scope, &Path) + Send + Sync + 'static;
 
@@ -112,7 +115,7 @@ impl Default for MinidumpIntegration {
             crashes_dir: None,
             server_env_var: DEFAULT_SERVER_ENV_VAR.to_owned(),
             inherit_args: true,
-            process_name: None,
+            process_name: Some(OsString::from(DEFAULT_PROCESS_NAME)),
             on_process: Mutex::new(None),
             before_capture: None,
             flush_timeout: DEFAULT_FLUSH_TIMEOUT,
@@ -179,6 +182,7 @@ impl MinidumpIntegration {
     /// Sets the process name of the crash reporter as shown by `ps`.
     ///
     /// This sets `argv[0]` on unix. It has no effect on other platforms.
+    /// Defaults to `Crash Reporter (Sentry Rust SDK)`.
     #[must_use]
     pub fn process_name<S>(mut self, name: S) -> Self
     where
