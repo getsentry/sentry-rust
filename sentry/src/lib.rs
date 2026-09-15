@@ -128,7 +128,6 @@
 
 #![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
 #![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
-#![warn(missing_docs)]
 // Only enables the `doc_cfg` feature when the `doc_cfg` configuration attribute
 // is defined. Used to expose docs for feature-locked integrations, and other
 // feature-gated documentation.

@@ -1,3 +1,4 @@
+#![expect(missing_docs, reason = "predates lint enforcement")]
 #![cfg(all(feature = "test", feature = "metrics"))]
 
 use std::collections::HashSet;

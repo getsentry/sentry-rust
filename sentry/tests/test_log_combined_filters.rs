@@ -1,3 +1,4 @@
+#![expect(missing_docs, reason = "predates lint enforcement")]
 #![cfg(feature = "test")]
 
 // Test `log` integration with combined `LogFilter`s.

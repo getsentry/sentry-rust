@@ -1,3 +1,8 @@
+#![expect(
+    missing_docs,
+    reason = "criterion_group! emits an undocumented public fn"
+)]
+
 //! Sentry Scope Benchmarks
 //!
 //! Run the benchmarks with:
