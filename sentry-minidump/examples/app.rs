@@ -12,7 +12,7 @@ fn main() {
             eprintln!("minidump captured at {}", path.display());
             scope.set_tag("crash_reporter", "example");
         })
-        .flush_timeout(Duration::from_secs(10));
+        .flush_timeout(Duration::from_secs(3));
 
     // Use this to skip logic in the crash reporter process.
     if minidump.is_crash_reporter_process() {
@@ -20,10 +20,12 @@ fn main() {
     }
 
     // Everything before `sentry::init` runs in both processes.
-    let _guard = sentry::init((
-        "http://abc123@127.0.0.1:8123/12345",
-        sentry::ClientOptions::new().add_integration(minidump),
-    ));
+    let _guard = sentry::init(
+        sentry::ClientOptions::new()
+            // Uncomment the line below to set your DSN, or set the SENTRY_DSN env var.
+            // .dsn("<your dsn>")
+            .add_integration(minidump),
+    );
     // Everything after here runs in the app process only.
 
     sentry::with_integration(|minidump: &sentry_minidump::MinidumpIntegration, _| {
@@ -33,8 +35,6 @@ fn main() {
             ..Default::default()
         }));
     });
-
-    std::thread::sleep(Duration::from_secs(10));
 
     unsafe { sadness_generator::raise_segfault() };
 }

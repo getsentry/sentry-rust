@@ -7,9 +7,10 @@
 
 use std::io::{Read, Write};
 use std::net::TcpListener;
-use std::process::Command;
+use std::process::{Child, Command, ExitStatus};
 use std::sync::mpsc;
-use std::time::Duration;
+use std::thread;
+use std::time::{Duration, Instant};
 
 use sentry::protocol::{AttachmentType, EnvelopeItem};
 use sentry::{Envelope, Level};
@@ -49,7 +50,11 @@ fn read_request_body(stream: &mut impl Read) -> Vec<u8> {
 
 #[test]
 fn captures_minidump_from_crash() {
-    let listener = TcpListener::bind(("127.0.0.1", 8123)).expect("bind listener");
+    let listener = TcpListener::bind(("127.0.0.1", 0)).expect("bind listener");
+    let port = listener
+        .local_addr()
+        .expect("local address should be available")
+        .port();
 
     let (tx, rx) = mpsc::channel();
     std::thread::spawn(move || {
@@ -63,16 +68,17 @@ fn captures_minidump_from_crash() {
     // Runs `examples/app.rs`, which crashes on purpose. It has to be a
     // separate binary because the crash reporter re-executes it and the
     // crash event is sent from that second process, not the test process.
-    Command::new(env!("CARGO"))
+    let example_process = Command::new(env!("CARGO"))
         .args(["run", "--quiet", "--example", "minidump"])
         .current_dir(env!("CARGO_MANIFEST_DIR"))
+        .env("SENTRY_DSN", format!("http://dsn@127.0.0.1:{port}/0"))
         .spawn()
-        .expect("spawn example")
-        .wait()
-        .expect("wait for example");
+        .expect("spawn example");
+
+    wait_for_timeout(example_process, Duration::from_secs(5));
 
     let body = rx
-        .recv_timeout(Duration::from_secs(30))
+        .recv_timeout(Duration::from_secs(5))
         .expect("received an envelope");
 
     let envelope = Envelope::from_slice(&body).expect("parse envelope");
@@ -111,4 +117,24 @@ fn captures_minidump_from_crash() {
         attachment.buffer.starts_with(b"MDMP"),
         "attachment is a minidump"
     );
+}
+
+/// Waits for a process to exit for up to a certain timeout.
+///
+/// If the process does not exit within the timeout, it is killed and this function panics.
+fn wait_for_timeout(mut process: Child, timeout: Duration) -> ExitStatus {
+    let deadline = Instant::now()
+        .checked_add(timeout)
+        .expect("deadline overflowed Instant");
+
+    while Instant::now() < deadline {
+        if let Some(status) = process.try_wait().expect("error while waiting on process") {
+            return status;
+        }
+
+        thread::sleep(Duration::from_millis(100));
+    }
+
+    process.kill().expect("error while killing process");
+    panic!("Process did not exit within timeout.");
 }
