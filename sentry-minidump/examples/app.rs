@@ -1,3 +1,7 @@
+//! Example of the `sentry-minidump` crate.
+//!
+//! This is also executed by the end to end test.
+
 use std::time::Duration;
 
 fn main() {
