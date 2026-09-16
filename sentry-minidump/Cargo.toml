@@ -1,0 +1,30 @@
+[package]
+name = "sentry-minidump"
+version = "0.49.2"
+authors = { workspace = true }
+license = "MIT"
+readme = "README.md"
+repository = { workspace = true }
+homepage = { workspace = true }
+description = """
+Sentry integration for capturing native crashes as minidumps.
+"""
+edition = { workspace = true }
+rust-version = { workspace = true }
+
+[lints]
+workspace = true
+
+[[example]]
+name = "minidump"
+path = "examples/app.rs"
+
+[dependencies]
+sentry-core = { workspace = true, features = ["client"] }
+minidumper-child = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+sentry = { workspace = true, features = ["test", "ureq"] }
+sadness-generator = { workspace = true }

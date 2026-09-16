@@ -41,6 +41,7 @@ anyhow = ["sentry-anyhow"]
 actix = ["sentry-actix"]
 debug-images = ["sentry-debug-images"]
 log = ["sentry-log"]
+minidump = ["dep:sentry-minidump"]
 slog = ["sentry-slog"]
 tower = ["sentry-tower"]
 tower-http = ["tower", "sentry-tower/http"]
@@ -89,6 +90,10 @@ ureq = { workspace = true, optional = true }
 native-tls = { workspace = true, optional = true }
 rustls = { workspace = true, optional = true }
 embedded-svc = { workspace = true, optional = true }
+# `minidumper-child` only builds on these platforms, so gate the optional
+# dependency. On other targets the `minidump` feature resolves to nothing.
+[target.'cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))'.dependencies]
+sentry-minidump = { workspace = true, optional = true }
 [target.'cfg(target_os = "espidf")'.dependencies]
 esp-idf-svc = { workspace = true, optional = true }
 
