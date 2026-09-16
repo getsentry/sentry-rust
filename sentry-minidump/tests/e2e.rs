@@ -75,7 +75,9 @@ fn captures_minidump_from_crash() {
         .spawn()
         .expect("spawn example");
 
-    wait_for_timeout(example_process, Duration::from_secs(5));
+    // Wait for the example process. As this may involve rebuilding the example, we set the
+    // timeout pretty high at 120 seconds.
+    wait_for_timeout(example_process, Duration::from_secs(120));
 
     let body = rx
         .recv_timeout(Duration::from_secs(5))
