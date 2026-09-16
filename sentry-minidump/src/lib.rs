@@ -9,7 +9,17 @@
 //! - In the crash reporter process it never returns. It builds its own
 //!   client from the same options, runs the minidump server, and exits.
 //!
-//!
+//! ```rust
+//! let _guard = sentry::init(
+//!     sentry::ClientOptions::new()
+//!         .dsn("https://your-dsn@sentry.io/0")
+//!         .add_integration(
+//!             sentry_minidump::MinidumpIntegration::new()
+//!                 .crashes_dir("/var/lib/my-app/crashes"),
+//!         ),
+//! );
+//! // Only the app process reaches here.
+//! ```
 //!
 //! Code before `sentry::init` runs in both processes, because the crash
 //! reporter re-executes the current binary. Build the integration and call
@@ -21,7 +31,7 @@
 //! Scope changes do not cross the process boundary on their own. Send them
 //! to the crash reporter through the integration:
 //!
-//!
+//! ```rust
 //! # let user = sentry::User::default();
 //! sentry::with_integration(|minidump: &sentry_minidump::MinidumpIntegration, _| {
 //!     minidump.set_user(Some(user.clone()));
