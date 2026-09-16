@@ -101,7 +101,6 @@
 
 #![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
 #![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
-#![warn(missing_docs)]
 
 // macros; these need to be first to be used by other modules
 #[macro_use]

@@ -31,6 +31,7 @@ allow-attributes.level = "warn"
 impl_trait_in_params = "warn"
 
 [workspace.lints.rust]
+missing_docs = "warn"
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(doc_cfg)'] }
 
 [workspace.dependencies]

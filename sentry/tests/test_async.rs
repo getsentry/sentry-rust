@@ -1,3 +1,5 @@
+#![expect(missing_docs, reason = "predates lint enforcement")]
+
 // See https://github.com/getsentry/sentry-rust/issues/184
 #[tokio::test]
 async fn test_nested_async_runtimes() {

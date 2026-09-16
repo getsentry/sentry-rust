@@ -1,3 +1,5 @@
+#![expect(missing_docs, reason = "predates lint enforcement")]
+
 fn execute() -> anyhow::Result<usize> {
     let parsed = "NaN".parse()?;
     Ok(parsed)

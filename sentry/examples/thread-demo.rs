@@ -1,3 +1,5 @@
+#![expect(missing_docs, reason = "predates lint enforcement")]
+
 use std::sync::Arc;
 use std::thread;
 

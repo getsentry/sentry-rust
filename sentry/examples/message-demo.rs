@@ -1,3 +1,5 @@
+#![expect(missing_docs, reason = "predates lint enforcement")]
+
 fn main() {
     let _sentry = sentry::init(
         sentry::ClientOptions::new()

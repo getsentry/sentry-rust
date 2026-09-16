@@ -1,3 +1,4 @@
+#![expect(missing_docs, reason = "predates lint enforcement")]
 #![cfg(feature = "test")]
 
 use sentry::protocol::{Context, Request, Value};
