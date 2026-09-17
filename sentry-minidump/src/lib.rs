@@ -49,7 +49,7 @@
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::{exit, Command};
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 
 use minidumper_child::{ClientHandle, MinidumperChild};
@@ -65,7 +65,7 @@ const DEFAULT_FLUSH_TIMEOUT: Duration = Duration::from_secs(5);
 /// The default `argv[0]` of the crash reporter process, shown by `ps`.
 const DEFAULT_PROCESS_NAME: &str = "Crash Reporter (Sentry Rust SDK)";
 
-type OnProcess = Box<dyn FnOnce(&mut Command) + Send + Sync + 'static>;
+type OnProcess = dyn Fn(&mut Command) + Send + Sync + 'static;
 type BeforeCapture = dyn Fn(&mut Scope, &Path) + Send + Sync + 'static;
 
 /// An update to the crash reporter's scope, sent over the socket.
@@ -87,7 +87,7 @@ pub struct MinidumpIntegration {
     server_env_var: String,
     inherit_args: bool,
     process_name: Option<OsString>,
-    on_process: Mutex<Option<OnProcess>>,
+    on_process: Option<Arc<OnProcess>>,
     before_capture: Option<Arc<BeforeCapture>>,
     flush_timeout: Duration,
     client_connect_timeout: Option<Duration>,
@@ -116,7 +116,7 @@ impl Default for MinidumpIntegration {
             server_env_var: DEFAULT_SERVER_ENV_VAR.to_owned(),
             inherit_args: true,
             process_name: Some(OsString::from(DEFAULT_PROCESS_NAME)),
-            on_process: Mutex::new(None),
+            on_process: None,
             before_capture: None,
             flush_timeout: DEFAULT_FLUSH_TIMEOUT,
             client_connect_timeout: None,
@@ -201,9 +201,9 @@ impl MinidumpIntegration {
     #[must_use]
     pub fn on_process<F>(mut self, f: F) -> Self
     where
-        F: FnOnce(&mut Command) + Send + Sync + 'static,
+        F: Fn(&mut Command) + Send + Sync + 'static,
     {
-        self.on_process = Mutex::new(Some(Box::new(f)));
+        self.on_process = Some(Arc::new(f));
         self
     }
 
@@ -293,11 +293,7 @@ impl MinidumpIntegration {
 
         let inherit_args = self.inherit_args;
         let process_name = self.process_name.clone();
-        let on_process = self
-            .on_process
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .take();
+        let on_process = self.on_process.clone();
         child = child.on_process(move |command| {
             if inherit_args {
                 command.args(std::env::args_os().skip(1));
@@ -311,7 +307,7 @@ impl MinidumpIntegration {
             #[cfg(not(unix))]
             let _ = process_name;
 
-            if let Some(on_process) = on_process {
+            if let Some(on_process) = &on_process {
                 on_process(command);
             }
         });
