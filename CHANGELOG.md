@@ -4,6 +4,7 @@
 
 ### Features
 
+- Added `SentryStream` and `SentryStreamExt` to `sentry-core`, which bind a `Hub` to a `Stream` so that it is polled within the given hub, mirroring the existing `SentryFuture` and `SentryFutureExt`. Use by bringing `SentryStreamExt` in scope and calling `bind_hub` on a stream ([#1214](https://github.com/getsentry/sentry-rust/pull/1214)).
 - The Tower integration's [`SentryHttpLayer`](https://docs.rs/sentry-tower/0.49.3/sentry_tower/struct.SentryHttpLayer.html) now records the [`http.response.status_code`](https://getsentry.github.io/sentry-conventions/attributes/http/) attribute on transactions ([#1253](https://github.com/getsentry/sentry-rust/pull/1253)).
 
 ### Deprecations
