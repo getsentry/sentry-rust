@@ -28,8 +28,8 @@
 //!
 //! Initialise the minidump integration once per process. It runs a single
 //! crash reporter for the whole process; there is no per-client isolation.
-//! If the same instance is passed to `sentry::init` more than once, only the
-//! first call that has a DSN starts the reporter; later calls do nothing.
+//! Only the first initialization that has a DSN starts the reporter; later
+//! calls do nothing.
 //!
 //! # Scope sync
 //!
@@ -54,7 +54,7 @@
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::{exit, Command};
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, Once, OnceLock};
 use std::time::Duration;
 
 use minidumper_child::{ClientHandle, MinidumperChild};
@@ -87,6 +87,11 @@ enum ScopeUpdate {
 /// Build it with [`MinidumpIntegration::new`] and the builder methods, then
 /// pass it to [`ClientOptions::add_integration`]. See the
 /// [crate docs](crate) for the process model.
+///
+/// The [`MinidumpIntegration`] can be initialized at most once per process. After the first
+/// initialization attempt, attempts to initialize the [`MinidumpIntegration`] again will no-op
+/// and log a warning regardless of whether the same or another instance was attempted to be
+/// re-initialized.
 pub struct MinidumpIntegration {
     crashes_dir: Option<PathBuf>,
     server_env_var: String,
@@ -434,29 +439,48 @@ impl Integration for MinidumpIntegration {
     }
 
     fn setup(&self, options: &mut ClientOptions) {
+        /// Synchronization primitive to enforce that we can only attempt to initialize the
+        /// minidump integration once per process.
+        static SETUP: Once = Once::new();
+
         // Without a DSN there is nothing to report, so do no work in any
         // process: do not build or spawn the crash reporter.
         if options.dsn.is_none() {
             return;
         }
 
-        // Crash reporter process: run the minidump server; never returns.
-        if self.is_crash_reporter_process() {
-            run_crash_reporter(self.build_child(), options, self.flush_timeout);
-        }
+        // Boolean value to indicate whether the closure passed to call_once was executed on
+        // this invocation.
+        let mut setup_run = false;
 
-        // App process. Start the reporter once per process. A second init of
-        // the same instance finds the handle set and does nothing.
-        if self.handle.get().is_some() {
-            return;
-        }
-        match self.build_child().spawn() {
-            Ok(handle) => {
-                let _ = self.handle.set(handle);
+        SETUP.call_once(|| {
+            // Crash reporter process: run the minidump server; never returns.
+            if self.is_crash_reporter_process() {
+                run_crash_reporter(self.build_child(), options, self.flush_timeout);
             }
-            Err(err) => {
-                sentry_debug!("could not start crash reporter: {err}");
+
+            setup_run = true;
+
+            // App process. Start the reporter once per process. A second init of
+            // the same instance finds the handle set and does nothing.
+            if self.handle.get().is_some() {
+                return;
             }
+            match self.build_child().spawn() {
+                Ok(handle) => {
+                    let _ = self.handle.set(handle);
+                }
+                Err(err) => {
+                    sentry_debug!("could not start crash reporter: {err}");
+                }
+            }
+        });
+
+        if !setup_run {
+            sentry_debug!(
+                "Warning: MinidumpIntegration was initialized more than once! \
+                The minidump integration can be initialized at most once per process."
+            )
         }
     }
 }
