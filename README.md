@@ -60,6 +60,12 @@ This workspace contains various crates that provide support for logging events a
 
   An integration for the `log` and `env_logger` crate.
 
+- [sentry-minidump](./sentry-minidump)
+  [![crates.io](https://img.shields.io/crates/v/sentry-minidump.svg)](https://crates.io/crates/sentry-minidump)
+  [![docs.rs](https://docs.rs/sentry-minidump/badge.svg)](https://docs.rs/sentry-minidump)
+
+  An integration for capturing native crashes as minidumps.
+
 - [sentry-opentelemetry](./sentry-opentelemetry)
   [![crates.io](https://img.shields.io/crates/v/sentry-opentelemetry.svg)](https://crates.io/crates/sentry-opentelemetry)
   [![docs.rs](https://docs.rs/sentry-opentelemetry/badge.svg)](https://docs.rs/sentry-opentelemetry) 
