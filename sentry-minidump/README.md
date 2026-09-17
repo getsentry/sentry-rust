@@ -18,13 +18,14 @@ does all of its work inside `sentry::init`:
   client from the same options, runs the minidump server, and exits.
 
 ```rust
-let _guard = sentry::init((
-    "__DSN__",
-    sentry::ClientOptions::new().add_integration(
-        sentry_minidump::MinidumpIntegration::new()
-            .crashes_dir("/var/lib/my-app/crashes"),
-    ),
-));
+let _guard = sentry::init(
+    sentry::ClientOptions::new()
+        .dsn("https://your-dsn@sentry.io/0")
+        .add_integration(
+            sentry_minidump::MinidumpIntegration::new()
+                .crashes_dir("/var/lib/my-app/crashes"),
+        ),
+);
 // Only the app process reaches here.
 ```
 
@@ -32,6 +33,11 @@ Code before `sentry::init` runs in both processes, because the crash
 reporter re-executes the current binary. Build the integration and call
 [`MinidumpIntegration::is_crash_reporter_process`] on it to skip work
 that should run only in the app process.
+
+Initialise the minidump integration once per process. It runs a single
+crash reporter for the whole process; there is no per-client isolation.
+If the same instance is passed to `sentry::init` more than once, only the
+first call that has a DSN starts the reporter; later calls do nothing.
 
 ## Scope sync
 

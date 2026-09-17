@@ -26,6 +26,11 @@
 //! [`MinidumpIntegration::is_crash_reporter_process`] on it to skip work
 //! that should run only in the app process.
 //!
+//! Initialise the minidump integration once per process. It runs a single
+//! crash reporter for the whole process; there is no per-client isolation.
+//! If the same instance is passed to `sentry::init` more than once, only the
+//! first call that has a DSN starts the reporter; later calls do nothing.
+//!
 //! # Scope sync
 //!
 //! Scope changes do not cross the process boundary on their own. Send them
@@ -429,25 +434,23 @@ impl Integration for MinidumpIntegration {
     }
 
     fn setup(&self, options: &mut ClientOptions) {
-        let child = self.build_child();
-
-        if self.is_crash_reporter_process() {
-            run_crash_reporter(child, options, self.flush_timeout);
-        }
-
-        // App process. Without a DSN there is nothing to report, so do not
-        // spawn a process.
+        // Without a DSN there is nothing to report, so do no work in any
+        // process: do not build or spawn the crash reporter.
         if options.dsn.is_none() {
             return;
         }
 
-        // Spawn once per integration instance, guarded by `handle`. A second
-        // `sentry::init` uses a new instance with an empty handle, so
-        // re-initialising the SDK starts a fresh reporter.
+        // Crash reporter process: run the minidump server; never returns.
+        if self.is_crash_reporter_process() {
+            run_crash_reporter(self.build_child(), options, self.flush_timeout);
+        }
+
+        // App process. Start the reporter once per process. A second init of
+        // the same instance finds the handle set and does nothing.
         if self.handle.get().is_some() {
             return;
         }
-        match child.spawn() {
+        match self.build_child().spawn() {
             Ok(handle) => {
                 let _ = self.handle.set(handle);
             }
