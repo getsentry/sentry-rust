@@ -6,6 +6,8 @@
 use sentry_core::TransportOptions;
 
 use crate::{Transport, TransportFactory};
+#[cfg(all(sentry_any_http_transport, not(sentry_embedded_svc_http)))]
+use std::num::NonZeroUsize;
 use std::sync::Arc;
 
 #[cfg(feature = "httpdate")]
@@ -53,6 +55,10 @@ pub(crate) const HTTP_PAYLOAD_TOO_LARGE: u16 = 413;
 #[cfg(sentry_any_http_transport)]
 pub(crate) const HTTP_PAYLOAD_TOO_LARGE_MESSAGE: &str =
     "Envelope was discarded due to size limits (HTTP 413).";
+
+/// The default transport channel capacity.
+#[cfg(all(sentry_any_http_transport, not(sentry_embedded_svc_http)))]
+pub(crate) const DEFAULT_CHANNEL_CAPACITY: NonZeroUsize = NonZeroUsize::new(30).unwrap();
 
 #[cfg(feature = "reqwest")]
 type DefaultTransport = ReqwestHttpTransport;

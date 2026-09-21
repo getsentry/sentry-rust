@@ -7,7 +7,7 @@ use sentry_core::TransportOptions;
 
 use super::{
     thread::{TransportThread, TransportThreadOptions},
-    RateLimiter, HTTP_PAYLOAD_TOO_LARGE, HTTP_PAYLOAD_TOO_LARGE_MESSAGE,
+    RateLimiter, DEFAULT_CHANNEL_CAPACITY, HTTP_PAYLOAD_TOO_LARGE, HTTP_PAYLOAD_TOO_LARGE_MESSAGE,
 };
 
 use crate::{sentry_debug, types::Scheme, ClientOptions, Envelope, Transport};
@@ -83,6 +83,7 @@ impl CurlHttpTransport {
                     https_proxy,
                     accept_invalid_certs,
                     client_report_recorder,
+                    transport_channel_capacity,
                     ..
                 },
             client,
@@ -222,6 +223,7 @@ impl CurlHttpTransport {
 
         let thread = TransportThreadOptions::new(send_fn)
             .with_client_report_recorder(client_report_recorder)
+            .with_capacity(transport_channel_capacity.unwrap_or(DEFAULT_CHANNEL_CAPACITY))
             .spawn_thread();
         Self { thread }
     }
