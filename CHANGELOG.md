@@ -12,6 +12,10 @@
 
 - Deprecated [`Transaction::is_sampled`](https://docs.rs/sentry-core/0.49.3/sentry_core/struct.Transaction.html#method.is_sampled), [`Span::is_sampled`](https://docs.rs/sentry-core/0.49.3/sentry_core/struct.Span.html#method.is_sampled), and [`TransactionOrSpan::is_sampled`](https://docs.rs/sentry-core/0.49.3/sentry_core/enum.TransactionOrSpan.html#method.is_sampled). These methods cannot distinguish between an unsampled transaction or span and a deferred sampling decision when tracing is disabled ([#1293](https://github.com/getsentry/sentry-rust/pull/1293)).
 
+### Fixes
+
+- Corrected disabled tracing behavior: transactions and spans are ignored without generating discarded-data client reports, and locally started traces leave the sampling decision unset rather than marking the trace as unsampled. Incoming sampling decisions are preserved in outgoing `sentry-trace` headers without enabling local capture. An explicit `0.0` trace sample rate remains distinct from disabled tracing and continues to generate client reports for locally unsampled transactions ([#1286](https://github.com/getsentry/sentry-rust/pull/1286)).
+
 ## 0.49.2
 
 ### Fixes
@@ -22,10 +26,6 @@
 
 - Deprecated [`ClientOptions::enable_logs`](https://docs.rs/sentry-core/0.49.2/sentry_core/struct.ClientOptions.html#method.enable_logs). The option no longer disables manually captured logs (via the logging APIs); it now only disables automatic log capture by the log-capturing integrations (`tracing` and `log` with the `logs` feature). To stop an integration from sending logs, configure it via its own options ([#1299](https://github.com/getsentry/sentry-rust/pull/1299)).
 - Deprecated [`ClientOptions::enable_metrics`](https://docs.rs/sentry-core/0.49.2/sentry_core/struct.ClientOptions.html#method.enable_metrics). The option is now a no-op; metrics are always enabled. To stop sending metrics, stop calling the metrics APIs ([#1300](https://github.com/getsentry/sentry-rust/pull/1300)).
-
-### Fixes
-
-- Corrected disabled tracing semantics: transactions and spans created while tracing is disabled are ignored without generating client reports, while sampling decisions received from upstream traces continue to be propagated in outgoing trace headers. An explicit `0.0` trace sample rate remains distinct from disabled tracing and continues to generate client reports for locally unsampled transactions ([#1286](https://github.com/getsentry/sentry-rust/pull/1286)).
 
 ## 0.49.1
 
