@@ -34,8 +34,8 @@ sentry::capture_message("Hello World!", sentry::Level::Info);
 More complex examples on how to use sentry can also be found in [examples]. Extended instructions
 may also be found on [Sentry itself].
 
-[`sentry::init`]: https://docs.rs/sentry/0.49.2/sentry/fn.init.html
-[`Hub`]: https://docs.rs/sentry/0.49.2/sentry/struct.Hub.html
+[`sentry::init`]: https://docs.rs/sentry/0.49.3/sentry/fn.init.html
+[`Hub`]: https://docs.rs/sentry/0.49.3/sentry/struct.Hub.html
 [examples]: https://github.com/getsentry/sentry-rust/tree/master/sentry/examples
 [Sentry itself]: https://docs.sentry.io/platforms/rust
 
@@ -47,8 +47,8 @@ the ecosystem require a feature flag. For available integrations and how to use 
 [integrations] and [apply_defaults].
 
 [Features]: #features
-[integrations]: https://docs.rs/sentry/0.49.2/sentry/integrations/index.html
-[apply_defaults]: https://docs.rs/sentry/0.49.2/sentry/fn.apply_defaults.html
+[integrations]: https://docs.rs/sentry/0.49.3/sentry/integrations/index.html
+[apply_defaults]: https://docs.rs/sentry/0.49.3/sentry/fn.apply_defaults.html
 
 ## Minimal API
 
@@ -56,8 +56,8 @@ This crate comes fully-featured. If the goal is to instrument libraries for usag
 with sentry, or to extend sentry with a custom [`Integration`] or a [`Transport`],
 one should use the [`sentry-core`] crate instead.
 
-[`Integration`]: https://docs.rs/sentry/0.49.2/sentry/trait.Integration.html
-[`Transport`]: https://docs.rs/sentry/0.49.2/sentry/trait.Transport.html
+[`Integration`]: https://docs.rs/sentry/0.49.3/sentry/trait.Integration.html
+[`Transport`]: https://docs.rs/sentry/0.49.3/sentry/trait.Transport.html
 [`sentry-core`]: https://crates.io/crates/sentry-core
 
 
@@ -78,6 +78,7 @@ extra setup to function properly.
 | `metrics`         | ✅      |                |            | Enables metrics capture APIs.                                                            |
 | `debug-images`    | ✅      | 🔌             |            |                                                                                          |
 | `log`             |         | 🔌             |            | Requires extra setup; See [`sentry-log`]'s documentation.                                |
+| `minidump`        |         | 🔌             |            | Linux, macOS and Windows only. See [`sentry-minidump`]'s documentation.                  |
 | `slog`            |         | 🔌             |            | Requires extra setup; See [`sentry-slog`]'s documentation.                               |
 | `reqwest`         | ✅      |                |            |                                                                                          |
 | `native-tls`      | ✅      |                |            | `reqwest` must be enabled.                                                               |
@@ -91,6 +92,7 @@ extra setup to function properly.
 | `opentelemetry`   |         | 🔌             |            | Requires extra setup; See [`sentry-opentelemetry`]'s documentation.                      |
 
 [`sentry-log`]: https://crates.io/crates/sentry-log
+[`sentry-minidump`]: https://crates.io/crates/sentry-minidump
 [`sentry-slog`]: https://crates.io/crates/sentry-slog
 [`sentry-actix`]: https://crates.io/crates/sentry-actix
 [`sentry-tower`]: https://crates.io/crates/sentry-tower
@@ -111,7 +113,7 @@ extra setup to function properly.
 - `test`: Enables testing support.
 
 ### Metrics
-- `metrics`: Enables [`sentry::metrics`](https://docs.rs/sentry/0.49.2/sentry/crate::metrics) APIs for counters, gauges, and
+- `metrics`: Enables [`sentry::metrics`](https://docs.rs/sentry/0.49.3/sentry/crate::metrics) APIs for counters, gauges, and
   distributions.
 
 ### Logging
@@ -130,6 +132,7 @@ extra setup to function properly.
 
 ### Integrations
 - `actix`: Enables support for the `actix-web` crate.
+- `minidump`: Captures native crashes as minidumps. Linux, macOS and Windows only.
 - `tower`: Enables support for the `tower` crate and those using it.
 - `tracing`: Enables support for the `tracing` crate and those using it.
 - `opentelemetry`: Enables support for the `opentelemetry` and `opentelemetry-sdk` crates.

@@ -36,8 +36,8 @@ that should run only in the app process.
 
 Initialise the minidump integration once per process. It runs a single
 crash reporter for the whole process; there is no per-client isolation.
-If the same instance is passed to `sentry::init` more than once, only the
-first call that has a DSN starts the reporter; later calls do nothing.
+Only the first initialization that has a DSN starts the reporter; later
+calls do nothing.
 
 ## Scope sync
 
