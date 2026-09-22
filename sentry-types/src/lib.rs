@@ -44,6 +44,7 @@ mod dsn;
 mod indexed_enum;
 mod project_id;
 pub mod protocol;
+mod sampling;
 pub(crate) mod utils;
 
 pub use crate::auth::*;
