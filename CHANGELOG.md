@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Deprecations
+
+- Deprecated [`Client::sample_should_send`](https://docs.rs/sentry-core/0.49.4/sentry_core/struct.Client.html#method.sample_should_send). We will remove this method from the public API in the next breaking release ([#1328](https://github.com/getsentry/sentry-rust/pull/1328)).
+
 ## 0.49.3
 
 ### Features
