@@ -686,8 +686,6 @@ pub(crate) struct TransactionInner {
     pub(crate) transaction: Option<protocol::Transaction<'static>>,
 }
 
-type TransactionArc = Arc<Mutex<TransactionInner>>;
-
 /// Functional implementation of how a new transaction's sample rate is chosen.
 ///
 /// Returns `None` when tracing is disabled.
@@ -743,7 +741,7 @@ impl Client {
 /// to Sentry.
 #[derive(Clone, Debug)]
 pub struct Transaction {
-    pub(crate) inner: TransactionArc,
+    pub(crate) inner: Arc<Mutex<TransactionInner>>,
 }
 
 /// Iterable for a transaction's [data attributes](protocol::TraceContext::data).
@@ -1049,7 +1047,7 @@ impl Transaction {
             ..Default::default()
         };
         Span {
-            transaction: Arc::clone(&self.inner),
+            transaction: self.clone(),
             tracing_state: inner.tracing_state,
             span: Arc::new(Mutex::new(span)),
         }
@@ -1081,7 +1079,7 @@ impl Transaction {
             ..Default::default()
         };
         Span {
-            transaction: Arc::clone(&self.inner),
+            transaction: self.clone(),
             tracing_state: inner.tracing_state,
             span: Arc::new(Mutex::new(span)),
         }
@@ -1129,7 +1127,7 @@ impl DerefMut for Data<'_> {
 /// will not be sent to Sentry.
 #[derive(Clone, Debug)]
 pub struct Span {
-    pub(crate) transaction: TransactionArc,
+    pub(crate) transaction: Transaction,
     tracing_state: TracingState,
     span: SpanArc,
 }
@@ -1168,8 +1166,7 @@ impl Span {
     ///
     /// Note that this clones the underlying value.
     pub fn get_trace_context(&self) -> protocol::TraceContext {
-        let transaction = self.transaction.lock().unwrap();
-        transaction.context.clone()
+        self.transaction.get_trace_context()
     }
 
     /// Get the current span ID.
@@ -1290,7 +1287,7 @@ impl Span {
                 return;
             }
             span.finish_with_timestamp(_timestamp);
-            let mut inner = self.transaction.lock().unwrap();
+            let mut inner = self.transaction.inner.lock().unwrap();
             // Disabled traces do not retain finished spans or report span losses.
             if matches!(inner.tracing_state.finish_action(), FinishAction::Ignore) {
                 return;
