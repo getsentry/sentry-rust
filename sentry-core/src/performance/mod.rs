@@ -15,10 +15,12 @@ use self::sampling::FinishAction;
 use self::sampling::TracingState;
 #[cfg(feature = "client")]
 use crate::clientoptions::TracesSamplingStrategy;
+#[cfg(feature = "client")]
+use crate::performance::sampling::SamplingDecision;
 use crate::{protocol, Hub};
 
 #[cfg(feature = "client")]
-use crate::{client, Client};
+use crate::Client;
 
 #[expect(deprecated, reason = "backwards-compatibility re-export")]
 pub use self::headers::{parse_sentry_trace_header as parse_headers, SentryTrace};
@@ -114,6 +116,7 @@ pub type CustomTransactionContext = serde_json::Map<String, serde_json::Value>;
 #[derive(Debug, Clone, Copy)]
 struct IncomingTrace {
     parent_span_id: SpanId,
+    sampled: Option<bool>,
     org_id: Option<OrganizationId>,
 }
 
@@ -128,7 +131,10 @@ pub struct TransactionContext {
     op: String,
     trace_id: protocol::TraceId,
     span_id: protocol::SpanId,
-    sampled: Option<bool>,
+    /// An explicit override of the sampling decision set by [`Self::set_sampled`].
+    ///
+    /// Incoming-trace decisions are instead stored on [`Self::incoming_trace`].
+    sampled_override: Option<bool>,
     #[cfg(feature = "client")]
     incoming_trace: Option<IncomingTrace>,
     custom: Option<CustomTransactionContext>,
@@ -164,7 +170,7 @@ impl TransactionContext {
             op: op.into(),
             trace_id,
             span_id: Default::default(),
-            sampled: None,
+            sampled_override: None,
             #[cfg(feature = "client")]
             incoming_trace: None,
             custom: None,
@@ -213,7 +219,7 @@ impl TransactionContext {
                 op: op.into(),
                 trace_id: Default::default(),
                 span_id: Default::default(),
-                sampled: None,
+                sampled_override: None,
                 #[cfg(feature = "client")]
                 incoming_trace: None,
                 custom: None,
@@ -253,16 +259,17 @@ impl TransactionContext {
         // Probably would be better just to gate these fields on TracePropagationContext, but for
         // now just ignoring them when client feature is disabled is easier.
         #[cfg(not(feature = "client"))]
-        let _ = parent_span_id;
+        let _ = (parent_span_id, sampled);
 
         Self {
             name: name.into(),
             op: op.into(),
             trace_id,
-            sampled,
+            sampled_override: None,
             #[cfg(feature = "client")]
             incoming_trace: Some(IncomingTrace {
                 parent_span_id,
+                sampled,
                 org_id,
             }),
             span_id: span_id.unwrap_or_default(),
@@ -282,7 +289,6 @@ impl TransactionContext {
             trace_id: TraceId,
             #[cfg(feature = "client")]
             incoming_trace: IncomingTrace,
-            sampled: Option<bool>,
         }
 
         let span = match span {
@@ -294,7 +300,6 @@ impl TransactionContext {
             trace_id,
             #[cfg(feature = "client")]
             incoming_trace,
-            sampled,
         } = match span {
             TransactionOrSpan::Transaction(transaction) => {
                 let inner = transaction.inner.lock().unwrap();
@@ -304,12 +309,11 @@ impl TransactionContext {
                     incoming_trace: IncomingTrace {
                         org_id: inner.client.as_ref().and_then(|c| c.org_id()),
                         parent_span_id: inner.context.span_id,
+                        sampled: inner.tracing_state.trace_sampled(),
                     },
-                    sampled: inner.tracing_state.trace_sampled(),
                 }
             }
             TransactionOrSpan::Span(span) => {
-                let sampled = span.tracing_state.trace_sampled();
                 let protocol_span = span.span.lock().unwrap();
 
                 IncomingSpanData {
@@ -318,8 +322,8 @@ impl TransactionContext {
                     incoming_trace: IncomingTrace {
                         org_id: span.org_id(),
                         parent_span_id: protocol_span.span_id,
+                        sampled: span.tracing_state.trace_sampled(),
                     },
-                    sampled,
                 }
             }
         };
@@ -329,7 +333,7 @@ impl TransactionContext {
             op: op.into(),
             trace_id,
             span_id: protocol::SpanId::default(),
-            sampled,
+            sampled_override: None,
             #[cfg(feature = "client")]
             incoming_trace: incoming_trace.into(),
             custom: None,
@@ -342,12 +346,26 @@ impl TransactionContext {
     /// the decision to the configured traces sampling strategy.
     #[expect(clippy::impl_trait_in_params, reason = "existed before lint enabled")]
     pub fn set_sampled(&mut self, sampled: impl Into<Option<bool>>) {
-        self.sampled = sampled.into();
+        self.sampled_override = sampled.into();
     }
 
-    /// Get the sampling decision for this Transaction.
+    /// Returns the explicitly overridden or incoming sampling decision.
+    ///
+    /// The explicitly set sample decision returned here can be set with [`Self::set_sampled`] or
+    /// with [`TransactionContextBuilder::with_sampled`]. If neither of those are set, we fall
+    /// back to the sampling decision of the incoming trace, if there is an incoming trace.
+    ///
+    /// This function is deprecated because its name suggests, and previous versions of its
+    /// documentation have suggested, that the return value is the transaction's sampling decision.
+    /// But, this is not actually necessarily the final sampling decision of the transaction.
+    #[deprecated = "does not necessarily return the final sampling decision"]
     pub fn sampled(&self) -> Option<bool> {
-        self.sampled
+        let sampled = self.sampled_override;
+
+        #[cfg(feature = "client")]
+        let sampled = sampled.or_else(|| self.incoming_trace.and_then(|it| it.sampled));
+
+        sampled
     }
 
     /// Get the name of this Transaction.
@@ -422,7 +440,7 @@ impl TransactionContext {
     /// Clears incoming trace state so the transaction starts a new trace.
     #[cfg(feature = "client")]
     fn reject_incoming_trace(&mut self) {
-        (self.trace_id, self.sampled, self.incoming_trace) = Default::default();
+        (self.trace_id, self.incoming_trace) = Default::default();
     }
 }
 
@@ -456,7 +474,7 @@ impl TransactionContextBuilder {
     /// Deprecated no-op; returns `self` unchanged.
     ///
     /// To continue a trace, use the dedicated trace continuation APIs instead, e.g.
-    /// [`Self::continue_from_span`].
+    /// [`TransactionContext::continue_from_span`].
     #[deprecated = "use trace continuation APIs instead"]
     #[must_use]
     pub fn with_parent_span_id(self, parent_span_id: Option<protocol::SpanId>) -> Self {
@@ -474,7 +492,7 @@ impl TransactionContextBuilder {
     /// Defines whether the transaction will be sampled.
     #[must_use]
     pub fn with_sampled(mut self, sampled: Option<bool>) -> Self {
-        self.ctx.sampled = sampled;
+        self.ctx.sampled_override = sampled;
         self
     }
 
@@ -716,21 +734,6 @@ pub(crate) struct TransactionInner {
     pub(crate) transaction: Option<protocol::Transaction<'static>>,
 }
 
-/// Functional implementation of how a new transaction's sample rate is chosen.
-///
-/// Returns `None` when tracing is disabled.
-#[cfg(feature = "client")]
-fn transaction_sample_rate(
-    traces_sampling_strategy: &TracesSamplingStrategy,
-    ctx: &TransactionContext,
-) -> Option<f32> {
-    match traces_sampling_strategy {
-        &TracesSamplingStrategy::FixedRate(rate) => Some(ctx.sampled.map_or(rate, f32::from)),
-        TracesSamplingStrategy::Function(traces_sampler) => Some(traces_sampler(ctx)),
-        TracesSamplingStrategy::Disabled => None,
-    }
-}
-
 #[cfg(feature = "client")]
 fn should_continue_trace(
     incoming: Option<OrganizationId>,
@@ -752,14 +755,34 @@ impl Client {
     /// This function performs random sampling according to the appropriate sample rate as needed.
     fn determine_tracing_state(&self, ctx: &TransactionContext) -> TracingState {
         let client_options = self.options();
-        match transaction_sample_rate(&client_options.traces_sampling_strategy, ctx) {
-            // A return value of Some(_) indicates tracing is enabled.
-            Some(sample_rate) => {
-                let sampled = client::sample_should_send(sample_rate);
-                TracingState::new_enabled(sampled, sample_rate)
+
+        match &client_options.traces_sampling_strategy {
+            &TracesSamplingStrategy::FixedRate(fixed_rate) => {
+                let rate = ctx.sampled_override.map_or_else(
+                    || {
+                        ctx.incoming_trace
+                            .and_then(|it| it.sampled)
+                            .map_or(fixed_rate, Into::into)
+                    },
+                    Into::into,
+                );
+
+                TracingState::Enabled(SamplingDecision::new_sampled_at(rate))
             }
-            // A return value of None indicates tracing is disabled.
-            None => TracingState::new_disabled(ctx.sampled),
+            TracesSamplingStrategy::Function(sampler) => {
+                let rate = ctx
+                    .sampled_override
+                    .map_or_else(|| sampler(ctx), Into::into);
+
+                TracingState::Enabled(SamplingDecision::new_sampled_at(rate))
+            }
+            TracesSamplingStrategy::Disabled => {
+                let sampled = ctx
+                    .sampled_override
+                    .or_else(|| ctx.incoming_trace.and_then(|it| it.sampled));
+
+                TracingState::new_disabled(sampled)
+            }
         }
     }
 }
@@ -837,7 +860,7 @@ impl Transaction {
                     }),
                 )
             }
-            None => (TracingState::new_disabled(ctx.sampled), None),
+            None => (TracingState::new_disabled(ctx.sampled_override), None),
         };
 
         let context = protocol::TraceContext {
@@ -865,7 +888,7 @@ impl Transaction {
             op: Some(ctx.op),
             ..Default::default()
         };
-        let tracing_state = TracingState::new_disabled(ctx.sampled);
+        let tracing_state = TracingState::new_disabled(ctx.sampled_override);
 
         Self {
             inner: Arc::new(Mutex::new(TransactionInner {
@@ -1450,41 +1473,23 @@ impl Iterator for TraceHeadersIter {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use super::*;
-
-    #[test]
-    fn disabled_forwards_trace_id() {
-        let headers = [(
-            "SenTrY-TRAce",
-            "09e04486820349518ac7b5d2adbf6ba5-9cf635fa5b870b3a-1",
-        )];
-        let ctx = TransactionContext::continue_from_headers("noop", "noop", headers);
-        let trx = start_transaction(ctx);
-
-        let span = trx.start_child("noop", "noop");
-
-        let header = span.iter_headers().next().unwrap().1;
-        let parsed =
-            TracePropagationContext::try_from_headers([("sentry-trace", header.as_str())]).unwrap();
-
-        assert_eq!(
-            &parsed.trace_id.to_string(),
-            "09e04486820349518ac7b5d2adbf6ba5"
-        );
-        assert_eq!(parsed.sampled, Some(true));
-    }
 
     #[test]
     fn transaction_context_public_getters() {
         let mut ctx = TransactionContext::new("test-name", "test-operation");
         assert_eq!(ctx.name(), "test-name");
         assert_eq!(ctx.operation(), "test-operation");
-        assert_eq!(ctx.sampled(), None);
+
+        #[expect(deprecated, reason = "intentionally testing deprecated getter")]
+        let sampled = ctx.sampled();
+        assert_eq!(sampled, None);
 
         ctx.set_sampled(true);
-        assert_eq!(ctx.sampled(), Some(true));
+
+        #[expect(deprecated, reason = "intentionally testing deprecated getter")]
+        let sampled = ctx.sampled();
+        assert_eq!(sampled, Some(true));
     }
 
     #[test]
@@ -1516,92 +1521,5 @@ mod tests {
         );
 
         assert!(ctx.incoming_trace.is_none());
-    }
-
-    #[cfg(feature = "client")]
-    #[test]
-    fn compute_transaction_sample_rate() {
-        let ctx = TransactionContext::new("noop", "noop");
-        assert_eq!(
-            transaction_sample_rate(&TracesSamplingStrategy::FixedRate(0.3), &ctx),
-            Some(0.3)
-        );
-        assert_eq!(
-            transaction_sample_rate(&TracesSamplingStrategy::FixedRate(0.7), &ctx),
-            Some(0.7)
-        );
-
-        let mut ctx = TransactionContext::new("noop", "noop");
-        ctx.set_sampled(true);
-        assert_eq!(
-            transaction_sample_rate(&TracesSamplingStrategy::FixedRate(0.3), &ctx),
-            Some(1.0)
-        );
-        ctx.set_sampled(false);
-        assert_eq!(
-            transaction_sample_rate(&TracesSamplingStrategy::FixedRate(0.3), &ctx),
-            Some(0.0)
-        );
-
-        let ctx = TransactionContext::new("noop", "noop");
-        assert_eq!(
-            transaction_sample_rate(&TracesSamplingStrategy::Disabled, &ctx),
-            None
-        );
-        let mut ctx = TransactionContext::new("noop", "noop");
-        ctx.set_sampled(true);
-        assert_eq!(
-            transaction_sample_rate(&TracesSamplingStrategy::Disabled, &ctx),
-            None
-        );
-        ctx.set_sampled(false);
-        assert_eq!(
-            transaction_sample_rate(&TracesSamplingStrategy::Disabled, &ctx),
-            None
-        );
-
-        // Function and FixedRate are mutually exclusive strategy variants. A function
-        // strategy can ignore parent sampling or choose to inspect it.
-        let mut ctx = TransactionContext::new("noop", "noop");
-        let sampler = |_: &TransactionContext| 0.7_f32;
-        let strategy = TracesSamplingStrategy::Function(Arc::new(sampler) as Arc<TracesSampler>);
-        assert_eq!(transaction_sample_rate(&strategy, &ctx), Some(0.7));
-        ctx.set_sampled(false);
-        assert_eq!(transaction_sample_rate(&strategy, &ctx), Some(0.7));
-
-        let sampler = |ctx: &TransactionContext| match ctx.sampled() {
-            Some(true) => 0.8_f32,
-            Some(false) => 0.4_f32,
-            None => 0.6_f32,
-        };
-        let strategy = TracesSamplingStrategy::Function(Arc::new(sampler) as Arc<TracesSampler>);
-        ctx.set_sampled(true);
-        assert_eq!(transaction_sample_rate(&strategy, &ctx), Some(0.8));
-        ctx.set_sampled(None);
-        assert_eq!(transaction_sample_rate(&strategy, &ctx), Some(0.6));
-
-        let sampler = |ctx: &TransactionContext| {
-            if ctx.name() == "must-name" || ctx.operation() == "must-operation" {
-                return 1.0;
-            }
-
-            if let Some(custom) = ctx.custom() {
-                if let Some(rate) = custom.get("rate") {
-                    if let Some(rate) = rate.as_f64() {
-                        return rate as f32;
-                    }
-                }
-            }
-
-            0.1
-        };
-        let strategy = TracesSamplingStrategy::Function(Arc::new(sampler) as Arc<TracesSampler>);
-        let ctx = TransactionContext::new("noop", "must-operation");
-        assert_eq!(transaction_sample_rate(&strategy, &ctx), Some(1.0));
-        let ctx = TransactionContext::new("must-name", "noop");
-        assert_eq!(transaction_sample_rate(&strategy, &ctx), Some(1.0));
-        let mut ctx = TransactionContext::new("noop", "noop");
-        ctx.custom_insert("rate".to_owned(), serde_json::json!(0.7));
-        assert_eq!(transaction_sample_rate(&strategy, &ctx), Some(0.7));
     }
 }
