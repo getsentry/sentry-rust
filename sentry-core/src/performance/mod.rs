@@ -110,11 +110,10 @@ impl Hub {
 pub type CustomTransactionContext = serde_json::Map<String, serde_json::Value>;
 
 /// Information from an incoming trace.
-///
-/// Currently this just contains the org ID supplied by the incoming trace.
 #[cfg(feature = "client")]
 #[derive(Debug, Clone, Copy)]
 struct IncomingTrace {
+    parent_span_id: SpanId,
     org_id: Option<OrganizationId>,
 }
 
@@ -128,7 +127,6 @@ pub struct TransactionContext {
     name: String,
     op: String,
     trace_id: protocol::TraceId,
-    parent_span_id: Option<protocol::SpanId>,
     span_id: protocol::SpanId,
     sampled: Option<bool>,
     #[cfg(feature = "client")]
@@ -165,7 +163,6 @@ impl TransactionContext {
             name: name.into(),
             op: op.into(),
             trace_id,
-            parent_span_id: None,
             span_id: Default::default(),
             sampled: None,
             #[cfg(feature = "client")]
@@ -175,12 +172,14 @@ impl TransactionContext {
     }
 
     /// Creates a new Transaction Context with the given `name`, `op`, `trace_id`, and
-    /// possibly the given `span_id` and `parent_span_id`.
+    /// possibly the given `span_id`.
     ///
-    /// See <https://docs.sentry.io/platforms/native/enriching-events/transaction-name/>
-    /// for an explanation of a Transaction's `name`, and
-    /// <https://develop.sentry.dev/sdk/performance/span-operations/> for conventions
-    /// around an `operation`'s value.
+    /// Any value passed as `parent_span_id` is ignored. Manually setting `parent_span_id` on
+    /// [`TransactionContext`] is in general no longer supported; you should instead use the
+    /// trace continuation APIs.
+    ///
+    /// This function is deprecated in favor of [`Self::builder`].
+    #[deprecated = "parent_span_id is ignored; use `Self::builder` instead"]
     #[must_use = "this must be used with `start_transaction`"]
     pub fn new_with_details(
         name: &str,
@@ -189,11 +188,11 @@ impl TransactionContext {
         span_id: Option<protocol::SpanId>,
         parent_span_id: Option<protocol::SpanId>,
     ) -> Self {
+        let _ = parent_span_id;
         let mut slf = Self::new_with_trace_id(name, op, trace_id);
         if let Some(span_id) = span_id {
             slf.span_id = span_id;
         }
-        slf.parent_span_id = parent_span_id;
         slf
     }
 
@@ -213,7 +212,6 @@ impl TransactionContext {
                 name: name.into(),
                 op: op.into(),
                 trace_id: Default::default(),
-                parent_span_id: None,
                 span_id: Default::default(),
                 sampled: None,
                 #[cfg(feature = "client")]
@@ -246,20 +244,27 @@ impl TransactionContext {
     ) -> Self {
         let &TracePropagationContext {
             trace_id,
-            span_id: context_span_id,
+            span_id: parent_span_id,
             sampled,
             #[cfg(feature = "client")]
             org_id,
         } = context;
 
+        // Probably would be better just to gate these fields on TracePropagationContext, but for
+        // now just ignoring them when client feature is disabled is easier.
+        #[cfg(not(feature = "client"))]
+        let _ = parent_span_id;
+
         Self {
             name: name.into(),
             op: op.into(),
             trace_id,
-            parent_span_id: Some(context_span_id),
             sampled,
             #[cfg(feature = "client")]
-            incoming_trace: Some(IncomingTrace { org_id }),
+            incoming_trace: Some(IncomingTrace {
+                parent_span_id,
+                org_id,
+            }),
             span_id: span_id.unwrap_or_default(),
             custom: None,
         }
@@ -275,7 +280,6 @@ impl TransactionContext {
         /// guarded by the client feature.
         struct IncomingSpanData {
             trace_id: TraceId,
-            span_id: SpanId,
             #[cfg(feature = "client")]
             incoming_trace: IncomingTrace,
             sampled: Option<bool>,
@@ -288,7 +292,6 @@ impl TransactionContext {
 
         let IncomingSpanData {
             trace_id,
-            span_id: parent_span_id,
             #[cfg(feature = "client")]
             incoming_trace,
             sampled,
@@ -297,10 +300,10 @@ impl TransactionContext {
                 let inner = transaction.inner.lock().unwrap();
                 IncomingSpanData {
                     trace_id: inner.context.trace_id,
-                    span_id: inner.context.span_id,
                     #[cfg(feature = "client")]
                     incoming_trace: IncomingTrace {
                         org_id: inner.client.as_ref().and_then(|c| c.org_id()),
+                        parent_span_id: inner.context.span_id,
                     },
                     sampled: inner.tracing_state.trace_sampled(),
                 }
@@ -311,10 +314,10 @@ impl TransactionContext {
 
                 IncomingSpanData {
                     trace_id: protocol_span.trace_id,
-                    span_id: protocol_span.span_id,
                     #[cfg(feature = "client")]
                     incoming_trace: IncomingTrace {
                         org_id: span.org_id(),
+                        parent_span_id: protocol_span.span_id,
                     },
                     sampled,
                 }
@@ -325,7 +328,6 @@ impl TransactionContext {
             name: name.into(),
             op: op.into(),
             trace_id,
-            parent_span_id: Some(parent_span_id),
             span_id: protocol::SpanId::default(),
             sampled,
             #[cfg(feature = "client")]
@@ -420,12 +422,7 @@ impl TransactionContext {
     /// Clears incoming trace state so the transaction starts a new trace.
     #[cfg(feature = "client")]
     fn reject_incoming_trace(&mut self) {
-        (
-            self.trace_id,
-            self.parent_span_id,
-            self.sampled,
-            self.incoming_trace,
-        ) = Default::default();
+        (self.trace_id, self.sampled, self.incoming_trace) = Default::default();
     }
 }
 
@@ -456,10 +453,14 @@ impl TransactionContextBuilder {
         self
     }
 
-    /// Defines a parent span ID for the created transaction.
+    /// Deprecated no-op; returns `self` unchanged.
+    ///
+    /// To continue a trace, use the dedicated trace continuation APIs instead, e.g.
+    /// [`Self::continue_from_span`].
+    #[deprecated = "use trace continuation APIs instead"]
     #[must_use]
-    pub fn with_parent_span_id(mut self, parent_span_id: Option<protocol::SpanId>) -> Self {
-        self.ctx.parent_span_id = parent_span_id;
+    pub fn with_parent_span_id(self, parent_span_id: Option<protocol::SpanId>) -> Self {
+        let _ = parent_span_id;
         self
     }
 
@@ -816,6 +817,7 @@ impl Transaction {
                 if ctx.incoming_trace.is_some_and(
                     |IncomingTrace {
                          org_id: incoming_org_id,
+                         ..
                      }| {
                         !should_continue_trace(
                             incoming_org_id,
@@ -840,7 +842,7 @@ impl Transaction {
 
         let context = protocol::TraceContext {
             trace_id: ctx.trace_id,
-            parent_span_id: ctx.parent_span_id,
+            parent_span_id: ctx.incoming_trace.map(|it| it.parent_span_id),
             span_id: ctx.span_id,
             op: Some(ctx.op),
             ..Default::default()
@@ -860,7 +862,6 @@ impl Transaction {
     fn new_noop(ctx: TransactionContext) -> Self {
         let context = protocol::TraceContext {
             trace_id: ctx.trace_id,
-            parent_span_id: ctx.parent_span_id,
             op: Some(ctx.op),
             ..Default::default()
         };
@@ -1515,7 +1516,6 @@ mod tests {
         );
 
         assert!(ctx.incoming_trace.is_none());
-        assert_eq!(ctx.parent_span_id, None);
     }
 
     #[cfg(feature = "client")]
