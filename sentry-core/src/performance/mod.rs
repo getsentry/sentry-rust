@@ -7,7 +7,7 @@ use std::time::SystemTime;
 #[cfg(feature = "client")]
 use sentry_types::protocol::v7::client_report::Reason as ClientReportReason;
 #[cfg(feature = "client")]
-use sentry_types::protocol::v7::OrganizationId;
+use sentry_types::protocol::v7::{OrganizationId, SampleRand};
 use sentry_types::protocol::v7::{SpanId, TraceId};
 
 #[cfg(feature = "client")]
@@ -118,6 +118,8 @@ struct IncomingTrace {
     parent_span_id: SpanId,
     sampled: Option<bool>,
     org_id: Option<OrganizationId>,
+    sample_rate: Option<f32>,
+    sample_rand: Option<SampleRand>,
 }
 
 /// The Transaction Context used to start a new Performance Monitoring Transaction.
@@ -252,6 +254,8 @@ impl TransactionContext {
             trace_id,
             span_id: parent_span_id,
             sampled,
+            sample_rate,
+            sample_rand,
             #[cfg(feature = "client")]
             org_id,
         } = context;
@@ -271,6 +275,8 @@ impl TransactionContext {
                 parent_span_id,
                 sampled,
                 org_id,
+                sample_rand,
+                sample_rate,
             }),
             span_id: span_id.unwrap_or_default(),
             custom: None,
@@ -310,6 +316,8 @@ impl TransactionContext {
                         org_id: inner.client.as_ref().and_then(|c| c.org_id()),
                         parent_span_id: inner.context.span_id,
                         sampled: inner.tracing_state.trace_sampled(),
+                        sample_rand: todo!("not sure what is best here"),
+                        sample_rate: todo!(),
                     },
                 }
             }
@@ -323,6 +331,8 @@ impl TransactionContext {
                         org_id: span.org_id(),
                         parent_span_id: protocol_span.span_id,
                         sampled: span.tracing_state.trace_sampled(),
+                        sample_rand: todo!("not sure what is best here"),
+                        sample_rate: todo!(),
                     },
                 }
             }

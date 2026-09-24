@@ -6,7 +6,7 @@ use std::fmt::{Display, Formatter, Result as FmtResult};
 #[cfg(feature = "client")]
 use sentry_types::protocol::v7::OrganizationId;
 
-use crate::protocol::{SpanId, TraceId};
+use crate::protocol::{SampleRand, SpanId, TraceId};
 
 /// A key-value header pair.
 type Header<'h> = (&'h str, &'h str);
@@ -14,6 +14,12 @@ type Header<'h> = (&'h str, &'h str);
 /// The baggage key for the Sentry org ID.
 #[cfg(feature = "client")]
 const SENTRY_ORG_ID: &str = "sentry-org_id";
+
+/// The baggage key for the sample rate.
+const SENTRY_SAMPLE_RATE: &str = "sentry-sample_rate";
+
+/// The baggage key for sample rand.
+const SENTRY_SAMPLE_RAND: &str = "sentry-sample_rand";
 
 /// The Sentry Trace header
 const SENTRY_TRACE: &str = "sentry-trace";
@@ -39,6 +45,8 @@ pub struct TracePropagationContext {
     pub(crate) trace_id: TraceId,
     pub(crate) span_id: SpanId,
     pub(super) sampled: Option<bool>,
+    pub(super) sample_rate: Option<f32>,
+    pub(super) sample_rand: Option<SampleRand>,
     #[cfg(feature = "client")]
     pub(super) org_id: Option<OrganizationId>,
 }
@@ -71,6 +79,8 @@ impl TracePropagationContext {
             sampled: None,
             #[cfg(feature = "client")]
             org_id: None,
+            sample_rand: None,
+            sample_rate: None,
         }
     }
 
@@ -86,6 +96,8 @@ impl TracePropagationContext {
             trace_id,
             span_id,
             sampled,
+            sample_rand: _,
+            sample_rate: _,
             #[cfg(feature = "client")]
                 org_id: _,
         } = self;
@@ -124,10 +136,16 @@ impl TracePropagationContext {
         let context = context_result?;
 
         #[cfg(feature = "client")]
-        let SentryBaggage { org_id } = baggage;
+        let SentryBaggage {
+            org_id,
+            sample_rand,
+            sample_rate,
+        } = baggage;
         Ok(TracePropagationContext {
             #[cfg(feature = "client")]
             org_id,
+            sample_rand,
+            sample_rate,
             ..context
         })
     }
@@ -156,6 +174,8 @@ impl TracePropagationContext {
             trace_id,
             span_id,
             sampled,
+            sample_rand: None,
+            sample_rate: None,
             #[cfg(feature = "client")]
             org_id: None,
         })
@@ -174,6 +194,8 @@ where
         trace_id,
         span_id,
         sampled,
+        sample_rand: _,
+        sample_rate: _,
         #[cfg(feature = "client")]
             org_id: _,
     } = TracePropagationContext::try_from_headers(headers).ok()?;
@@ -217,6 +239,8 @@ impl From<SentryTrace> for TracePropagationContext {
             trace_id: trace.trace_id,
             span_id: trace.span_id,
             sampled: trace.sampled,
+            sample_rand: None,
+            sample_rate: None,
             #[cfg(feature = "client")]
             org_id: None,
         }
@@ -241,6 +265,8 @@ impl std::fmt::Display for SentryTrace {
 #[derive(Debug, Default)]
 struct SentryBaggage {
     org_id: Option<OrganizationId>,
+    sample_rand: Option<SampleRand>,
+    sample_rate: Option<f32>,
 }
 
 #[cfg(feature = "client")]
@@ -266,9 +292,12 @@ impl SentryBaggage {
     ///
     /// The value is only updated if it is valid, otherwise the old value is kept.
     fn update_from_value(&mut self, key: &str, value: &str) {
-        if key == SENTRY_ORG_ID {
-            self.org_id = value.parse().ok().or(self.org_id);
-        }
+        match key {
+            SENTRY_ORG_ID => self.org_id = value.parse().ok().or(self.org_id),
+            SENTRY_SAMPLE_RAND => self.sample_rand = value.parse().ok().or(self.sample_rand),
+            SENTRY_SAMPLE_RATE => self.sample_rate = value.parse().ok().or(self.sample_rate),
+            _ => (),
+        };
     }
 }
 
@@ -292,6 +321,8 @@ mod tests {
                 trace_id,
                 span_id: parent_trace_id,
                 sampled: Some(false),
+                sample_rate: None,
+                sample_rand: None,
                 #[cfg(feature = "client")]
                 org_id: None,
             }
