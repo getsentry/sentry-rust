@@ -1,12 +1,26 @@
 //! Sampling-related types.
 
+use rand::distr::uniform::{SampleRange, SampleUniform};
+use rand::rngs::SmallRng;
+use rand::{RngExt, SeedableRng};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter, Result as FmtResult};
+use std::hash::Hash;
+use std::ops::RangeBounds;
+use std::range::Range;
 use std::str::FromStr;
 use thiserror::Error;
 
+use crate::protocol::v7::TraceId;
+
 /// The number of decimal places in [`SampleRand`].
 const SAMPLE_RAND_DECIMALS: usize = 6;
+
+/// The maximum value of [`SampleRand`] (exclusive).
+const SAMPLE_RAND_MAX: u32 = 10_u32.pow(SAMPLE_RAND_DECIMALS as u32);
+
+/// The multiplier to convert from the decimal scale to the sample rand ticks scale.
+const SAMPLE_RAND_MULTIPLIER: f32 = SAMPLE_RAND_MAX as f32;
 
 /// A random number generated at the start of a trace by the head of trace SDK.
 ///
@@ -44,7 +58,7 @@ impl TryFrom<f64> for SampleRand {
         }
         // Always rounds down; since `value < 1.0`, the result can never reach 1,000,000 ticks.
         Ok(Self {
-            ticks: (value * 1_000_000.0).floor() as u32,
+            ticks: (value * f64::from(SAMPLE_RAND_MULTIPLIER)).floor() as u32,
         })
     }
 }
@@ -72,6 +86,62 @@ impl Display for SampleRand {
 }
 
 impl SampleRand {
+    /// Determines whether we are sampled at the given rate.
+    ///
+    /// The provided rate should be in the range (0.0..=1.0). If it is outside the range, we will
+    /// return `false`.
+    pub fn is_sampled_at(&self, rate: f32) -> bool {
+        // Filter out values outside range and skip comparison for 0.0 and 1.0.
+        if !(0.0..=1.0).contains(&rate) || rate == 0.0 {
+            return false;
+        } else if rate == 1.0 {
+            return true;
+        }
+
+        let comparison_value = (rate * SAMPLE_RAND_MULTIPLIER).round() as u32;
+
+        self.ticks < comparison_value
+    }
+
+    /// Return a new [`SampleRand`] value seeded with the given value.
+    pub fn new(seed: TraceId) -> Self {
+        Self {
+            ticks: seeded_rand_range(seed, 0..SAMPLE_RAND_MAX),
+        }
+    }
+
+    /// Return a new [`SampleRand`] value which would be sampled at the given rate.
+    ///
+    /// If this is not possible (e.g. if the rate is at or close to zero, or outside the allowed
+    /// range), then we return `None`.
+    pub fn new_sampled_at(seed: TraceId, rate: f32) -> Option<Self> {
+        if !(0.0..=1.0).contains(&rate) {
+            return None;
+        }
+
+        let upper_bound = (rate * SAMPLE_RAND_MULTIPLIER).round() as u32;
+
+        (upper_bound != 0).then(|| Self {
+            ticks: seeded_rand_range(seed, 0..upper_bound),
+        })
+    }
+
+    /// Return a new [`SampleRand`] value which would be sampled at the given rate.
+    ///
+    /// If this is not possible (e.g. if the rate is at or close to one, or outside the allowed
+    /// range), then we return `None`.
+    pub fn new_not_sampled_at(seed: TraceId, rate: f32) -> Option<Self> {
+        if !(0.0..=1.0).contains(&rate) {
+            return None;
+        }
+
+        let lower_bound = (rate * SAMPLE_RAND_MULTIPLIER).round() as u32;
+
+        (lower_bound != SAMPLE_RAND_MAX).then(|| Self {
+            ticks: seeded_rand_range(seed, lower_bound..SAMPLE_RAND_MAX),
+        })
+    }
+
     /// Tries to parse a sample_rand from a (nearly) spec-compliant string.
     ///
     /// This will parse sample_rand that is formatted like `0.<digits>` without relying on float
@@ -105,4 +175,18 @@ impl SampleRand {
 
         Some(Self { ticks })
     }
+}
+
+fn seeded_rand_range<R, T>(seed: TraceId, range: R) -> T
+where
+    R: SampleRange<T>,
+    T: SampleUniform,
+{
+    let seed_u64 = u64::from_ne_bytes(
+        seed.as_slice()[..size_of::<u64>()]
+            .try_into()
+            .expect("this is size of u64"),
+    );
+    let mut rng = SmallRng::seed_from_u64(seed_u64);
+    rng.random_range(range)
 }

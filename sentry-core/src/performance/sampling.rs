@@ -2,6 +2,7 @@
 
 #[cfg(doc)]
 use sentry_types::protocol::v7::client_report;
+use sentry_types::protocol::v7::{SampleRand, TraceId};
 
 #[cfg(feature = "client")]
 use crate::client;
@@ -47,13 +48,14 @@ impl TracingState {
     /// for unsampled ones, so that the sample rate is at least consistent with the sampling
     /// decision. Once we read the `sample_rate`, this method should be adjusted to use that rate.
     pub(super) fn new_disabled(sampled: Option<bool>) -> Self {
-        let decision = sampled.map(|sampled| SamplingDecision {
-            sampled,
-            #[cfg(feature = "client")]
-            sample_rate: sampled.into(),
-        });
+        // let decision = sampled.map(|sampled| SamplingDecision {
+        //     sampled,
+        //     #[cfg(feature = "client")]
+        //     sample_rate: sampled.into(),
+        // });
 
-        Self::Disabled(decision)
+        // Self::Disabled(decision)
+        todo!()
     }
 
     /// Return whether this trace is sampled, or `None` if no decision is available.
@@ -64,11 +66,13 @@ impl TracingState {
     /// may return `Some(true)` when tracing is disabled, namely, when continuing a sampled trace
     /// in TwP mode. Use [`Self::finish_action`] for this purpose.
     pub(super) fn trace_sampled(&self) -> Option<bool> {
-        match *self {
+        let decision = match *self {
             #[cfg(feature = "client")]
-            Self::Enabled(SamplingDecision { sampled, .. }) => Some(sampled),
-            Self::Disabled(decision) => decision.map(|SamplingDecision { sampled, .. }| sampled),
-        }
+            Self::Enabled(decision) => Some(decision),
+            Self::Disabled(decision) => decision,
+        };
+
+        decision.map(|d| d.sampled())
     }
 
     /// Determine the correct action to take when spans/transactions in this trace are finished.
@@ -77,15 +81,12 @@ impl TracingState {
     #[cfg(feature = "client")]
     pub(super) fn finish_action(&self) -> FinishAction {
         match *self {
-            Self::Enabled(SamplingDecision {
-                sampled: true,
-                sample_rate,
-            }) => FinishAction::Send { sample_rate },
-
-            Self::Enabled(SamplingDecision {
-                sampled: false,
-                sample_rate: _,
-            }) => FinishAction::Discard,
+            Self::Enabled(decision) => match decision.sampled() {
+                true => FinishAction::Send {
+                    sample_rate: decision.sample_rate,
+                },
+                false => FinishAction::Discard,
+            },
 
             Self::Disabled(_) => FinishAction::Ignore,
         }
@@ -95,8 +96,8 @@ impl TracingState {
 /// The trace's sampling decision.
 #[derive(Debug, Clone, Copy)]
 pub(super) struct SamplingDecision {
-    /// The sampling decision.
-    pub(super) sampled: bool,
+    /// The random value to compare against the `sample_rate` to get the decision.
+    pub(super) sample_rand: SampleRand,
     /// The sample rate at which the decision was made.
     ///
     /// Currently, we only use this on the `client` feature, but if needed we can also provide
@@ -108,12 +109,74 @@ pub(super) struct SamplingDecision {
 #[cfg(feature = "client")]
 impl SamplingDecision {
     pub(super) fn new_sampled_at(sample_rate: f32) -> Self {
-        let sampled = client::sample_should_send(sample_rate);
+        // let sampled = client::sample_should_send(sample_rate);
 
+        // Self {
+        //     sampled,
+        //     sample_rate,
+        // }
+        todo!()
+    }
+
+    /// Returns the sampling decision as a boolean.
+    pub(super) fn sampled(&self) -> bool {
+        self.sample_rand.is_sampled_at(self.sample_rate)
+    }
+}
+
+/// Makes a sampling decision based on available information.
+///
+/// This function backfills any missing items so that they are consistent with the other
+/// information provided.
+///
+/// It is possible that the provided `sampled`, `sample_rate`, and `sample_rand` could contradict
+/// each other. In this case, we will preserve those values in that order of precedence.
+#[must_use]
+pub(super) struct SamplingDecider {
+    trace_id: TraceId,
+    sampled: Option<bool>,
+    sample_rate: Option<f32>,
+    sample_rand: Option<SampleRand>,
+}
+
+impl SamplingDecider {
+    /// Create a new decider with the given [`TraceId`], which is used as the randomness seed.
+    pub(super) fn new(trace_id: TraceId) -> Self {
         Self {
+            trace_id,
+            sampled: None,
+            sample_rate: None,
+            sample_rand: None,
+        }
+    }
+
+    pub(super) fn sampled(self, sampled: Option<bool>) -> Self {
+        Self { sampled, ..self }
+    }
+
+    pub(super) fn sample_rate(self, sample_rate: Option<f32>) -> Self {
+        Self {
+            sample_rate,
+            ..self
+        }
+    }
+
+    pub(super) fn sample_rand(self, sample_rand: Option<SampleRand>) -> Self {
+        Self {
+            sample_rand,
+            ..self
+        }
+    }
+
+    pub(super) fn decide(self) -> SamplingDecision {
+        let Self {
+            trace_id,
             sampled,
             sample_rate,
-        }
+            sample_rand,
+        } = self;
+
+        let sample_rand = ensure_consistent_sample_rand(sample_rand, sampled, sample_rate);
     }
 }
 
@@ -136,4 +199,21 @@ pub(super) enum FinishAction {
     ///
     /// This action should always be taken when tracing is disabled.
     Ignore,
+}
+
+/// Ensure the provided sample_rand is consistent with the sampling decision and sample rate.
+///
+/// Returns the sample_rand if yes, otherwise `None`.
+fn ensure_consistent_sample_rand(
+    sample_rand: Option<SampleRand>,
+    sampled: Option<Sampled>,
+    sample_rate: Option<f32>,
+) -> Option<SampleRand> {
+    if let (Some(sample_rand), Some(sampled), Some(sample_rate)) =
+        (sample_rand, sampled, sample_rate)
+    {
+        (sample_rand.is_sampled_at(sample_rate) == sampled).then_some(sample_rand)
+    } else {
+        sample_rand
+    }
 }

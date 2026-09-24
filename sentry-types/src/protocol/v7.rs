@@ -1444,6 +1444,12 @@ impl From<[u8; 8]> for SpanId {
 #[serde(try_from = "String", into = "String")]
 pub struct TraceId([u8; 16]);
 
+impl TraceId {
+    pub(crate) fn as_slice(&self) -> &[u8; 16] {
+        &self.0
+    }
+}
+
 impl Default for TraceId {
     fn default() -> Self {
         Self(rand::random())
