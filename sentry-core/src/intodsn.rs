@@ -56,6 +56,12 @@ impl IntoDsn for OsString {
     }
 }
 
+impl IntoDsn for &'_ String {
+    fn into_dsn(self) -> Result<Option<Dsn>, ParseDsnError> {
+        self.as_str().into_dsn()
+    }
+}
+
 impl IntoDsn for String {
     fn into_dsn(self) -> Result<Option<Dsn>, ParseDsnError> {
         self.as_str().into_dsn()
