@@ -307,8 +307,8 @@ impl ClientOptions {
     ///
     /// Panics if the value fails to parse as a [DSN](`Dsn`).
     #[inline]
-    pub fn dsn(self, dsn: &str) -> Self {
-        let dsn = Some(dsn.parse().expect("invalid value for DSN"));
+    pub fn dsn<D: IntoDsn>(self, dsn: D) -> Self {
+        let dsn = dsn.into_dsn().expect("invalid value for DSN");
         Self { dsn, ..self }
     }
 

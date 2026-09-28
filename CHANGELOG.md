@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixes
+
+- [`ClientOptions::dsn`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html#method.dsn) now accepts any value that implements [`IntoDsn`](https://docs.rs/sentry-types/latest/sentry_types/trait.IntoDsn.html), allowing callers to pass either raw DSN strings or pre-parsed DSN values without extra conversion code.
+
 ## 0.49.3
 
 ### Features
@@ -54,6 +60,7 @@
       .debug(true)
       .release("my-app@1.0.0");
   ```
+
 - Updated the `sentry-opentelemetry` integration to support OpenTelemetry 0.32. Users of the integration must update their OpenTelemetry dependencies from 0.29 to 0.32 ([#1262](https://github.com/getsentry/sentry-rust/pull/1262)).
 - The `logs` and `metrics` features are now enabled by default in the `sentry` crate. This does not break the API, but may cause new telemetry to be sent to Sentry: log and tracing integrations can send structured logs, and applications can send metrics without adding the feature flags. Disable these features explicitly if this additional telemetry is not desired ([#1251](https://github.com/getsentry/sentry-rust/pull/1251)).
 - Removed the public `ClientOptions::sample_rate` field. Use `ClientOptions::event_sampling_strategy` to inspect the configured event sampling strategy, and use the existing `ClientOptions::sample_rate(...)` builder setter to configure fixed-rate sampling.
@@ -141,7 +148,7 @@ The Sentry Rust SDK now reports data discarded by the SDK to Sentry’s [Stats](
 
 ### New Features
 
-- Added `rustls-no-provider` feature flag in the `sentry` crate to allow using the `rustls` transport with a different crypto provider ([#1103](https://github.com/getsentry/sentry-rust/pull/1103)). 
+- Added `rustls-no-provider` feature flag in the `sentry` crate to allow using the `rustls` transport with a different crypto provider ([#1103](https://github.com/getsentry/sentry-rust/pull/1103)).
 
 ### Fixes
 
@@ -159,7 +166,7 @@ The Sentry Rust SDK now reports data discarded by the SDK to Sentry’s [Stats](
 ### Breaking Changes
 
 - Added the following metrics-related fields to the [`ClientOptions` struct in `sentry-core`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html). Both fields are no-ops, unless the `metrics` feature flag is enabled:
-  - [`enable_metrics`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html#structfield.enable_metrics), used to enable sending metrics to Sentry ([#1073](https://github.com/getsentry/sentry-rust/pull/1073)). 
+  - [`enable_metrics`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html#structfield.enable_metrics), used to enable sending metrics to Sentry ([#1073](https://github.com/getsentry/sentry-rust/pull/1073)).
   - [`before_send_metric`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html#structfield.before_send_metric), used to define a callback for filtering/pre-processing metrics before sending to Sentry ([#1064](https://github.com/getsentry/sentry-rust/pull/1064)).
 - There are several breakages related to the [SemVer feature additivity bug fixes](#semver-additivity-bug-fixes-2026-04):
   - [`sentry_core::ClientOptions`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html) fields [`before_send_log`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html#structfield.before_send_log), [`enable_logs`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html#structfield.enable_logs), [`auto_session_tracking`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html#structfield.auto_session_tracking), and [`session_mode`](https://docs.rs/sentry-core/latest/sentry_core/struct.ClientOptions.html#structfield.session_mode) are no longer gated behind the `logs` and `release-health` feature flags ([#1091](https://github.com/getsentry/sentry-rust/pull/1091)). Code that constructs `ClientOptions` with a full struct literal (without `..Default::default()`), or which exhaustively matches against it, must now include all four fields regardless of enabled features.
@@ -170,7 +177,7 @@ The Sentry Rust SDK now reports data discarded by the SDK to Sentry’s [Stats](
 
 ### New Features
 
-📊📈💯 The Sentry-Rust SDK now supports emitting [Sentry Metrics](https://docs.sentry.io/product/explore/metrics/) ([#1073](https://github.com/getsentry/sentry-rust/pull/1073))! 
+📊📈💯 The Sentry-Rust SDK now supports emitting [Sentry Metrics](https://docs.sentry.io/product/explore/metrics/) ([#1073](https://github.com/getsentry/sentry-rust/pull/1073))!
 
 To get started, you will need to add the `metrics` feature flag when compiling the `sentry` crate. You will also need to enable metrics when initializing the SDK, like so:
 
@@ -272,7 +279,7 @@ metrics::distribution("response.time", 123.4)
 - feat(log): support combined LogFilters and RecordMappings ([#914](https://github.com/getsentry/sentry-rust/pull/914)) by @lcian
   - Breaking change: `sentry::integrations::log::LogFilter` has been changed to a `bitflags` struct.
   - It's now possible to map a `log` record to multiple items in Sentry by combining multiple log filters in the filter, e.g. `log::Level::ERROR => LogFilter::Event | LogFilter::Log`.
-  - If using a custom `mapper` instead, it's possible to return a `Vec<sentry::integrations::log::RecordMapping>` to map a `log` record to multiple items in Sentry. 
+  - If using a custom `mapper` instead, it's possible to return a `Vec<sentry::integrations::log::RecordMapping>` to map a `log` record to multiple items in Sentry.
 
 ### Behavioral changes
 
@@ -318,6 +325,7 @@ metrics::distribution("response.time", 123.4)
     - `sentry.trace`: given a string matching a valid `sentry-trace` header (sent automatically by client SDKs), continues the distributed trace instead of starting a new one. If the value is not a valid `sentry-trace` header or a trace is already started, this value is ignored.
   - `sentry.op` and `sentry.name` can also be applied retroactively by declaring fields with value `tracing::field::Empty` and then recorded using `tracing::Span::record`.
   - Example usage:
+
     ```rust
     #[tracing::instrument(skip_all, fields(
         sentry.op = "http.server",
@@ -328,6 +336,7 @@ metrics::distribution("response.time", 123.4)
         // ...
     }
     ```
+
   - Additional attributes are sent along with each span by default:
     - `sentry.tracing.target`: corresponds to the `tracing` span's `metadata.target()`
     - `code.module.name`, `code.file.path`, `code.line.number`
@@ -335,6 +344,7 @@ metrics::distribution("response.time", 123.4)
 - feat(core): add Response context ([#874](https://github.com/getsentry/sentry-rust/pull/874)) by @lcian
   - The `Response` context can now be attached to events, to include information about HTTP responses such as headers, cookies and status code.
   - Example:
+
     ```rust
     let mut event = Event::new();
     let response = ResponseContext {
@@ -413,6 +423,7 @@ metrics::distribution("response.time", 123.4)
   - To capture `tracing` events as Sentry structured logs, enable the `logs` feature of the `sentry` crate.
   - Then, initialize the SDK with `enable_logs: true` in your client options.
   - Finally, set up a custom event filter to map events to logs based on criteria such as severity. For example:
+
   ```rust
       let sentry_layer = sentry_tracing::layer().event_filter(|md| match *md.level() {
           tracing::Level::ERROR => EventFilter::Event,
@@ -420,10 +431,12 @@ metrics::distribution("response.time", 123.4)
           _ => EventFilter::Log,
       });
   ```
+
 - feat(log): add support for logs (#841) by @lcian
   - To capture `log` records as Sentry structured logs, enable the `logs` feature of the `sentry` crate.
   - Then, initialize the SDK with `enable_logs: true` in your client options.
   - Finally, set up a custom event filter to map records to Sentry logs based on criteria such as severity. For example:
+
   ```rust
       let logger = sentry::integrations::log::SentryLogger::new().filter(|md| match md.level() {
           log::Level::Error => LogFilter::Event,
@@ -431,6 +444,7 @@ metrics::distribution("response.time", 123.4)
           _ => LogFilter::Log,
       });
   ```
+
 - refactor(logs): cache default attributes and add OS attributes (#842) by @lcian
   - `os.name` and `os.version` are now being attached to logs as default attributes.
 
@@ -453,10 +467,11 @@ metrics::distribution("response.time", 123.4)
 ### Features
 
 Support for [Sentry structured logs](https://docs.sentry.io/product/explore/logs/) has been added to the SDK.
+
 - To set up logs, enable the `logs` feature of the `sentry` crate and set `enable_logs` to `true` in your client options.
 - Then, use the `logger_trace!`, `logger_debug!`, `logger_info!`, `logger_warn!`, `logger_error!` and `logger_fatal!` macros to capture logs.
 - To filter or update logs before they are sent, you can use the `before_send_log` client option.
-- Please note that breaking changes could occur until the API is finalized. 
+- Please note that breaking changes could occur until the API is finalized.
 
 - feat(logs): add log protocol types (#821) by @lcian
 - feat(logs): add ability to capture and send logs (#823) by @lcian & @Swatinem
@@ -561,7 +576,7 @@ An OpenTelemetry integration has been released. Please refer to the changelog en
   - The metrics feature and the code related to it has been removed from the crate, as the Sentry backend stopped ingesting metrics a while ago.
 - Switch to MIT license (#724) by @cleptric
   - The license for the crates has been changed to MIT.
- 
+
 ### Features
 
 - feat(actix): capture HTTP request body (#731) by @pacifistes
@@ -578,7 +593,7 @@ An OpenTelemetry integration has been released. Please refer to the changelog en
 
 - fix(http): Finish transaction on drop (#727) by @Dav1dde
   - Fixed a bug where the current transaction was not finished (hence not sent to Sentry) when its corresponding future was dropped, e.g. due to a panic.
-- follow https://github.com/getsentry/sentry-rust/pull/439 for actix-web. fix https://github.com/getsentry/sentry-rust/issues/680 (#737) by @pavel-rosputko
+- follow <https://github.com/getsentry/sentry-rust/pull/439> for actix-web. fix <https://github.com/getsentry/sentry-rust/issues/680> (#737) by @pavel-rosputko
   - The HTTP request metadata is now being correctly attached to transactions when using `sentry-actix`.
 - fix(tracing): wrap error with synthetic mechanism only if attaching stacktrace (#755) by @lcian
   - Fixed a bug that should result in improved grouping and issue titles for events reported by `sentry-tracing` when not capturing stack traces.
