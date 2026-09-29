@@ -1,228 +1,70 @@
-//! Support for automatic breadcrumb, event, and trace capturing from `tracing` events and spans.
+//! Capture `tracing` telemetry with four independently selectable tracing layers:
 //!
-//! The `tracing` crate is supported in four ways:
-//! - `tracing` events can be captured as Sentry events. These are grouped and show up in the Sentry
-//!   [issues](https://docs.sentry.io/product/issues/) page, representing high severity issues to be
-//!   acted upon.
-//! - `tracing` events can be captured as [breadcrumbs](https://docs.sentry.io/product/issues/issue-details/breadcrumbs/).
-//!   Breadcrumbs create a trail of what happened prior to an event, and are therefore sent only when
-//!   an event is captured, either manually through e.g. `sentry::capture_message` or through integrations
-//!   (e.g. the panic integration is enabled (default) and a panic happens).
-//! - `tracing` events can be captured as traditional [structured logs](https://docs.sentry.io/product/explore/logs/).
-//!   The `tracing` fields are captured as attributes on the logs, which can be queried in the Logs
-//!   explorer. (Available on crate feature `logs`)
-//! - `tracing` spans can be captured as Sentry spans. These can be used to provide more contextual
-//!   information for errors, diagnose [performance
-//!   issues](https://docs.sentry.io/product/insights/overview/), and capture additional attributes to
-//!   aggregate and compute [metrics](https://docs.sentry.io/product/explore/trace-explorer/).
+//! - [`span_layer`](https://docs.rs/sentry-tracing/latest/sentry_tracing/fn.span_layer.html) captures `ERROR`, `WARN`, and `INFO` spans as Sentry transactions and spans.
+//! - [`log_layer`](https://docs.rs/sentry-tracing/latest/sentry_tracing/fn.log_layer.html) captures `ERROR`, `WARN`, and `INFO` events as Sentry structured logs.
+//! - [`error_layer`](https://docs.rs/sentry-tracing/latest/sentry_tracing/fn.error_layer.html) captures `ERROR` events as Sentry error events (issues).
+//! - [`breadcrumb_layer`](https://docs.rs/sentry-tracing/latest/sentry_tracing/fn.breadcrumb_layer.html) adds `WARN` and `INFO` events as breadcrumbs to the current scope.
 //!
-//! By default, events above `Info` are recorded as breadcrumbs, events above `Error` are captured
-//! as error events, and spans above `Info` are recorded as spans.
+//! For most applications, we recommend using the span and log layers.
 //!
-//! # Configuration
+//! # Getting started
 //!
-//! To fully enable the tracing integration, set the traces sample rate and add a layer to the
-//! tracing subscriber:
+//! Set a traces sample rate to capture transactions, then install the layers you would like to
+//! use.
 //!
 //! ```
+//! # #[cfg(feature = "logs")]
+//! # {
 //! use tracing_subscriber::prelude::*;
 //!
 //! let _guard = sentry::init(
 //!     sentry::ClientOptions::new()
-//!         // Enable capturing of traces; set this a to lower value in production:
+//!         // Use a lower sample rate in production.
 //!         .traces_sample_rate(1.0),
 //! );
 //!
-//! // Register the Sentry tracing layer to capture breadcrumbs, events, and spans:
 //! tracing_subscriber::registry()
-//!     .with(tracing_subscriber::fmt::layer())
-//!     .with(sentry::integrations::tracing::layer())
+//!     .with(sentry::integrations::tracing::span_layer())
+//!     .with(sentry::integrations::tracing::log_layer())
 //!     .init();
+//! # }
 //! ```
 //!
-//! You can customize the behavior of the layer by providing an explicit event filter, to customize which events
-//! are captured by Sentry and the data type they are mapped to.
-//! Similarly, you can provide a span filter to customize which spans are captured by Sentry.
+//! When using the error and breadcrumb layers, we recommend installing the breadcrumb layer before
+//! the error layer, so any breadcrumbs added by the breadcrumb layer appear on the correct error.
+//!
+//! # Spans
+//!
+//! `span_layer()` creates a Sentry transaction for a root `tracing` span and Sentry spans for
+//! captured children. For example, [`tracing::instrument`](https://docs.rs/tracing/latest/tracing/attr.instrument.html)
+//! creates spans for instrumented functions; arguments become span data unless skipped.
 //!
 //! ```
-//! use sentry::integrations::tracing::EventFilter;
-//! use tracing_subscriber::prelude::*;
-//!
-//! let sentry_layer = sentry::integrations::tracing::layer()
-//!     .event_filter(|md| match *md.level() {
-//!         tracing::Level::ERROR => EventFilter::Event,
-//!         _ => EventFilter::Ignore,
-//!     })
-//!     .span_filter(|md| matches!(*md.level(), tracing::Level::ERROR | tracing::Level::WARN));
-//!
-//! tracing_subscriber::registry()
-//!     .with(tracing_subscriber::fmt::layer())
-//!     .with(sentry_layer)
-//!     .init();
-//! ```
-//!
-//! In addition, a custom event mapper can be provided, to fully customize if and how `tracing` events are converted to Sentry data.
-//!
-//! Note that if both an event mapper and event filter are set, the mapper takes precedence, thus the
-//! filter has no effect.
-//!
-//! # Capturing breadcrumbs
-//!
-//! Tracing events automatically create breadcrumbs that are attached to the current scope in
-//! Sentry. They show up on errors and transactions captured within this scope as shown in the
-//! examples below.
-//!
-//! Fields passed to the event macro are automatically tracked as structured data in Sentry. For
-//! breadcrumbs, they are shown directly with the breadcrumb message. For other types of data, read
-//! below.
-//!
-//! ```
-//! for i in 0..10 {
-//!     tracing::debug!(number = i, "Generates a breadcrumb");
-//! }
-//! ```
-//!
-//! # Capturing logs
-//!
-//! Tracing events can be captured as traditional structured logs in Sentry.
-//! This is gated by the `logs` feature flag and requires setting up a custom Event filter/mapper
-//! to capture logs.
-//!
-//! ```
-//! // assuming `tracing::Level::INFO => EventFilter::Log` in your `event_filter`
-//! for i in 0..10 {
-//!     tracing::info!(number = i, my.key = "val", my.num = 42, "This is a log");
-//! }
-//! ```
-//!
-//! The fields of a `tracing` event are captured as attributes of the log.
-//! Logs can be viewed and queried in the Logs explorer based on message and attributes.
-//! Fields containing dots will be displayed as nested under their common prefix in the UI.
-//!
-//! # Tracking Errors
-//!
-//! The easiest way to emit errors is by logging an event with `ERROR` level. This will create a
-//! grouped issue in Sentry. To add custom information, prepend the message with fields. It is also
-//! possible to add Sentry tags if a field is prefixed with `"tags."`
-//!
-//! ```
-//! tracing::error!(
-//!     field = "value",                  // will become a context field
-//!     tags.custom = "value",            // will become a tag in Sentry
-//!     "this is an error with a custom tag",
-//! );
-//! ```
-//!
-//! To track [error structs](std::error::Error), assign a reference to error trait object as field
-//! in one of the logging macros. By convention, it is recommended to use the `ERROR` level and
-//! assign it to a field called `error`, although the integration will also work with all other
-//! levels and field names.
-//!
-//! All other fields passed to the macro are captured in a custom "Tracing Fields" context in
-//! Sentry.
-//!
-//! ```
-//! use std::error::Error;
-//! use std::io;
-//!
-//! let custom_error = io::Error::new(io::ErrorKind::Other, "oh no");
-//! tracing::error!(error = &custom_error as &dyn Error);
-//! ```
-//!
-//! It is also possible to combine error messages with error structs. In Sentry, this creates issues
-//! grouped by the message and location of the error log, and adds the passed error as nested
-//! source.
-//!
-//! ```
-//! use std::error::Error;
-//! use std::io;
-//!
-//! let custom_error = io::Error::new(io::ErrorKind::Other, "oh no");
-//! tracing::error!(error = &custom_error as &dyn Error, "my operation failed");
-//! ```
-//!
-//! # Sending multiple items to Sentry
-//!
-//! To map a `tracing` event to multiple items in Sentry, you can combine multiple event filters
-//! using the bitwise or operator:
-//!
-//! ```
-//! use sentry::integrations::tracing::EventFilter;
-//! use tracing_subscriber::prelude::*;
-//!
-//! let sentry_layer = sentry::integrations::tracing::layer()
-//!     .event_filter(|md| match *md.level() {
-//!         tracing::Level::ERROR => EventFilter::Event | EventFilter::Log,
-//!         tracing::Level::TRACE => EventFilter::Ignore,
-//!         _ => EventFilter::Log,
-//!     })
-//!     .span_filter(|md| matches!(*md.level(), tracing::Level::ERROR | tracing::Level::WARN));
-//!
-//! tracing_subscriber::registry()
-//!     .with(tracing_subscriber::fmt::layer())
-//!     .with(sentry_layer)
-//!     .init();
-//! ```
-//!
-//! If you're using a custom event mapper instead of an event filter, use `EventMapping::Combined`.
-//!
-//! # Tracing Spans
-//!
-//! The integration automatically tracks `tracing` spans as spans in Sentry. A convenient way to do
-//! this is with the `#[instrument]` attribute macro, which creates a span/transaction for the function
-//! in Sentry.
-//!
-//! Function arguments are added as context fields automatically, which can be configured through
-//! attribute arguments. Refer to documentation of the macro for more information.
-//!
-//! ```
-//! use std::time::Duration;
-//!
-//! use tracing_subscriber::prelude::*;
-//!
-//! // Functions instrumented by tracing automatically
-//! // create spans/transactions around their execution.
 //! #[tracing::instrument]
 //! async fn outer() {
-//!     for i in 0..10 {
-//!         inner(i).await;
-//!     }
-//! }
-//!
-//! // This creates spans inside the outer transaction, unless called directly.
-//! #[tracing::instrument]
-//! async fn inner(i: u32) {
-//!     // Also works, since log events are ingested by the tracing system
-//!     tracing::debug!(number = i, "Generates a breadcrumb");
-//!
-//!     tokio::time::sleep(Duration::from_millis(100)).await;
+//!     inner(42).await;
 //! }
 //! ```
 //!
-//! By default, the name of the span sent to Sentry matches the name of the `tracing` span, which
-//! is the name of the function when using `tracing::instrument`, or the name passed to the
-//! `tracing::<level>_span` macros.
+//! If you also have the recommended `log_layer` installed, then the following will create an
+//! info-level log associated with the same trace as the span for the function:
 //!
-//! By default, the `op` of the span sent to Sentry is `default`.
+//! ```
+//! #[tracing::instrument]
+//! async fn inner(value: i32) {
+//!     tracing::info!(value, "completed step");
+//! }
+//! ```
 //!
-//! ## Special Span Fields
+//! By default, the Sentry span name matches the `tracing` span name, and its operation is
+//! `<target>::<span name>`. Spans at `DEBUG` and `TRACE` are not captured by default.
 //!
-//! Some fields on spans are treated specially by the Sentry tracing integration:
-//! - `sentry.name`: overrides the span name sent to Sentry.
-//!   This is useful to customize the span name when using `#[tracing::instrument]`, or to update
-//!   it retroactively (using `span.record`) after the span has been created.
-//! - `sentry.op`: overrides the span `op` sent to Sentry.
-//! - `sentry.trace`: in Sentry, the `sentry-trace` header is sent with HTTP requests to achieve distributed tracing.
-//!   If the value of this field is set to the value of a valid `sentry-trace` header, which
-//!   other Sentry SDKs send automatically with outgoing requests, then the SDK will continue the trace using the given distributed tracing information.
-//!   This is useful to achieve distributed tracing at service boundaries by using only the
-//!   `tracing` API.
-//!   Note that `sentry.trace` will only be effective on span creation (it cannot be applied retroactively)
-//!   and requires the span it's applied to to be a root span, i.e. no span should active upon its
-//!   creation.
+//! ## Special span fields
 //!
-//!
-//! Example:
+//! - `sentry.name` overrides the Sentry span name, including when recorded after creation.
+//! - `sentry.op` overrides the Sentry span operation, including when recorded after creation.
+//! - `sentry.trace` continues the trace from a `sentry-trace` header. It must be set when a
+//!   **root** span is created; recording it later has no effect.
 //!
 //! ```
 //! #[tracing::instrument(skip_all, fields(
@@ -234,7 +76,48 @@
 //!     // ...
 //! }
 //! ```
+//!
+//! # Logs
+//!
+//! `log_layer()` sends `ERROR`, `WARN`, and `INFO` events as structured logs. Event fields
+//! become searchable log attributes; fields with dots appear nested under their common
+//! prefix in the Sentry Logs explorer.
+//!
+//! ```
+//! tracing::info!(number = 42, my.key = "value", "Processed request");
+//! ```
+//!
+//! # Errors
+//!
+//! `error_layer()` captures an `ERROR` event as a Sentry error event. Fields become context;
+//! fields prefixed with `tags.` become Sentry tags.
+//!
+//! ```
+//! tracing::error!(field = "value", tags.custom = "value", "Request failed");
+//! ```
+//!
+//! To capture an error chain as Sentry exceptions, record an error trait object. A message
+//! can also be provided for grouping and issue context:
+//!
+//! ```
+//! use std::error::Error;
+//!
+//! let error = std::io::Error::other("connection refused");
+//! tracing::error!(error = &error as &dyn Error, "Request failed");
+//! ```
+//!
+//! # Breadcrumbs
+//!
+//! `breadcrumb_layer()` adds `WARN` and `INFO` events to the current Sentry scope. Breadcrumbs
+//! are sent with subsequent captured errors; they are not sent independently. Event fields
+//! become breadcrumb data.
+//!
+//! ```
+//! tracing::info!(request_id = 42, "Starting request");
+//! tracing::warn!("Retrying request");
+//! ```
 
+#![cfg_attr(doc_cfg, feature(doc_cfg))]
 #![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
 #![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
 
