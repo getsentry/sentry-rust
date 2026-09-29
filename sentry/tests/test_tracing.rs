@@ -1,4 +1,5 @@
 #![expect(missing_docs, reason = "predates lint enforcement")]
+#![expect(deprecated, reason = "legacy layer compatibility tests")]
 #![cfg(feature = "test")]
 
 use sentry::protocol::{Context, Request, Value};

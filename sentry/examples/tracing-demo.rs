@@ -9,7 +9,8 @@ use tracing_subscriber::prelude::*;
 fn main() {
     tracing_subscriber::registry()
         .with(tracing_subscriber::fmt::layer())
-        .with(sentry_tracing::layer())
+        .with(sentry_tracing::span_layer())
+        .with(sentry_tracing::log_layer())
         .try_init()
         .unwrap();
 

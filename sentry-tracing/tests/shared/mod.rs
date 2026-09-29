@@ -1,3 +1,5 @@
+#![expect(deprecated, reason = "legacy layer compatibility tests")]
+
 use sentry::{ClientOptions, Hub};
 use sentry_core::test::TestTransport;
 
