@@ -20,9 +20,8 @@ name = "minidump"
 path = "examples/app.rs"
 
 [dependencies]
-sentry-core = { workspace = true, features = ["client"] }
+sentry-core = { workspace = true, features = ["client", "thread-registry"] }
 minidumper-child = { workspace = true }
-serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 
 [dev-dependencies]

@@ -2,7 +2,10 @@
 //!
 //! This is also executed by the end to end test.
 
+use std::sync::Arc;
 use std::time::Duration;
+
+use sentry::Hub;
 
 fn main() {
     let minidump = sentry_minidump::MinidumpIntegration::new()
@@ -28,13 +31,41 @@ fn main() {
     );
     // Everything after here runs in the app process only.
 
-    sentry::with_integration(|minidump: &sentry_minidump::MinidumpIntegration, _| {
-        minidump.set_user(Some(sentry::User {
-            username: Some("john_doe".into()),
-            email: Some("john@doe.town".into()),
+    sentry::configure_scope(|scope| {
+        scope.set_user(Some(sentry::User {
+            username: Some("main_thread".into()),
             ..Default::default()
         }));
+        scope.set_tag("shared", "from_main");
     });
 
-    unsafe { sadness_generator::raise_segfault() };
+    // The worker hub copies the main scope now. Changes the main thread
+    // makes after this point do not reach it.
+    let worker_hub = Arc::new(Hub::new_from_top(Hub::current()));
+
+    sentry::configure_scope(|scope| {
+        scope.set_tag("main_only", "true");
+    });
+
+    std::thread::spawn(move || {
+        Hub::run(worker_hub, || {
+            sentry::configure_scope(|scope| {
+                scope.set_user(Some(sentry::User {
+                    username: Some("john_doe".into()),
+                    email: Some("john@doe.town".into()),
+                    ..Default::default()
+                }));
+                scope.set_tag("thread", "worker");
+            });
+            sentry::add_breadcrumb(sentry::Breadcrumb {
+                message: Some("about to crash".into()),
+                ..Default::default()
+            });
+
+            // The crash event carries this hub's scope, not the main thread's.
+            unsafe { sadness_generator::raise_segfault() };
+        })
+    })
+    .join()
+    .ok();
 }

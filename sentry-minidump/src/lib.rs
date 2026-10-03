@@ -31,17 +31,22 @@
 //! Only the first initialization that has a DSN starts the reporter; later
 //! calls do nothing.
 //!
-//! # Scope sync
+//! # Scope
 //!
-//! Scope changes do not cross the process boundary on their own. Send them
-//! to the crash reporter through the integration:
+//! The crash event carries the scope of the thread that crashed: user,
+//! tags, extra, contexts, breadcrumbs, level, transaction and fingerprint,
+//! after the scope's event processors have run. Nothing is sent to the
+//! crash reporter until the crash. At that moment the crash handler names
+//! the crashing OS thread, a helper thread serializes the scope of the hub
+//! current on that thread, and the handler sends it to the reporter before
+//! it requests the minidump. Hubs bound with [`Hub::run`] are tracked, so a
+//! server with one hub per request reports the scope of the request that
+//! crashed. A thread that never used Sentry falls back to the main hub.
 //!
-//! ```rust
-//! # let user = sentry::User::default();
-//! sentry::with_integration(|minidump: &sentry_minidump::MinidumpIntegration, _| {
-//!     minidump.set_user(Some(user.clone()));
-//! });
-//! ```
+//! The helper waits at most [`scope_timeout`](MinidumpIntegration::scope_timeout)
+//! for the scope. If the crash happened while the crashing thread held the
+//! allocator or the hub lock, the helper cannot finish and the event goes
+//! out without the scope. Attachments on the scope are not carried.
 //!
 //! # Platforms
 //!
@@ -51,6 +56,8 @@
 #![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
 #![deny(unsafe_code)]
 
+mod scope_sync;
+
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::{exit, Command};
@@ -58,8 +65,10 @@ use std::sync::{Arc, Once, OnceLock};
 use std::time::Duration;
 
 use minidumper_child::{ClientHandle, MinidumperChild};
-use sentry_core::protocol::{Attachment, AttachmentType, Breadcrumb, Event, User, Value};
+use sentry_core::protocol::{Attachment, AttachmentType, Value};
 use sentry_core::{sentry_debug, Client, ClientOptions, Hub, Integration, Level, Scope};
+
+use crate::scope_sync::{ScopeReceiver, ScopeSync};
 
 /// The default environment variable that marks the crash reporter process.
 const DEFAULT_SERVER_ENV_VAR: &str = "_SENTRY_CRASH_REPORTER_SERVER";
@@ -70,17 +79,11 @@ const DEFAULT_FLUSH_TIMEOUT: Duration = Duration::from_secs(5);
 /// The default `argv[0]` of the crash reporter process, shown by `ps`.
 const DEFAULT_PROCESS_NAME: &str = "Crash Reporter (Sentry Rust SDK)";
 
+/// The default time the crash handler waits for the scope to be serialized.
+const DEFAULT_SCOPE_TIMEOUT: Duration = Duration::from_secs(2);
+
 type OnProcess = dyn Fn(&mut Command) + Send + Sync + 'static;
 type BeforeCapture = dyn Fn(&mut Scope, &Path) + Send + Sync + 'static;
-
-/// An update to the crash reporter's scope, sent over the socket.
-#[derive(serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq)]
-enum ScopeUpdate {
-    AddBreadcrumb(Breadcrumb),
-    SetUser(Option<User>),
-    SetExtra(String, Option<Value>),
-    SetTag(String, Option<String>),
-}
 
 /// Captures native crashes as minidumps and sends them to Sentry.
 ///
@@ -100,6 +103,7 @@ pub struct MinidumpIntegration {
     on_process: Option<Arc<OnProcess>>,
     before_capture: Option<Arc<BeforeCapture>>,
     flush_timeout: Duration,
+    scope_timeout: Duration,
     client_connect_timeout: Option<Duration>,
     server_stale_timeout: Option<Duration>,
     handle: OnceLock<ClientHandle>,
@@ -113,6 +117,7 @@ impl std::fmt::Debug for MinidumpIntegration {
             .field("inherit_args", &self.inherit_args)
             .field("process_name", &self.process_name)
             .field("flush_timeout", &self.flush_timeout)
+            .field("scope_timeout", &self.scope_timeout)
             .field("client_connect_timeout", &self.client_connect_timeout)
             .field("server_stale_timeout", &self.server_stale_timeout)
             .finish_non_exhaustive()
@@ -129,6 +134,7 @@ impl Default for MinidumpIntegration {
             on_process: None,
             before_capture: None,
             flush_timeout: DEFAULT_FLUSH_TIMEOUT,
+            scope_timeout: DEFAULT_SCOPE_TIMEOUT,
             client_connect_timeout: None,
             server_stale_timeout: None,
             handle: OnceLock::new(),
@@ -239,6 +245,16 @@ impl MinidumpIntegration {
         self
     }
 
+    /// Sets how long the crash handler waits for the crashing thread's
+    /// scope to be serialized before it requests the minidump without it.
+    ///
+    /// Defaults to 2 seconds. See the [crate docs](crate#scope).
+    #[must_use]
+    pub fn scope_timeout(mut self, timeout: Duration) -> Self {
+        self.scope_timeout = timeout;
+        self
+    }
+
     /// Sets how long the app waits for the crash reporter to accept a
     /// connection.
     #[must_use]
@@ -255,41 +271,18 @@ impl MinidumpIntegration {
         self
     }
 
-    /// Sends a scope update to the crash reporter process.
-    ///
-    /// Does nothing when there is no crash reporter, because this is the
-    /// reporter process, the DSN was unset, or the spawn failed.
-    fn send(&self, update: &ScopeUpdate) {
-        if let Some(handle) = self.handle.get() {
-            if let Ok(buffer) = serde_json::to_vec(update) {
-                handle.send_message(0, buffer).ok();
-            }
-        }
-    }
-
-    /// Adds a breadcrumb to the crash reporter's scope.
-    pub fn add_breadcrumb(&self, breadcrumb: Breadcrumb) {
-        self.send(&ScopeUpdate::AddBreadcrumb(breadcrumb));
-    }
-
-    /// Sets the user on the crash reporter's scope.
-    pub fn set_user(&self, user: Option<User>) {
-        self.send(&ScopeUpdate::SetUser(user));
-    }
-
-    /// Sets or removes an extra value on the crash reporter's scope.
-    pub fn set_extra(&self, key: String, value: Option<Value>) {
-        self.send(&ScopeUpdate::SetExtra(key, value));
-    }
-
-    /// Sets or removes a tag on the crash reporter's scope.
-    pub fn set_tag(&self, key: String, value: Option<String>) {
-        self.send(&ScopeUpdate::SetTag(key, value));
-    }
-
     /// Builds the child from the stored settings.
-    fn build_child(&self) -> MinidumperChild {
+    ///
+    /// `scope_sync` is set in the app process only; the reporter has no
+    /// crash handler of its own.
+    fn build_child(&self, scope_sync: Option<Arc<ScopeSync>>) -> MinidumperChild {
         let mut child = MinidumperChild::new().with_server_env_var(self.server_env_var.clone());
+
+        if let Some(scope_sync) = scope_sync {
+            child = child.on_crash(move |crash_context, sender| {
+                scope_sync.on_crash(crash_context, sender);
+            });
+        }
 
         if let Some(dir) = &self.crashes_dir {
             child = child.with_crashes_dir(dir.clone());
@@ -322,27 +315,19 @@ impl MinidumpIntegration {
             }
         });
 
-        child = child.on_message(|_kind, buffer| {
-            if let Ok(update) = serde_json::from_slice::<ScopeUpdate>(&buffer) {
-                let hub = Hub::current();
-                match update {
-                    ScopeUpdate::AddBreadcrumb(b) => hub.add_breadcrumb(b),
-                    ScopeUpdate::SetUser(u) => hub.configure_scope(|scope| scope.set_user(u)),
-                    ScopeUpdate::SetExtra(k, v) => hub.configure_scope(|scope| match v {
-                        Some(v) => scope.set_extra(&k, v),
-                        None => scope.remove_extra(&k),
-                    }),
-                    ScopeUpdate::SetTag(k, v) => hub.configure_scope(|scope| match v {
-                        Some(v) => scope.set_tag(&k, &v),
-                        None => scope.remove_tag(&k),
-                    }),
-                }
-            }
+        let receiver = Arc::new(ScopeReceiver::default());
+        child = child.on_message({
+            let receiver = receiver.clone();
+            move |kind, buffer| receiver.on_message(kind, &buffer)
         });
 
         let flush_timeout = self.flush_timeout;
         let before_capture = self.before_capture.clone();
         child.on_minidump(move |buffer, path| {
+            // The scope of the crashing thread arrived before the dump.
+            let mut event = receiver.take_event();
+            event.level = Level::Fatal;
+
             // The client lives on the current hub, bound in the reporter
             // process before the server starts. Resolve it at crash time
             // rather than capturing it here.
@@ -370,10 +355,7 @@ impl MinidumpIntegration {
                     }
                 },
                 || {
-                    hub.capture_event(Event {
-                        level: Level::Fatal,
-                        ..Default::default()
-                    });
+                    hub.capture_event(event);
                 },
             );
 
@@ -456,7 +438,7 @@ impl Integration for MinidumpIntegration {
         SETUP.call_once(|| {
             // Crash reporter process: run the minidump server; never returns.
             if self.is_crash_reporter_process() {
-                run_crash_reporter(self.build_child(), options, self.flush_timeout);
+                run_crash_reporter(self.build_child(None), options, self.flush_timeout);
             }
 
             setup_run = true;
@@ -466,7 +448,8 @@ impl Integration for MinidumpIntegration {
             if self.handle.get().is_some() {
                 return;
             }
-            match self.build_child().spawn() {
+            let scope_sync = ScopeSync::start(self.scope_timeout);
+            match self.build_child(Some(scope_sync)).spawn() {
                 Ok(handle) => {
                     let _ = self.handle.set(handle);
                 }

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+- The `sentry-minidump` crash event now carries the scope of the thread that crashed, including hubs bound with `Hub::run`. Nothing is sent to the crash reporter until the crash: the crash handler names the crashing OS thread and a helper thread serializes that thread's scope before the minidump is requested. The manual `set_user`, `set_tag`, `set_extra` and `add_breadcrumb` methods on `MinidumpIntegration` are removed, and `scope_timeout` bounds the wait for the scope.
+- Added the `thread-registry` feature to `sentry-core`, with `Hub::for_os_thread` and `current_os_thread_id`, which map operating system thread ids to the hub current on each thread.
+
 ## 0.49.3
 
 ### Features

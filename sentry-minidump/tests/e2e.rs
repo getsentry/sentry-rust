@@ -101,10 +101,28 @@ fn captures_minidump_from_crash() {
         Some("example")
     );
 
-    // Set through `with_integration` before the crash.
+    // The scope of the worker thread that crashed, not the main thread's.
     let user = event.user.as_ref().expect("event has a user");
     assert_eq!(user.username.as_deref(), Some("john_doe"));
     assert_eq!(user.email.as_deref(), Some("john@doe.town"));
+    assert_eq!(event.tags.get("thread").map(String::as_str), Some("worker"));
+    assert_eq!(
+        event.breadcrumbs.last().and_then(|b| b.message.as_deref()),
+        Some("about to crash")
+    );
+
+    // Inherited from the main scope when the worker hub was created.
+    assert_eq!(
+        event.tags.get("shared").map(String::as_str),
+        Some("from_main")
+    );
+
+    // Set on the main thread after the worker hub was created.
+    assert!(
+        !event.tags.contains_key("main_only"),
+        "main thread scope leaked into the crash event: {:?}",
+        event.tags
+    );
 
     let attachment = envelope
         .items()

@@ -106,3 +106,7 @@ uname = "0.1.1"
 ureq = { version = "3.0.11", default-features = false }
 url = "2.2.2"
 uuid = "1.0.0"
+
+[patch.crates-io]
+# Pending release of the `on_crash` hook.
+minidumper-child = { git = "https://github.com/timfish/minidumper-child", branch = "feat/on-crash-hook" }

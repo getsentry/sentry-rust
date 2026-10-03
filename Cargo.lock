@@ -2351,8 +2351,7 @@ dependencies = [
 [[package]]
 name = "minidumper-child"
 version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1dd1d5c43819abcc73ced5a1287c58fdc715c9f993b7cc9debc6ae7cb8421994"
+source = "git+https://github.com/timfish/minidumper-child?branch=feat%2Fon-crash-hook#ebba9e44e458141c10afd33a3bc07267f1eeca15"
 dependencies = [
  "crash-handler",
  "minidumper",
@@ -3673,6 +3672,7 @@ dependencies = [
  "anyhow",
  "criterion",
  "futures",
+ "libc",
  "log",
  "rand 0.10.2",
  "rayon",
@@ -3713,7 +3713,6 @@ dependencies = [
  "sadness-generator",
  "sentry",
  "sentry-core",
- "serde",
  "serde_json",
 ]
 
