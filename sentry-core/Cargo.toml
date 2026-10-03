@@ -27,6 +27,7 @@ default = []
 client = ["rand"]
 test = ["client", "release-health"]
 release-health = []
+thread-registry = ["client", "dep:libc"]
 logs = []
 metrics = []
 
@@ -38,6 +39,9 @@ serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 url = { workspace = true }
 uuid = { workspace = true, features = ["v4", "serde"], optional = true }
+
+[target.'cfg(unix)'.dependencies]
+libc = { workspace = true, optional = true }
 
 [dev-dependencies]
 # Because we re-export all the public API in `sentry`, we actually run all the

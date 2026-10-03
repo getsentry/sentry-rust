@@ -146,6 +146,10 @@ mod client;
 mod hub_impl;
 #[cfg(feature = "client")]
 mod session;
+#[cfg(feature = "thread-registry")]
+mod thread_registry;
+#[cfg(feature = "thread-registry")]
+pub use crate::thread_registry::current_os_thread_id;
 
 #[cfg(feature = "client")]
 pub use crate::clientoptions::MaxRequestBodySize;

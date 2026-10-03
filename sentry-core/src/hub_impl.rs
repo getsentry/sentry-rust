@@ -19,11 +19,16 @@ thread_local! {
     /// [`PROCESS_HUB`] are identical, i.e. `Arc::ptr_eq(&PROCESS_HUB, &THREAD_HUB)` is true.
     /// On any other thread, the [`THREAD_HUB`] is created as a new hub based off of the
     /// [`PROCESS_HUB`].
-    static THREAD_HUB: RefCell<Arc<Hub>> = if thread::current().id() == PROCESS_HUB.thread {
-        PROCESS_HUB.hub.clone()
-    } else {
-        Hub::new_from_top(&PROCESS_HUB.hub).into()
-    }.into()
+    static THREAD_HUB: RefCell<Arc<Hub>> = {
+        let hub: Arc<Hub> = if thread::current().id() == PROCESS_HUB.thread {
+            PROCESS_HUB.hub.clone()
+        } else {
+            Hub::new_from_top(&PROCESS_HUB.hub).into()
+        };
+        #[cfg(feature = "thread-registry")]
+        crate::thread_registry::set_current_hub(&hub);
+        hub.into()
+    }
 }
 
 /// A guard that temporarily swaps the active hub in thread-local storage.
@@ -61,6 +66,8 @@ impl SwitchGuard {
                 return None;
             }
             std::mem::swap(&mut *thread_hub, &mut hub);
+            #[cfg(feature = "thread-registry")]
+            crate::thread_registry::set_current_hub(&thread_hub);
             Some(hub)
         });
         SwitchGuard {
@@ -80,6 +87,8 @@ impl SwitchGuard {
                 .try_with(|thread_hub| {
                     let mut thread_hub = thread_hub.borrow_mut();
                     std::mem::swap(&mut *thread_hub, &mut hub);
+                    #[cfg(feature = "thread-registry")]
+                    crate::thread_registry::set_current_hub(&thread_hub);
                     hub
                 })
                 .ok()
@@ -162,6 +171,22 @@ impl Hub {
     /// current thread's hub it returns the main thread's hub instead.
     pub fn main() -> Arc<Hub> {
         PROCESS_HUB.hub.clone()
+    }
+
+    /// Returns the hub that is current on the thread with the given
+    /// operating system thread id.
+    ///
+    /// The id is the one [`current_os_thread_id`](crate::current_os_thread_id)
+    /// returns on that thread. A thread is known once it has used
+    /// [`Hub::current`] or [`Hub::run`]; hubs switched with [`Hub::run`]
+    /// are tracked. Returns `None` for threads that never touched a hub
+    /// or have exited.
+    ///
+    /// This is meant for crash reporters that learn the crashing thread
+    /// from the OS and want its scope.
+    #[cfg(feature = "thread-registry")]
+    pub fn for_os_thread(os_thread_id: u64) -> Option<Arc<Hub>> {
+        crate::thread_registry::hub_for_os_thread(os_thread_id)
     }
 
     /// Invokes the callback with the default hub.
