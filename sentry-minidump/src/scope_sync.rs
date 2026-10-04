@@ -37,7 +37,8 @@ pub(crate) struct ScopeSync {
 struct Helper {
     thread_id: std::sync::atomic::AtomicU64,
     requested: AtomicBool,
-    thread: std::thread::Thread,
+    /// Unset when the helper thread failed to start.
+    thread: std::sync::OnceLock<std::thread::Thread>,
     timeout: Duration,
 }
 
@@ -57,22 +58,8 @@ impl ScopeSync {
         #[cfg(not(target_os = "macos"))]
         {
             use std::sync::atomic::AtomicU64;
+            use std::sync::OnceLock;
             use std::thread;
-
-            let (tx, rx) = std::sync::mpsc::sync_channel::<Arc<ScopeSync>>(1);
-
-            let handle = thread::Builder::new()
-                .name("sentry-minidump-scope".into())
-                .spawn(move || {
-                    let Ok(sync) = rx.recv() else { return };
-                    while !sync.helper.requested.load(Ordering::Acquire) {
-                        thread::park();
-                    }
-                    let bytes = scope_bytes(sync.helper.thread_id.load(Ordering::Acquire));
-                    *sync.buffer.lock().unwrap_or_else(PoisonError::into_inner) = bytes;
-                    sync.done.store(true, Ordering::Release);
-                })
-                .expect("spawn scope helper thread");
 
             let sync = Arc::new(ScopeSync {
                 done: AtomicBool::new(false),
@@ -80,11 +67,32 @@ impl ScopeSync {
                 helper: Helper {
                     thread_id: AtomicU64::new(0),
                     requested: AtomicBool::new(false),
-                    thread: handle.thread().clone(),
+                    thread: OnceLock::new(),
                     timeout,
                 },
             });
-            tx.send(sync.clone()).expect("helper thread is waiting");
+
+            let helper_sync = sync.clone();
+            let spawned = thread::Builder::new()
+                .name("sentry-minidump-scope".into())
+                .spawn(move || {
+                    let sync = helper_sync;
+                    while !sync.helper.requested.load(Ordering::Acquire) {
+                        thread::park();
+                    }
+                    let bytes = scope_bytes(sync.helper.thread_id.load(Ordering::Acquire));
+                    *sync.buffer.lock().unwrap_or_else(PoisonError::into_inner) = bytes;
+                    sync.done.store(true, Ordering::Release);
+                });
+
+            match spawned {
+                Ok(handle) => {
+                    let _ = sync.helper.thread.set(handle.thread().clone());
+                }
+                Err(err) => {
+                    sentry_core::sentry_debug!("could not start scope helper thread: {err}");
+                }
+            }
             sync
         }
     }
@@ -106,9 +114,12 @@ impl ScopeSync {
 
         #[cfg(not(target_os = "macos"))]
         {
+            let Some(helper_thread) = self.helper.thread.get() else {
+                return;
+            };
             self.helper.thread_id.store(thread_id, Ordering::Release);
             self.helper.requested.store(true, Ordering::Release);
-            self.helper.thread.unpark();
+            helper_thread.unpark();
 
             let step = Duration::from_millis(1);
             let mut waited = Duration::ZERO;
