@@ -117,7 +117,7 @@ pub struct SentryLayer<S> {
     breadcrumb: BreadcrumbLayer,
     error: ErrorLayer,
     #[cfg(feature = "logs")]
-    log: LogLayer,
+    log: LogLayer<S>,
 }
 
 #[expect(deprecated, reason = "implementing the legacy layer")]
@@ -234,7 +234,7 @@ where
             }
             #[cfg(feature = "logs")]
             if filter.contains(EventFilter::Log) {
-                self.log.capture_event(event, &ctx);
+                self.log.capture_tracing_event(event, ctx);
             }
         }
     }
