@@ -16,32 +16,48 @@ use crate::{SENTRY_NAME_FIELD, SENTRY_OP_FIELD, SENTRY_TRACE_FIELD, TAGS_PREFIX}
 
 /// Captures tracing spans as Sentry transactions and spans.
 ///
-/// By default, spans at `ERROR`, `WARN`, and `INFO` are captured. Install this
-/// layer to capture spans; event layers do not manage the span lifecycle.
+/// Install this layer to capture spans; event layers do not manage the span lifecycle.
 pub struct SpanLayer {
     span_filter: Box<dyn Fn(&Metadata) -> bool + Send + Sync>,
 }
 
-impl Default for SpanLayer {
-    fn default() -> Self {
-        Self {
-            span_filter: Box::new(super::default_span_filter),
-        }
-    }
-}
-
 impl SpanLayer {
-    pub(super) fn span_filter<F>(&mut self, filter: F)
+    /// Sets the filter deciding which spans are captured, replacing any previous filter.
+    #[must_use]
+    pub(super) fn span_filter<F>(mut self, filter: F) -> Self
     where
         F: Fn(&Metadata) -> bool + Send + Sync + 'static,
     {
         self.span_filter = Box::new(filter);
+        self
     }
 }
 
-/// Creates a layer that captures only Sentry transactions and spans.
+/// Creates a layer that captures tracing spans as Sentry transactions and spans.
+///
+/// # Filtering
+///
+/// It is highly recommended to configure a level filter on the layer to limit span volume. We
+/// recommend capturing spans at the `INFO` level, and more severe.
+///
+/// ```rust
+/// # use tracing_subscriber::prelude::*;
+/// use tracing_subscriber::filter::LevelFilter;
+///
+/// tracing_subscriber::registry()
+///     .with(sentry_tracing::span_layer().with_filter(LevelFilter::INFO))
+///     .init();
+///
+/// // This will be captured ...
+/// let _info = tracing::info_span!("INFO span").entered();
+///
+/// // ... but this will not be, due to LevelFilter::INFO being set.
+/// let _debug = tracing::debug_span!("DEBUG span").entered();
+/// ```
 pub fn span_layer() -> SpanLayer {
-    SpanLayer::default()
+    SpanLayer {
+        span_filter: Box::new(|_| true),
+    }
 }
 
 #[inline(always)]

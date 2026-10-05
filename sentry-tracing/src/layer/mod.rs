@@ -11,10 +11,10 @@ mod log;
 mod span;
 mod span_guard_stack;
 
-pub use breadcrumb::{breadcrumb_layer, BreadcrumbLayer};
-pub use error::{error_layer, ErrorLayer};
+pub use breadcrumb::{breadcrumb_layer, BreadcrumbLayer, EventToBreadcrumbMapper};
+pub use error::{error_layer, ErrorLayer, EventToErrorMapper};
 #[cfg(feature = "logs")]
-pub use log::{log_layer, LogLayer};
+pub use log::{log_layer, EventToLogMapper, LogLayer};
 pub(super) use span::SentrySpanData;
 pub use span::{span_layer, SpanLayer};
 
@@ -114,8 +114,8 @@ pub struct SentryLayer<S> {
     event_filter: Box<dyn Fn(&Metadata) -> EventFilter + Send + Sync>,
     event_mapper: Option<EventMapper<S>>,
     span_layer: SpanLayer,
-    breadcrumb: BreadcrumbLayer,
-    error: ErrorLayer,
+    breadcrumb: BreadcrumbLayer<S>,
+    error: ErrorLayer<S>,
     #[cfg(feature = "logs")]
     log: LogLayer<S>,
 }
@@ -159,7 +159,7 @@ impl<S> SentryLayer<S> {
     where
         F: Fn(&Metadata) -> bool + Send + Sync + 'static,
     {
-        self.span_layer.span_filter(filter);
+        self.span_layer = self.span_layer.span_filter(filter);
         self
     }
 
@@ -191,7 +191,7 @@ where
         Self {
             event_filter: Box::new(default_event_filter),
             event_mapper: None,
-            span_layer: span_layer(),
+            span_layer: span_layer().span_filter(default_span_filter),
             breadcrumb: breadcrumb_layer(),
             error: error_layer(),
             #[cfg(feature = "logs")]
@@ -227,10 +227,10 @@ where
             // standalone event layers' default level checks here.
             let filter = (self.event_filter)(event.metadata());
             if filter.contains(EventFilter::Breadcrumb) {
-                self.breadcrumb.capture_event(event, &ctx);
+                self.breadcrumb.capture_tracing_event(event, ctx.clone());
             }
             if filter.contains(EventFilter::Event) {
-                self.error.capture_event(event, &ctx);
+                self.error.capture_tracing_event(event, ctx.clone());
             }
             #[cfg(feature = "logs")]
             if filter.contains(EventFilter::Log) {

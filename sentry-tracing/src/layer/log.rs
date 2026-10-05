@@ -15,8 +15,36 @@ pub struct LogLayer<S> {
 }
 
 impl<S> LogLayer<S> {
-    /// Include attributes of captured parent spans in logs.
-    /// Requires a [`super::SpanLayer`] installed on the same subscriber.
+    /// Include attributes of parent spans in logs.
+    ///
+    /// We can only include spans captured by a [`super::SpanLayer`] on the same subscriber. So,
+    /// this option only has any effect when the `SpanLayer` is installed.
+    ///
+    /// Furthermore, only spans accepted by the log layer's
+    /// [filter](tracing_subscriber::layer#per-layer-filtering) are considered when attaching
+    /// attributes. When using this option, therefore, we recommend building a custom filter that
+    /// accepts all spans, while filtering events to the desired level, like so:
+    ///
+    /// ```rust
+    /// # use tracing_subscriber::prelude::*;
+    /// use tracing::Level;
+    /// use tracing_subscriber::filter::{filter_fn, LevelFilter};
+    ///
+    /// tracing_subscriber::registry()
+    ///     .with(sentry_tracing::span_layer().with_filter(LevelFilter::INFO))
+    ///     .with(
+    ///         sentry_tracing::log_layer()
+    ///             .enable_span_attributes()
+    ///             .with_filter(filter_fn(|metadata| {
+    ///                 // Accept all spans, but only events at `INFO` and more severe.
+    ///                 metadata.is_span() || *metadata.level() <= Level::INFO
+    ///             })),
+    ///     )
+    ///     .init();
+    /// ```
+    ///
+    /// Including all spans in the log layer filter is safe, because this layer does not send any
+    /// spans to Sentry.
     ///
     /// This option has no effect when [`Self::mapper`] is set.
     #[must_use]
@@ -94,15 +122,17 @@ impl<F, S> EventToLogMapper<S> for F where F: Fn(&Event, Context<'_, S>) -> Opti
 
 /// Creates a layer that captures Sentry logs from tracing events.
 ///
+/// # Filtering
+///
 /// It is highly recommended to configure a level filter on the layer to limit log volume. We
-/// recommend capturing logs at the `INFO` level, and above.
+/// recommend capturing logs at the `INFO` level, and more severe.
 ///
 /// ```rust
 /// # use tracing_subscriber::prelude::*;
 /// use tracing_subscriber::filter::LevelFilter;
 ///
 /// tracing_subscriber::registry()
-///     .with(sentry::integrations::tracing::log_layer().with_filter(LevelFilter::INFO))
+///     .with(sentry_tracing::log_layer().with_filter(LevelFilter::INFO))
 ///     .init();
 ///
 /// // This will be captured ...
