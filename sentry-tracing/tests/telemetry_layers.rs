@@ -3,6 +3,7 @@
 use sentry::protocol::EnvelopeItem;
 #[cfg(feature = "logs")]
 use sentry::protocol::{Context, ItemContainer, LogLevel, Value};
+use tracing_subscriber::filter::{filter_fn, LevelFilter};
 use tracing_subscriber::prelude::*;
 
 #[test]
@@ -32,8 +33,8 @@ fn span_layer_does_not_capture_event_telemetry() {
 #[test]
 fn spans_and_logs_do_not_capture_errors_or_breadcrumbs() {
     let _dispatcher = tracing_subscriber::registry()
-        .with(sentry_tracing::span_layer())
-        .with(sentry_tracing::log_layer())
+        .with(sentry_tracing::span_layer().with_filter(LevelFilter::INFO))
+        .with(sentry_tracing::log_layer().with_filter(LevelFilter::INFO))
         .set_default();
 
     let envelopes = sentry::test::with_captured_envelopes_options(
@@ -65,10 +66,27 @@ fn spans_and_logs_do_not_capture_errors_or_breadcrumbs() {
 #[test]
 fn all_layers_capture_their_default_levels_and_parent_fields() {
     let _dispatcher = tracing_subscriber::registry()
-        .with(sentry_tracing::span_layer())
-        .with(sentry_tracing::breadcrumb_layer().enable_span_attributes())
-        .with(sentry_tracing::error_layer().enable_span_attributes())
-        .with(sentry_tracing::log_layer().enable_span_attributes())
+        .with(sentry_tracing::span_layer().with_filter(LevelFilter::INFO))
+        .with(
+            sentry_tracing::breadcrumb_layer()
+                .enable_span_attributes()
+                // `WARN` and `INFO` only; `ERROR` is captured by the error layer.
+                .with_filter(filter_fn(|m| {
+                    matches!(*m.level(), tracing::Level::WARN | tracing::Level::INFO)
+                })),
+        )
+        .with(
+            sentry_tracing::error_layer()
+                .enable_span_attributes()
+                .with_filter(filter_fn(|m| {
+                    m.is_span() || *m.level() == tracing::Level::ERROR
+                })),
+        )
+        .with(
+            sentry_tracing::log_layer()
+                .enable_span_attributes()
+                .with_filter(LevelFilter::INFO),
+        )
         .set_default();
 
     let envelopes = sentry::test::with_captured_envelopes_options(
