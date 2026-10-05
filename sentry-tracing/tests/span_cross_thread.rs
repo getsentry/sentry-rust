@@ -5,25 +5,36 @@ mod shared;
 use sentry::protocol::Context;
 use std::thread;
 use std::time::Duration;
+use tracing_subscriber::filter::LevelFilter;
+use tracing_subscriber::prelude::*;
 
 #[test]
 fn cross_thread_span_entries_share_transaction() {
     let transport = shared::init_sentry(1.0);
+    let _subscriber = tracing_subscriber::registry()
+        .with(sentry_tracing::span_layer().with_filter(LevelFilter::INFO))
+        .set_default();
 
     let span = tracing::info_span!("foo");
     let span2 = span.clone();
+    let dispatch1 = tracing::dispatcher::get_default(|dispatch| dispatch.clone());
+    let dispatch2 = dispatch1.clone();
 
     let handle1 = thread::spawn(move || {
-        let _guard = span.enter();
-        let _bar_span = tracing::info_span!("bar").entered();
-        thread::sleep(Duration::from_millis(100));
+        tracing::dispatcher::with_default(&dispatch1, || {
+            let _guard = span.enter();
+            let _bar_span = tracing::info_span!("bar").entered();
+            thread::sleep(Duration::from_millis(100));
+        });
     });
 
     let handle2 = thread::spawn(move || {
-        thread::sleep(Duration::from_millis(10));
-        let _guard = span2.enter();
-        let _baz_span = tracing::info_span!("baz").entered();
-        thread::sleep(Duration::from_millis(50));
+        tracing::dispatcher::with_default(&dispatch2, || {
+            thread::sleep(Duration::from_millis(10));
+            let _guard = span2.enter();
+            let _baz_span = tracing::info_span!("baz").entered();
+            thread::sleep(Duration::from_millis(50));
+        });
     });
 
     handle1.join().unwrap();

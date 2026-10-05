@@ -127,8 +127,9 @@ impl<F, S> EventToBreadcrumbMapper<S> for F where
 ///
 /// It is highly recommended to configure a filter on the layer to limit breadcrumb volume. We
 /// recommend capturing `WARN` and `INFO` events. If you also use the error layer, exclude `ERROR`
-/// events, which would otherwise duplicate the error event as a breadcrumb. Install the breadcrumb
-/// layer before the error layer, so the breadcrumbs are added before the error event is captured.
+/// events, which would otherwise duplicate the error event as a breadcrumb. If a custom filter
+/// sends the same event to both layers, install the breadcrumb layer before the error layer so
+/// that breadcrumb is included in the error.
 ///
 /// ```rust
 /// # use tracing_subscriber::prelude::*;

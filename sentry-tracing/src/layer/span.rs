@@ -17,21 +17,8 @@ use crate::{SENTRY_NAME_FIELD, SENTRY_OP_FIELD, SENTRY_TRACE_FIELD, TAGS_PREFIX}
 /// Captures tracing spans as Sentry transactions and spans.
 ///
 /// Install this layer to capture spans; event layers do not manage the span lifecycle.
-pub struct SpanLayer {
-    span_filter: Box<dyn Fn(&Metadata) -> bool + Send + Sync>,
-}
-
-impl SpanLayer {
-    /// Sets the filter deciding which spans are captured, replacing any previous filter.
-    #[must_use]
-    pub(super) fn span_filter<F>(mut self, filter: F) -> Self
-    where
-        F: Fn(&Metadata) -> bool + Send + Sync + 'static,
-    {
-        self.span_filter = Box::new(filter);
-        self
-    }
-}
+#[non_exhaustive]
+pub struct SpanLayer {}
 
 /// Creates a layer that captures tracing spans as Sentry transactions and spans.
 ///
@@ -55,9 +42,7 @@ impl SpanLayer {
 /// let _debug = tracing::debug_span!("DEBUG span").entered();
 /// ```
 pub fn span_layer() -> SpanLayer {
-    SpanLayer {
-        span_filter: Box::new(|_| true),
-    }
+    SpanLayer {}
 }
 
 #[inline(always)]
@@ -118,17 +103,13 @@ impl<S> Layer<S> for SpanLayer
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
-    /// When a new Span gets created, run the filter and start a new sentry span
-    /// if it passes, setting it as the *current* sentry span.
+    /// When a new Span gets created, start a new sentry span, setting it as the *current* sentry
+    /// span.
     fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
         let span = match ctx.span(id) {
             Some(span) => span,
             None => return,
         };
-
-        if !(self.span_filter)(span.metadata()) {
-            return;
-        }
 
         let (data, sentry_name, sentry_op, sentry_trace) = extract_span_data(attrs);
         let sentry_name = sentry_name.as_deref().unwrap_or_else(|| span.name());

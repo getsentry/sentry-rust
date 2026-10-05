@@ -6,8 +6,10 @@ mod shared;
 mod transaction_assertions;
 
 use sentry::{Hub, HubSwitchGuard};
+use tracing_subscriber::filter::LevelFilter;
+use tracing_subscriber::prelude::*;
 
-/// Tests that `SentryLayer`'s `on_exit` implementation panics (only when
+/// Tests that `SpanLayer`'s `on_exit` implementation panics (only when
 /// `debug_assertions` are enabled) if a Sentry-captured span is exited on a
 /// different thread than where it was entered.
 ///
@@ -20,6 +22,9 @@ fn future_cross_thread_info_span() {
 
     let _guard = HubSwitchGuard::new(Hub::new_from_top(Hub::current()).into());
     let transport = shared::init_sentry(1.0);
+    let _subscriber = tracing_subscriber::registry()
+        .with(sentry_tracing::span_layer().with_filter(LevelFilter::INFO))
+        .set_default();
 
     let span = tracing::info_span!(SPAN_NAME);
 

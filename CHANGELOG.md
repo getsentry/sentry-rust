@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+- Added independently selectable `SpanLayer`, `LogLayer` (`logs` feature), `ErrorLayer`, and `BreadcrumbLayer` to `sentry-tracing`. Most applications should use the span and log layers. The new layers do not filter by level internally; configure per-layer filters with `.with_filter(...)` to control capture.
+
+### Deprecations
+
+- Deprecated `sentry_tracing::layer()` and `SentryLayer` in favor of the individual layers. Legacy filtering defaults are unchanged. See the [migration guide](sentry-tracing/src/layer/mod.rs) for the equivalent four-layer configuration and custom-mapper differences.
+
 ## 0.49.3
 
 ### Features

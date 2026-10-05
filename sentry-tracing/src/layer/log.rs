@@ -5,7 +5,10 @@ use tracing_subscriber::registry::LookupSpan;
 
 use crate::converters::log_from_event;
 
-/// Captures `ERROR`, `WARN`, and `INFO` tracing events as Sentry logs.
+/// Captures tracing events as Sentry logs.
+///
+/// Captures all event levels unless a filter is configured; see [`log_layer`] for the recommended
+/// level filter.
 ///
 /// Requires a client with logs enabled.
 #[cfg_attr(doc_cfg, doc(cfg(feature = "logs")))]
@@ -109,7 +112,7 @@ where
     }
 }
 
-/// A mapper function which convernts a tracing event to a [`Log`].
+/// A mapper function which converts a tracing event to a [`Log`].
 ///
 /// This is a pretty advanced API; when using it, callers must handle constructing the log
 /// object manually from the tracing event.
