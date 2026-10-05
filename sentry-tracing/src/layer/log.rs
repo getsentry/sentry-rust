@@ -91,7 +91,7 @@ where
         }
     }
 
-    /// Convert the
+    /// Convert the tracing event to a Sentry log.
     fn event_to_log(&self, event: &Event, ctx: Context<'_, S>) -> Option<Log> {
         match &self.event_mapper {
             Some(mapper) => mapper(event, ctx),

@@ -18,22 +18,33 @@ pub use log::{log_layer, EventToLogMapper, LogLayer};
 pub(super) use span::SentrySpanData;
 pub use span::{span_layer, SpanLayer};
 
-bitflags! {
-    /// The action that Sentry should perform for a given [`Event`]
-    #[derive(Debug, Clone, Copy)]
-    pub struct EventFilter: u32 {
-        /// Ignore the [`Event`]
-        const Ignore = 0b000;
-        /// Create a [`Breadcrumb`] from this [`Event`]
-        const Breadcrumb = 0b001;
-        /// Create a [`sentry_core::protocol::Event`] from this [`Event`]
-        const Event = 0b010;
-        /// Create a [`sentry_core::protocol::Log`] from this [`Event`]
-        const Log = 0b100;
+/// Separate submodule with expect(deprecated) needed because bitflags! uses the deprecated
+/// EventFilter.
+#[expect(deprecated)]
+mod event_filter {
+    use super::*;
+    bitflags! {
+        /// The action that Sentry should perform for a given [`Event`]
+        #[deprecated = "only used for the legacy combined layer"]
+        #[derive(Debug, Clone, Copy)]
+        pub struct EventFilter: u32 {
+            /// Ignore the [`Event`]
+            const Ignore = 0b000;
+            /// Create a [`Breadcrumb`] from this [`Event`]
+            const Breadcrumb = 0b001;
+            /// Create a [`sentry_core::protocol::Event`] from this [`Event`]
+            const Event = 0b010;
+            /// Create a [`sentry_core::protocol::Log`] from this [`Event`]
+            const Log = 0b100;
+        }
     }
 }
 
+#[expect(deprecated)]
+pub use event_filter::EventFilter;
+
 /// The type of data Sentry should ingest for an [`Event`].
+#[deprecated = "only used for the legacy combined layer"]
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum EventMapping {
@@ -49,13 +60,16 @@ pub enum EventMapping {
     Log(sentry_core::protocol::Log),
     /// Captures multiple items to Sentry.
     /// Nesting multiple `EventMapping::Combined` inside each other will cause the inner mappings to be ignored.
+    #[expect(deprecated)]
     Combined(CombinedEventMapping),
 }
 
 /// A list of event mappings.
+#[deprecated = "only used for the legacy combined layer"]
 #[derive(Debug)]
-pub struct CombinedEventMapping(Vec<EventMapping>);
+pub struct CombinedEventMapping(#[expect(deprecated)] Vec<EventMapping>);
 
+#[expect(deprecated)]
 impl From<EventMapping> for CombinedEventMapping {
     fn from(value: EventMapping) -> Self {
         match value {
@@ -65,6 +79,7 @@ impl From<EventMapping> for CombinedEventMapping {
     }
 }
 
+#[expect(deprecated)]
 impl From<Vec<EventMapping>> for CombinedEventMapping {
     fn from(value: Vec<EventMapping>) -> Self {
         Self(value)
@@ -76,6 +91,8 @@ impl From<Vec<EventMapping>> for CombinedEventMapping {
 /// Captures `ERROR` events as Sentry error events and `WARN` and `INFO` events as breadcrumbs.
 /// With the `logs` feature, these three levels are also captured as logs. `DEBUG` and `TRACE`
 /// events are ignored.
+#[deprecated = "only used for the legacy combined layer"]
+#[expect(deprecated)]
 pub fn default_event_filter(metadata: &Metadata) -> EventFilter {
     match metadata.level() {
         #[cfg(feature = "logs")]
@@ -90,9 +107,10 @@ pub fn default_event_filter(metadata: &Metadata) -> EventFilter {
     }
 }
 
-/// The default span filter.
+/// The default span filter for the legacy combined layer.
 ///
 /// By default, spans at the `error`, `warning`, and `info` levels are captured.
+#[deprecated = "only used for the legacy combined layer"]
 pub fn default_span_filter(metadata: &Metadata) -> bool {
     matches!(
         metadata.level(),
@@ -100,6 +118,7 @@ pub fn default_span_filter(metadata: &Metadata) -> bool {
     )
 }
 
+#[expect(deprecated)]
 type EventMapper<S> = Box<dyn Fn(&Event, Context<'_, S>) -> EventMapping + Send + Sync>;
 
 /// Legacy combined tracing layer.
@@ -166,6 +185,7 @@ type EventMapper<S> = Box<dyn Fn(&Event, Context<'_, S>) -> EventMapping + Send 
 /// not affect their inclusion.
 #[deprecated(note = "Prefer span_layer() and log_layer(); see SentryLayer docs for migration")]
 pub struct SentryLayer<S> {
+    #[expect(deprecated)]
     event_filter: Box<dyn Fn(&Metadata) -> EventFilter + Send + Sync>,
     event_mapper: Option<EventMapper<S>>,
     span_filter: Box<dyn Fn(&Metadata) -> bool + Send + Sync>,
