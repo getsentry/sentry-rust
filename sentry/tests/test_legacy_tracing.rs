@@ -3,10 +3,12 @@
 #![cfg(feature = "test")]
 
 use sentry::protocol::{Context, Request, Value};
+#[cfg(feature = "logs")]
+use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::prelude::*;
 
 #[test]
-fn test_tracing() {
+fn test_legacy_tracing() {
     // Don't configure the fmt layer to avoid logging to test output
     let _dispatcher = tracing_subscriber::registry()
         .with(sentry_tracing::layer())
@@ -117,6 +119,44 @@ fn test_tracing() {
 
     let event = events.next().unwrap();
     assert_eq!(event.message, Some("I'm broken!".to_string()));
+}
+
+#[tracing::instrument(fields(contextual_value = 42))]
+fn legacy_span_attributes_function() {
+    tracing::info!("executing function");
+    tracing::error!("boom!");
+}
+
+#[test]
+fn test_legacy_span_attributes() {
+    let _dispatcher = tracing_subscriber::registry()
+        .with(sentry_tracing::layer().enable_span_attributes())
+        .set_default();
+
+    let envelopes = sentry::test::with_captured_envelopes_options(
+        legacy_span_attributes_function,
+        sentry::ClientOptions::new().traces_sample_rate(0.0),
+    );
+    let event = envelopes
+        .iter()
+        .flat_map(|envelope| envelope.items())
+        .find_map(|item| match item {
+            sentry::protocol::EnvelopeItem::Event(event) => Some(event),
+            _ => None,
+        })
+        .expect("expected Sentry error event");
+
+    assert_eq!(event.breadcrumbs.len(), 1);
+    assert_eq!(
+        event.breadcrumbs[0]
+            .data
+            .get("legacy_span_attributes_function:contextual_value"),
+        Some(&Value::from(42))
+    );
+    assert_eq!(
+        event.breadcrumbs[0].message.as_deref(),
+        Some("executing function")
+    );
 }
 
 #[tracing::instrument(fields(span_field))]
@@ -274,10 +314,8 @@ fn test_tracing_logs() {
 #[cfg(feature = "logs")]
 #[test]
 fn test_tracing_log_floating_point_field() {
-    let sentry_layer = sentry_tracing::layer().event_filter(|_| sentry_tracing::EventFilter::Log);
-
     let _dispatcher = tracing_subscriber::registry()
-        .with(sentry_layer)
+        .with(sentry_tracing::log_layer().with_filter(LevelFilter::INFO))
         .set_default();
 
     let options = sentry::ClientOptions::new();

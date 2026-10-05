@@ -5,6 +5,8 @@ mod future_span_common;
 mod shared;
 
 use sentry::{Hub, HubSwitchGuard};
+use tracing_subscriber::filter::LevelFilter;
+use tracing_subscriber::prelude::*;
 
 /// Tests that no panic occurs when a future containing a span that is not
 /// captured by Sentry is awaited across threads.
@@ -12,6 +14,9 @@ use sentry::{Hub, HubSwitchGuard};
 fn future_cross_thread_trace_span() {
     let _guard = HubSwitchGuard::new(Hub::new_from_top(Hub::current()).into());
     let transport = shared::init_sentry(1.0);
+    let _subscriber = tracing_subscriber::registry()
+        .with(sentry_tracing::span_layer().with_filter(LevelFilter::INFO))
+        .set_default();
 
     let span = tracing::trace_span!("future_cross_thread_trace_span");
 

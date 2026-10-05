@@ -4,11 +4,17 @@ use sentry::protocol::EnvelopeItem;
 
 mod shared;
 
+use tracing_subscriber::filter::LevelFilter;
+use tracing_subscriber::prelude::*;
+
 /// Ensures re-entering the same span does not corrupt the current tracing state,
 /// so subsequent spans are still recorded under a single transaction.
 #[test]
 fn reentering_span_preserves_parent() {
     let transport = shared::init_sentry(1.0);
+    let _subscriber = tracing_subscriber::registry()
+        .with(sentry_tracing::span_layer().with_filter(LevelFilter::INFO))
+        .set_default();
 
     {
         // Create a span and enter it, then re-enter the same span to simulate
