@@ -8,7 +8,7 @@
 
 ### Deprecations
 
-- Deprecated `sentry_tracing::layer()` and `SentryLayer` in favor of the individual layers. Legacy filtering defaults are unchanged. See the [migration guide](sentry-tracing/src/layer/mod.rs) for the equivalent four-layer configuration and custom-mapper differences.
+- Deprecated `sentry_tracing::layer()` and `SentryLayer`, along with their associated filtering/mapping types and helpers, in favor of the individual layers. Legacy filtering defaults are unchanged. See the [migration guide](sentry-tracing/src/layer/mod.rs) for the equivalent four-layer configuration and custom-mapper differences.
 
 ## 0.49.3
 

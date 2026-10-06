@@ -17,6 +17,8 @@ use crate::{SENTRY_NAME_FIELD, SENTRY_OP_FIELD, SENTRY_TRACE_FIELD, TAGS_PREFIX}
 /// Captures tracing spans as Sentry transactions and spans.
 ///
 /// Install this layer to capture spans; event layers do not manage the span lifecycle.
+/// Without a filter, this layer captures spans at every level. Configure a filter to limit span
+/// volume; see [`span_layer`] for the recommended levels.
 #[non_exhaustive]
 pub struct SpanLayer {}
 
@@ -24,11 +26,12 @@ pub struct SpanLayer {}
 ///
 /// # Filtering
 ///
-/// It is highly recommended to configure a level filter on the layer to limit span volume. We
-/// recommend capturing spans at the `INFO` level, and more severe.
+/// Without a filter, this layer captures spans at every level. Configure a level filter to limit
+/// span volume. We recommend capturing spans at the `INFO` level, and more severe.
 ///
 /// ```rust
 /// # use tracing_subscriber::prelude::*;
+/// use sentry::integrations::tracing as sentry_tracing;
 /// use tracing_subscriber::filter::LevelFilter;
 ///
 /// tracing_subscriber::registry()
@@ -183,7 +186,7 @@ where
                 || ctx
                     .span(id)
                     .is_none_or(|span| span.extensions().get::<SentrySpanData>().is_none()),
-            "[SentryLayer] missing HubSwitchGuard on exit for span {id:?}. \
+            "[SentrySpanLayer] missing HubSwitchGuard on exit for span {id:?}. \
             This span has been exited more times on this thread than it has been entered, \
             likely due to dropping an `Entered` guard in a different thread than where it was \
             entered. This mismatch will likely cause the sentry-tracing layer to leak memory."

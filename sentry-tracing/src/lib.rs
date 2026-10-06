@@ -6,16 +6,27 @@
 //! - [`log_layer`] captures `tracing` events as
 //!   [Sentry Logs](https://docs.sentry.io/product/explore/logs/). Requires the `logs` feature.
 //!
+//! We also provide the following layers, but recommend the span and log layers above for most
+//! applications:
+//!
+//! - [`error_layer`] captures `tracing` events as Sentry error events, with support for tags and
+//!   exception information.
+//! - [`breadcrumb_layer`] adds `tracing` events as breadcrumbs on subsequent Sentry error events.
+//!
+//! For migration from the legacy combined layer, see [`SentryLayer`].
+//!
 //! # Getting started
 //!
-//! Enable the `logs` feature on `sentry-tracing` (or the `tracing` and `logs` features on
-//! `sentry`).
+//! Enable the `tracing` and `logs` features on `sentry` to use its tracing integration re-export.
+//! Alternatively, enable `logs` on a direct `sentry-tracing` dependency and omit the alias import
+//! below.
 //! Set a traces sample rate to capture transactions, then install the span and log layers with
 //! explicit level filters:
 //!
 //! ```
 //! # #[cfg(feature = "logs")]
 //! # {
+//! use sentry::integrations::tracing as sentry_tracing;
 //! use tracing_subscriber::filter::LevelFilter;
 //! use tracing_subscriber::prelude::*;
 //!
@@ -67,7 +78,8 @@
 //! - `sentry.name` overrides the Sentry span name, including when recorded after creation.
 //! - `sentry.op` overrides the Sentry span operation, including when recorded after creation.
 //! - `sentry.trace` continues the trace from a `sentry-trace` header. It must be set when a
-//!   **root** span is created; recording it later has no effect.
+//!   **root Sentry span** is created, meaning no Sentry span is active in the current scope.
+//!   Applying it to a child Sentry span or recording it after creation has no effect.
 //!
 //! ```
 //! #[tracing::instrument(skip_all, fields(

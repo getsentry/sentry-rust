@@ -6,6 +6,11 @@ use tracing_subscriber::registry::LookupSpan;
 use crate::converters::event_from_event;
 
 /// Captures tracing events as Sentry error events.
+///
+/// # Warning
+///
+/// Without a filter, events at every level become Sentry error events. This can quickly exhaust
+/// your Sentry error quota. Configure a filter to select the events to capture; see [`error_layer`].
 pub struct ErrorLayer<S> {
     with_span_attributes: bool,
     event_mapper: Option<Box<dyn EventToErrorMapper<S>>>,
@@ -17,13 +22,14 @@ impl<S> ErrorLayer<S> {
     /// We can only include spans captured by a [`super::SpanLayer`] on the same subscriber. So,
     /// this option only has any effect when the `SpanLayer` is installed.
     ///
-    /// Furthermore, only spans accepted by the error layer's
-    /// [filter](tracing_subscriber::layer#per-layer-filtering) are considered when attaching
+    /// Furthermore, only spans accepted by the error layer's filter (see
+    /// [`tracing_subscriber::layer`]) are considered when attaching
     /// attributes. When using this option, therefore, we recommend building a custom filter that
     /// accepts all spans, while filtering errors to the desired level, like so:
     ///
     /// ```rust
     /// # use tracing_subscriber::prelude::*;
+    /// use sentry::integrations::tracing as sentry_tracing;
     /// use tracing::Level;
     /// use tracing_subscriber::filter::{filter_fn, LevelFilter};
     ///
@@ -100,8 +106,7 @@ where
 
 /// A mapper function which converts a tracing event to a Sentry error event.
 ///
-/// This is a pretty advanced API; when using it, callers must handle constructing the Sentry
-/// event object manually from the tracing event.
+/// Fully customizes if and how `tracing` events are converted to Sentry data.
 ///
 /// The function can also return [`None`], in which case, no error event is created from the
 /// tracing event.
@@ -123,11 +128,13 @@ impl<F, S> EventToErrorMapper<S> for F where
 ///
 /// # Filtering
 ///
-/// It is highly recommended to configure a filter on the layer, so that only `ERROR` events
-/// create Sentry issues.
+/// **Warning:** Without a filter, events at every level, including `DEBUG` and `TRACE`, become
+/// Sentry error events. This can quickly exhaust your Sentry error quota. Configure a filter
+/// so that only `ERROR` events create Sentry issues, as shown below.
 ///
 /// ```rust
 /// # use tracing_subscriber::prelude::*;
+/// use sentry::integrations::tracing as sentry_tracing;
 /// use tracing_subscriber::filter::LevelFilter;
 ///
 /// tracing_subscriber::registry()
@@ -140,6 +147,15 @@ impl<F, S> EventToErrorMapper<S> for F where
 /// // ... but this will not be, due to LevelFilter::ERROR being set.
 /// tracing::warn!("WARN event");
 /// ```
+///
+/// # Event conversion
+///
+/// With the default converter:
+///
+/// - String, numeric, and boolean fields prefixed with `tags.` become Sentry tags, with the
+///   prefix removed.
+/// - Other data fields are stored in the `Rust Tracing Fields` context on the Sentry error event.
+/// - Record an error as `&dyn std::error::Error` to capture its exception type and source chain.
 pub fn error_layer<S>() -> ErrorLayer<S> {
     ErrorLayer {
         with_span_attributes: false,

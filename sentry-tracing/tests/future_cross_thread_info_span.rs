@@ -15,7 +15,7 @@ use tracing_subscriber::prelude::*;
 ///
 /// This specifically tests a future awaited across threads, which is probably
 /// the most common scenario where this can occur. The span is at info level,
-/// the lowest level captured by Sentry by default.
+/// the least-severe level accepted by the filter configured in this test.
 #[test]
 fn future_cross_thread_info_span() {
     const SPAN_NAME: &str = "future_cross_thread_info_span";
@@ -40,7 +40,7 @@ fn future_cross_thread_info_span() {
 
         assert!(
             thread2_panic_message.starts_with(
-                "[SentryLayer] missing HubSwitchGuard on exit for span"
+                "[SentrySpanLayer] missing HubSwitchGuard on exit for span"
             ),
             "Thread 2 panicked, but not for the expected reason. It is also possible that the panic \
             message was changed without updating this test."

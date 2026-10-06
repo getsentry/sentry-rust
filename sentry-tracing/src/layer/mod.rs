@@ -123,7 +123,7 @@ type EventMapper<S> = Box<dyn Fn(&Event, Context<'_, S>) -> EventMapping + Send 
 
 /// Legacy combined tracing layer.
 ///
-/// For most applications, use [`span_layer`] and [`log_layer`] instead.
+/// For most applications, use [`span_layer`] and [`log_layer`] with explicit filters instead.
 /// Add [`error_layer`] if tracing events should also create Sentry issues, and [`breadcrumb_layer`]
 /// if errors need breadcrumb context.
 ///
@@ -141,6 +141,7 @@ type EventMapper<S> = Box<dyn Fn(&Event, Context<'_, S>) -> EventMapping + Send 
 /// ```rust
 /// # #[cfg(feature = "logs")]
 /// # {
+/// use sentry::integrations::tracing as sentry_tracing;
 /// use tracing::Level;
 /// use tracing_subscriber::filter::{filter_fn, LevelFilter};
 /// use tracing_subscriber::prelude::*;
@@ -300,8 +301,6 @@ where
                 }
             }
         } else {
-            // The legacy filter may choose nondefault levels. Do not reapply the
-            // standalone event layers' default level checks here.
             let filter = (self.event_filter)(event.metadata());
             if filter.contains(EventFilter::Breadcrumb) {
                 self.breadcrumb.capture_tracing_event(event, ctx.clone());
@@ -351,7 +350,7 @@ where
 
 /// Creates a legacy combined Sentry layer.
 ///
-/// For most applications, use [`span_layer`] and [`log_layer`] instead.
+/// For most applications, use [`span_layer`] and [`log_layer`] with explicit filters instead.
 /// See [`SentryLayer`] for a migration example that preserves the legacy default level selection
 /// using all four individual layers, and for differences when migrating custom configuration.
 #[deprecated(note = "Prefer span_layer() and log_layer(); see SentryLayer docs for migration")]
