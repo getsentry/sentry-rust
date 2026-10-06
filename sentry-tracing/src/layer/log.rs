@@ -23,13 +23,14 @@ impl<S> LogLayer<S> {
     /// We can only include spans captured by a [`super::SpanLayer`] on the same subscriber. So,
     /// this option only has any effect when the `SpanLayer` is installed.
     ///
-    /// Furthermore, only spans accepted by the log layer's
-    /// [filter](tracing_subscriber::layer#per-layer-filtering) are considered when attaching
+    /// Furthermore, only spans accepted by the log layer's filter (see
+    /// [`tracing_subscriber::layer`]) are considered when attaching
     /// attributes. When using this option, therefore, we recommend building a custom filter that
     /// accepts all spans, while filtering events to the desired level, like so:
     ///
     /// ```rust
     /// # use tracing_subscriber::prelude::*;
+    /// use sentry::integrations::tracing as sentry_tracing;
     /// use tracing::Level;
     /// use tracing_subscriber::filter::{filter_fn, LevelFilter};
     ///
@@ -114,8 +115,7 @@ where
 
 /// A mapper function which converts a tracing event to a [`Log`].
 ///
-/// This is a pretty advanced API; when using it, callers must handle constructing the log
-/// object manually from the tracing event.
+/// Fully customizes if and how `tracing` events are converted to Sentry data.
 ///
 /// The function can also return [`None`], in which case, no log is created from the tracing event.
 pub trait EventToLogMapper<S>: Fn(&Event, Context<'_, S>) -> Option<Log> + Send + Sync {}
@@ -127,11 +127,12 @@ impl<F, S> EventToLogMapper<S> for F where F: Fn(&Event, Context<'_, S>) -> Opti
 ///
 /// # Filtering
 ///
-/// It is highly recommended to configure a level filter on the layer to limit log volume. We
-/// recommend capturing logs at the `INFO` level, and more severe.
+/// Without a filter, this layer captures logs at every level. Configure a level filter to limit
+/// log volume. We recommend capturing logs at the `INFO` level, and more severe.
 ///
 /// ```rust
 /// # use tracing_subscriber::prelude::*;
+/// use sentry::integrations::tracing as sentry_tracing;
 /// use tracing_subscriber::filter::LevelFilter;
 ///
 /// tracing_subscriber::registry()

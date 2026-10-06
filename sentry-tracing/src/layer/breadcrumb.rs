@@ -6,6 +6,9 @@ use tracing_subscriber::registry::LookupSpan;
 use crate::converters::breadcrumb_from_event;
 
 /// Adds tracing events as Sentry breadcrumbs.
+///
+/// Without a filter, events at every level become breadcrumbs. Configure a filter to limit
+/// breadcrumb volume; see [`breadcrumb_layer`] for the recommended levels.
 pub struct BreadcrumbLayer<S> {
     with_span_attributes: bool,
     event_mapper: Option<Box<dyn EventToBreadcrumbMapper<S>>>,
@@ -17,13 +20,14 @@ impl<S> BreadcrumbLayer<S> {
     /// We can only include spans captured by a [`super::SpanLayer`] on the same subscriber. So,
     /// this option only has any effect when the `SpanLayer` is installed.
     ///
-    /// Furthermore, only spans accepted by the breadcrumb layer's
-    /// [filter](tracing_subscriber::layer#per-layer-filtering) are considered when attaching
+    /// Furthermore, only spans accepted by the breadcrumb layer's filter (see
+    /// [`tracing_subscriber::layer`]) are considered when attaching
     /// attributes. When using this option, therefore, we recommend building a custom filter that
     /// accepts all spans, while filtering events to the desired levels, like so:
     ///
     /// ```rust
     /// # use tracing_subscriber::prelude::*;
+    /// use sentry::integrations::tracing as sentry_tracing;
     /// use tracing::Level;
     /// use tracing_subscriber::filter::{filter_fn, LevelFilter};
     ///
@@ -100,8 +104,7 @@ where
 
 /// A mapper function which converts a tracing event to a [`Breadcrumb`].
 ///
-/// This is a pretty advanced API; when using it, callers must handle constructing the breadcrumb
-/// object manually from the tracing event.
+/// Fully customizes if and how `tracing` events are converted to Sentry data.
 ///
 /// The function can also return [`None`], in which case, no breadcrumb is created from the
 /// tracing event.
@@ -118,21 +121,22 @@ impl<F, S> EventToBreadcrumbMapper<S> for F where
 /// Creates a layer that adds tracing events as Sentry breadcrumbs.
 ///
 /// For most users, we would recommend using the [`log_layer`](super::log_layer) instead of this
-/// layer, as logs are trace-connected and sent regardless of whether an error occurs.
+/// layer, as logs are sent regardless of whether an error occurs.
 ///
 /// Breadcrumbs are only sent attached to Sentry error events. Users using this layer may therefore
 /// also wish to enable the [`error_layer`](super::error_layer).
 ///
 /// # Filtering
 ///
-/// It is highly recommended to configure a filter on the layer to limit breadcrumb volume. We
-/// recommend capturing `WARN` and `INFO` events. If you also use the error layer, exclude `ERROR`
+/// Without a filter, events at every level become breadcrumbs. Configure a filter to limit
+/// breadcrumb volume. We recommend capturing `WARN` and `INFO` events. If you also use the error layer, exclude `ERROR`
 /// events, which would otherwise duplicate the error event as a breadcrumb. If a custom filter
 /// sends the same event to both layers, install the breadcrumb layer before the error layer so
 /// that breadcrumb is included in the error.
 ///
 /// ```rust
 /// # use tracing_subscriber::prelude::*;
+/// use sentry::integrations::tracing as sentry_tracing;
 /// use tracing::Level;
 /// use tracing_subscriber::filter::{filter_fn, LevelFilter};
 ///
