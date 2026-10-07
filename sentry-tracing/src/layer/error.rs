@@ -149,7 +149,7 @@ where
 /// A mapper function which converts a tracing event to a Sentry error event.
 ///
 /// This advanced API fully customizes whether and how `tracing` events become Sentry error events.
-/// A mapper can call [`event_from_event`](crate::event_from_event) to perform the conversion
+/// A mapper can call [`event_from_event`] to perform the conversion
 /// alongside its custom filtering or mapping logic.
 ///
 /// The function can also return [`None`], in which case, no error event is created from the

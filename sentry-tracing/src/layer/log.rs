@@ -143,7 +143,7 @@ where
 /// A mapper function which converts a tracing event to a [`Log`].
 ///
 /// This advanced API fully customizes whether and how `tracing` events become Sentry logs.
-/// A mapper can call [`log_from_event`](crate::log_from_event) to perform the conversion
+/// A mapper can call [`log_from_event`] to perform the conversion
 /// alongside its custom filtering or mapping logic.
 ///
 /// The function can also return [`None`], in which case, no log is created from the tracing event.
