@@ -18,34 +18,37 @@ use crate::{SENTRY_NAME_FIELD, SENTRY_OP_FIELD, SENTRY_TRACE_FIELD, TAGS_PREFIX}
 ///
 /// Install this layer to capture spans; event layers do not manage the span lifecycle.
 /// Without a filter, this layer captures spans at every level. Configure a filter to limit span
-/// volume; see [`span_layer`] for the recommended levels.
+/// volume; see [`SpanLayer::new`] for the recommended levels.
+#[derive(Default)]
 #[non_exhaustive]
 pub struct SpanLayer {}
 
-/// Creates a layer that captures tracing spans as Sentry transactions and spans.
-///
-/// # Filtering
-///
-/// Without a filter, this layer captures spans at every level. Configure a level filter to limit
-/// span volume. We recommend capturing spans at the `INFO` level, and more severe.
-///
-/// ```rust
-/// # use tracing_subscriber::prelude::*;
-/// use sentry::integrations::tracing as sentry_tracing;
-/// use tracing_subscriber::filter::LevelFilter;
-///
-/// tracing_subscriber::registry()
-///     .with(sentry_tracing::span_layer().with_filter(LevelFilter::INFO))
-///     .init();
-///
-/// // This will be captured ...
-/// let _info = tracing::info_span!("INFO span").entered();
-///
-/// // ... but this will not be, due to LevelFilter::INFO being set.
-/// let _debug = tracing::debug_span!("DEBUG span").entered();
-/// ```
-pub fn span_layer() -> SpanLayer {
-    SpanLayer {}
+impl SpanLayer {
+    /// Creates a layer that captures tracing spans as Sentry transactions and spans.
+    ///
+    /// # Filtering
+    ///
+    /// Without a filter, this layer captures spans at every level. Configure a level filter to limit
+    /// span volume. We recommend capturing spans at the `INFO` level, and more severe.
+    ///
+    /// ```rust
+    /// # use tracing_subscriber::prelude::*;
+    /// use sentry::integrations::tracing::SpanLayer;
+    /// use tracing_subscriber::filter::LevelFilter;
+    ///
+    /// tracing_subscriber::registry()
+    ///     .with(SpanLayer::new().with_filter(LevelFilter::INFO))
+    ///     .init();
+    ///
+    /// // This will be captured ...
+    /// let _info = tracing::info_span!("INFO span").entered();
+    ///
+    /// // ... but this will not be, due to LevelFilter::INFO being set.
+    /// let _debug = tracing::debug_span!("DEBUG span").entered();
+    /// ```
+    pub fn new() -> Self {
+        Self::default()
+    }
 }
 
 #[inline(always)]

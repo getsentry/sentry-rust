@@ -11,12 +11,12 @@ mod log;
 mod span;
 mod span_guard_stack;
 
-pub use breadcrumb::{breadcrumb_layer, BreadcrumbLayer, EventToBreadcrumbMapper};
-pub use error::{error_layer, ErrorLayer, EventToErrorMapper};
+pub use breadcrumb::{BreadcrumbLayer, EventToBreadcrumbMapper};
+pub use error::{ErrorLayer, EventToErrorMapper};
 #[cfg(feature = "logs")]
-pub use log::{log_layer, EventToLogMapper, LogLayer};
+pub use log::{EventToLogMapper, LogLayer};
 pub(super) use span::SentrySpanData;
-pub use span::{span_layer, SpanLayer};
+pub use span::SpanLayer;
 
 /// Separate submodule with expect(deprecated) needed because bitflags! uses the deprecated
 /// EventFilter.
@@ -123,9 +123,9 @@ type EventMapper<S> = Box<dyn Fn(&Event, Context<'_, S>) -> EventMapping + Send 
 
 /// Legacy combined tracing layer.
 ///
-/// For most applications, use [`span_layer`] and [`log_layer`] with explicit filters instead.
-/// Add [`error_layer`] if tracing events should also create Sentry issues, and [`breadcrumb_layer`]
-/// if errors need breadcrumb context.
+/// For most applications, use [`SpanLayer`] and [`LogLayer`] with explicit filters instead.
+/// Add [`ErrorLayer`] if tracing events should also be captured as Sentry error events, and
+/// [`BreadcrumbLayer`] if errors need breadcrumb context.
 ///
 /// # Migrating the default configuration
 ///
@@ -141,20 +141,20 @@ type EventMapper<S> = Box<dyn Fn(&Event, Context<'_, S>) -> EventMapping + Send 
 /// ```rust
 /// # #[cfg(feature = "logs")]
 /// # {
-/// use sentry::integrations::tracing as sentry_tracing;
+/// use sentry::integrations::tracing::{BreadcrumbLayer, ErrorLayer, LogLayer, SpanLayer};
 /// use tracing::Level;
 /// use tracing_subscriber::filter::{filter_fn, LevelFilter};
 /// use tracing_subscriber::prelude::*;
 ///
 /// tracing_subscriber::registry()
-///     .with(sentry_tracing::span_layer().with_filter(LevelFilter::INFO))
+///     .with(SpanLayer::new().with_filter(LevelFilter::INFO))
 ///     .with(
-///         sentry_tracing::breadcrumb_layer().with_filter(filter_fn(|metadata| {
+///         BreadcrumbLayer::new().with_filter(filter_fn(|metadata| {
 ///             matches!(*metadata.level(), Level::WARN | Level::INFO)
 ///         })),
 ///     )
-///     .with(sentry_tracing::error_layer().with_filter(LevelFilter::ERROR))
-///     .with(sentry_tracing::log_layer().with_filter(LevelFilter::INFO))
+///     .with(ErrorLayer::new().with_filter(LevelFilter::ERROR))
+///     .with(LogLayer::new().with_filter(LevelFilter::INFO))
 ///     .init();
 /// # }
 /// ```
@@ -184,7 +184,9 @@ type EventMapper<S> = Box<dyn Fn(&Event, Context<'_, S>) -> EventMapping + Send 
 /// install the breadcrumb layer before the error layer to include that breadcrumb in the error.
 /// The default configuration above excludes `ERROR` events from breadcrumbs, so the order does
 /// not affect their inclusion.
-#[deprecated(note = "Prefer span_layer() and log_layer(); see SentryLayer docs for migration")]
+#[deprecated(
+    note = "Prefer SpanLayer::new() and LogLayer::new(); see SentryLayer docs for migration"
+)]
 pub struct SentryLayer<S> {
     #[expect(deprecated)]
     event_filter: Box<dyn Fn(&Metadata) -> EventFilter + Send + Sync>,
@@ -269,11 +271,11 @@ where
             event_filter: Box::new(default_event_filter),
             event_mapper: None,
             span_filter: Box::new(default_span_filter),
-            span_layer: span_layer(),
-            breadcrumb: breadcrumb_layer(),
-            error: error_layer(),
+            span_layer: SpanLayer::new(),
+            breadcrumb: BreadcrumbLayer::new(),
+            error: ErrorLayer::new(),
             #[cfg(feature = "logs")]
-            log: log_layer(),
+            log: LogLayer::new(),
         }
     }
 }
@@ -350,10 +352,12 @@ where
 
 /// Creates a legacy combined Sentry layer.
 ///
-/// For most applications, use [`span_layer`] and [`log_layer`] with explicit filters instead.
+/// For most applications, use [`SpanLayer`] and [`LogLayer`] with explicit filters instead.
 /// See [`SentryLayer`] for a migration example that preserves the legacy default level selection
 /// using all four individual layers, and for differences when migrating custom configuration.
-#[deprecated(note = "Prefer span_layer() and log_layer(); see SentryLayer docs for migration")]
+#[deprecated(
+    note = "Prefer SpanLayer::new() and LogLayer::new(); see SentryLayer docs for migration"
+)]
 #[expect(deprecated, reason = "returning the legacy layer")]
 pub fn layer<S>() -> SentryLayer<S>
 where

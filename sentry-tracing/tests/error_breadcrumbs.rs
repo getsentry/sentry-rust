@@ -1,6 +1,7 @@
 //! Tests standalone error/breadcrumb capture and span context without transaction sampling.
 
 use sentry::protocol::{Context, EnvelopeItem};
+use sentry_tracing::{BreadcrumbLayer, ErrorLayer, SpanLayer};
 use tracing::Level;
 use tracing_subscriber::filter::{filter_fn, LevelFilter};
 use tracing_subscriber::prelude::*;
@@ -8,16 +9,16 @@ use tracing_subscriber::prelude::*;
 #[test]
 fn error_and_breadcrumb_layers_capture_unsampled_span_context() {
     let _subscriber = tracing_subscriber::registry()
-        .with(sentry_tracing::span_layer().with_filter(LevelFilter::INFO))
+        .with(SpanLayer::new().with_filter(LevelFilter::INFO))
         .with(
-            sentry_tracing::breadcrumb_layer()
+            BreadcrumbLayer::new()
                 .enable_span_attributes()
                 .with_filter(filter_fn(|metadata| {
                     metadata.is_span() || matches!(*metadata.level(), Level::INFO | Level::WARN)
                 })),
         )
         .with(
-            sentry_tracing::error_layer()
+            ErrorLayer::new()
                 .enable_span_attributes()
                 .with_filter(filter_fn(|metadata| {
                     metadata.is_span() || *metadata.level() == Level::ERROR

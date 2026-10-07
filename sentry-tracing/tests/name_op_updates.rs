@@ -2,6 +2,7 @@
 
 mod shared;
 
+use sentry_tracing::SpanLayer;
 use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::prelude::*;
 
@@ -26,7 +27,7 @@ fn test_fun_record_later() {
 fn should_update_sentry_op_and_name_based_on_fields() {
     let transport = shared::init_sentry(1.0);
     let _subscriber = tracing_subscriber::registry()
-        .with(sentry_tracing::span_layer().with_filter(LevelFilter::INFO))
+        .with(SpanLayer::new().with_filter(LevelFilter::INFO))
         .set_default();
 
     for f in [test_fun_record_on_creation, test_fun_record_later] {

@@ -6,6 +6,7 @@ mod shared;
 mod transaction_assertions;
 
 use sentry::{Hub, HubSwitchGuard};
+use sentry_tracing::SpanLayer;
 use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::prelude::*;
 
@@ -23,7 +24,7 @@ fn future_cross_thread_info_span() {
     let _guard = HubSwitchGuard::new(Hub::new_from_top(Hub::current()).into());
     let transport = shared::init_sentry(1.0);
     let _subscriber = tracing_subscriber::registry()
-        .with(sentry_tracing::span_layer().with_filter(LevelFilter::INFO))
+        .with(SpanLayer::new().with_filter(LevelFilter::INFO))
         .set_default();
 
     let span = tracing::info_span!(SPAN_NAME);

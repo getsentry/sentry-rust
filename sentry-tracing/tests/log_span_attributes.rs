@@ -3,6 +3,7 @@
 #![cfg(feature = "logs")]
 
 use sentry::protocol::{EnvelopeItem, ItemContainer, LogLevel};
+use sentry_tracing::{LogLayer, SpanLayer};
 use tracing::Level;
 use tracing_subscriber::filter::{filter_fn, LevelFilter};
 use tracing_subscriber::prelude::*;
@@ -10,9 +11,9 @@ use tracing_subscriber::prelude::*;
 #[test]
 fn log_layer_captures_span_attributes() {
     let _subscriber = tracing_subscriber::registry()
-        .with(sentry_tracing::span_layer().with_filter(LevelFilter::INFO))
+        .with(SpanLayer::new().with_filter(LevelFilter::INFO))
         .with(
-            sentry_tracing::log_layer()
+            LogLayer::new()
                 .enable_span_attributes()
                 .with_filter(filter_fn(|metadata| {
                     metadata.is_span() || *metadata.level() == Level::INFO

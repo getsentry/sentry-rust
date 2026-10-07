@@ -3,6 +3,7 @@
 use std::thread;
 use std::time::Duration;
 
+use sentry_tracing::{LogLayer, SpanLayer};
 use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::prelude::*;
 
@@ -10,8 +11,8 @@ use tracing_subscriber::prelude::*;
 fn main() {
     tracing_subscriber::registry()
         .with(tracing_subscriber::fmt::layer())
-        .with(sentry_tracing::span_layer().with_filter(LevelFilter::INFO))
-        .with(sentry_tracing::log_layer().with_filter(LevelFilter::INFO))
+        .with(SpanLayer::new().with_filter(LevelFilter::INFO))
+        .with(LogLayer::new().with_filter(LevelFilter::INFO))
         .try_init()
         .unwrap();
 
