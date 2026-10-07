@@ -9,6 +9,9 @@ use crate::converters::breadcrumb_from_event;
 ///
 /// Without a filter, events at every level become breadcrumbs. Configure a filter to limit
 /// breadcrumb volume; see [`BreadcrumbLayer::new`] for the recommended levels.
+///
+/// Using this layer alongside the legacy [`SentryLayer`](super::SentryLayer) is unsupported.
+/// Use either the legacy layer or the individual layers, not both.
 pub struct BreadcrumbLayer<S> {
     with_span_attributes: bool,
     event_mapper: Option<Box<dyn EventToBreadcrumbMapper<S>>>,

@@ -11,6 +11,9 @@ use crate::converters::log_from_event;
 /// level filter.
 ///
 /// Requires a client with logs enabled.
+///
+/// Using this layer alongside the legacy [`SentryLayer`](super::SentryLayer) is unsupported.
+/// Use either the legacy layer or the individual layers, not both.
 #[cfg_attr(doc_cfg, doc(cfg(feature = "logs")))]
 pub struct LogLayer<S> {
     with_span_attributes: bool,
