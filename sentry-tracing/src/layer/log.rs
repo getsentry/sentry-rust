@@ -7,7 +7,7 @@ use crate::converters::log_from_event;
 
 /// Captures tracing events as Sentry logs.
 ///
-/// Captures all event levels unless a filter is configured; see [`log_layer`] for the recommended
+/// Captures all event levels unless a filter is configured; see [`LogLayer::new`] for the recommended
 /// level filter.
 ///
 /// Requires a client with logs enabled.
@@ -18,6 +18,33 @@ pub struct LogLayer<S> {
 }
 
 impl<S> LogLayer<S> {
+    /// Creates a layer that captures Sentry logs from tracing events.
+    ///
+    /// # Filtering
+    ///
+    /// Without a filter, this layer captures logs at every level. Configure a level filter to limit
+    /// log volume. We recommend capturing logs at the `INFO` level, and more severe.
+    ///
+    /// ```rust
+    /// # use tracing_subscriber::prelude::*;
+    /// use sentry::integrations::tracing::LogLayer;
+    /// use tracing_subscriber::filter::LevelFilter;
+    ///
+    /// tracing_subscriber::registry()
+    ///     .with(LogLayer::new().with_filter(LevelFilter::INFO))
+    ///     .init();
+    ///
+    /// // This will be captured ...
+    /// tracing::info!("INFO log");
+    ///
+    /// // ... but this will not be, due to LevelFilter::INFO being set.
+    /// tracing::debug!("DEBUG log");
+    /// ```
+    #[cfg_attr(doc_cfg, doc(cfg(feature = "logs")))]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     /// Include attributes of parent spans in logs.
     ///
     /// We can only include spans captured by a [`super::SpanLayer`] on the same subscriber. So,
@@ -30,14 +57,14 @@ impl<S> LogLayer<S> {
     ///
     /// ```rust
     /// # use tracing_subscriber::prelude::*;
-    /// use sentry::integrations::tracing as sentry_tracing;
+    /// use sentry::integrations::tracing::{LogLayer, SpanLayer};
     /// use tracing::Level;
     /// use tracing_subscriber::filter::{filter_fn, LevelFilter};
     ///
     /// tracing_subscriber::registry()
-    ///     .with(sentry_tracing::span_layer().with_filter(LevelFilter::INFO))
+    ///     .with(SpanLayer::new().with_filter(LevelFilter::INFO))
     ///     .with(
-    ///         sentry_tracing::log_layer()
+    ///         LogLayer::new()
     ///             .enable_span_attributes()
     ///             .with_filter(filter_fn(|metadata| {
     ///                 // Accept all spans, but only events at `INFO` and more severe.
@@ -115,7 +142,9 @@ where
 
 /// A mapper function which converts a tracing event to a [`Log`].
 ///
-/// Fully customizes if and how `tracing` events are converted to Sentry data.
+/// This advanced API fully customizes whether and how `tracing` events become Sentry logs.
+/// A mapper can call [`log_from_event`](crate::log_from_event) to perform the conversion
+/// alongside its custom filtering or mapping logic.
 ///
 /// The function can also return [`None`], in which case, no log is created from the tracing event.
 pub trait EventToLogMapper<S>: Fn(&Event, Context<'_, S>) -> Option<Log> + Send + Sync {}
@@ -123,32 +152,11 @@ pub trait EventToLogMapper<S>: Fn(&Event, Context<'_, S>) -> Option<Log> + Send 
 impl<F, S> EventToLogMapper<S> for F where F: Fn(&Event, Context<'_, S>) -> Option<Log> + Send + Sync
 {}
 
-/// Creates a layer that captures Sentry logs from tracing events.
-///
-/// # Filtering
-///
-/// Without a filter, this layer captures logs at every level. Configure a level filter to limit
-/// log volume. We recommend capturing logs at the `INFO` level, and more severe.
-///
-/// ```rust
-/// # use tracing_subscriber::prelude::*;
-/// use sentry::integrations::tracing as sentry_tracing;
-/// use tracing_subscriber::filter::LevelFilter;
-///
-/// tracing_subscriber::registry()
-///     .with(sentry_tracing::log_layer().with_filter(LevelFilter::INFO))
-///     .init();
-///
-/// // This will be captured ...
-/// tracing::info!("INFO log");
-///
-/// // ... but this will not be, due to LevelFilter::INFO being set.
-/// tracing::debug!("DEBUG log");
-/// ```
-#[cfg_attr(doc_cfg, doc(cfg(feature = "logs")))]
-pub fn log_layer<S>() -> LogLayer<S> {
-    LogLayer {
-        with_span_attributes: false,
-        event_mapper: None,
+impl<S> Default for LogLayer<S> {
+    fn default() -> Self {
+        Self {
+            with_span_attributes: false,
+            event_mapper: None,
+        }
     }
 }

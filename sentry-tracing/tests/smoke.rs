@@ -2,6 +2,7 @@
 #![cfg(feature = "logs")]
 
 use sentry::protocol::{EnvelopeItem, ItemContainer, LogLevel};
+use sentry_tracing::{LogLayer, SpanLayer};
 use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::prelude::*;
 
@@ -13,8 +14,8 @@ fn function_with_tags(value: i32) {
 #[test]
 fn should_instrument_function_with_log() {
     let _subscriber = tracing_subscriber::registry()
-        .with(sentry_tracing::span_layer().with_filter(LevelFilter::INFO))
-        .with(sentry_tracing::log_layer().with_filter(LevelFilter::INFO))
+        .with(SpanLayer::new().with_filter(LevelFilter::INFO))
+        .with(LogLayer::new().with_filter(LevelFilter::INFO))
         .set_default();
 
     let envelopes = sentry::test::with_captured_envelopes_options(

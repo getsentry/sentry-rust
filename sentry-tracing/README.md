@@ -10,29 +10,26 @@ Capture `tracing` spans and events as Sentry traces and structured logs.
 
 For most applications, we recommend installing only these two layers:
 
-- [`span_layer`] captures `tracing` spans as Sentry transactions and spans.
-- [`log_layer`] captures `tracing` events as
-  [Sentry Logs](https://docs.sentry.io/product/explore/logs/). Requires the `logs` feature.
+- [`SpanLayer`] captures `tracing` spans as Sentry transactions and spans.
+- [`LogLayer`] captures `tracing` events as Sentry structured logs. Requires the `logs` feature.
 
 We also provide the following layers, but recommend the span and log layers above for most
 applications:
 
-- [`error_layer`] captures `tracing` events as Sentry error events, with support for tags and
+- [`ErrorLayer`] captures `tracing` events as Sentry error events, with support for tags and
   exception information.
-- [`breadcrumb_layer`] adds `tracing` events as breadcrumbs on subsequent Sentry error events.
+- [`BreadcrumbLayer`] adds `tracing` events as breadcrumbs on subsequent Sentry error events.
 
 For migration from the legacy combined layer, see [`SentryLayer`].
 
 ## Getting started
 
 Enable the `tracing` and `logs` features on `sentry` to use its tracing integration re-export.
-Alternatively, enable `logs` on a direct `sentry-tracing` dependency and omit the alias import
-below.
 Set a traces sample rate to capture transactions, then install the span and log layers with
 explicit level filters:
 
 ```rust
-use sentry::integrations::tracing as sentry_tracing;
+use sentry::integrations::tracing::{LogLayer, SpanLayer};
 use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::prelude::*;
 
@@ -43,8 +40,8 @@ let _guard = sentry::init(
 );
 
 tracing_subscriber::registry()
-    .with(sentry_tracing::span_layer().with_filter(LevelFilter::INFO))
-    .with(sentry_tracing::log_layer().with_filter(LevelFilter::INFO))
+    .with(SpanLayer::new().with_filter(LevelFilter::INFO))
+    .with(LogLayer::new().with_filter(LevelFilter::INFO))
     .init();
 ```
 
@@ -55,7 +52,7 @@ Sentry layers receive it.
 
 ## Spans
 
-`span_layer()` creates a Sentry transaction when no Sentry span is active, or a child span
+`SpanLayer` creates a Sentry transaction when no Sentry span is active, or a child span
 otherwise. For example,
 [`tracing::instrument`](https://docs.rs/tracing/latest/tracing/attr.instrument.html) creates
 spans for instrumented functions; arguments become span data unless skipped.
@@ -99,9 +96,8 @@ async fn handle_request(headers: std::collections::HashMap<String, String>) {
 
 ## Logs
 
-`log_layer()` sends events accepted by its filter as structured logs. Event fields become
-searchable log attributes; fields with dots appear nested under their common prefix in the
-Sentry Logs explorer.
+`LogLayer` sends events accepted by its filter as structured logs. Event fields become log
+attributes.
 
 ```rust
 tracing::info!(number = 42, my.key = "value", "Processed request");

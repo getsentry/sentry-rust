@@ -4,6 +4,8 @@
 
 use sentry::protocol::{Context, Request, Value};
 #[cfg(feature = "logs")]
+use sentry_tracing::LogLayer;
+#[cfg(feature = "logs")]
 use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::prelude::*;
 
@@ -315,7 +317,7 @@ fn test_tracing_logs() {
 #[test]
 fn test_tracing_log_floating_point_field() {
     let _dispatcher = tracing_subscriber::registry()
-        .with(sentry_tracing::log_layer().with_filter(LevelFilter::INFO))
+        .with(LogLayer::new().with_filter(LevelFilter::INFO))
         .set_default();
 
     let options = sentry::ClientOptions::new();
