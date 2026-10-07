@@ -25,6 +25,7 @@ use crate::{SENTRY_NAME_FIELD, SENTRY_OP_FIELD, SENTRY_TRACE_FIELD, TAGS_PREFIX}
 /// or the individual layers, not both.
 #[derive(Default)]
 #[non_exhaustive]
+#[must_use]
 pub struct SpanLayer {}
 
 impl SpanLayer {
