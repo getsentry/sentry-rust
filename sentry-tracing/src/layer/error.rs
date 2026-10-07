@@ -6,6 +6,9 @@ use tracing_subscriber::registry::LookupSpan;
 use crate::converters::event_from_event;
 
 /// Captures tracing events as Sentry error events.
+///
+/// Using this layer alongside the legacy [`SentryLayer`](super::SentryLayer) is unsupported.
+/// Use either the legacy layer or the individual layers, not both.
 pub struct ErrorLayer<S> {
     with_span_attributes: bool,
     event_mapper: Option<Box<dyn EventToErrorMapper<S>>>,

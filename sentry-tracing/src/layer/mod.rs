@@ -127,6 +127,10 @@ type EventMapper<S> = Box<dyn Fn(&Event, Context<'_, S>) -> EventMapping + Send 
 /// Add [`ErrorLayer`] if tracing events should also be captured as Sentry error events, and
 /// [`BreadcrumbLayer`] if errors need breadcrumb context.
 ///
+/// Mixing this legacy layer with any individual Sentry layer is unsupported.
+/// **Combining it with [`SpanLayer`] can panic when a span is created.** When migrating,
+/// replace the legacy layer rather than adding individual layers alongside it.
+///
 /// # Migrating the default configuration
 ///
 /// The individual layers do not filter by level internally. The following configuration

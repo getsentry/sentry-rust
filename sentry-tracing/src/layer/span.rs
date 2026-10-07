@@ -19,6 +19,10 @@ use crate::{SENTRY_NAME_FIELD, SENTRY_OP_FIELD, SENTRY_TRACE_FIELD, TAGS_PREFIX}
 /// Install this layer to capture spans; event layers do not manage the span lifecycle.
 /// Without a filter, this layer captures spans at every level. Configure a filter to limit span
 /// volume; see [`SpanLayer::new`] for the recommended levels.
+///
+/// Using this layer alongside the legacy [`SentryLayer`](super::SentryLayer) is unsupported.
+/// **Combining the two layers can panic when a span is created.** Use either the legacy layer
+/// or the individual layers, not both.
 #[derive(Default)]
 #[non_exhaustive]
 pub struct SpanLayer {}
