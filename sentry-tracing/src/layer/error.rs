@@ -9,6 +9,7 @@ use crate::converters::event_from_event;
 ///
 /// Using this layer alongside the legacy [`SentryLayer`](super::SentryLayer) is unsupported.
 /// Use either the legacy layer or the individual layers, not both.
+#[must_use]
 pub struct ErrorLayer<S> {
     with_span_attributes: bool,
     event_mapper: Option<Box<dyn EventToErrorMapper<S>>>,
@@ -95,14 +96,12 @@ impl<S> ErrorLayer<S> {
     /// any spans to Sentry.
     ///
     /// This option has no effect when [`Self::mapper`] is set.
-    #[must_use]
     pub fn enable_span_attributes(mut self) -> Self {
         self.with_span_attributes = true;
         self
     }
 
     /// Sets a custom mapping from the tracing event to the Sentry error event object.
-    #[must_use]
     pub fn mapper<M>(mut self, mapper: M) -> Self
     where
         M: EventToErrorMapper<S> + 'static,

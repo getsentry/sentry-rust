@@ -15,6 +15,7 @@ use crate::converters::log_from_event;
 /// Using this layer alongside the legacy [`SentryLayer`](super::SentryLayer) is unsupported.
 /// Use either the legacy layer or the individual layers, not both.
 #[cfg_attr(doc_cfg, doc(cfg(feature = "logs")))]
+#[must_use]
 pub struct LogLayer<S> {
     with_span_attributes: bool,
     event_mapper: Option<Box<dyn EventToLogMapper<S>>>,
@@ -81,7 +82,6 @@ impl<S> LogLayer<S> {
     /// spans to Sentry.
     ///
     /// This option has no effect when [`Self::mapper`] is set.
-    #[must_use]
     pub fn enable_span_attributes(mut self) -> Self {
         self.with_span_attributes = true;
         self
