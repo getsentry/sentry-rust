@@ -12,7 +12,7 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use sentry::protocol::{AttachmentType, EnvelopeItem};
+use sentry::protocol::{AttachmentType, EnvelopeItem, Event};
 use sentry::{Envelope, Level};
 
 /// Reads one HTTP request and returns its body.
@@ -48,8 +48,13 @@ fn read_request_body(stream: &mut impl Read) -> Vec<u8> {
     buf[header_end..body_end].to_vec()
 }
 
-#[test]
-fn captures_minidump_from_crash() {
+/// Runs an example that crashes on purpose and returns the envelope its
+/// crash reporter uploads.
+///
+/// The example has to be a separate binary because the crash reporter
+/// re-executes it and the crash event is sent from that second process,
+/// not the test process.
+fn crash_envelope(example: &str) -> Envelope {
     let listener = TcpListener::bind(("127.0.0.1", 0)).expect("bind listener");
     let port = listener
         .local_addr()
@@ -65,11 +70,8 @@ fn captures_minidump_from_crash() {
         let _ = tx.send(body);
     });
 
-    // Runs `examples/app.rs`, which crashes on purpose. It has to be a
-    // separate binary because the crash reporter re-executes it and the
-    // crash event is sent from that second process, not the test process.
     let example_process = Command::new(env!("CARGO"))
-        .args(["run", "--quiet", "--example", "minidump"])
+        .args(["run", "--quiet", "--example", example])
         .current_dir(env!("CARGO_MANIFEST_DIR"))
         .env("SENTRY_DSN", format!("http://dsn@127.0.0.1:{port}/0"))
         .spawn()
@@ -83,15 +85,24 @@ fn captures_minidump_from_crash() {
         .recv_timeout(Duration::from_secs(5))
         .expect("received an envelope");
 
-    let envelope = Envelope::from_slice(&body).expect("parse envelope");
+    Envelope::from_slice(&body).expect("parse envelope")
+}
 
-    let event = envelope
+fn crash_event(envelope: &Envelope) -> &Event<'static> {
+    envelope
         .items()
         .find_map(|item| match item {
             EnvelopeItem::Event(event) => Some(event),
             _ => None,
         })
-        .expect("envelope has an event");
+        .expect("envelope has an event")
+}
+
+#[test]
+fn captures_minidump_from_crash() {
+    // Runs `examples/app.rs`.
+    let envelope = crash_envelope("minidump");
+    let event = crash_event(&envelope);
 
     assert_eq!(event.level, Level::Fatal);
 
@@ -101,10 +112,28 @@ fn captures_minidump_from_crash() {
         Some("example")
     );
 
-    // Set through `with_integration` before the crash.
+    // The scope of the worker thread that crashed, not the main thread's.
     let user = event.user.as_ref().expect("event has a user");
     assert_eq!(user.username.as_deref(), Some("john_doe"));
     assert_eq!(user.email.as_deref(), Some("john@doe.town"));
+    assert_eq!(event.tags.get("thread").map(String::as_str), Some("worker"));
+    assert_eq!(
+        event.breadcrumbs.last().and_then(|b| b.message.as_deref()),
+        Some("about to crash")
+    );
+
+    // Inherited from the main scope when the worker hub was created.
+    assert_eq!(
+        event.tags.get("shared").map(String::as_str),
+        Some("from_main")
+    );
+
+    // Set on the main thread after the worker hub was created.
+    assert!(
+        !event.tags.contains_key("main_only"),
+        "main thread scope leaked into the crash event: {:?}",
+        event.tags
+    );
 
     let attachment = envelope
         .items()
@@ -139,4 +168,17 @@ fn wait_for_timeout(mut process: Child, timeout: Duration) -> ExitStatus {
 
     process.kill().expect("error while killing process");
     panic!("Process did not exit within timeout.");
+}
+
+#[test]
+fn deprecated_scope_methods_reach_crash_event() {
+    // Runs `examples/deprecated.rs`.
+    let envelope = crash_envelope("minidump-deprecated");
+    let event = crash_event(&envelope);
+
+    assert_eq!(event.level, Level::Fatal);
+    assert_eq!(
+        event.tags.get("deprecated").map(String::as_str),
+        Some("set_tag")
+    );
 }
