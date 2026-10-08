@@ -65,7 +65,7 @@ use std::sync::{Arc, Once, OnceLock};
 use std::time::Duration;
 
 use minidumper_child::{ClientHandle, MinidumperChild};
-use sentry_core::protocol::{Attachment, AttachmentType, Value};
+use sentry_core::protocol::{Attachment, AttachmentType, Breadcrumb, User, Value};
 use sentry_core::{sentry_debug, Client, ClientOptions, Hub, Integration, Level, Scope};
 
 use crate::scope_sync::{ScopeReceiver, ScopeSync};
@@ -82,8 +82,40 @@ const DEFAULT_PROCESS_NAME: &str = "Crash Reporter (Sentry Rust SDK)";
 /// The default time the crash handler waits for the scope to be serialized.
 const DEFAULT_SCOPE_TIMEOUT: Duration = Duration::from_secs(2);
 
+/// Message kind of a [`ScopeUpdate`] on the socket to the reporter.
+const MSG_SCOPE_UPDATE: u32 = 0;
+
 type OnProcess = dyn Fn(&mut Command) + Send + Sync + 'static;
 type BeforeCapture = dyn Fn(&mut Scope, &Path) + Send + Sync + 'static;
+
+/// An update to the crash reporter's scope, sent over the socket by the
+/// deprecated scope methods.
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq)]
+enum ScopeUpdate {
+    AddBreadcrumb(Breadcrumb),
+    SetUser(Option<User>),
+    SetExtra(String, Option<Value>),
+    SetTag(String, Option<String>),
+}
+
+impl ScopeUpdate {
+    /// Applies the update to the reporter's current hub.
+    fn apply(self) {
+        let hub = Hub::current();
+        match self {
+            ScopeUpdate::AddBreadcrumb(b) => hub.add_breadcrumb(b),
+            ScopeUpdate::SetUser(u) => hub.configure_scope(|scope| scope.set_user(u)),
+            ScopeUpdate::SetExtra(k, v) => hub.configure_scope(|scope| match v {
+                Some(v) => scope.set_extra(&k, v),
+                None => scope.remove_extra(&k),
+            }),
+            ScopeUpdate::SetTag(k, v) => hub.configure_scope(|scope| match v {
+                Some(v) => scope.set_tag(&k, &v),
+                None => scope.remove_tag(&k),
+            }),
+        }
+    }
+}
 
 /// Captures native crashes as minidumps and sends them to Sentry.
 ///
@@ -271,6 +303,42 @@ impl MinidumpIntegration {
         self
     }
 
+    /// Sends a scope update to the crash reporter process.
+    ///
+    /// Does nothing when there is no crash reporter, because this is the
+    /// reporter process, the DSN was unset, or the spawn failed.
+    fn send(&self, update: &ScopeUpdate) {
+        if let Some(handle) = self.handle.get() {
+            if let Ok(buffer) = serde_json::to_vec(update) {
+                handle.send_message(MSG_SCOPE_UPDATE, buffer).ok();
+            }
+        }
+    }
+
+    /// Adds a breadcrumb to the crash reporter's scope.
+    #[deprecated = "The crash event now carries the scope of the crashing thread. Use `sentry::add_breadcrumb` instead."]
+    pub fn add_breadcrumb(&self, breadcrumb: Breadcrumb) {
+        self.send(&ScopeUpdate::AddBreadcrumb(breadcrumb));
+    }
+
+    /// Sets the user on the crash reporter's scope.
+    #[deprecated = "The crash event now carries the scope of the crashing thread. Use `sentry::configure_scope` instead."]
+    pub fn set_user(&self, user: Option<User>) {
+        self.send(&ScopeUpdate::SetUser(user));
+    }
+
+    /// Sets or removes an extra value on the crash reporter's scope.
+    #[deprecated = "The crash event now carries the scope of the crashing thread. Use `sentry::configure_scope` instead."]
+    pub fn set_extra(&self, key: String, value: Option<Value>) {
+        self.send(&ScopeUpdate::SetExtra(key, value));
+    }
+
+    /// Sets or removes a tag on the crash reporter's scope.
+    #[deprecated = "The crash event now carries the scope of the crashing thread. Use `sentry::configure_scope` instead."]
+    pub fn set_tag(&self, key: String, value: Option<String>) {
+        self.send(&ScopeUpdate::SetTag(key, value));
+    }
+
     /// Builds the child from the stored settings.
     ///
     /// `scope_sync` is set in the app process only; the reporter has no
@@ -318,7 +386,14 @@ impl MinidumpIntegration {
         let receiver = Arc::new(ScopeReceiver::default());
         child = child.on_message({
             let receiver = receiver.clone();
-            move |kind, buffer| receiver.on_message(kind, &buffer)
+            move |kind, buffer| match kind {
+                MSG_SCOPE_UPDATE => {
+                    if let Ok(update) = serde_json::from_slice::<ScopeUpdate>(&buffer) {
+                        update.apply();
+                    }
+                }
+                _ => receiver.on_message(kind, &buffer),
+            }
         });
 
         let flush_timeout = self.flush_timeout;

@@ -2,14 +2,14 @@
 
 ## Unreleased
 
-### Breaking Changes
-
-- Removed the `set_user`, `set_tag`, `set_extra` and `add_breadcrumb` methods from `MinidumpIntegration`. The crash event now gets the scope of the crashing thread on its own, so remove these calls ([#1340](https://github.com/getsentry/sentry-rust/pull/1340)).
-
 ### Features
 
 - The `sentry-minidump` crash event now carries the scope of the thread that crashed, including hubs bound with `Hub::run`. Nothing is sent to the crash reporter until the crash: the crash handler names the crashing OS thread and a helper thread serializes that thread's scope before the minidump is requested. The new `scope_timeout` option bounds the wait for the scope ([#1340](https://github.com/getsentry/sentry-rust/pull/1340)).
 - Added the `thread-registry` feature to `sentry-core`, with `Hub::for_os_thread` and `current_os_thread_id`, which map operating system thread ids to the hub current on each thread, and `Hub::scope_snapshot`, which copies a hub's scope without taking its write lock ([#1340](https://github.com/getsentry/sentry-rust/pull/1340)).
+
+### Deprecations
+
+- Deprecated the `set_user`, `set_tag`, `set_extra` and `add_breadcrumb` methods on `MinidumpIntegration`. The crash event now carries the scope of the crashing thread, so set these values with `sentry::configure_scope` and `sentry::add_breadcrumb` instead ([#1340](https://github.com/getsentry/sentry-rust/pull/1340)).
 
 ## 0.49.3
 

@@ -19,9 +19,14 @@ workspace = true
 name = "minidump"
 path = "examples/app.rs"
 
+[[example]]
+name = "minidump-deprecated"
+path = "examples/deprecated.rs"
+
 [dependencies]
 sentry-core = { workspace = true, features = ["client", "thread-registry"] }
 minidumper-child = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]
