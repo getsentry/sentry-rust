@@ -1,6 +1,10 @@
 #![expect(missing_docs, reason = "predates lint enforcement")]
+#![cfg(feature = "logs")]
 
-mod shared;
+use sentry::protocol::{EnvelopeItem, ItemContainer, LogLevel};
+use sentry_tracing::{LogLayer, SpanLayer};
+use tracing_subscriber::filter::LevelFilter;
+use tracing_subscriber::prelude::*;
 
 #[tracing::instrument(fields(tags.tag = "key", not_tag = "value"))]
 fn function_with_tags(value: i32) {
@@ -8,52 +12,39 @@ fn function_with_tags(value: i32) {
 }
 
 #[test]
-fn should_instrument_function_with_event() {
-    let transport = shared::init_sentry(1.0); // Sample all spans.
+fn should_instrument_function_with_log() {
+    let _subscriber = tracing_subscriber::registry()
+        .with(SpanLayer::new().with_filter(LevelFilter::INFO))
+        .with(LogLayer::new().with_filter(LevelFilter::INFO))
+        .set_default();
 
-    function_with_tags(1);
+    let envelopes = sentry::test::with_captured_envelopes_options(
+        || function_with_tags(1),
+        sentry::ClientOptions::new().traces_sample_rate(1.0),
+    );
+    let mut transaction = None;
+    let mut logs = Vec::new();
+    for item in envelopes.iter().flat_map(|envelope| envelope.items()) {
+        match item {
+            EnvelopeItem::Transaction(item) => assert!(transaction.replace(item).is_none()),
+            EnvelopeItem::ItemContainer(ItemContainer::Logs(items)) => logs.extend(items.iter()),
+            _ => (),
+        }
+    }
 
-    let data = transport.fetch_and_clear_envelopes();
-    assert_eq!(data.len(), 2);
-    let event = data.first().expect("should have 1 event");
-    let event = match event.items().next().unwrap() {
-        sentry::protocol::EnvelopeItem::Event(event) => event,
-        unexpected => panic!("Expected event, but got {unexpected:#?}"),
-    };
-
-    //Validate transaction is created
-    let trace = match event.contexts.get("trace").expect("to get 'trace' context") {
-        sentry::protocol::Context::Trace(trace) => trace,
-        unexpected => panic!("Expected trace context but got {unexpected:?}"),
-    };
-    assert_eq!(trace.op.as_deref().unwrap(), "smoke::function_with_tags");
-
-    //Confirm transaction values
-    let transaction = data.get(1).expect("should have 1 transaction");
-    let transaction = match transaction.items().next().unwrap() {
-        sentry::protocol::EnvelopeItem::Transaction(transaction) => transaction,
-        unexpected => panic!("Expected transaction, but got {unexpected:#?}"),
-    };
-    assert_eq!(transaction.name, Some("function_with_tags".into()));
+    let transaction = transaction.expect("transaction");
+    assert_eq!(transaction.name.as_deref(), Some("function_with_tags"));
     assert_eq!(transaction.tags.len(), 1);
+    assert_eq!(transaction.tags.get("tag").map(String::as_str), Some("key"));
+
+    let trace = match transaction.contexts.get("trace").expect("trace context") {
+        sentry::protocol::Context::Trace(trace) => trace,
+        unexpected => panic!("Expected trace context, but got {unexpected:?}"),
+    };
+    assert_eq!(trace.op.as_deref(), Some("smoke::function_with_tags"));
+    assert_eq!(trace.data.get("not_tag"), Some(&"value".into()));
+    assert_eq!(trace.data.get("value"), Some(&1.into()));
     assert_eq!(trace.data.len(), 6);
-
-    let tag = transaction
-        .tags
-        .get("tag")
-        .expect("to have tag with name 'tag'");
-    assert_eq!(tag, "key");
-    let not_tag = trace
-        .data
-        .get("not_tag")
-        .expect("to have data attribute with name 'not_tag'");
-    assert_eq!(not_tag, "value");
-    let value = trace
-        .data
-        .get("value")
-        .expect("to have data attribute with name 'value'");
-    assert_eq!(value, 1);
-
     assert_eq!(
         trace.data.get("sentry.tracing.target"),
         Some("smoke".into()).as_ref()
@@ -64,4 +55,11 @@ fn should_instrument_function_with_event() {
     );
     assert!(trace.data.contains_key("code.file.path"));
     assert!(trace.data.contains_key("code.line.number"));
+
+    assert_eq!(logs.len(), 1);
+    let log = logs[0];
+    assert_eq!(log.level, LogLevel::Error);
+    assert_eq!(log.body, "event");
+    assert_eq!(log.trace_id.as_ref(), Some(&trace.trace_id));
+    assert_eq!(log.attributes.get("value"), Some(&1.into()));
 }
