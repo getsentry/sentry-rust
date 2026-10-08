@@ -8,6 +8,8 @@
 #[cfg(target_os = "macos")]
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+#[cfg(target_os = "macos")]
+use std::sync::Barrier;
 use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 use std::thread::{self, Thread};
 use std::time::Duration;
@@ -38,7 +40,7 @@ pub(crate) struct ScopeSync {
     requested: AtomicBool,
     /// Unset when the helper thread failed to start.
     thread: OnceLock<Thread>,
-    /// The helper's Mach port, or 0 before the helper has started.
+    /// The helper's Mach port.
     #[cfg(target_os = "macos")]
     helper_port: AtomicU32,
     timeout: Duration,
@@ -58,16 +60,26 @@ impl ScopeSync {
             timeout,
         });
 
+        // On macOS the handler needs the helper's port to resume it, so
+        // `start` waits until the helper has stored it.
+        #[cfg(target_os = "macos")]
+        let port_stored = Arc::new(Barrier::new(2));
+        #[cfg(target_os = "macos")]
+        let helper_port_stored = port_stored.clone();
+
         let helper_sync = sync.clone();
         let spawned = thread::Builder::new()
             .name("sentry-minidump-scope".into())
             .spawn(move || {
                 let sync = helper_sync;
                 #[cfg(target_os = "macos")]
-                sync.helper_port.store(
-                    sentry_core::current_os_thread_id() as u32,
-                    Ordering::Release,
-                );
+                {
+                    sync.helper_port.store(
+                        sentry_core::current_os_thread_id() as u32,
+                        Ordering::Release,
+                    );
+                    helper_port_stored.wait();
+                }
                 while !sync.requested.load(Ordering::Acquire) {
                     thread::park();
                 }
@@ -78,6 +90,8 @@ impl ScopeSync {
 
         match spawned {
             Ok(handle) => {
+                #[cfg(target_os = "macos")]
+                port_stored.wait();
                 let _ = sync.thread.set(handle.thread().clone());
             }
             Err(err) => {
@@ -125,9 +139,6 @@ impl ScopeSync {
 /// other thread first, the helper included.
 #[cfg(target_os = "macos")]
 fn resume_helper(port: u32) {
-    if port == 0 {
-        return;
-    }
     // SAFETY: The helper only exits after it sets `done`, so `port`
     // still names it. `thread_resume` only lowers its suspend count.
     #[expect(unsafe_code, reason = "Mach call to resume the helper thread")]
@@ -168,8 +179,7 @@ fn crashing_thread_id(crash_context: &CrashContext) -> u64 {
 /// is the scope such a thread would have inherited.
 fn scope_bytes(thread_id: u64) -> Vec<u8> {
     let hub = Hub::for_os_thread(thread_id).unwrap_or_else(Hub::main);
-    let scope = hub.configure_scope(|scope| scope.clone());
-    scope
+    hub.scope_snapshot()
         .apply_to_event(Event::default())
         .and_then(|event| serde_json::to_vec(&event).ok())
         .unwrap_or_default()
