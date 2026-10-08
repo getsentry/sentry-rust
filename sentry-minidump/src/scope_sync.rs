@@ -74,10 +74,9 @@ impl ScopeSync {
                 let sync = helper_sync;
                 #[cfg(target_os = "macos")]
                 {
-                    sync.helper_port.store(
-                        sentry_core::current_os_thread_id() as u32,
-                        Ordering::Release,
-                    );
+                    // The Mach port of the current thread is a `u32`.
+                    let port = sentry_core::current_os_thread_id().map_or(0, |id| id as u32);
+                    sync.helper_port.store(port, Ordering::Release);
                     helper_port_stored.wait();
                 }
                 while !sync.requested.load(Ordering::Acquire) {
@@ -255,7 +254,9 @@ mod tests {
     fn scope_bytes_uses_the_thread_hub() {
         let hub = Arc::new(Hub::new(None, Default::default()));
         hub.configure_scope(|scope| scope.set_tag("thread", "worker"));
-        let bytes = Hub::run(hub, || scope_bytes(sentry_core::current_os_thread_id()));
+        let bytes = Hub::run(hub, || {
+            scope_bytes(sentry_core::current_os_thread_id().unwrap())
+        });
         let event: Event<'static> = serde_json::from_slice(&bytes).unwrap();
         assert_eq!(event.tags.get("thread").map(String::as_str), Some("worker"));
     }

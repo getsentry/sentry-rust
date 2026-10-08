@@ -19,19 +19,27 @@ use crate::Hub;
 /// - Windows: `GetCurrentThreadId`.
 /// - macOS: the Mach port name of the thread, as reported in exception
 ///   messages and returned by `pthread_mach_thread_np`.
-/// - Other unix targets: `pthread_self`.
+///
+/// Returns `None` when the OS refuses the call, for example when a
+/// seccomp filter blocks `gettid`.
 ///
 /// It is not related to [`std::thread::ThreadId`].
-pub fn current_os_thread_id() -> u64 {
+#[cfg(any(
+    target_os = "linux",
+    target_os = "android",
+    target_os = "macos",
+    windows
+))]
+pub fn current_os_thread_id() -> Option<u64> {
     #[cfg(any(target_os = "linux", target_os = "android"))]
     {
-        // SAFETY: `gettid` takes no arguments and cannot fail.
-        unsafe { libc::syscall(libc::SYS_gettid) as u64 }
+        // SAFETY: `gettid` takes no arguments.
+        thread_id_from_syscall(unsafe { libc::syscall(libc::SYS_gettid) })
     }
     #[cfg(target_os = "macos")]
     {
         // SAFETY: `pthread_self` is always valid for the calling thread.
-        unsafe { libc::pthread_mach_thread_np(libc::pthread_self()) as u64 }
+        Some(unsafe { libc::pthread_mach_thread_np(libc::pthread_self()) }.into())
     }
     #[cfg(windows)]
     {
@@ -39,7 +47,28 @@ pub fn current_os_thread_id() -> u64 {
             fn GetCurrentThreadId() -> u32;
         }
         // SAFETY: takes no arguments and cannot fail.
-        unsafe { GetCurrentThreadId() as u64 }
+        Some(unsafe { GetCurrentThreadId() }.into())
+    }
+}
+
+/// Turns the result of the `gettid` syscall into a thread id.
+///
+/// A seccomp filter can make the syscall return -1 without running it.
+#[cfg(any(target_os = "linux", target_os = "android"))]
+fn thread_id_from_syscall(ret: libc::c_long) -> Option<u64> {
+    u64::try_from(ret).ok().filter(|&id| id > 0)
+}
+
+/// The id to register the current thread under, if the OS reports one.
+fn registry_id() -> Option<u64> {
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "android",
+        target_os = "macos",
+        windows
+    ))]
+    {
+        current_os_thread_id()
     }
     #[cfg(not(any(
         target_os = "linux",
@@ -48,14 +77,14 @@ pub fn current_os_thread_id() -> u64 {
         windows
     )))]
     {
-        // SAFETY: `pthread_self` is always valid for the calling thread.
-        unsafe { libc::pthread_self() as u64 }
+        None
     }
 }
 
 /// One thread's entry in the registry.
 struct Slot {
-    os_thread_id: u64,
+    /// `None` when the thread has no OS id and is not in the registry.
+    os_thread_id: Option<u64>,
     hub: RwLock<Weak<Hub>>,
 }
 
@@ -66,35 +95,40 @@ static REGISTRY: LazyLock<Mutex<HashMap<u64, Arc<Slot>>>> =
 struct SlotGuard(Arc<Slot>);
 
 impl SlotGuard {
-    fn register() -> Self {
+    fn register(os_thread_id: Option<u64>) -> Self {
         let slot = Arc::new(Slot {
-            os_thread_id: current_os_thread_id(),
+            os_thread_id,
             hub: RwLock::new(Weak::new()),
         });
-        REGISTRY
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .insert(slot.os_thread_id, slot.clone());
+        if let Some(id) = os_thread_id {
+            REGISTRY
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .insert(id, slot.clone());
+        }
         SlotGuard(slot)
     }
 }
 
 impl Drop for SlotGuard {
     fn drop(&mut self) {
+        let Some(id) = self.0.os_thread_id else {
+            return;
+        };
         let mut registry = REGISTRY.lock().unwrap_or_else(PoisonError::into_inner);
         // The OS can reuse the id for a new thread before this one is
         // fully gone, so only remove the entry if it is still ours.
         if registry
-            .get(&self.0.os_thread_id)
+            .get(&id)
             .is_some_and(|slot| Arc::ptr_eq(slot, &self.0))
         {
-            registry.remove(&self.0.os_thread_id);
+            registry.remove(&id);
         }
     }
 }
 
 thread_local! {
-    static SLOT: SlotGuard = SlotGuard::register();
+    static SLOT: SlotGuard = SlotGuard::register(registry_id());
 }
 
 /// Records `hub` as the hub current on the calling thread.
@@ -129,7 +163,7 @@ mod tests {
 
         let worker = std::thread::spawn(move || {
             let hub = Hub::current();
-            id_tx.send((current_os_thread_id(), hub)).unwrap();
+            id_tx.send((current_os_thread_id().unwrap(), hub)).unwrap();
             // Keep the thread alive until the main thread has looked it up.
             done_rx.recv().ok();
         });
@@ -146,7 +180,7 @@ mod tests {
 
     #[test]
     fn follows_hub_run_switching() {
-        let id = current_os_thread_id();
+        let id = current_os_thread_id().unwrap();
         let outer = Hub::current();
         let inner = Arc::new(Hub::new_from_top(&outer));
 
@@ -162,6 +196,24 @@ mod tests {
     #[test]
     fn unknown_thread_has_no_hub() {
         assert!(Hub::for_os_thread(u64::MAX).is_none());
+    }
+
+    #[test]
+    fn thread_without_id_is_not_registered() {
+        let guard = SlotGuard::register(None);
+        assert!(!REGISTRY
+            .lock()
+            .unwrap()
+            .values()
+            .any(|slot| Arc::ptr_eq(slot, &guard.0)));
+    }
+
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    #[test]
+    fn failed_gettid_has_no_id() {
+        assert_eq!(thread_id_from_syscall(-1), None);
+        assert_eq!(thread_id_from_syscall(0), None);
+        assert_eq!(thread_id_from_syscall(42), Some(42));
     }
 
     #[test]
