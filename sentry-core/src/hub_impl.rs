@@ -189,6 +189,15 @@ impl Hub {
         crate::thread_registry::hub_for_os_thread(os_thread_id)
     }
 
+    /// Returns a copy of the hub's current scope.
+    ///
+    /// Unlike [`Hub::configure_scope`], this only takes the hub's read
+    /// lock, so it does not wait for other threads that read the scope.
+    #[cfg(feature = "thread-registry")]
+    pub fn scope_snapshot(&self) -> Scope {
+        self.with_current_scope(Scope::clone)
+    }
+
     /// Invokes the callback with the default hub.
     #[deprecated = "Use `Hub::current` instead; this function offers no performance benefit."]
     pub fn with<F, R>(f: F) -> R

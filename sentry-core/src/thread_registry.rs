@@ -163,4 +163,17 @@ mod tests {
     fn unknown_thread_has_no_hub() {
         assert!(Hub::for_os_thread(u64::MAX).is_none());
     }
+
+    #[test]
+    fn scope_snapshot_works_while_the_scope_is_read() {
+        let hub = Hub::new(None, Default::default());
+        hub.configure_scope(|scope| scope.set_tag("thread", "worker"));
+
+        // A write lock here would never be granted.
+        let snapshot = hub.with_current_scope(|_| hub.scope_snapshot());
+        let event = snapshot
+            .apply_to_event(Default::default())
+            .expect("no event processors drop the event");
+        assert_eq!(event.tags.get("thread").map(String::as_str), Some("worker"));
+    }
 }
