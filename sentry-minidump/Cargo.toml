@@ -24,6 +24,9 @@ sentry-core = { workspace = true, features = ["client", "thread-registry"] }
 minidumper-child = { workspace = true }
 serde_json = { workspace = true }
 
+[target.'cfg(target_os = "macos")'.dependencies]
+mach2 = { workspace = true }
+
 [dev-dependencies]
 sentry = { workspace = true, features = ["test", "ureq"] }
 sadness-generator = { workspace = true }

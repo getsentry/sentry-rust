@@ -58,6 +58,7 @@ http = "1.0.0"
 httpdate = "1.0.0"
 libc = "0.2.66"
 log = "0.4.8"
+mach2 = "0.4"
 minidumper-child = "0.6"
 native-tls = "0.2.8"
 opentelemetry = { version = "0.32.0", default-features = false }

@@ -5,8 +5,11 @@
 //! thread is turned into an [`Event`], and the handler sends the JSON to
 //! the reporter before it requests the minidump.
 
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex, PoisonError};
+#[cfg(target_os = "macos")]
+use std::sync::atomic::AtomicU32;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{Arc, Mutex, OnceLock, PoisonError};
+use std::thread::{self, Thread};
 use std::time::Duration;
 
 use minidumper_child::{CrashContext, MessageSender};
@@ -21,121 +24,115 @@ pub(crate) const MSG_SCOPE_END: u32 = 2;
 /// partial reads on every platform, so keep each message small.
 const CHUNK_SIZE: usize = 16 * 1024;
 
-/// Hand-off between the crash handler and the code that serializes the
-/// scope.
+/// Hand-off between the crash handler and the helper thread that
+/// serializes the scope.
+///
+/// The crash handler may run on the crashing thread, which can hold the
+/// allocator or a hub lock. So the handler only touches atomics, wakes the
+/// helper and waits at most `timeout`. All the work that can block runs
+/// on the helper.
 pub(crate) struct ScopeSync {
     done: AtomicBool,
     buffer: Mutex<Vec<u8>>,
-    #[cfg(not(target_os = "macos"))]
-    helper: Helper,
-}
-
-/// The parked thread that does the serializing on Linux and Windows,
-/// where the crash handler runs on the crashing thread and may not
-/// allocate.
-#[cfg(not(target_os = "macos"))]
-struct Helper {
-    thread_id: std::sync::atomic::AtomicU64,
+    thread_id: AtomicU64,
     requested: AtomicBool,
     /// Unset when the helper thread failed to start.
-    thread: std::sync::OnceLock<std::thread::Thread>,
+    thread: OnceLock<Thread>,
+    /// The helper's Mach port, or 0 before the helper has started.
+    #[cfg(target_os = "macos")]
+    helper_port: AtomicU32,
     timeout: Duration,
 }
 
 impl ScopeSync {
-    /// Prepares the hand-off. On Linux and Windows this starts the helper
-    /// thread, which parks until a crash happens.
+    /// Starts the helper thread, which parks until a crash happens.
     pub(crate) fn start(timeout: Duration) -> Arc<Self> {
-        #[cfg(target_os = "macos")]
-        {
-            let _ = timeout;
-            Arc::new(ScopeSync {
-                done: AtomicBool::new(false),
-                buffer: Mutex::new(Vec::new()),
-            })
-        }
+        let sync = Arc::new(ScopeSync {
+            done: AtomicBool::new(false),
+            buffer: Mutex::new(Vec::new()),
+            thread_id: AtomicU64::new(0),
+            requested: AtomicBool::new(false),
+            thread: OnceLock::new(),
+            #[cfg(target_os = "macos")]
+            helper_port: AtomicU32::new(0),
+            timeout,
+        });
 
-        #[cfg(not(target_os = "macos"))]
-        {
-            use std::sync::atomic::AtomicU64;
-            use std::sync::OnceLock;
-            use std::thread;
-
-            let sync = Arc::new(ScopeSync {
-                done: AtomicBool::new(false),
-                buffer: Mutex::new(Vec::new()),
-                helper: Helper {
-                    thread_id: AtomicU64::new(0),
-                    requested: AtomicBool::new(false),
-                    thread: OnceLock::new(),
-                    timeout,
-                },
+        let helper_sync = sync.clone();
+        let spawned = thread::Builder::new()
+            .name("sentry-minidump-scope".into())
+            .spawn(move || {
+                let sync = helper_sync;
+                #[cfg(target_os = "macos")]
+                sync.helper_port.store(
+                    sentry_core::current_os_thread_id() as u32,
+                    Ordering::Release,
+                );
+                while !sync.requested.load(Ordering::Acquire) {
+                    thread::park();
+                }
+                let bytes = scope_bytes(sync.thread_id.load(Ordering::Acquire));
+                *sync.buffer.lock().unwrap_or_else(PoisonError::into_inner) = bytes;
+                sync.done.store(true, Ordering::Release);
             });
 
-            let helper_sync = sync.clone();
-            let spawned = thread::Builder::new()
-                .name("sentry-minidump-scope".into())
-                .spawn(move || {
-                    let sync = helper_sync;
-                    while !sync.helper.requested.load(Ordering::Acquire) {
-                        thread::park();
-                    }
-                    let bytes = scope_bytes(sync.helper.thread_id.load(Ordering::Acquire));
-                    *sync.buffer.lock().unwrap_or_else(PoisonError::into_inner) = bytes;
-                    sync.done.store(true, Ordering::Release);
-                });
-
-            match spawned {
-                Ok(handle) => {
-                    let _ = sync.helper.thread.set(handle.thread().clone());
-                }
-                Err(err) => {
-                    sentry_core::sentry_debug!("could not start scope helper thread: {err}");
-                }
+        match spawned {
+            Ok(handle) => {
+                let _ = sync.thread.set(handle.thread().clone());
             }
-            sync
+            Err(err) => {
+                sentry_core::sentry_debug!("could not start scope helper thread: {err}");
+            }
         }
+        sync
     }
 
     /// Runs inside the crash handler.
     ///
-    /// On Linux and Windows this is the crashing thread, so it must not
-    /// allocate or take locks. It only touches atomics, wakes the helper,
-    /// sleeps, and writes from a buffer the helper filled. On macOS every
-    /// other thread is suspended, so the work runs inline here instead.
+    /// It must not allocate or take locks. It only touches atomics, wakes
+    /// the helper, sleeps, and writes from a buffer the helper filled.
     pub(crate) fn on_crash(&self, crash_context: &CrashContext, sender: &MessageSender<'_>) {
-        let thread_id = crashing_thread_id(crash_context);
+        let Some(helper_thread) = self.thread.get() else {
+            return;
+        };
+        self.thread_id
+            .store(crashing_thread_id(crash_context), Ordering::Release);
+        self.requested.store(true, Ordering::Release);
 
         #[cfg(target_os = "macos")]
-        {
-            *self.buffer.lock().unwrap_or_else(PoisonError::into_inner) = scope_bytes(thread_id);
-            self.done.store(true, Ordering::Release);
-        }
+        resume_helper(self.helper_port.load(Ordering::Acquire));
 
-        #[cfg(not(target_os = "macos"))]
-        {
-            let Some(helper_thread) = self.helper.thread.get() else {
+        helper_thread.unpark();
+
+        let step = Duration::from_millis(1);
+        let mut waited = Duration::ZERO;
+        while !self.done.load(Ordering::Acquire) {
+            if waited >= self.timeout {
                 return;
-            };
-            self.helper.thread_id.store(thread_id, Ordering::Release);
-            self.helper.requested.store(true, Ordering::Release);
-            helper_thread.unpark();
-
-            let step = Duration::from_millis(1);
-            let mut waited = Duration::ZERO;
-            while !self.done.load(Ordering::Acquire) {
-                if waited >= self.helper.timeout {
-                    return;
-                }
-                std::thread::sleep(step);
-                waited = waited.saturating_add(step);
             }
+            thread::sleep(step);
+            waited = waited.saturating_add(step);
         }
 
         // The lock was released before `done` was set, so this cannot block.
         if let Ok(buffer) = self.buffer.try_lock() {
             send_chunks(sender, &buffer);
         }
+    }
+}
+
+/// On macOS the crash handler runs on its own thread and suspends every
+/// other thread first, the helper included.
+#[cfg(target_os = "macos")]
+fn resume_helper(port: u32) {
+    if port == 0 {
+        return;
+    }
+    // SAFETY: The helper only exits after it sets `done`, so `port`
+    // still names it. `thread_resume` only lowers its suspend count.
+    #[expect(unsafe_code, reason = "Mach call to resume the helper thread")]
+    unsafe {
+        mach2::thread_act::thread_resume(port);
     }
 }
 
