@@ -58,7 +58,7 @@ http = "1.0.0"
 httpdate = "1.0.0"
 libc = "0.2.66"
 log = "0.4.8"
-minidumper-child = "0.5"
+minidumper-child = "0.6"
 native-tls = "0.2.8"
 opentelemetry = { version = "0.32.0", default-features = false }
 opentelemetry_sdk = { version = "0.32.1", default-features = false }
@@ -106,7 +106,3 @@ uname = "0.1.1"
 ureq = { version = "3.0.11", default-features = false }
 url = "2.2.2"
 uuid = "1.0.0"
-
-[patch.crates-io]
-# Pending release of the `on_crash` hook.
-minidumper-child = { git = "https://github.com/timfish/minidumper-child", branch = "feat/on-crash-hook" }
