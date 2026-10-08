@@ -34,7 +34,7 @@ jobs:
       - run: cargo install cargo-readme
 
       - name: Prepare release
-        uses: getsentry/craft@906009a1b771956757e521555b561379307eb667 # v2.21.4
+        uses: getsentry/craft@4e164274d61ad2606b88b0aef000b2f4b1829745 # 2.33.3
         env:
           GITHUB_TOKEN: ${{ steps.token.outputs.token }}
         with:
