@@ -8,7 +8,7 @@ use std::time::SystemTime;
 use sentry_types::protocol::v7::client_report::Reason as ClientReportReason;
 #[cfg(feature = "client")]
 use sentry_types::protocol::v7::OrganizationId;
-use sentry_types::protocol::v7::SpanId;
+use sentry_types::protocol::v7::{SpanId, TraceId};
 
 #[cfg(feature = "client")]
 use self::sampling::FinishAction;
@@ -271,24 +271,53 @@ impl TransactionContext {
     /// thread and should be connected to the calling thread via a distributed
     /// tracing transaction.
     pub fn continue_from_span(name: &str, op: &str, span: Option<TransactionOrSpan>) -> Self {
+        /// Helper struct for the match statement; this allows us to have `incoming_trace` be
+        /// guarded by the client feature.
+        struct IncomingSpanData {
+            trace_id: TraceId,
+            span_id: SpanId,
+            #[cfg(feature = "client")]
+            incoming_trace: IncomingTrace,
+            sampled: Option<bool>,
+        }
+
         let span = match span {
             Some(span) => span,
             None => return Self::new(name, op),
         };
 
-        let (trace_id, parent_span_id, sampled) = match span {
+        let IncomingSpanData {
+            trace_id,
+            span_id: parent_span_id,
+            #[cfg(feature = "client")]
+            incoming_trace,
+            sampled,
+        } = match span {
             TransactionOrSpan::Transaction(transaction) => {
                 let inner = transaction.inner.lock().unwrap();
-                (
-                    inner.context.trace_id,
-                    inner.context.span_id,
-                    inner.tracing_state.trace_sampled(),
-                )
+                IncomingSpanData {
+                    trace_id: inner.context.trace_id,
+                    span_id: inner.context.span_id,
+                    #[cfg(feature = "client")]
+                    incoming_trace: IncomingTrace {
+                        org_id: inner.client.as_ref().and_then(|c| c.org_id()),
+                    },
+                    sampled: inner.tracing_state.trace_sampled(),
+                }
             }
             TransactionOrSpan::Span(span) => {
-                let trace_sampled = span.tracing_state.trace_sampled();
-                let span = span.span.lock().unwrap();
-                (span.trace_id, span.span_id, trace_sampled)
+                let sampled = span.tracing_state.trace_sampled();
+                let protocol_span = span.span.lock().unwrap();
+
+                IncomingSpanData {
+                    trace_id: protocol_span.trace_id,
+                    span_id: protocol_span.span_id,
+                    #[cfg(feature = "client")]
+                    incoming_trace: IncomingTrace {
+                        org_id: span.org_id(),
+                    },
+                    sampled,
+                }
             }
         };
 
@@ -300,7 +329,7 @@ impl TransactionContext {
             span_id: protocol::SpanId::default(),
             sampled,
             #[cfg(feature = "client")]
-            incoming_trace: None,
+            incoming_trace: incoming_trace.into(),
             custom: None,
         }
     }
@@ -1084,6 +1113,17 @@ impl Transaction {
             span: Arc::new(Mutex::new(span)),
         }
     }
+
+    /// Obtains the org_id of this transaction's [`Client`].
+    #[cfg(feature = "client")]
+    pub(crate) fn org_id(&self) -> Option<OrganizationId> {
+        self.inner
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .client
+            .as_ref()
+            .and_then(|c| c.org_id())
+    }
 }
 
 impl PartialEq for Transaction {
@@ -1332,6 +1372,12 @@ impl Span {
             tracing_state: self.tracing_state,
             span: Arc::new(Mutex::new(span)),
         }
+    }
+
+    /// Return the organization ID of the client this span is being recorded onto.
+    #[cfg(feature = "client")]
+    pub(crate) fn org_id(&self) -> Option<OrganizationId> {
+        self.transaction.org_id()
     }
 
     /// Starts a new child Span with the given `op` and `description`.

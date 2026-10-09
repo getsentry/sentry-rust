@@ -6,6 +6,10 @@
 
 - Deprecated [`Client::sample_should_send`](https://docs.rs/sentry-core/0.49.4/sentry_core/struct.Client.html#method.sample_should_send). We will remove this method from the public API in the next breaking release ([#1328](https://github.com/getsentry/sentry-rust/pull/1328)).
 
+### Fixes
+
+- [`TransactionContext::continue_from_span`](https://docs.rs/sentry-core/0.49.4/sentry_core/struct.TransactionContext.html#method.continue_from_span) now respects trace continuation rules: spans being recorded onto a client that reports to a different Sentry organization are no longer continued by this function. We also respect the `strict_trace_continuation` option ([#1329](https://github.com/getsentry/sentry-rust/pull/1329)).
+
 ## 0.49.3
 
 ### Features
