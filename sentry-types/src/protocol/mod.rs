@@ -16,6 +16,7 @@ pub use v7 as latest;
 mod attachment;
 mod client_report;
 mod envelope;
+mod feedback;
 mod monitor;
 mod session;
 mod unit;
