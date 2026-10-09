@@ -785,7 +785,6 @@ impl Transaction {
         let (tracing_state, transaction) = match client.as_ref() {
             Some(client) => {
                 let options = client.options();
-                let sdk_org_id = options.org_id.or_else(|| options.dsn.as_ref()?.org_id());
 
                 if ctx.incoming_trace.is_some_and(
                     |IncomingTrace {
@@ -793,7 +792,7 @@ impl Transaction {
                      }| {
                         !should_continue_trace(
                             incoming_org_id,
-                            sdk_org_id,
+                            client.org_id(),
                             options.strict_trace_continuation,
                         )
                     },
