@@ -137,13 +137,10 @@ impl SpanProcessor for SentrySpanProcessor {
                         )
                     } else {
                         // start a new trace
-                        TransactionContext::new_with_details(
-                            span_description,
-                            span_op,
-                            convert_trace_id(&trace_id),
-                            Some(convert_span_id(&span_id)),
-                            None,
-                        )
+                        TransactionContext::builder(span_description, span_op)
+                            .with_trace_id(convert_trace_id(&trace_id))
+                            .with_span_id(convert_span_id(&span_id))
+                            .finish()
                     }
                 };
                 let tx =

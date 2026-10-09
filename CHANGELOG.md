@@ -5,6 +5,8 @@
 ### Deprecations
 
 - Deprecated [`Client::sample_should_send`](https://docs.rs/sentry-core/0.49.4/sentry_core/struct.Client.html#method.sample_should_send). We will remove this method from the public API in the next breaking release ([#1328](https://github.com/getsentry/sentry-rust/pull/1328)).
+- Deprecated [`TransactionContext::new_with_details`](https://docs.rs/sentry-core/0.49.4/sentry_core/struct.TransactionContext.html#method.new_with_details), as the `parent_span_id` parameter's value is now ignored by that method. Use [`TransactionContext::builder`](https://docs.rs/sentry-core/0.49.4/sentry_core/struct.TransactionContext.html#method.builder) and [the builder's associated methods](https://docs.rs/sentry-core/0.49.4/sentry_core/struct.TransactionContextBuilder.html#implementations) instead ([#1330](https://github.com/getsentry/sentry-rust/pull/1330)).
+- Deprecated [`TransactionContextBuilder::with_parent_span_id`](https://docs.rs/sentry-core/0.49.4/sentry_core/struct.TransactionContextBuilder.html#method.with_parent_span_id) and made it a no-op. Manually setting a transaction's parent span ID is no longer supported; use dedicated trace continuation APIs instead ([#1330](https://github.com/getsentry/sentry-rust/pull/1330)).
 
 ### Fixes
 
