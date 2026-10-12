@@ -13,12 +13,12 @@ use crate::converters::breadcrumb_from_event;
 /// Using this layer alongside the legacy [`SentryLayer`](super::SentryLayer) is unsupported.
 /// Use either the legacy layer or the individual layers, not both.
 #[must_use]
-pub struct BreadcrumbLayer<S> {
+#[derive(Default)]
+pub struct BreadcrumbLayer {
     with_span_attributes: bool,
-    event_mapper: Option<Box<dyn EventToBreadcrumbMapper<S>>>,
 }
 
-impl<S> BreadcrumbLayer<S> {
+impl BreadcrumbLayer {
     /// Creates a layer that adds tracing events as Sentry breadcrumbs.
     ///
     /// For most users, we would recommend using the [`LogLayer`](super::LogLayer) instead of this
@@ -97,18 +97,8 @@ impl<S> BreadcrumbLayer<S> {
     /// Including all spans in the breadcrumb layer filter is safe, because this layer does not send
     /// any spans to Sentry.
     ///
-    /// This option has no effect when [`Self::mapper`] is set.
     pub fn enable_span_attributes(mut self) -> Self {
         self.with_span_attributes = true;
-        self
-    }
-
-    /// Sets a custom mapping from the tracing event to the breadcrumb object.
-    pub fn mapper<M>(mut self, mapper: M) -> Self
-    where
-        M: EventToBreadcrumbMapper<S> + 'static,
-    {
-        self.event_mapper = Some(Box::from(mapper));
         self
     }
 
@@ -118,61 +108,24 @@ impl<S> BreadcrumbLayer<S> {
     }
 }
 
-impl<S> BreadcrumbLayer<S>
-where
-    S: Subscriber + for<'a> LookupSpan<'a>,
-{
+impl BreadcrumbLayer {
     /// Capture a tracing event as a breadcrumb.
-    pub(super) fn capture_tracing_event(&self, event: &Event, ctx: Context<'_, S>) {
-        if let Some(breadcrumb) = self.event_to_breadcrumb(event, ctx) {
-            self.capture(breadcrumb);
-        }
-    }
-
-    /// Convert a tracing event to a breadcrumb, using the custom mapper if one is set.
-    fn event_to_breadcrumb(&self, event: &Event, ctx: Context<'_, S>) -> Option<Breadcrumb> {
-        match &self.event_mapper {
-            Some(mapper) => mapper(event, ctx),
-            None => Some(breadcrumb_from_event(
-                event,
-                self.with_span_attributes.then_some(&ctx),
-            )),
-        }
+    pub(super) fn capture_tracing_event<S>(&self, event: &Event, ctx: Context<'_, S>)
+    where
+        S: Subscriber + for<'a> LookupSpan<'a>,
+    {
+        self.capture(breadcrumb_from_event(
+            event,
+            self.with_span_attributes.then_some(&ctx),
+        ));
     }
 }
 
-impl<S> Layer<S> for BreadcrumbLayer<S>
+impl<S> Layer<S> for BreadcrumbLayer
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
     fn on_event(&self, event: &Event, ctx: Context<'_, S>) {
         self.capture_tracing_event(event, ctx);
-    }
-}
-
-/// A mapper function which converts a tracing event to a [`Breadcrumb`].
-///
-/// This advanced API fully customizes whether and how `tracing` events become Sentry breadcrumbs.
-/// A mapper can call [`breadcrumb_from_event`] to perform the conversion
-/// alongside its custom filtering or mapping logic.
-///
-/// The function can also return [`None`], in which case, no breadcrumb is created from the
-/// tracing event.
-pub trait EventToBreadcrumbMapper<S>:
-    Fn(&Event, Context<'_, S>) -> Option<Breadcrumb> + Send + Sync
-{
-}
-
-impl<F, S> EventToBreadcrumbMapper<S> for F where
-    F: Fn(&Event, Context<'_, S>) -> Option<Breadcrumb> + Send + Sync
-{
-}
-
-impl<S> Default for BreadcrumbLayer<S> {
-    fn default() -> Self {
-        Self {
-            with_span_attributes: false,
-            event_mapper: None,
-        }
     }
 }

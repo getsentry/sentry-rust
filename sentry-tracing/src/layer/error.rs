@@ -10,12 +10,12 @@ use crate::converters::event_from_event;
 /// Using this layer alongside the legacy [`SentryLayer`](super::SentryLayer) is unsupported.
 /// Use either the legacy layer or the individual layers, not both.
 #[must_use]
-pub struct ErrorLayer<S> {
+#[derive(Default)]
+pub struct ErrorLayer {
     with_span_attributes: bool,
-    event_mapper: Option<Box<dyn EventToErrorMapper<S>>>,
 }
 
-impl<S> ErrorLayer<S> {
+impl ErrorLayer {
     /// Creates a layer that captures tracing events as Sentry error events.
     ///
     /// Most applications should start with [`LogLayer`](super::LogLayer), and add this layer if
@@ -95,18 +95,8 @@ impl<S> ErrorLayer<S> {
     /// Including all spans in the error layer filter is safe, because this layer does not send
     /// any spans to Sentry.
     ///
-    /// This option has no effect when [`Self::mapper`] is set.
     pub fn enable_span_attributes(mut self) -> Self {
         self.with_span_attributes = true;
-        self
-    }
-
-    /// Sets a custom mapping from the tracing event to the Sentry error event object.
-    pub fn mapper<M>(mut self, mapper: M) -> Self
-    where
-        M: EventToErrorMapper<S> + 'static,
-    {
-        self.event_mapper = Some(Box::from(mapper));
         self
     }
 
@@ -114,63 +104,22 @@ impl<S> ErrorLayer<S> {
     pub(super) fn capture(&self, event: SentryEvent<'static>) {
         sentry_core::capture_event(event);
     }
-}
 
-impl<S> ErrorLayer<S>
-where
-    S: Subscriber + for<'a> LookupSpan<'a>,
-{
     /// Capture a tracing event as a Sentry error event.
-    pub(super) fn capture_tracing_event(&self, event: &Event, ctx: Context<'_, S>) {
-        if let Some(sentry_event) = self.event_to_error(event, ctx) {
-            self.capture(sentry_event);
-        }
-    }
-
-    /// Convert a tracing event to a Sentry error event, using the custom mapper if one is set.
-    fn event_to_error(&self, event: &Event, ctx: Context<'_, S>) -> Option<SentryEvent<'static>> {
-        match &self.event_mapper {
-            Some(mapper) => mapper(event, ctx),
-            None => Some(event_from_event(
-                event,
-                self.with_span_attributes.then_some(&ctx),
-            )),
-        }
+    pub(super) fn capture_tracing_event<S>(&self, event: &Event, ctx: Context<'_, S>)
+    where
+        S: Subscriber + for<'a> LookupSpan<'a>,
+    {
+        let sentry_event = event_from_event(event, self.with_span_attributes.then_some(&ctx));
+        self.capture(sentry_event);
     }
 }
 
-impl<S> Layer<S> for ErrorLayer<S>
+impl<S> Layer<S> for ErrorLayer
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
     fn on_event(&self, event: &Event, ctx: Context<'_, S>) {
         self.capture_tracing_event(event, ctx);
-    }
-}
-
-/// A mapper function which converts a tracing event to a Sentry error event.
-///
-/// This advanced API fully customizes whether and how `tracing` events become Sentry error events.
-/// A mapper can call [`event_from_event`] to perform the conversion
-/// alongside its custom filtering or mapping logic.
-///
-/// The function can also return [`None`], in which case, no error event is created from the
-/// tracing event.
-pub trait EventToErrorMapper<S>:
-    Fn(&Event, Context<'_, S>) -> Option<SentryEvent<'static>> + Send + Sync
-{
-}
-
-impl<F, S> EventToErrorMapper<S> for F where
-    F: Fn(&Event, Context<'_, S>) -> Option<SentryEvent<'static>> + Send + Sync
-{
-}
-
-impl<S> Default for ErrorLayer<S> {
-    fn default() -> Self {
-        Self {
-            with_span_attributes: false,
-            event_mapper: None,
-        }
     }
 }

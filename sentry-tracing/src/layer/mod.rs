@@ -11,10 +11,10 @@ mod log;
 mod span;
 mod span_guard_stack;
 
-pub use breadcrumb::{BreadcrumbLayer, EventToBreadcrumbMapper};
-pub use error::{ErrorLayer, EventToErrorMapper};
+pub use breadcrumb::BreadcrumbLayer;
+pub use error::ErrorLayer;
 #[cfg(feature = "logs")]
-pub use log::{EventToLogMapper, LogLayer};
+pub use log::LogLayer;
 pub(super) use span::SentrySpanData;
 pub use span::SpanLayer;
 
@@ -177,17 +177,19 @@ type EventMapper<S> = Box<dyn Fn(&Event, Context<'_, S>) -> EventMapping + Send 
 /// - Replace [`span_filter`](Self::span_filter) with a filter on the span layer.
 /// - Split [`event_filter`](Self::event_filter) into filters on the individual event layers. An
 ///   event can be accepted by multiple layers, replacing combined [`EventFilter`] flags.
-/// - Replace [`event_mapper`](Self::event_mapper) with each event layer's `mapper()` callback.
-///   Unlike the legacy mapper, these callbacks do not override filters: filters run first and
-///   can prevent a mapper from receiving an event. Keep value-dependent routing in the mapper.
-/// - Each mapper returns at most one item of its telemetry type. There is no direct equivalent
-///   for a legacy [`EventMapping::Combined`] that emits multiple items of the same type or changes
-///   their capture order per event.
+/// - Individual layers do not provide mapper callbacks. Some [`SentryLayer::event_mapper`] usages
+///   may be addressed by other existing APIs, such as filter callbacks on the layers or
+///   `before_send*` callbacks provided by the Sentry SDK. However, we recognize it may not be
+///   possible to migrate all existing usages. If you are unable to migrate to the new API due to
+///   this change, we would love to hear from you. Please [open a GitHub issue] explaining your
+///   use case, and we will work with you to find a solution.
 ///
 /// If a custom configuration sends the same event to both the breadcrumb and error layers,
 /// install the breadcrumb layer before the error layer to include that breadcrumb in the error.
 /// The default configuration above excludes `ERROR` events from breadcrumbs, so the order does
 /// not affect their inclusion.
+///
+/// [open a GitHub issue]: https://github.com/getsentry/sentry-rust/issues/new?template=02-improvement.yml
 #[deprecated(
     note = "Prefer SpanLayer::new() and LogLayer::new(); see SentryLayer docs for migration"
 )]
@@ -197,10 +199,10 @@ pub struct SentryLayer<S> {
     event_mapper: Option<EventMapper<S>>,
     span_filter: Box<dyn Fn(&Metadata) -> bool + Send + Sync>,
     span_layer: SpanLayer,
-    breadcrumb: BreadcrumbLayer<S>,
-    error: ErrorLayer<S>,
+    breadcrumb: BreadcrumbLayer,
+    error: ErrorLayer,
     #[cfg(feature = "logs")]
-    log: LogLayer<S>,
+    log: LogLayer,
 }
 
 #[expect(deprecated, reason = "implementing the legacy layer")]
