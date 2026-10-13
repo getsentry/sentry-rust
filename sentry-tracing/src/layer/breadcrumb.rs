@@ -3,7 +3,7 @@ use tracing_core::{Event, Subscriber};
 use tracing_subscriber::layer::{Context, Layer};
 use tracing_subscriber::registry::LookupSpan;
 
-use crate::converters::breadcrumb_from_event;
+use crate::converters::breadcrumb_from_event_impl;
 
 /// Adds tracing events as Sentry breadcrumbs.
 ///
@@ -114,7 +114,7 @@ impl BreadcrumbLayer {
     where
         S: Subscriber + for<'a> LookupSpan<'a>,
     {
-        self.capture(breadcrumb_from_event(
+        self.capture(breadcrumb_from_event_impl(
             event,
             self.with_span_attributes.then_some(&ctx),
         ));
