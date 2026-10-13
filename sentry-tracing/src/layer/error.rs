@@ -3,7 +3,7 @@ use tracing_core::{Event, Subscriber};
 use tracing_subscriber::layer::{Context, Layer};
 use tracing_subscriber::registry::LookupSpan;
 
-use crate::converters::event_from_event;
+use crate::converters::event_from_event_impl;
 
 /// Captures tracing events as Sentry error events.
 ///
@@ -110,7 +110,7 @@ impl ErrorLayer {
     where
         S: Subscriber + for<'a> LookupSpan<'a>,
     {
-        let sentry_event = event_from_event(event, self.with_span_attributes.then_some(&ctx));
+        let sentry_event = event_from_event_impl(event, self.with_span_attributes.then_some(&ctx));
         self.capture(sentry_event);
     }
 }

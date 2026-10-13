@@ -105,7 +105,11 @@
 mod converters;
 mod layer;
 
-pub use converters::*;
+#[cfg(feature = "logs")]
+#[expect(deprecated, reason = "re-exporting deprecated legacy mapper helpers")]
+pub use converters::log_from_event;
+#[expect(deprecated, reason = "re-exporting deprecated legacy mapper helpers")]
+pub use converters::{breadcrumb_from_event, event_from_event};
 pub use layer::*;
 
 const TAGS_PREFIX: &str = "tags.";
