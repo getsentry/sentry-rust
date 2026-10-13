@@ -54,33 +54,32 @@ impl LogLayer {
     /// We can only include spans captured by a [`super::SpanLayer`] on the same subscriber. So,
     /// this option only has any effect when the `SpanLayer` is installed.
     ///
-    /// Furthermore, only spans accepted by the log layer's filter (see
-    /// [`tracing_subscriber::layer`]) are considered when attaching
-    /// attributes. When using this option, therefore, we recommend building a custom filter that
-    /// accepts all spans, while filtering events to the desired level, like so:
+    /// # Filtering
+    ///
+    /// Parent-span attributes are included only when the span is accepted by both `SpanLayer`
+    /// and `LogLayer`.
+    ///
+    /// If `LogLayer` uses a stricter level filter, attributes from less severe spans are omitted.
+    /// For example, this captures logs at `WARN` and more severe levels while allowing attributes
+    /// from `INFO` parent spans to appear on those logs:
     ///
     /// ```rust
-    /// # use tracing_subscriber::prelude::*;
     /// use sentry::integrations::tracing::{LogLayer, SpanLayer};
-    /// use tracing::Level;
-    /// use tracing_subscriber::filter::{filter_fn, LevelFilter};
+    /// use tracing_subscriber::prelude::*;
+    /// use tracing_subscriber::filter::{filter_fn, FilterExt as _, LevelFilter};
     ///
     /// tracing_subscriber::registry()
     ///     .with(SpanLayer::new().with_filter(LevelFilter::INFO))
     ///     .with(
     ///         LogLayer::new()
     ///             .enable_span_attributes()
-    ///             .with_filter(filter_fn(|metadata| {
-    ///                 // Accept all spans, but only events at `INFO` and more severe.
-    ///                 metadata.is_span() || *metadata.level() <= Level::INFO
-    ///             })),
+    ///             .with_filter(LevelFilter::WARN.or(filter_fn(|m| m.is_span()))),
     ///     )
     ///     .init();
     /// ```
     ///
-    /// Including all spans in the log layer filter is safe, because this layer does not send any
-    /// spans to Sentry.
-    ///
+    /// No filter adjustment is needed when both layers use the same level filter, such as the
+    /// `INFO` level recommended for most applications.
     pub fn enable_span_attributes(mut self) -> Self {
         self.with_span_attributes = true;
         self
