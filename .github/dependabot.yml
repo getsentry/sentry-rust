@@ -1,0 +1,19 @@
+version: 2
+# Keep Cargo.lock current so CI runs against the latest compatible dependency
+# versions. This does not affect dependency resolution for library users and can
+# reduce stale-dependency RUSTSEC alerts. Major updates are separate PRs because
+# they may be breaking for users and are treated primarily as upgrade notices.
+updates:
+  - package-ecosystem: cargo
+    directory: "/"
+    schedule:
+      interval: weekly
+    # Avoid changing Cargo.toml when the existing requirement allows the update.
+    versioning-strategy: increase-if-necessary
+    groups:
+      non-major:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
