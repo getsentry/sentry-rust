@@ -817,6 +817,50 @@ mod test_debug_meta {
              \"8c954262-f905-4992-8a61-f60825f4553b\"}]}}"
         );
     }
+
+    #[test]
+    fn test_debug_meta_sourcemap_image() {
+        let event = v7::Event {
+            event_id: event_id(),
+            timestamp: event_time(),
+            debug_meta: Cow::Owned(v7::DebugMeta {
+                images: vec![v7::SourceMapDebugImage {
+                    code_file: "app:///assets/index-abc123.js".into(),
+                    debug_id: "494f3aea-88fa-4296-9644-fa8ef5d139b6".parse().unwrap(),
+                    debug_file: None,
+                }
+                .into()],
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        assert_roundtrip(&event);
+        assert_eq!(
+            serde_json::to_string(&event).unwrap(),
+            "{\"event_id\":\"d43e86c96e424a93a4fbda156dd17341\",\"timestamp\":1514103120,\
+             \"debug_meta\":{\"images\":[{\"type\":\"sourcemap\",\"code_file\":\
+             \"app:///assets/index-abc123.js\",\"debug_id\":\
+             \"494f3aea-88fa-4296-9644-fa8ef5d139b6\"}]}}"
+        );
+    }
+
+    #[test]
+    fn test_debug_meta_unknown_image_type() {
+        let json = "{\"event_id\":\"d43e86c96e424a93a4fbda156dd17341\",\"timestamp\":1514103120,\
+                    \"debug_meta\":{\"images\":[{\"stuff\":1,\"type\":\"brand_new_thing\"}]}}";
+        let event: v7::Event = serde_json::from_str(json).unwrap();
+
+        let image = &event.debug_meta.images[0];
+        assert_eq!(image.type_name(), "brand_new_thing");
+        let v7::DebugImage::Other(map) = image else {
+            panic!("expected DebugImage::Other, got {image:?}");
+        };
+        assert_eq!(map.get("stuff"), Some(&serde_json::json!(1)));
+
+        assert_roundtrip(&event);
+        assert_eq!(serde_json::to_string(&event).unwrap(), json);
+    }
 }
 
 mod test_exception {

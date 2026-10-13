@@ -910,6 +910,7 @@ pub struct SystemSdkInfo {
 /// Represents a debug image.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "snake_case", tag = "type")]
+#[non_exhaustive]
 pub enum DebugImage {
     /// Apple debug images (machos).  This is currently also used for
     /// non apple platforms with similar debug setups.
@@ -921,6 +922,16 @@ pub enum DebugImage {
     /// Image used for WebAssembly. Their structure is identical to other native
     /// images.
     Wasm(WasmDebugImage),
+    /// A source map debug image, as emitted by JavaScript SDKs when debug
+    /// IDs are injected at build time.
+    #[serde(rename = "sourcemap")]
+    SourceMap(SourceMapDebugImage),
+    /// A debug image of a type this SDK does not know about.
+    ///
+    /// The map holds the full image object, including its `type` key, so
+    /// the image round-trips unchanged.
+    #[serde(untagged)]
+    Other(Map<String, Value>),
 }
 
 impl DebugImage {
@@ -931,6 +942,10 @@ impl DebugImage {
             DebugImage::Symbolic(..) => "symbolic",
             DebugImage::Proguard(..) => "proguard",
             DebugImage::Wasm(..) => "wasm",
+            DebugImage::SourceMap(..) => "sourcemap",
+            DebugImage::Other(ref map) => {
+                map.get("type").and_then(Value::as_str).unwrap_or("unknown")
+            }
         }
     }
 }
@@ -1036,10 +1051,23 @@ pub struct WasmDebugImage {
     pub code_file: String,
 }
 
+/// Represents a source map debug image.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct SourceMapDebugImage {
+    /// The absolute URL or path of the minified source file.
+    pub code_file: String,
+    /// The debug ID that links the minified source to its source map.
+    pub debug_id: DebugId,
+    /// Name or absolute URL of the source map file.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub debug_file: Option<String>,
+}
+
 into_debug_image!(Apple, AppleDebugImage);
 into_debug_image!(Symbolic, SymbolicDebugImage);
 into_debug_image!(Proguard, ProguardDebugImage);
 into_debug_image!(Wasm, WasmDebugImage);
+into_debug_image!(SourceMap, SourceMapDebugImage);
 
 /// Represents debug meta information.
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Breaking Changes
+
+- [`DebugImage`](https://docs.rs/sentry-types/latest/sentry_types/protocol/v7/enum.DebugImage.html) is now `#[non_exhaustive]` and has two new variants: `SourceMap` for the `sourcemap` images that JavaScript SDKs attach when debug IDs are injected at build time, and `Other` which holds any image of a type the SDK does not know about. Events with such images previously failed to deserialize ([#1267](https://github.com/getsentry/sentry-rust/issues/1267)).
+
 ## 0.49.3
 
 ### Features

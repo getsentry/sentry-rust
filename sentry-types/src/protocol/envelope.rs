@@ -1160,6 +1160,22 @@ some content
     }
 
     #[test]
+    fn test_deserialize_envelope_event_with_sourcemap_debug_image() {
+        let bytes = b"\
+             {\"event_id\":\"9ec79c33ec9942ab8353589fcb2e04dc\"}\n\
+             {\"type\":\"event\"}\n\
+             {\"event_id\":\"9ec79c33ec9942ab8353589fcb2e04dc\",\"debug_meta\":{\"images\":[\
+             {\"type\":\"sourcemap\",\"code_file\":\"app:///assets/index-abc.js\",\
+             \"debug_id\":\"494f3aea-88fa-4296-9644-fa8ef5d139b6\"}]}}\n\
+             ";
+
+        let envelope = Envelope::from_slice(bytes).unwrap();
+        let event = envelope.event().expect("event item");
+        assert_eq!(event.debug_meta.images.len(), 1);
+        assert_eq!(event.debug_meta.images[0].type_name(), "sourcemap");
+    }
+
+    #[test]
     fn test_deserialize_envelope_empty_item_newline() {
         // With terminating newline after item payload
         let bytes = b"\
