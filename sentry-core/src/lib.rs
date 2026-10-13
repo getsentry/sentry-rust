@@ -93,6 +93,12 @@
 //! - `feature = "test"`: Activates the [`test`] module, which can be used to
 //!   write integration tests. It comes with a test transport which can capture
 //!   all sent events for inspection.
+//! - `feature = "thread-registry"`: Tracks the hub current on each thread,
+//!   so a crash reporter can get the crashing thread's scope with
+//!   [`Hub::scope_for_os_thread`]. Every hub switch also updates the
+//!   registry. In the `hub-switch` benchmark this takes [`Hub::run`] from
+//!   about 3.5 ns to about 11 ns. The `minidump-scope` feature of `sentry`
+//!   turns this on.
 //!
 //! [Sentry]: https://sentry.io/
 //! [`sentry`]: https://crates.io/crates/sentry
@@ -146,6 +152,8 @@ mod client;
 mod hub_impl;
 #[cfg(feature = "client")]
 mod session;
+#[cfg(feature = "thread-registry")]
+mod thread_registry;
 
 #[cfg(feature = "client")]
 pub use crate::clientoptions::MaxRequestBodySize;

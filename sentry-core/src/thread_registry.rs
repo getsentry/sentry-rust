@@ -1,0 +1,222 @@
+//! Maps operating system thread ids to the hub that is current on each
+//! thread.
+//!
+//! Out-of-process crash reporters learn the crashing thread from the OS,
+//! not from Rust. This registry lets another thread in the same process
+//! find the [`Hub`] that thread was using, so its scope can be reported
+//! with the crash.
+
+use std::collections::HashMap;
+use std::sync::{Arc, LazyLock, Mutex, PoisonError, RwLock, Weak};
+
+use crate::Hub;
+
+/// Returns the id the operating system uses for the current thread.
+///
+/// This is the id a crash handler sees for the crashing thread:
+///
+/// - Linux and Android: the kernel thread id from `gettid`.
+/// - Windows: `GetCurrentThreadId`.
+/// - macOS: the Mach port name of the thread, as reported in exception
+///   messages. `sentry-minidump` expects exactly the value of
+///   `pthread_mach_thread_np(pthread_self())`.
+///
+/// Returns `None` on other targets, and when the OS refuses the call, for
+/// example when a seccomp filter blocks `gettid`.
+///
+/// It is not related to [`std::thread::ThreadId`].
+fn current_os_thread_id() -> Option<u64> {
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    {
+        // SAFETY: `gettid` takes no arguments.
+        thread_id_from_syscall(unsafe { libc::syscall(libc::SYS_gettid) })
+    }
+    #[cfg(target_os = "macos")]
+    {
+        // SAFETY: `pthread_self` is always valid for the calling thread.
+        Some(unsafe { libc::pthread_mach_thread_np(libc::pthread_self()) }.into())
+    }
+    #[cfg(windows)]
+    {
+        extern "system" {
+            fn GetCurrentThreadId() -> u32;
+        }
+        // SAFETY: takes no arguments and cannot fail.
+        Some(unsafe { GetCurrentThreadId() }.into())
+    }
+    #[cfg(not(any(
+        target_os = "linux",
+        target_os = "android",
+        target_os = "macos",
+        windows
+    )))]
+    {
+        None
+    }
+}
+
+/// Turns the result of the `gettid` syscall into a thread id.
+///
+/// A seccomp filter can make the syscall return -1 without running it.
+#[cfg(any(target_os = "linux", target_os = "android"))]
+fn thread_id_from_syscall(ret: libc::c_long) -> Option<u64> {
+    u64::try_from(ret).ok().filter(|&id| id > 0)
+}
+
+/// One thread's entry in the registry.
+struct Slot {
+    os_thread_id: u64,
+    hub: RwLock<Weak<Hub>>,
+}
+
+static REGISTRY: LazyLock<Mutex<HashMap<u64, Arc<Slot>>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+/// Owns a thread's slot and removes it when the thread exits.
+struct SlotGuard(Arc<Slot>);
+
+impl SlotGuard {
+    fn register(os_thread_id: u64) -> Self {
+        let slot = Arc::new(Slot {
+            os_thread_id,
+            hub: RwLock::new(Weak::new()),
+        });
+        REGISTRY
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .insert(os_thread_id, slot.clone());
+        SlotGuard(slot)
+    }
+}
+
+impl Drop for SlotGuard {
+    fn drop(&mut self) {
+        let mut registry = REGISTRY.lock().unwrap_or_else(PoisonError::into_inner);
+        // The OS can reuse the id for a new thread before this one is
+        // fully gone, so only remove the entry if it is still ours.
+        if registry
+            .get(&self.0.os_thread_id)
+            .is_some_and(|slot| Arc::ptr_eq(slot, &self.0))
+        {
+            registry.remove(&self.0.os_thread_id);
+        }
+    }
+}
+
+thread_local! {
+    /// `None` when the thread has no OS id, so it is not registered.
+    static SLOT: Option<SlotGuard> = current_os_thread_id().map(SlotGuard::register);
+}
+
+/// Records `hub` as the hub current on the calling thread.
+///
+/// Does nothing while the thread is shutting down and its slot is gone.
+pub(crate) fn set_current_hub(hub: &Arc<Hub>) {
+    let _ = SLOT.try_with(|slot| {
+        if let Some(slot) = slot {
+            *slot.0.hub.write().unwrap_or_else(PoisonError::into_inner) = Arc::downgrade(hub);
+        }
+    });
+}
+
+/// Returns the hub current on the thread with the given OS id.
+pub(crate) fn hub_for_os_thread(os_thread_id: u64) -> Option<Arc<Hub>> {
+    let slot = REGISTRY
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .get(&os_thread_id)
+        .cloned()?;
+    let hub = slot.hub.read().unwrap_or_else(PoisonError::into_inner);
+    hub.upgrade()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::mpsc;
+
+    #[test]
+    fn registers_current_hub_per_thread() {
+        // The first thread to use a hub creates the main hub. Do that here,
+        // so the worker gets a hub of its own.
+        Hub::main();
+        let (id_tx, id_rx) = mpsc::channel();
+        let (done_tx, done_rx) = mpsc::channel::<()>();
+
+        let worker = std::thread::spawn(move || {
+            let hub = Hub::current();
+            id_tx.send((current_os_thread_id().unwrap(), hub)).unwrap();
+            // Keep the thread alive until the main thread has looked it up.
+            done_rx.recv().ok();
+        });
+
+        let (id, hub) = id_rx.recv().unwrap();
+        let found = hub_for_os_thread(id).expect("worker thread is registered");
+        assert!(Arc::ptr_eq(&found, &hub));
+        assert!(!Arc::ptr_eq(&found, &Hub::main()));
+
+        done_tx.send(()).unwrap();
+        worker.join().unwrap();
+        assert!(hub_for_os_thread(id).is_none(), "slot is removed on exit");
+    }
+
+    #[test]
+    fn follows_hub_run_switching() {
+        let id = current_os_thread_id().unwrap();
+        let outer = Hub::current();
+        let inner = Arc::new(Hub::new_from_top(&outer));
+
+        Hub::run(inner.clone(), || {
+            let found = hub_for_os_thread(id).unwrap();
+            assert!(Arc::ptr_eq(&found, &inner));
+        });
+
+        let found = hub_for_os_thread(id).unwrap();
+        assert!(Arc::ptr_eq(&found, &outer));
+    }
+
+    #[test]
+    fn unknown_thread_has_no_hub() {
+        assert!(hub_for_os_thread(u64::MAX).is_none());
+    }
+
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    #[test]
+    fn failed_gettid_has_no_id() {
+        assert_eq!(thread_id_from_syscall(-1), None);
+        assert_eq!(thread_id_from_syscall(0), None);
+        assert_eq!(thread_id_from_syscall(42), Some(42));
+    }
+
+    #[test]
+    fn scope_for_os_thread_uses_the_thread_hub() {
+        let hub = Arc::new(Hub::new(None, Default::default()));
+        hub.configure_scope(|scope| scope.set_tag("thread", "worker"));
+
+        let scope = Hub::run(hub.clone(), || {
+            let id = current_os_thread_id().unwrap();
+
+            // Another thread holds the read lock, so a write lock here
+            // would never be granted.
+            let (locked_tx, locked_rx) = mpsc::channel();
+            let (done_tx, done_rx) = mpsc::channel::<()>();
+            let reader_hub = hub.clone();
+            let reader = std::thread::spawn(move || {
+                reader_hub.with_current_scope(|_| {
+                    locked_tx.send(()).unwrap();
+                    done_rx.recv().ok();
+                });
+            });
+
+            locked_rx.recv().unwrap();
+            let scope = Hub::scope_for_os_thread(id);
+            done_tx.send(()).unwrap();
+            reader.join().unwrap();
+            scope
+        });
+        let event = scope
+            .apply_to_event(Default::default())
+            .expect("no event processors drop the event");
+        assert_eq!(event.tags.get("thread").map(String::as_str), Some("worker"));
+    }
+}

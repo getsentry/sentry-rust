@@ -14,6 +14,14 @@
 //! We have the following tests:
 //! * [`scope_with_breadcrumbs`]
 //! * [`scope_with_tags`]
+//! * Switching hubs with [`sentry::Hub::run`], and the first use of a hub on
+//!   a new thread. The `thread-registry` feature adds work to both, so
+//!   compare runs with and without it:
+//!
+//!   ```text
+//!   $ cargo bench -p sentry-core --bench scope_benchmark -- hub-switch
+//!   $ cargo bench -p sentry-core --bench scope_benchmark --features thread-registry -- hub-switch
+//!   ```
 //!
 //! We do test the following permutations:
 //! * No active Hub is bound, meaning most API functions will just noop
@@ -192,6 +200,25 @@ fn scope_benchmark(c: &mut Criterion) {
     }
 
     group.finish();
+
+    #[cfg(feature = "client")]
+    {
+        let mut group = c.benchmark_group("hub-switch");
+
+        group.bench_function("run", |b| {
+            let hub = Arc::new(discarding_hub());
+            b.iter(|| sentry::Hub::run(hub.clone(), || ()))
+        });
+        group.bench_function("new-thread", |b| {
+            b.iter(|| {
+                std::thread::spawn(|| drop(sentry::Hub::current()))
+                    .join()
+                    .unwrap()
+            })
+        });
+
+        group.finish();
+    }
 }
 
 criterion_group!(benches, scope_benchmark);

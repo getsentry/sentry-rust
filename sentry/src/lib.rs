@@ -71,6 +71,7 @@
 //! | `debug-images`    | ✅      | 🔌             |            |                                                                                          |
 //! | `log`             |         | 🔌             |            | Requires extra setup; See [`sentry-log`]'s documentation.                                |
 //! | `minidump`        |         | 🔌             |            | Linux, macOS and Windows only. See [`sentry-minidump`]'s documentation.                  |
+//! | `minidump-scope`  |         | 🔌             |            | Sends the crashing thread's scope. Adds a few ns to each hub switch.                     |
 //! | `slog`            |         | 🔌             |            | Requires extra setup; See [`sentry-slog`]'s documentation.                               |
 //! | `reqwest`         | ✅      |                |            |                                                                                          |
 //! | `native-tls`      | ✅      |                |            | `reqwest` must be enabled.                                                               |
@@ -125,6 +126,8 @@
 //! ## Integrations
 //! - `actix`: Enables support for the `actix-web` crate.
 //! - `minidump`: Captures native crashes as minidumps. Linux, macOS and Windows only.
+//! - `minidump-scope`: Sends the scope of the crashing thread with the minidump, instead of the
+//!   main hub's scope.
 //! - `tower`: Enables support for the `tower` crate and those using it.
 //! - `tracing`: Enables support for the `tracing` crate and those using it.
 //! - `opentelemetry`: Enables support for the `opentelemetry` and `opentelemetry-sdk` crates.

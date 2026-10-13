@@ -19,11 +19,16 @@ thread_local! {
     /// [`PROCESS_HUB`] are identical, i.e. `Arc::ptr_eq(&PROCESS_HUB, &THREAD_HUB)` is true.
     /// On any other thread, the [`THREAD_HUB`] is created as a new hub based off of the
     /// [`PROCESS_HUB`].
-    static THREAD_HUB: RefCell<Arc<Hub>> = if thread::current().id() == PROCESS_HUB.thread {
-        PROCESS_HUB.hub.clone()
-    } else {
-        Hub::new_from_top(&PROCESS_HUB.hub).into()
-    }.into()
+    static THREAD_HUB: RefCell<Arc<Hub>> = {
+        let hub: Arc<Hub> = if thread::current().id() == PROCESS_HUB.thread {
+            PROCESS_HUB.hub.clone()
+        } else {
+            Hub::new_from_top(&PROCESS_HUB.hub).into()
+        };
+        #[cfg(feature = "thread-registry")]
+        crate::thread_registry::set_current_hub(&hub);
+        hub.into()
+    }
 }
 
 /// A guard that temporarily swaps the active hub in thread-local storage.
@@ -61,6 +66,8 @@ impl SwitchGuard {
                 return None;
             }
             std::mem::swap(&mut *thread_hub, &mut hub);
+            #[cfg(feature = "thread-registry")]
+            crate::thread_registry::set_current_hub(&thread_hub);
             Some(hub)
         });
         SwitchGuard {
@@ -80,6 +87,8 @@ impl SwitchGuard {
                 .try_with(|thread_hub| {
                     let mut thread_hub = thread_hub.borrow_mut();
                     std::mem::swap(&mut *thread_hub, &mut hub);
+                    #[cfg(feature = "thread-registry")]
+                    crate::thread_registry::set_current_hub(&thread_hub);
                     hub
                 })
                 .ok()
@@ -162,6 +171,32 @@ impl Hub {
     /// current thread's hub it returns the main thread's hub instead.
     pub fn main() -> Arc<Hub> {
         PROCESS_HUB.hub.clone()
+    }
+
+    /// Returns the scope of the hub that is current on the thread with the
+    /// given operating system thread id.
+    ///
+    /// The id is the one a crash handler reports for the crashing thread:
+    /// the kernel thread id on Linux and Android, `GetCurrentThreadId` on
+    /// Windows, and the Mach port name on macOS.
+    ///
+    /// Threads are only tracked with the `thread-registry` feature, and
+    /// then hubs bound with [`Hub::run`] are tracked too. Without it, and
+    /// for a thread that never used a hub or has exited, this returns the
+    /// main hub's scope. That is the scope such a thread inherits when it
+    /// first uses [`Hub::current`].
+    ///
+    /// This only takes the hub's read lock, so it does not wait for other
+    /// threads that read the scope.
+    pub fn scope_for_os_thread(os_thread_id: u64) -> Arc<Scope> {
+        #[cfg(feature = "thread-registry")]
+        let hub = crate::thread_registry::hub_for_os_thread(os_thread_id).unwrap_or_else(Hub::main);
+        #[cfg(not(feature = "thread-registry"))]
+        let hub = {
+            let _ = os_thread_id;
+            Hub::main()
+        };
+        hub.inner.with(|stack| stack.top().scope.clone())
     }
 
     /// Invokes the callback with the default hub.
