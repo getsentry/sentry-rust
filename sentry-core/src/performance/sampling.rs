@@ -3,6 +3,9 @@
 #[cfg(doc)]
 use sentry_types::protocol::v7::client_report;
 
+#[cfg(feature = "client")]
+use crate::client;
+
 /// Represents the tracing state of a transaction.
 ///
 /// The possible representations depend on whether tracing is enabled or disabled in this SDK.
@@ -35,16 +38,6 @@ pub(super) enum TracingState {
 }
 
 impl TracingState {
-    /// Create a new [`TracingState::Enabled`] with the given sampling decision made at the given
-    /// sample rate.
-    #[cfg(feature = "client")]
-    pub(super) fn new_enabled(sampled: bool, sample_rate: f32) -> Self {
-        Self::Enabled(SamplingDecision {
-            sampled,
-            sample_rate,
-        })
-    }
-
     /// Create a new [`TracingState::Disabled`] given a sampling decision or `None` if the decision
     /// is deferred.
     ///
@@ -110,6 +103,18 @@ pub(super) struct SamplingDecision {
     /// this on non-`client` builds.
     #[cfg(feature = "client")]
     pub(super) sample_rate: f32,
+}
+
+#[cfg(feature = "client")]
+impl SamplingDecision {
+    pub(super) fn new_sampled_at(sample_rate: f32) -> Self {
+        let sampled = client::sample_should_send(sample_rate);
+
+        Self {
+            sampled,
+            sample_rate,
+        }
+    }
 }
 
 /// What the SDK should do with spans/transactions when they are finished.
