@@ -77,24 +77,20 @@ impl ErrorLayer {
     /// # use tracing_subscriber::prelude::*;
     /// use sentry::integrations::tracing::{ErrorLayer, SpanLayer};
     /// use tracing::Level;
-    /// use tracing_subscriber::filter::{filter_fn, LevelFilter};
+    /// use tracing_subscriber::filter::{filter_fn, LevelFilter, FilterExt as _};
     ///
     /// tracing_subscriber::registry()
     ///     .with(SpanLayer::new().with_filter(LevelFilter::INFO))
     ///     .with(
     ///         ErrorLayer::new()
     ///             .enable_span_attributes()
-    ///             .with_filter(filter_fn(|metadata| {
-    ///                 // Accept all spans, but only `ERROR` events.
-    ///                 metadata.is_span() || *metadata.level() <= Level::ERROR
-    ///             })),
+    ///             .with_filter(LevelFilter::ERROR.or(filter_fn(|m| m.is_span()))),
     ///     )
     ///     .init();
     /// ```
     ///
     /// Including all spans in the error layer filter is safe, because this layer does not send
     /// any spans to Sentry.
-    ///
     pub fn enable_span_attributes(mut self) -> Self {
         self.with_span_attributes = true;
         self
