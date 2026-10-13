@@ -31,6 +31,11 @@ jobs:
       - name: Run cargo test
         run: cargo test --workspace --all-features --all-targets --locked
 
+      # `--all-features` turns on `scope`, so also test the default mode,
+      # which sends the main hub's scope.
+      - name: Test sentry-minidump default features
+        run: cargo test -p sentry-minidump --locked
+
       - name: Run cargo doc tests
         run: cargo test --workspace --all-features --doc --locked
 

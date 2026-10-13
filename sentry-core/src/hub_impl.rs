@@ -173,29 +173,30 @@ impl Hub {
         PROCESS_HUB.hub.clone()
     }
 
-    /// Returns the hub that is current on the thread with the given
-    /// operating system thread id.
+    /// Returns the scope of the hub that is current on the thread with the
+    /// given operating system thread id.
     ///
-    /// The id is the one [`current_os_thread_id`](crate::current_os_thread_id)
-    /// returns on that thread. A thread is known once it has used
-    /// [`Hub::current`] or [`Hub::run`]; hubs switched with [`Hub::run`]
-    /// are tracked. Returns `None` for threads that never touched a hub
-    /// or have exited.
+    /// The id is the one a crash handler reports for the crashing thread:
+    /// the kernel thread id on Linux and Android, `GetCurrentThreadId` on
+    /// Windows, and the Mach port name on macOS.
     ///
-    /// This is meant for crash reporters that learn the crashing thread
-    /// from the OS and want its scope.
-    #[cfg(feature = "thread-registry")]
-    pub fn for_os_thread(os_thread_id: u64) -> Option<Arc<Hub>> {
-        crate::thread_registry::hub_for_os_thread(os_thread_id)
-    }
-
-    /// Returns a copy of the hub's current scope.
+    /// Threads are only tracked with the `thread-registry` feature, and
+    /// then hubs bound with [`Hub::run`] are tracked too. Without it, and
+    /// for a thread that never used a hub or has exited, this returns the
+    /// main hub's scope. That is the scope such a thread inherits when it
+    /// first uses [`Hub::current`].
     ///
-    /// Unlike [`Hub::configure_scope`], this only takes the hub's read
-    /// lock, so it does not wait for other threads that read the scope.
-    #[cfg(feature = "thread-registry")]
-    pub fn scope_snapshot(&self) -> Scope {
-        self.with_current_scope(Scope::clone)
+    /// This only takes the hub's read lock, so it does not wait for other
+    /// threads that read the scope.
+    pub fn scope_for_os_thread(os_thread_id: u64) -> Arc<Scope> {
+        #[cfg(feature = "thread-registry")]
+        let hub = crate::thread_registry::hub_for_os_thread(os_thread_id).unwrap_or_else(Hub::main);
+        #[cfg(not(feature = "thread-registry"))]
+        let hub = {
+            let _ = os_thread_id;
+            Hub::main()
+        };
+        hub.inner.with(|stack| stack.top().scope.clone())
     }
 
     /// Invokes the callback with the default hub.

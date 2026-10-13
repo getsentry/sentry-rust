@@ -70,8 +70,12 @@ fn crash_envelope(example: &str) -> Envelope {
         let _ = tx.send(body);
     });
 
+    let mut args = vec!["run", "--quiet", "--example", example];
+    if cfg!(feature = "scope") {
+        args.extend(["--features", "scope"]);
+    }
     let example_process = Command::new(env!("CARGO"))
-        .args(["run", "--quiet", "--example", example])
+        .args(args)
         .current_dir(env!("CARGO_MANIFEST_DIR"))
         .env("SENTRY_DSN", format!("http://dsn@127.0.0.1:{port}/0"))
         .spawn()
@@ -112,28 +116,47 @@ fn captures_minidump_from_crash() {
         Some("example")
     );
 
-    // The scope of the worker thread that crashed, not the main thread's.
-    let user = event.user.as_ref().expect("event has a user");
-    assert_eq!(user.username.as_deref(), Some("john_doe"));
-    assert_eq!(user.email.as_deref(), Some("john@doe.town"));
-    assert_eq!(event.tags.get("thread").map(String::as_str), Some("worker"));
-    assert_eq!(
-        event.breadcrumbs.last().and_then(|b| b.message.as_deref()),
-        Some("about to crash")
-    );
+    if cfg!(feature = "scope") {
+        // The scope of the worker thread that crashed, not the main thread's.
+        let user = event.user.as_ref().expect("event has a user");
+        assert_eq!(user.username.as_deref(), Some("john_doe"));
+        assert_eq!(user.email.as_deref(), Some("john@doe.town"));
+        assert_eq!(event.tags.get("thread").map(String::as_str), Some("worker"));
+        assert_eq!(
+            event.breadcrumbs.last().and_then(|b| b.message.as_deref()),
+            Some("about to crash")
+        );
 
-    // Inherited from the main scope when the worker hub was created.
-    assert_eq!(
-        event.tags.get("shared").map(String::as_str),
-        Some("from_main")
-    );
+        // Inherited from the main scope when the worker hub was created.
+        assert_eq!(
+            event.tags.get("shared").map(String::as_str),
+            Some("from_main")
+        );
 
-    // Set on the main thread after the worker hub was created.
-    assert!(
-        !event.tags.contains_key("main_only"),
-        "main thread scope leaked into the crash event: {:?}",
-        event.tags
-    );
+        // Set on the main thread after the worker hub was created.
+        assert!(
+            !event.tags.contains_key("main_only"),
+            "main thread scope leaked into the crash event: {:?}",
+            event.tags
+        );
+    } else {
+        // The main hub's scope, not the worker hub's.
+        let user = event.user.as_ref().expect("event has a user");
+        assert_eq!(user.username.as_deref(), Some("main_thread"));
+        assert_eq!(
+            event.tags.get("shared").map(String::as_str),
+            Some("from_main")
+        );
+        assert_eq!(
+            event.tags.get("main_only").map(String::as_str),
+            Some("true")
+        );
+        assert!(
+            !event.tags.contains_key("thread"),
+            "worker scope reached the crash event: {:?}",
+            event.tags
+        );
+    }
 
     let attachment = envelope
         .items()
@@ -181,4 +204,18 @@ fn deprecated_scope_methods_reach_crash_event() {
         event.tags.get("deprecated").map(String::as_str),
         Some("set_tag")
     );
+}
+
+#[test]
+fn large_scope_reaches_crash_event() {
+    // Runs `examples/large_scope.rs`.
+    let envelope = crash_envelope("minidump-large-scope");
+    let event = crash_event(&envelope);
+
+    let large = event
+        .extra
+        .get("large")
+        .and_then(|value| value.as_str())
+        .expect("event has the large extra");
+    assert_eq!(large.len(), 32 * 1024);
 }

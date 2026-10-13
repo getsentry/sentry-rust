@@ -15,6 +15,12 @@ rust-version = { workspace = true }
 [lints]
 workspace = true
 
+[features]
+default = []
+# Sends the scope of the crashing thread instead of the main hub's scope.
+# Every hub switch then also updates a registry of threads.
+scope = ["sentry-core/thread-registry"]
+
 [[example]]
 name = "minidump"
 path = "examples/app.rs"
@@ -23,13 +29,18 @@ path = "examples/app.rs"
 name = "minidump-deprecated"
 path = "examples/deprecated.rs"
 
+[[example]]
+name = "minidump-large-scope"
+path = "examples/large_scope.rs"
+
 [dependencies]
-sentry-core = { workspace = true, features = ["client", "thread-registry"] }
+sentry-core = { workspace = true, features = ["client"] }
 minidumper-child = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]
+libc = { workspace = true }
 mach2 = { workspace = true }
 
 [dev-dependencies]

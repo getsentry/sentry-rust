@@ -33,15 +33,19 @@
 //!
 //! # Scope
 //!
-//! The crash event carries the scope of the thread that crashed: user,
-//! tags, extra, contexts, breadcrumbs, level, transaction and fingerprint,
-//! after the scope's event processors have run. Nothing is sent to the
-//! crash reporter until the crash. At that moment the crash handler names
-//! the crashing OS thread, a helper thread serializes the scope of the hub
-//! current on that thread, and the handler sends it to the reporter before
-//! it requests the minidump. Hubs bound with [`Hub::run`] are tracked, so a
-//! server with one hub per request reports the scope of the request that
-//! crashed. A thread that never used Sentry falls back to the main hub.
+//! The crash event carries the main hub's scope: user, tags, extra,
+//! contexts, breadcrumbs, transaction and fingerprint, after the scope's
+//! event processors have run. Nothing is sent to the crash reporter until
+//! the crash. At that moment a helper thread serializes the scope, and the
+//! crash handler sends it to the reporter before it requests the minidump.
+//!
+//! With the `scope` feature (`minidump-scope` on `sentry`), the crash
+//! event carries the scope of the hub current on the thread that crashed
+//! instead. Hubs bound with [`Hub::run`] are tracked, so a server with one
+//! hub per request reports the scope of the request that crashed. A thread
+//! that never used Sentry falls back to the main hub. To track hubs, every
+//! hub switch also updates a registry of threads, which adds a few
+//! nanoseconds to each switch.
 //!
 //! The helper waits at most [`scope_timeout`](MinidumpIntegration::scope_timeout)
 //! for the scope. If the crash happened while the crashing thread held the
@@ -68,7 +72,7 @@ use minidumper_child::{ClientHandle, MinidumperChild};
 use sentry_core::protocol::{Attachment, AttachmentType, Breadcrumb, User, Value};
 use sentry_core::{sentry_debug, Client, ClientOptions, Hub, Integration, Level, Scope};
 
-use crate::scope_sync::{ScopeReceiver, ScopeSync};
+use crate::scope_sync::{ScopeReceiver, ScopeSync, MSG_SCOPE_UPDATE};
 
 /// The default environment variable that marks the crash reporter process.
 const DEFAULT_SERVER_ENV_VAR: &str = "_SENTRY_CRASH_REPORTER_SERVER";
@@ -81,9 +85,6 @@ const DEFAULT_PROCESS_NAME: &str = "Crash Reporter (Sentry Rust SDK)";
 
 /// The default time the crash handler waits for the scope to be serialized.
 const DEFAULT_SCOPE_TIMEOUT: Duration = Duration::from_secs(2);
-
-/// Message kind of a [`ScopeUpdate`] on the socket to the reporter.
-const MSG_SCOPE_UPDATE: u32 = 0;
 
 type OnProcess = dyn Fn(&mut Command) + Send + Sync + 'static;
 type BeforeCapture = dyn Fn(&mut Scope, &Path) + Send + Sync + 'static;

@@ -41,15 +41,19 @@ calls do nothing.
 
 ## Scope
 
-The crash event carries the scope of the thread that crashed: user,
-tags, extra, contexts, breadcrumbs, level, transaction and fingerprint,
-after the scope's event processors have run. Nothing is sent to the
-crash reporter until the crash. At that moment the crash handler names
-the crashing OS thread, a helper thread serializes the scope of the hub
-current on that thread, and the handler sends it to the reporter before
-it requests the minidump. Hubs bound with `Hub::run` are tracked, so a
-server with one hub per request reports the scope of the request that
-crashed. A thread that never used Sentry falls back to the main hub.
+The crash event carries the main hub's scope: user, tags, extra,
+contexts, breadcrumbs, transaction and fingerprint, after the scope's
+event processors have run. Nothing is sent to the crash reporter until
+the crash. At that moment a helper thread serializes the scope, and the
+crash handler sends it to the reporter before it requests the minidump.
+
+With the `scope` feature (`minidump-scope` on `sentry`), the crash
+event carries the scope of the hub current on the thread that crashed
+instead. Hubs bound with `Hub::run` are tracked, so a server with one
+hub per request reports the scope of the request that crashed. A thread
+that never used Sentry falls back to the main hub. To track hubs, every
+hub switch also updates a registry of threads, which adds a few
+nanoseconds to each switch.
 
 The helper waits at most `scope_timeout` for the scope. If the crash
 happened while the crashing thread held the allocator or the hub lock,

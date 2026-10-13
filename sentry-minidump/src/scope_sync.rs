@@ -19,12 +19,17 @@ use sentry_core::protocol::Event;
 use sentry_core::Hub;
 
 /// Message kinds on the socket between the app and the reporter.
+///
+/// `MSG_SCOPE_UPDATE` carries a `ScopeUpdate` from the deprecated scope
+/// methods on `MinidumpIntegration`.
+pub(crate) const MSG_SCOPE_UPDATE: u32 = 0;
 pub(crate) const MSG_SCOPE_CHUNK: u32 = 1;
 pub(crate) const MSG_SCOPE_END: u32 = 2;
 
-/// The reporter reads one message in one call and does not reassemble
-/// partial reads on every platform, so keep each message small.
-const CHUNK_SIZE: usize = 16 * 1024;
+/// The reporter reads each message with one `recv`. A local socket on
+/// macOS buffers at most 8 KiB, so a larger message never arrives. Keep
+/// each message, with its header, well below that.
+const CHUNK_SIZE: usize = 4 * 1024;
 
 /// Hand-off between the crash handler and the helper thread that
 /// serializes the scope.
@@ -74,8 +79,10 @@ impl ScopeSync {
                 let sync = helper_sync;
                 #[cfg(target_os = "macos")]
                 {
-                    // The Mach port of the current thread is a `u32`.
-                    let port = sentry_core::current_os_thread_id().map_or(0, |id| id as u32);
+                    // SAFETY: `pthread_self` is always valid for the
+                    // calling thread.
+                    #[expect(unsafe_code, reason = "reads the helper thread's Mach port")]
+                    let port = unsafe { libc::pthread_mach_thread_np(libc::pthread_self()) };
                     sync.helper_port.store(port, Ordering::Release);
                     helper_port_stored.wait();
                 }
@@ -155,8 +162,8 @@ fn send_chunks(sender: &MessageSender<'_>, bytes: &[u8]) {
     sender.send_message(MSG_SCOPE_END, &[]).ok();
 }
 
-/// The id of the crashing thread as [`sentry_core::current_os_thread_id`]
-/// reports it on that thread.
+/// The id of the crashing thread, which is the id `sentry-core` registers
+/// that thread under.
 fn crashing_thread_id(crash_context: &CrashContext) -> u64 {
     #[cfg(any(target_os = "linux", target_os = "android"))]
     {
@@ -177,8 +184,7 @@ fn crashing_thread_id(crash_context: &CrashContext) -> u64 {
 /// Falls back to the main hub for threads that never used Sentry, which
 /// is the scope such a thread would have inherited.
 fn scope_bytes(thread_id: u64) -> Vec<u8> {
-    let hub = Hub::for_os_thread(thread_id).unwrap_or_else(Hub::main);
-    hub.scope_snapshot()
+    Hub::scope_for_os_thread(thread_id)
         .apply_to_event(Event::default())
         .and_then(|event| serde_json::to_vec(&event).ok())
         .unwrap_or_default()
@@ -251,13 +257,9 @@ mod tests {
     }
 
     #[test]
-    fn scope_bytes_uses_the_thread_hub() {
-        let hub = Arc::new(Hub::new(None, Default::default()));
-        hub.configure_scope(|scope| scope.set_tag("thread", "worker"));
-        let bytes = Hub::run(hub, || {
-            scope_bytes(sentry_core::current_os_thread_id().unwrap())
-        });
-        let event: Event<'static> = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(event.tags.get("thread").map(String::as_str), Some("worker"));
+    fn scope_bytes_falls_back_to_the_main_hub() {
+        Hub::main().configure_scope(|scope| scope.set_tag("hub", "main"));
+        let event: Event<'static> = serde_json::from_slice(&scope_bytes(u64::MAX)).unwrap();
+        assert_eq!(event.tags.get("hub").map(String::as_str), Some("main"));
     }
 }
