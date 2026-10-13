@@ -753,9 +753,10 @@ impl<'a> TransactionData<'a> {
     /// Iterate over the [data attributes](protocol::TraceContext::data)
     /// associated with this [transaction][protocol::Transaction].
     ///
-    /// If the transaction is not sampled for sending,
-    /// the metadata will not be populated at all,
-    /// so the produced iterator is empty.
+    /// Data attributes are recorded independently of the sampling decision, which only
+    /// controls whether the transaction is sent once it finishes. The produced iterator
+    /// is empty if no client was bound when the transaction started, or after the
+    /// transaction has finished.
     pub fn iter(&self) -> Box<dyn Iterator<Item = (&String, &protocol::Value)> + '_> {
         if self.0.transaction.is_some() {
             Box::new(self.0.context.data.iter())
