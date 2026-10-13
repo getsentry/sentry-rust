@@ -6,20 +6,26 @@ mod shared;
 mod transaction_assertions;
 
 use sentry::{Hub, HubSwitchGuard};
+use sentry_tracing::SpanLayer;
+use tracing_subscriber::filter::LevelFilter;
+use tracing_subscriber::prelude::*;
 
-/// Tests that `SentryLayer`'s `on_exit` implementation panics (only when
+/// Tests that `SpanLayer`'s `on_exit` implementation panics (only when
 /// `debug_assertions` are enabled) if a Sentry-captured span is exited on a
 /// different thread than where it was entered.
 ///
 /// This specifically tests a future awaited across threads, which is probably
 /// the most common scenario where this can occur. The span is at info level,
-/// the lowest level captured by Sentry by default.
+/// the least-severe level accepted by the filter configured in this test.
 #[test]
 fn future_cross_thread_info_span() {
     const SPAN_NAME: &str = "future_cross_thread_info_span";
 
     let _guard = HubSwitchGuard::new(Hub::new_from_top(Hub::current()).into());
     let transport = shared::init_sentry(1.0);
+    let _subscriber = tracing_subscriber::registry()
+        .with(SpanLayer::new().with_filter(LevelFilter::INFO))
+        .set_default();
 
     let span = tracing::info_span!(SPAN_NAME);
 
@@ -35,7 +41,7 @@ fn future_cross_thread_info_span() {
 
         assert!(
             thread2_panic_message.starts_with(
-                "[SentryLayer] missing HubSwitchGuard on exit for span"
+                "[SentrySpanLayer] missing HubSwitchGuard on exit for span"
             ),
             "Thread 2 panicked, but not for the expected reason. It is also possible that the panic \
             message was changed without updating this test."

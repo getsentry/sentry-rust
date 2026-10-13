@@ -350,7 +350,11 @@ where
 }
 
 /// Creates a [`Log`] from a given [`tracing_core::Event`]
+///
+/// If a context is provided, include available parent-span data in the returned log's attributes.
+/// See [`crate::LogLayer::enable_span_attributes`] for span-capture and filtering requirements.
 #[cfg(feature = "logs")]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "logs")))]
 #[expect(clippy::impl_trait_in_params, reason = "existed before lint enabled")]
 pub fn log_from_event<'context, S>(
     event: &tracing_core::Event,
