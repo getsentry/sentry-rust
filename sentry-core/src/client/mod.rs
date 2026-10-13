@@ -389,7 +389,7 @@ impl Client {
         }
 
         let sample_rate = event_sample_rate(&self.options.event_sampling_strategy);
-        if !self.sample_should_send(sample_rate) {
+        if !sample_should_send(sample_rate) {
             self.record_lost_event(ClientReportReason::SampleRate);
             None
         } else {
@@ -537,14 +537,9 @@ impl Client {
 
     /// Returns a random boolean with a probability defined
     /// by rate
+    #[deprecated = "We will remove this method from the public API in the next breaking release."]
     pub fn sample_should_send(&self, rate: f32) -> bool {
-        if rate >= 1.0 {
-            true
-        } else if rate <= 0.0 {
-            false
-        } else {
-            random::<f32>() < rate
-        }
+        sample_should_send(rate)
     }
 
     /// Captures a log and sends it to Sentry.
@@ -627,6 +622,17 @@ impl Client {
     /// This will be missing when it cannot be resolved from the [`ClientOptions`].
     pub(crate) fn org_id(&self) -> Option<OrganizationId> {
         self.org_id
+    }
+}
+
+/// Perform random sampling at a given sample rate.
+pub(crate) fn sample_should_send(rate: f32) -> bool {
+    if rate >= 1.0 {
+        true
+    } else if rate <= 0.0 {
+        false
+    } else {
+        random::<f32>() < rate
     }
 }
 

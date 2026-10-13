@@ -18,7 +18,7 @@ use crate::clientoptions::TracesSamplingStrategy;
 use crate::{protocol, Hub};
 
 #[cfg(feature = "client")]
-use crate::Client;
+use crate::{client, Client};
 
 #[expect(deprecated, reason = "backwards-compatibility re-export")]
 pub use self::headers::{parse_sentry_trace_header as parse_headers, SentryTrace};
@@ -725,7 +725,7 @@ impl Client {
         match transaction_sample_rate(&client_options.traces_sampling_strategy, ctx) {
             // A return value of Some(_) indicates tracing is enabled.
             Some(sample_rate) => {
-                let sampled = self.sample_should_send(sample_rate);
+                let sampled = client::sample_should_send(sample_rate);
                 TracingState::new_enabled(sampled, sample_rate)
             }
             // A return value of None indicates tracing is disabled.
