@@ -195,8 +195,24 @@ mod tests {
 
         let scope = Hub::run(hub.clone(), || {
             let id = current_os_thread_id().unwrap();
-            // A write lock here would never be granted.
-            hub.with_current_scope(|_| Hub::scope_for_os_thread(id))
+
+            // Another thread holds the read lock, so a write lock here
+            // would never be granted.
+            let (locked_tx, locked_rx) = mpsc::channel();
+            let (done_tx, done_rx) = mpsc::channel::<()>();
+            let reader_hub = hub.clone();
+            let reader = std::thread::spawn(move || {
+                reader_hub.with_current_scope(|_| {
+                    locked_tx.send(()).unwrap();
+                    done_rx.recv().ok();
+                });
+            });
+
+            locked_rx.recv().unwrap();
+            let scope = Hub::scope_for_os_thread(id);
+            done_tx.send(()).unwrap();
+            reader.join().unwrap();
+            scope
         });
         let event = scope
             .apply_to_event(Default::default())
