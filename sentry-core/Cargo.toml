@@ -22,6 +22,11 @@ all-features = true
 name = "scope_benchmark"
 harness = false
 
+[[bench]]
+name = "client_report_bytes"
+harness = false
+required-features = ["client", "logs"]
+
 [features]
 default = []
 client = ["rand"]

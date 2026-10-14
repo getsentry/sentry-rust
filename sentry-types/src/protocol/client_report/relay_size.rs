@@ -1,10 +1,17 @@
 //! Relay-compatible content size calculations for client report byte outcomes.
 
 use std::collections::BTreeMap;
+use std::sync::OnceLock;
 
 use crate::protocol::v7::{Log, LogAttribute, Metric, Value};
 
 type AttributeMap<K> = BTreeMap<K, LogAttribute>;
+
+// Read once per process, not per item. Both benchmark modes use the same executable.
+fn benchmark_bytes_disabled() -> bool {
+    static DISABLED: OnceLock<bool> = OnceLock::new();
+    *DISABLED.get_or_init(|| std::env::var_os("SENTRY_BENCH_DISABLE_CLIENT_REPORT_BYTES").is_some())
+}
 
 /// Returns the Relay-compatible content size for a log item.
 ///
@@ -13,6 +20,11 @@ type AttributeMap<K> = BTreeMap<K, LogAttribute>;
 ///
 /// [Relay's log size calculation]: https://github.com/getsentry/relay/blob/master/relay-ourlogs/src/size.rs
 pub(super) fn log_byte_size(log: &Log) -> u64 {
+    // Disposable benchmark switch: preserve reporting work but skip all size computation.
+    if benchmark_bytes_disabled() {
+        return 1;
+    }
+
     usize_to_u64(log.body.len())
         .saturating_add(log_attribute_map_byte_size(&log.attributes))
         .max(1)
@@ -25,6 +37,11 @@ pub(super) fn log_byte_size(log: &Log) -> u64 {
 ///
 /// [Relay's trace metric size calculation]: https://github.com/getsentry/relay/blob/master/relay-server/src/processing/trace_metrics/utils.rs
 pub(super) fn metric_byte_size(metric: &Metric) -> u64 {
+    // Use the same placeholder for individual metrics and dropped metric batches.
+    if benchmark_bytes_disabled() {
+        return 1;
+    }
+
     usize_to_u64(metric.name.len())
         .saturating_add(8)
         .saturating_add(log_attribute_map_byte_size(&metric.attributes))
