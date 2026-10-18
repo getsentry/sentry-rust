@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixes
+
+- The Actix and Tower integrations now set the `already_exists` span status on transactions for HTTP `409 Conflict` responses, instead of `invalid_argument`.
+
 ## 0.49.3
 
 ### Features
