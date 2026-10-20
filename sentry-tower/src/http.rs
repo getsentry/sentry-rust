@@ -254,11 +254,11 @@ fn map_status(status: StatusCode) -> protocol::SpanStatus {
         StatusCode::FORBIDDEN => protocol::SpanStatus::PermissionDenied,
         StatusCode::NOT_FOUND => protocol::SpanStatus::NotFound,
         StatusCode::TOO_MANY_REQUESTS => protocol::SpanStatus::ResourceExhausted,
+        StatusCode::CONFLICT => protocol::SpanStatus::AlreadyExists,
         status if status.is_client_error() => protocol::SpanStatus::InvalidArgument,
         StatusCode::NOT_IMPLEMENTED => protocol::SpanStatus::Unimplemented,
         StatusCode::SERVICE_UNAVAILABLE => protocol::SpanStatus::Unavailable,
         status if status.is_server_error() => protocol::SpanStatus::InternalError,
-        StatusCode::CONFLICT => protocol::SpanStatus::AlreadyExists,
         status if status.is_success() => protocol::SpanStatus::Ok,
         _ => protocol::SpanStatus::UnknownError,
     }
@@ -355,5 +355,17 @@ mod tests {
             "09e04486820349518ac7b5d2adbf6ba5"
         );
         assert_eq!(trace.parent_span_id, None);
+    }
+
+    #[test]
+    fn map_status_conflict_to_already_exists() {
+        assert_eq!(
+            map_status(StatusCode::CONFLICT),
+            protocol::SpanStatus::AlreadyExists
+        );
+        assert_eq!(
+            map_status(StatusCode::BAD_REQUEST),
+            protocol::SpanStatus::InvalidArgument
+        );
     }
 }
