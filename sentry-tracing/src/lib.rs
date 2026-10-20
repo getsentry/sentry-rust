@@ -91,33 +91,11 @@
 //!
 //! ## Spans Finishing After Their Transaction
 //!
-//! The integration finishes a Sentry span when its `tracing` span closes. A `tracing` span only
-//! closes once all handles to it have been dropped; exiting the span, or returning from an
-//! `#[instrument]`ed function, is not enough. Some libraries keep a clone of the current span for
-//! a while, for example by passing [`Span::current()`] to a worker thread, as `sqlx`'s SQLite
-//! driver does.
-//!
-//! If such a clone is dropped after the span's transaction was already sent, for example because
-//! the transaction was finished manually or by an integration such as `sentry-tower`, the span is
-//! not sent to Sentry. With the [`debug`] client option enabled, the SDK logs a message whenever it
-//! drops a span for this reason.
-//!
-//! To make sure such a span is sent, you can create it with the Sentry API instead and finish it
-//! before the transaction finishes:
-//!
-//! ```
-//! # async fn run_query() {}
-//! async fn query() {
-//!     let span = sentry::configure_scope(|scope| scope.get_span())
-//!         .map(|parent| parent.start_child("db.sql.query", "SELECT 1"));
-//!
-//!     run_query().await;
-//!
-//!     if let Some(span) = span {
-//!         span.finish();
-//!     }
-//! }
-//! ```
+//! A Sentry span is finished when its `tracing` span closes, which only happens once all handles
+//! to the `tracing` span have been dropped. If a library keeps a clone of the span, for example
+//! `sqlx`'s SQLite driver, which passes [`Span::current()`] to a worker thread, the span can finish
+//! after its transaction was already sent. Such spans are not sent to Sentry. With the [`debug`]
+//! option enabled, the SDK logs a message when this happens.
 //!
 //! [`Span::current()`]: https://docs.rs/tracing/latest/tracing/struct.Span.html#method.current
 //! [`debug`]: sentry_core::ClientOptions::debug
