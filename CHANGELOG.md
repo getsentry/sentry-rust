@@ -4,7 +4,7 @@
 
 ### Fixes
 
-- The Actix and Tower integrations now set the `already_exists` span status on transactions for HTTP `409 Conflict` responses, instead of `invalid_argument`.
+- The Actix and Tower integrations now set the `already_exists` span status on transactions for HTTP `409 Conflict` responses, instead of `invalid_argument` ([#1353](https://github.com/getsentry/sentry-rust/pull/1353)).
 
 ## 0.49.3
 
