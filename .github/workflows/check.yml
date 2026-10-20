@@ -12,7 +12,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, macos-15, windows-2025]
-        rust: [stable, 1.88.0]
+        rust: [stable, 1.89.0]
 
     name: Check compile errors using Rust ${{ matrix.rust }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}

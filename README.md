@@ -105,7 +105,7 @@ best API and adding new features.
 We currently only verify this crate against a recent version of Sentry hosted on [sentry.io](https://sentry.io/), but it
 should also work with recent self-hosted Sentry versions.
 
-The **Minimum Supported Rust Version** is currently at _1.88.0_.
+The **Minimum Supported Rust Version** is currently at _1.89.0_.
 The Sentry crates tries to support a _6 months_ old Rust version at time of release,
 and the MSRV will be increased in accordance with its dependencies.
 
