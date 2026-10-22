@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Minimum Supported Rust Version
+
+- Bump minimum supported Rust version to 1.89.0 ([#1365](https://github.com/getsentry/sentry-rust/pull/1365)).
+
+### Fixes
+
+- The Actix and Tower integrations now set the `already_exists` span status on transactions for HTTP `409 Conflict` responses, instead of `invalid_argument` ([#1353](https://github.com/getsentry/sentry-rust/pull/1353)).
+
 ## 0.49.3
 
 ### Features

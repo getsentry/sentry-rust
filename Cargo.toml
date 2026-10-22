@@ -23,7 +23,7 @@ authors = ["Sentry <hello@sentry.io>"]
 repository = "https://github.com/getsentry/sentry-rust"
 homepage = "https://sentry.io/welcome/"
 edition = "2021"
-rust-version = "1.88"
+rust-version = "1.89"
 
 [workspace.lints.clippy]
 arithmetic-side-effects.level = "warn"
