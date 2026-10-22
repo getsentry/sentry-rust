@@ -18,6 +18,7 @@ use rand::random;
 use sentry_types::protocol::v7::client_report::{
     Category as ClientReportCategory, LossSource, Reason as ClientReportReason,
 };
+use sentry_types::protocol::v7::OrganizationId;
 use sentry_types::random_uuid;
 
 #[cfg(any(feature = "logs", feature = "metrics"))]
@@ -92,6 +93,8 @@ pub struct Client {
     default_metric_attributes: BTreeMap<Cow<'static, str>, LogAttribute>,
     integrations: Vec<(TypeId, Arc<dyn Integration>)>,
     pub(crate) sdk_info: ClientSdkInfo,
+    /// The org_id resolved from `self.options`.
+    org_id: Option<OrganizationId>,
 }
 
 impl fmt::Debug for Client {
@@ -134,6 +137,7 @@ impl Clone for Client {
             default_metric_attributes: self.default_metric_attributes.clone(),
             integrations: self.integrations.clone(),
             sdk_info: self.sdk_info.clone(),
+            org_id: self.org_id,
         }
     }
 }
@@ -200,6 +204,8 @@ impl Client {
         #[cfg(feature = "metrics")]
         let metrics_batcher = RwLock::new(Some(Batcher::new(envelope_sender.clone())));
 
+        let org_id = options.resolve_org_id();
+
         let client = Client {
             options,
             envelope_sender,
@@ -215,6 +221,7 @@ impl Client {
             default_metric_attributes: Default::default(),
             integrations,
             sdk_info,
+            org_id,
         };
 
         #[cfg(feature = "logs")]
@@ -613,6 +620,13 @@ impl Client {
         }
 
         Some(metric)
+    }
+
+    /// The organization ID that this [`Client`] sendds to.
+    ///
+    /// This will be missing when it cannot be resolved from the [`ClientOptions`].
+    pub(crate) fn org_id(&self) -> Option<OrganizationId> {
+        self.org_id
     }
 }
 
