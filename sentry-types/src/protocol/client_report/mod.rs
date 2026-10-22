@@ -87,6 +87,8 @@ indexed_enum! {
         Attachment,
         /// A monitor check-in.
         Monitor,
+        /// A user feedback event.
+        Feedback,
         /// A log item.
         ///
         /// Dropped logs should also be counted as dropped [`LogByte`]s so client reports include
