@@ -10,7 +10,7 @@ use crate::converters::log_from_event;
 /// Captures all event levels unless a filter is configured; see [`LogLayer::new`] for the recommended
 /// level filter.
 ///
-/// Requires a client with logs enabled.
+/// Logs are sent by default, unless disabled.
 ///
 /// Using this layer alongside the legacy [`SentryLayer`](super::SentryLayer) is unsupported.
 /// Use either the legacy layer or the individual layers, not both.
