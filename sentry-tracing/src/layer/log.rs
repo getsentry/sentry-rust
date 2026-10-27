@@ -3,7 +3,7 @@ use tracing_core::{Event, Subscriber};
 use tracing_subscriber::layer::{Context, Layer};
 use tracing_subscriber::registry::LookupSpan;
 
-use crate::converters::log_from_event;
+use crate::converters::log_from_event_impl;
 
 /// Captures tracing events as Sentry logs.
 ///
@@ -106,7 +106,7 @@ impl LogLayer {
     where
         S: Subscriber + for<'a> LookupSpan<'a>,
     {
-        self.capture(log_from_event(
+        self.capture(log_from_event_impl(
             event,
             self.with_span_attributes.then_some(&ctx),
         ));
