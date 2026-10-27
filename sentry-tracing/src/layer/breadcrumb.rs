@@ -79,7 +79,7 @@ impl BreadcrumbLayer {
     /// To include attributes from all spans captured by `SpanLayer`, we recommend accepting all
     /// spans in this layer's filter, while filtering events to the desired levels, like so:
     ///
-    /// 
+    ///
     pub fn enable_span_attributes(mut self) -> Self {
         self.with_span_attributes = true;
         self
