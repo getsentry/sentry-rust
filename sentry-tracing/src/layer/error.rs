@@ -68,29 +68,16 @@ impl ErrorLayer {
     /// We can only include spans captured by a [`super::SpanLayer`] on the same subscriber. So,
     /// this option only has any effect when the `SpanLayer` is installed.
     ///
-    /// Furthermore, only spans accepted by the error layer's filter (see
-    /// [`tracing_subscriber::layer`]) are considered when attaching
-    /// attributes. When using this option, therefore, we recommend building a custom filter that
-    /// accepts all spans, while filtering errors to the desired level, like so:
+    /// # Filtering
     ///
-    /// ```rust
-    /// # use tracing_subscriber::prelude::*;
-    /// use sentry::integrations::tracing::{ErrorLayer, SpanLayer};
-    /// use tracing::Level;
-    /// use tracing_subscriber::filter::{filter_fn, LevelFilter, FilterExt as _};
+    /// Parent-span attributes are included only when the span is accepted by both `SpanLayer`
+    /// and `ErrorLayer`. A level filter such as `LevelFilter::ERROR` therefore omits attributes
+    /// from less severe spans.
     ///
-    /// tracing_subscriber::registry()
-    ///     .with(SpanLayer::new().with_filter(LevelFilter::INFO))
-    ///     .with(
-    ///         ErrorLayer::new()
-    ///             .enable_span_attributes()
-    ///             .with_filter(LevelFilter::ERROR.or(filter_fn(|m| m.is_span()))),
-    ///     )
-    ///     .init();
-    /// ```
+    /// To include attributes from all spans captured by `SpanLayer`, we recommend accepting all
+    /// spans in this layer's filter, while filtering events to the desired level, like so:
     ///
-    /// Including all spans in the error layer filter is safe, because this layer does not send
-    /// any spans to Sentry.
+    /// 
     pub fn enable_span_attributes(mut self) -> Self {
         self.with_span_attributes = true;
         self

@@ -70,33 +70,16 @@ impl BreadcrumbLayer {
     /// We can only include spans captured by a [`super::SpanLayer`] on the same subscriber. So,
     /// this option only has any effect when the `SpanLayer` is installed.
     ///
-    /// Furthermore, only spans accepted by the breadcrumb layer's filter (see
-    /// [`tracing_subscriber::layer`]) are considered when attaching
-    /// attributes. When using this option, therefore, we recommend building a custom filter that
-    /// accepts all spans, while filtering events to the desired levels, like so:
+    /// # Filtering
     ///
-    /// ```rust
-    /// # use tracing_subscriber::prelude::*;
-    /// use sentry::integrations::tracing::{BreadcrumbLayer, SpanLayer};
-    /// use tracing::Level;
-    /// use tracing_subscriber::filter::{filter_fn, LevelFilter};
+    /// Parent-span attributes are included only when the span is accepted by both `SpanLayer`
+    /// and `BreadcrumbLayer`. A filter that only accepts `WARN` and `INFO` metadata therefore
+    /// omits attributes from spans at other levels.
     ///
-    /// tracing_subscriber::registry()
-    ///     .with(SpanLayer::new().with_filter(LevelFilter::INFO))
-    ///     .with(
-    ///         BreadcrumbLayer::new()
-    ///             .enable_span_attributes()
-    ///             .with_filter(filter_fn(|metadata| {
-    ///                 // Accept all spans, but only `WARN` and `INFO` events.
-    ///                 metadata.is_span() || matches!(*metadata.level(), Level::WARN | Level::INFO)
-    ///             })),
-    ///     )
-    ///     .init();
-    /// ```
+    /// To include attributes from all spans captured by `SpanLayer`, we recommend accepting all
+    /// spans in this layer's filter, while filtering events to the desired levels, like so:
     ///
-    /// Including all spans in the breadcrumb layer filter is safe, because this layer does not send
-    /// any spans to Sentry.
-    ///
+    /// 
     pub fn enable_span_attributes(mut self) -> Self {
         self.with_span_attributes = true;
         self
