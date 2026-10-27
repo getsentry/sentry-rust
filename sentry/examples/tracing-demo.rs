@@ -3,13 +3,16 @@
 use std::thread;
 use std::time::Duration;
 
+use sentry_tracing::{LogLayer, SpanLayer};
+use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::prelude::*;
 
 // cargo run --example tracing-demo
 fn main() {
     tracing_subscriber::registry()
         .with(tracing_subscriber::fmt::layer())
-        .with(sentry_tracing::layer())
+        .with(SpanLayer::new().with_filter(LevelFilter::INFO))
+        .with(LogLayer::new().with_filter(LevelFilter::INFO))
         .try_init()
         .unwrap();
 
