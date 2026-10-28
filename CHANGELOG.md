@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Documentation
+
+- Added code examples to the [`ErrorLayer::enable_span_attributes`](https://docs.rs/sentry-tracing/0.49.5/sentry_tracing/struct.ErrorLayer.html#method.enable_span_attributes) and [`BreadcrumbLayer::enable_span_attributes`](https://docs.rs/sentry-tracing/0.49.5/sentry_tracing/struct.BreadcrumbLayer.html#method.enable_span_attributes) docs, which were missing from the 0.49.4 release ([#1373](https://github.com/getsentry/sentry-rust/pull/1373)).
+
 ## 0.49.4
 
 ### Minimum Supported Rust Version
@@ -8,7 +14,7 @@
 
 ### Features
 
-- Redesigned [`sentry-tracing`](https://docs.rs/sentry-tracing/0.49.4/sentry_tracing/) around independently selectable [`SpanLayer`](https://docs.rs/sentry-tracing/0.49.4/sentry_tracing/struct.SpanLayer.html), [`LogLayer`](https://docs.rs/sentry-tracing/0.49.4/sentry_tracing/struct.LogLayer.html), [`ErrorLayer`](https://docs.rs/sentry-tracing/0.49.4/sentry_tracing/struct.ErrorLayer.html), and [`BreadcrumbLayer`](https://docs.rs/sentry-tracing/0.49.4/sentry_tracing/struct.BreadcrumbLayer.html). Most applications should use the span and log layers ([#1342](https://github.com/getsentry/sentry-rust/pull/1342)).
+- Redesigned [`sentry-tracing`](https://docs.rs/sentry-tracing/0.49.5/sentry_tracing/) around independently selectable [`SpanLayer`](https://docs.rs/sentry-tracing/0.49.5/sentry_tracing/struct.SpanLayer.html), [`LogLayer`](https://docs.rs/sentry-tracing/0.49.5/sentry_tracing/struct.LogLayer.html), [`ErrorLayer`](https://docs.rs/sentry-tracing/0.49.5/sentry_tracing/struct.ErrorLayer.html), and [`BreadcrumbLayer`](https://docs.rs/sentry-tracing/0.49.5/sentry_tracing/struct.BreadcrumbLayer.html). Most applications should use the span and log layers ([#1342](https://github.com/getsentry/sentry-rust/pull/1342)).
 
 ### Fixes
 
@@ -16,7 +22,7 @@
 
 ### Deprecations
 
-- Deprecated [`sentry_tracing::layer()`](https://docs.rs/sentry-tracing/0.49.4/sentry_tracing/fn.layer.html) and [`SentryLayer`](https://docs.rs/sentry-tracing/0.49.4/sentry_tracing/struct.SentryLayer.html), along with their associated filtering and mapping types and helpers, in favor of independently selectable [`SpanLayer`](https://docs.rs/sentry-tracing/0.49.4/sentry_tracing/struct.SpanLayer.html), [`LogLayer`](https://docs.rs/sentry-tracing/0.49.4/sentry_tracing/struct.LogLayer.html), [`ErrorLayer`](https://docs.rs/sentry-tracing/0.49.4/sentry_tracing/struct.ErrorLayer.html), and [`BreadcrumbLayer`](https://docs.rs/sentry-tracing/0.49.4/sentry_tracing/struct.BreadcrumbLayer.html). A [migration guide](https://docs.rs/sentry-tracing/0.49.4/sentry_tracing/struct.SentryLayer.html) is available ([#1342](https://github.com/getsentry/sentry-rust/pull/1342), [#1348](https://github.com/getsentry/sentry-rust/pull/1348)).
+- Deprecated [`sentry_tracing::layer()`](https://docs.rs/sentry-tracing/0.49.5/sentry_tracing/fn.layer.html) and [`SentryLayer`](https://docs.rs/sentry-tracing/0.49.5/sentry_tracing/struct.SentryLayer.html), along with their associated filtering and mapping types and helpers, in favor of independently selectable [`SpanLayer`](https://docs.rs/sentry-tracing/0.49.5/sentry_tracing/struct.SpanLayer.html), [`LogLayer`](https://docs.rs/sentry-tracing/0.49.5/sentry_tracing/struct.LogLayer.html), [`ErrorLayer`](https://docs.rs/sentry-tracing/0.49.5/sentry_tracing/struct.ErrorLayer.html), and [`BreadcrumbLayer`](https://docs.rs/sentry-tracing/0.49.5/sentry_tracing/struct.BreadcrumbLayer.html). A [migration guide](https://docs.rs/sentry-tracing/0.49.5/sentry_tracing/struct.SentryLayer.html) is available ([#1342](https://github.com/getsentry/sentry-rust/pull/1342), [#1348](https://github.com/getsentry/sentry-rust/pull/1348)).
   - As this is a larger change, we would love to hear your feedback about the new API if you have trouble migrating. Please [open a GitHub issue](https://github.com/getsentry/sentry-rust/issues/new?template=02-improvement.yml), and we will help identify a solution.
 
 ## 0.49.3
