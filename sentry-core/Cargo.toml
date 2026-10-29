@@ -34,7 +34,6 @@ metrics = []
 log = { workspace = true, features = ["std"], optional = true }
 rand = { workspace = true, optional = true }
 sentry-types = { workspace = true }
-serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 url = { workspace = true }
 uuid = { workspace = true, features = ["v4", "serde"], optional = true }
