@@ -29,15 +29,17 @@ test = ["client", "release-health"]
 release-health = []
 logs = []
 metrics = []
+# Deprecated no-op features, to be removed in the next breaking release
+# (https://github.com/getsentry/sentry-rust/issues/1386).
+log = []
+uuid = []
 
 [dependencies]
-log = { workspace = true, features = ["std"], optional = true }
 rand = { workspace = true, optional = true }
 sentry-types = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 url = { workspace = true }
-uuid = { workspace = true, features = ["v4", "serde"], optional = true }
 
 [dev-dependencies]
 # Because we re-export all the public API in `sentry`, we actually run all the

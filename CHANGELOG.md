@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Deprecations
+
+- Deprecated the `log` and `uuid` features of `sentry-core`. These features are now no-ops, and will be removed in the next breaking release. Previously, these features enabled the optional `log` and `uuid` dependencies, which `sentry-core` did not use ([#1388](https://github.com/getsentry/sentry-rust/pull/1388)).
+
 ## 0.49.5
 
 ### Documentation
