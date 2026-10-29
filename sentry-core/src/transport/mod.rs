@@ -101,10 +101,7 @@ where
     }
 }
 
-#[deny(
-    clippy::missing_trait_methods,
-    reason = "all methods should be forwarded"
-)]
+#[deny(clippy::missing_trait_methods)]
 impl<T: Transport> Transport for Arc<T> {
     fn send_envelope(&self, envelope: Envelope) {
         (**self).send_envelope(envelope)
