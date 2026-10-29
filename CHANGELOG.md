@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Improvements
+
+- With the `debug` option enabled, the SDK now logs a message when it drops a span because the span finished after its transaction was already sent. The `sentry-tracing` docs now explain how this can happen when a library keeps a clone of a `tracing` span ([#1367](https://github.com/getsentry/sentry-rust/pull/1367)).
+
 ## 0.49.5
 
 ### Documentation
@@ -15,10 +21,6 @@
 ### Features
 
 - Redesigned [`sentry-tracing`](https://docs.rs/sentry-tracing/0.49.5/sentry_tracing/) around independently selectable [`SpanLayer`](https://docs.rs/sentry-tracing/0.49.5/sentry_tracing/struct.SpanLayer.html), [`LogLayer`](https://docs.rs/sentry-tracing/0.49.5/sentry_tracing/struct.LogLayer.html), [`ErrorLayer`](https://docs.rs/sentry-tracing/0.49.5/sentry_tracing/struct.ErrorLayer.html), and [`BreadcrumbLayer`](https://docs.rs/sentry-tracing/0.49.5/sentry_tracing/struct.BreadcrumbLayer.html). Most applications should use the span and log layers ([#1342](https://github.com/getsentry/sentry-rust/pull/1342)).
-
-### Improvements
-
-- With the `debug` option enabled, the SDK now logs a message when it drops a span because the span finished after its transaction was already sent. The `sentry-tracing` docs now explain how this can happen when a library keeps a clone of a `tracing` span ([#1367](https://github.com/getsentry/sentry-rust/pull/1367)).
 
 ### Fixes
 
