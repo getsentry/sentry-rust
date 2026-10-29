@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixes
+
+- [`Transport::flush`](https://docs.rs/sentry-core/0.49.6/sentry_core/trait.Transport.html#method.flush) on an `Arc`-wrapped transport now flushes the inner transport, instead of returning `true` immediately ([#1390](https://github.com/getsentry/sentry-rust/pull/1390)).
+
 ## 0.49.5
 
 ### Documentation
