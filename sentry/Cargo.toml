@@ -53,6 +53,9 @@ test = ["sentry-core/test"]
 release-health = ["sentry-core/release-health", "sentry-actix?/release-health"]
 logs = ["sentry-core/logs", "sentry-tracing?/logs", "sentry-log?/logs"]
 metrics = ["sentry-core/metrics"]
+# Deprecated no-op feature, to be removed in the next breaking release
+# (https://github.com/getsentry/sentry-rust/issues/1387).
+serde_json = []
 # transports
 transport = ["reqwest", "native-tls"]
 reqwest = ["dep:reqwest", "httpdate", "tokio"]
@@ -84,7 +87,6 @@ sentry-opentelemetry = { workspace = true, optional = true }
 reqwest = { workspace = true, features = ["blocking", "json"], optional = true }
 curl = { workspace = true, optional = true }
 httpdate = { workspace = true, optional = true }
-serde_json = { workspace = true, optional = true }
 tokio = { workspace = true, features = ["rt"], optional = true }
 ureq = { workspace = true, optional = true }
 native-tls = { workspace = true, optional = true }
