@@ -3701,7 +3701,6 @@ dependencies = [
  "anyhow",
  "criterion",
  "futures",
- "log",
  "rand 0.10.3",
  "rayon",
  "sentry",
@@ -3711,7 +3710,6 @@ dependencies = [
  "thiserror 2.0.21",
  "tokio",
  "url",
- "uuid",
 ]
 
 [[package]]
