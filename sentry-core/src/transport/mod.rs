@@ -103,7 +103,7 @@ where
 
 #[deny(
     clippy::missing_trait_methods,
-    reason = "must forward every method, including defaulted ones, to the inner transport"
+    reason = "all methods should be forwarded"
 )]
 impl<T: Transport> Transport for Arc<T> {
     fn send_envelope(&self, envelope: Envelope) {
