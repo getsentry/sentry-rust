@@ -53,7 +53,8 @@ test = ["sentry-core/test"]
 release-health = ["sentry-core/release-health", "sentry-actix?/release-health"]
 logs = ["sentry-core/logs", "sentry-tracing?/logs", "sentry-log?/logs"]
 metrics = ["sentry-core/metrics"]
-# Deprecated: no-op, will be removed in the next breaking release (#1387).
+# Deprecated no-op feature, to be removed in the next breaking release
+# (https://github.com/getsentry/sentry-rust/issues/1387).
 serde_json = []
 # transports
 transport = ["reqwest", "native-tls"]
