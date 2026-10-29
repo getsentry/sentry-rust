@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Deprecations
+
+- Deprecated the `sentry` crate's `serde_json` feature. The feature is now a no-op, as `sentry` no longer depends on `serde_json` directly. It will be removed in the next breaking release; please remove it from your `Cargo.toml` ([#1385](https://github.com/getsentry/sentry-rust/issues/1385)).
+
 ## 0.49.5
 
 ### Documentation
