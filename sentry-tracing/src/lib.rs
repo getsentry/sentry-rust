@@ -89,6 +89,13 @@
 //! }
 //! ```
 //!
+//! ## Spans finishing after their transaction
+//!
+//! A Sentry span finishes when its `tracing` span closes, which only happens once every handle to
+//! the `tracing` span is dropped. If a library holds on to a clone, as `sqlx`'s SQLite driver does,
+//! the span can close after its transaction was sent, and is then dropped. To avoid this, manually
+//! start a Sentry span around the affected code.
+//!
 //! # Logs
 //!
 //! `LogLayer` sends events accepted by its filter as structured logs. Event fields become log
