@@ -1,11 +1,5 @@
 # Changelog
 
-## Unreleased
-
-### Documentation
-
-- Clarified the [`sentry-tracing`](https://docs.rs/sentry-tracing/latest/sentry_tracing/) layer recommendations. We recommend the span and log layers; the error layer is documented as an option for capturing error-level `tracing` events as Sentry issues, which count against the error quota. The breadcrumb layer is described as primarily supporting legacy workflows ([#1394](https://github.com/getsentry/sentry-rust/pull/1394)).
-
 ## 0.49.5
 
 ### Documentation
