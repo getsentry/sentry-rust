@@ -21,8 +21,9 @@ pub struct BreadcrumbLayer {
 impl BreadcrumbLayer {
     /// Creates a layer that adds tracing events as Sentry breadcrumbs.
     ///
-    /// For most users, we would recommend using the [`LogLayer`](super::LogLayer) instead of this
-    /// layer, as logs are sent regardless of whether an error occurs.
+    /// This layer primarily exists to support legacy workflows. For most users, we would recommend
+    /// using the [`LogLayer`](super::LogLayer) instead, as logs are sent regardless of whether an
+    /// error occurs.
     ///
     /// Breadcrumbs are only sent attached to Sentry error events. Users using this layer may therefore
     /// also wish to enable the [`ErrorLayer`](super::ErrorLayer).
