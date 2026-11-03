@@ -76,6 +76,9 @@
 //!
 //! - `sentry.name` overrides the Sentry span name, including when recorded after creation.
 //! - `sentry.op` overrides the Sentry span operation, including when recorded after creation.
+//! - `sentry.status` sets the Sentry span status, including when recorded after creation. The
+//!   value must be a Sentry span status string, such as `"ok"`, `"internal_error"`, or
+//!   `"not_found"`. Invalid values are ignored.
 //! - `sentry.trace` continues the trace from a `sentry-trace` header. It must be set when a
 //!   **root Sentry span** is created, meaning no Sentry span is active in the current scope.
 //!   Applying it to a child Sentry span or recording it after creation has no effect.
@@ -139,3 +142,4 @@ const TAGS_PREFIX: &str = "tags.";
 const SENTRY_OP_FIELD: &str = "sentry.op";
 const SENTRY_NAME_FIELD: &str = "sentry.name";
 const SENTRY_TRACE_FIELD: &str = "sentry.trace";
+const SENTRY_STATUS_FIELD: &str = "sentry.status";

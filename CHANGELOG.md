@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Features
+
+- [`SpanLayer`](https://docs.rs/sentry-tracing/0.49.6/sentry_tracing/struct.SpanLayer.html) now sets the Sentry span status from a `sentry.status` span field, both on span creation and when recorded later. The value must be a Sentry span status string, such as `"internal_error"` ([#1398](https://github.com/getsentry/sentry-rust/issues/1398)).
+
 ### Fixes
 
 - [`Transport::flush`](https://docs.rs/sentry-core/0.49.6/sentry_core/trait.Transport.html#method.flush) on an `Arc`-wrapped transport now flushes the inner transport, instead of returning `true` immediately ([#1390](https://github.com/getsentry/sentry-rust/pull/1390)).

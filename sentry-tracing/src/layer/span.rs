@@ -1,9 +1,9 @@
-use std::borrow::Cow;
+use std::borrow::{Borrow, Cow};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use sentry_core::protocol::Value;
+use sentry_core::protocol::{SpanStatus, Value};
 use sentry_core::{Hub, HubSwitchGuard, TransactionOrSpan};
 use tracing_core::field::Visit;
 use tracing_core::{span, Field, Metadata, Subscriber};
@@ -12,7 +12,9 @@ use tracing_subscriber::registry::LookupSpan;
 
 use super::span_guard_stack::SpanGuardStack;
 use crate::converters::FieldVisitor;
-use crate::{SENTRY_NAME_FIELD, SENTRY_OP_FIELD, SENTRY_TRACE_FIELD, TAGS_PREFIX};
+use crate::{
+    SENTRY_NAME_FIELD, SENTRY_OP_FIELD, SENTRY_STATUS_FIELD, SENTRY_TRACE_FIELD, TAGS_PREFIX,
+};
 
 /// Captures tracing spans as Sentry transactions and spans.
 ///
@@ -122,7 +124,8 @@ where
             None => return,
         };
 
-        let (data, sentry_name, sentry_op, sentry_trace) = extract_span_data(attrs);
+        let (mut data, sentry_name, sentry_op, sentry_trace) = extract_span_data(attrs);
+        let sentry_status = take_status(&mut data);
         let sentry_name = sentry_name.as_deref().unwrap_or_else(|| span.name());
         let sentry_op =
             sentry_op.unwrap_or_else(|| format!("{}::{}", span.metadata().target(), span.name()));
@@ -148,6 +151,9 @@ where
                 tx.into()
             }
         };
+        if let Some(status) = sentry_status {
+            sentry_span.set_status(status);
+        }
         record_fields(&sentry_span, data);
         set_default_attributes(&mut sentry_span, span.metadata());
 
@@ -248,6 +254,8 @@ where
                 _ => None,
             });
 
+        let sentry_status = take_status(&mut data.json_values);
+
         // `sentry.trace` cannot be applied retroactively
         data.json_values.remove(SENTRY_TRACE_FIELD);
 
@@ -257,9 +265,28 @@ where
         if let Some(op) = sentry_op {
             span.set_op(&op);
         }
+        if let Some(status) = sentry_status {
+            span.set_status(status);
+        }
 
         record_fields(span, data.json_values);
     }
+}
+
+/// Removes the `sentry.status` field and parses it as a [`SpanStatus`].
+///
+/// Values that are not strings or not valid span statuses are dropped.
+fn take_status<K: Ord + Borrow<str>>(data: &mut BTreeMap<K, Value>) -> Option<SpanStatus> {
+    let status = match data.remove(SENTRY_STATUS_FIELD)? {
+        Value::String(s) => s.parse().ok(),
+        _ => None,
+    };
+    if status.is_none() {
+        sentry_core::sentry_debug!(
+            "[SentrySpanLayer] ignoring invalid `{SENTRY_STATUS_FIELD}` span field value"
+        );
+    }
+    status
 }
 
 fn set_default_attributes(span: &mut TransactionOrSpan, metadata: &Metadata<'_>) {
