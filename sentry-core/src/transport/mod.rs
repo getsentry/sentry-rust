@@ -101,9 +101,14 @@ where
     }
 }
 
+#[deny(clippy::missing_trait_methods)]
 impl<T: Transport> Transport for Arc<T> {
     fn send_envelope(&self, envelope: Envelope) {
         (**self).send_envelope(envelope)
+    }
+
+    fn flush(&self, timeout: Duration) -> bool {
+        (**self).flush(timeout)
     }
 
     fn shutdown(&self, timeout: Duration) -> bool {

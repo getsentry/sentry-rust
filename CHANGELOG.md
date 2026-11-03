@@ -6,6 +6,10 @@
 
 - With the `debug` option enabled, the SDK now logs a message when it drops a span because the span finished after its transaction was already sent. The `sentry-tracing` docs now explain how this can happen when a library keeps a clone of a `tracing` span ([#1367](https://github.com/getsentry/sentry-rust/pull/1367)).
 
+### Fixes
+
+- [`Transport::flush`](https://docs.rs/sentry-core/0.49.6/sentry_core/trait.Transport.html#method.flush) on an `Arc`-wrapped transport now flushes the inner transport, instead of returning `true` immediately ([#1390](https://github.com/getsentry/sentry-rust/pull/1390)).
+
 ### Deprecations
 
 - Deprecated the `log` and `uuid` features of `sentry-core`. These features are now no-ops, and will be removed in the next breaking release. Previously, these features enabled the optional `log` and `uuid` dependencies, which `sentry-core` did not use ([#1388](https://github.com/getsentry/sentry-rust/pull/1388)).
