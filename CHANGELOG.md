@@ -4,7 +4,7 @@
 
 ### Features
 
-- [`SpanLayer`](https://docs.rs/sentry-tracing/0.49.6/sentry_tracing/struct.SpanLayer.html) now sets the Sentry span status from a `sentry.status` span field, both on span creation and when recorded later. The value must be a Sentry span status string, such as `"internal_error"` ([#1399](https://github.com/getsentry/sentry-rust/pull/1399)).
+- [`SpanLayer`](https://docs.rs/sentry-tracing/0.49.6/sentry_tracing/struct.SpanLayer.html) now sets the Sentry span status from a `sentry.status` span field, both on span creation and when recorded later. Following the [`sentry.status` convention](https://getsentry.github.io/sentry-conventions/attributes/sentry/#sentry-status), the value must be `"ok"` or `"error"` ([#1399](https://github.com/getsentry/sentry-rust/pull/1399)).
 
 ### Fixes
 

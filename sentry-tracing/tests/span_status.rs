@@ -7,25 +7,25 @@ use sentry_tracing::SpanLayer;
 use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::prelude::*;
 
-#[tracing::instrument(fields(sentry.status = "internal_error"))]
+#[tracing::instrument(fields(sentry.status = "error"))]
 fn status_on_creation() {}
 
 #[tracing::instrument(fields(sentry.status = tracing::field::Empty))]
 fn status_recorded_later() {
-    tracing::Span::current().record("sentry.status", "internal_error");
+    tracing::Span::current().record("sentry.status", "error");
 }
 
-#[tracing::instrument(fields(sentry.status = "not a status"))]
+#[tracing::instrument(fields(sentry.status = "internal_error"))]
 fn invalid_status() {}
 
 #[tracing::instrument]
-fn parent_with_failing_child() {
-    failing_child();
+fn parent_with_ok_child() {
+    ok_child();
 }
 
 #[tracing::instrument(fields(sentry.status = tracing::field::Empty))]
-fn failing_child() {
-    tracing::Span::current().record("sentry.status", "not_found");
+fn ok_child() {
+    tracing::Span::current().record("sentry.status", "ok");
 }
 
 fn capture_transaction(f: fn()) -> Transaction<'static> {
@@ -71,10 +71,10 @@ fn ignores_invalid_status() {
 
 #[test]
 fn sets_status_on_child_span() {
-    let transaction = capture_transaction(parent_with_failing_child);
+    let transaction = capture_transaction(parent_with_ok_child);
     assert_eq!(trace_context(&transaction).status, None);
     assert_eq!(transaction.spans.len(), 1);
     let span = &transaction.spans[0];
-    assert_eq!(span.status, Some(SpanStatus::NotFound));
+    assert_eq!(span.status, Some(SpanStatus::Ok));
     assert!(!span.data.contains_key("sentry.status"));
 }
