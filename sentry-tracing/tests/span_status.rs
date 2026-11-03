@@ -1,4 +1,4 @@
-#![expect(missing_docs, reason = "predates lint enforcement")]
+//! Tests that the `sentry.status` span field sets the Sentry span status.
 
 mod shared;
 
