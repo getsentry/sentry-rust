@@ -69,7 +69,6 @@
 
 #![doc(html_favicon_url = "https://sentry-brand.storage.googleapis.com/favicon.ico")]
 #![doc(html_logo_url = "https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png")]
-#![allow(deprecated)]
 #![allow(clippy::type_complexity)]
 
 use std::borrow::Cow;
@@ -443,7 +442,7 @@ fn sentry_request_from_http(request: &ServiceRequest, with_pii: bool) -> Request
 
     // If PII is enabled, include the remote address
     if with_pii {
-        if let Some(remote) = request.connection_info().remote_addr() {
+        if let Some(remote) = request.connection_info().peer_addr() {
             sentry_req.env.insert("REMOTE_ADDR".into(), remote.into());
         }
     };

@@ -6,6 +6,11 @@
 
 - With the `debug` option enabled, the SDK now logs a message when it drops a span because the span finished after its transaction was already sent. The `sentry-tracing` docs now explain how this can happen when a library keeps a clone of a `tracing` span ([#1367](https://github.com/getsentry/sentry-rust/pull/1367)).
 
+### Deprecations
+
+- Deprecated the `log` and `uuid` features of `sentry-core`. These features are now no-ops, and will be removed in the next breaking release. Previously, these features enabled the optional `log` and `uuid` dependencies, which `sentry-core` did not use ([#1388](https://github.com/getsentry/sentry-rust/pull/1388)).
+- Deprecated the `serde_json` feature of `sentry`. This feature is now a no-op, and will be removed in the next breaking release. Previously, this feature enabled the optional `serde_json` dependency, which `sentry` did not use ([#1389](https://github.com/getsentry/sentry-rust/pull/1389)).
+
 ## 0.49.5
 
 ### Documentation
