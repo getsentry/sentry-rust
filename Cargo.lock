@@ -3639,7 +3639,6 @@ dependencies = [
  "sentry-slog",
  "sentry-tower",
  "sentry-tracing",
- "serde_json",
  "slog",
  "tokio",
  "tower 0.5.3",
