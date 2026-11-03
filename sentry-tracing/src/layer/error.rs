@@ -18,10 +18,6 @@ pub struct ErrorLayer {
 impl ErrorLayer {
     /// Creates a layer that captures tracing events as Sentry error events.
     ///
-    /// Most applications should start with [`LogLayer`](super::LogLayer), and add this layer if
-    /// `ERROR` events should also be captured as Sentry error events. Combine it with
-    /// [`BreadcrumbLayer`](super::BreadcrumbLayer) to attach the events leading up to each error.
-    ///
     /// # Filtering
     ///
     /// Configure a level filter to limit error-event volume. We recommend capturing only `ERROR`

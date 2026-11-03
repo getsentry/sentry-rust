@@ -12,17 +12,19 @@
 
 Capture `tracing` spans and events as Sentry traces and structured logs.
 
-For most applications, we recommend installing only these two layers:
+We recommend enabling these two layers:
 
 - [`SpanLayer`] captures `tracing` spans as Sentry transactions and spans.
 - [`LogLayer`] captures `tracing` events as Sentry structured logs. Requires the `logs` feature.
 
-We also provide the following layers, but recommend the span and log layers above for most
-applications:
+If you would like Sentry issues for error-level `tracing` events, you can also enable
+[`ErrorLayer`], which captures `tracing` events as Sentry error events, with support for
+tags and exception information. Error events count against your error quota, which is
+typically more expensive than logs. See [Errors](#errors).
 
-- [`ErrorLayer`] captures `tracing` events as Sentry error events, with support for tags and
-  exception information.
-- [`BreadcrumbLayer`] adds `tracing` events as breadcrumbs on subsequent Sentry error events.
+We also provide [`BreadcrumbLayer`], which adds `tracing` events as breadcrumbs on subsequent
+Sentry error events. This layer primarily exists to support legacy workflows; we recommend
+[`LogLayer`] instead.
 
 For migration from the legacy combined layer, see [`SentryLayer`].
 
@@ -105,6 +107,24 @@ attributes.
 
 ```rust
 tracing::info!(number = 42, my.key = "value", "Processed request");
+```
+
+## Errors
+
+`ErrorLayer` sends events accepted by its filter as Sentry error events, which create Sentry
+issues. If you would like Sentry issues for `ERROR` events in addition to logs, you can enable
+the error layer alongside the span and log layers, with an `ERROR` filter:
+
+```rust
+use sentry::integrations::tracing::{ErrorLayer, LogLayer, SpanLayer};
+use tracing_subscriber::filter::LevelFilter;
+use tracing_subscriber::prelude::*;
+
+tracing_subscriber::registry()
+    .with(SpanLayer::new().with_filter(LevelFilter::INFO))
+    .with(LogLayer::new().with_filter(LevelFilter::INFO))
+    .with(ErrorLayer::new().with_filter(LevelFilter::ERROR))
+    .init();
 ```
 
 ## Resources
