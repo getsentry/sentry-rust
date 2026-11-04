@@ -1917,68 +1917,148 @@ impl fmt::Display for Span {
 pub struct ParseStatusError;
 
 /// The status of a Span.
-#[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq, Hash)]
+///
+/// Following the [`sentry.status` convention](https://getsentry.github.io/sentry-conventions/attributes/sentry/#sentry-status),
+/// a span status is either [`Ok`](Self::Ok) or [`Error`](Self::Error). The more specific
+/// statuses are deprecated.
+///
+/// Each variant's string representation, used by [`Display`](fmt::Display) and
+/// [`FromStr`](str::FromStr), is listed in its documentation.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum SpanStatus {
     /// The operation completed successfully.
-    #[serde(rename = "ok")]
+    ///
+    /// String representation: `"ok"`.
     Ok,
+    /// The operation failed.
+    ///
+    /// String representation: `"error"`. Event payloads send this status as `"internal_error"`,
+    /// because Relay does not accept `"error"` in transaction payloads. Relay normalizes
+    /// `"internal_error"`, like every status other than `"ok"`, to `"error"`.
+    Error,
     /// Deadline expired before operation could complete.
-    #[serde(rename = "deadline_exceeded")]
+    ///
+    /// String representation: `"deadline_exceeded"`.
+    #[deprecated(note = "use `SpanStatus::Error` instead")]
     DeadlineExceeded,
-    /// 401 Unauthorized (actually does mean unauthenticated according to RFC 7235)
-    #[serde(rename = "unauthenticated")]
+    /// 401 Unauthorized (actually does mean unauthenticated according to RFC 7235).
+    ///
+    /// String representation: `"unauthenticated"`.
+    #[deprecated(note = "use `SpanStatus::Error` instead")]
     Unauthenticated,
-    /// 403 Forbidden
-    #[serde(rename = "permission_denied")]
+    /// 403 Forbidden.
+    ///
+    /// String representation: `"permission_denied"`.
+    #[deprecated(note = "use `SpanStatus::Error` instead")]
     PermissionDenied,
     /// 404 Not Found. Some requested entity (file or directory) was not found.
-    #[serde(rename = "not_found")]
+    ///
+    /// String representation: `"not_found"`.
+    #[deprecated(note = "use `SpanStatus::Error` instead")]
     NotFound,
-    /// 429 Too Many Requests
-    #[serde(rename = "resource_exhausted")]
+    /// 429 Too Many Requests.
+    ///
+    /// String representation: `"resource_exhausted"`.
+    #[deprecated(note = "use `SpanStatus::Error` instead")]
     ResourceExhausted,
     /// Client specified an invalid argument. 4xx.
-    #[serde(rename = "invalid_argument")]
+    ///
+    /// String representation: `"invalid_argument"`.
+    #[deprecated(note = "use `SpanStatus::Error` instead")]
     InvalidArgument,
-    /// 501 Not Implemented
-    #[serde(rename = "unimplemented")]
+    /// 501 Not Implemented.
+    ///
+    /// String representation: `"unimplemented"`.
+    #[deprecated(note = "use `SpanStatus::Error` instead")]
     Unimplemented,
-    /// 503 Service Unavailable
-    #[serde(rename = "unavailable")]
+    /// 503 Service Unavailable.
+    ///
+    /// String representation: `"unavailable"`.
+    #[deprecated(note = "use `SpanStatus::Error` instead")]
     Unavailable,
     /// Other/generic 5xx.
-    #[serde(rename = "internal_error")]
+    ///
+    /// String representation: `"internal_error"`.
+    #[deprecated(note = "use `SpanStatus::Error` instead")]
     InternalError,
     /// Unknown. Any non-standard HTTP status code.
-    #[serde(rename = "unknown_error")]
+    ///
+    /// String representation: `"unknown_error"`.
+    #[deprecated(note = "use `SpanStatus::Error` instead")]
     UnknownError,
     /// The operation was cancelled (typically by the user).
-    #[serde(rename = "cancelled")]
+    ///
+    /// String representation: `"cancelled"`.
+    #[deprecated(note = "use `SpanStatus::Error` instead")]
     Cancelled,
-    /// Already exists (409)
-    #[serde(rename = "already_exists")]
+    /// Already exists (409).
+    ///
+    /// String representation: `"already_exists"`.
+    #[deprecated(note = "use `SpanStatus::Error` instead")]
     AlreadyExists,
-    /// Operation was rejected because the system is not in a state required for the operation's
-    #[serde(rename = "failed_precondition")]
+    /// Operation was rejected because the system is not in a state required for the operation's execution.
+    ///
+    /// String representation: `"failed_precondition"`.
+    #[deprecated(note = "use `SpanStatus::Error` instead")]
     FailedPrecondition,
     /// The operation was aborted, typically due to a concurrency issue.
-    #[serde(rename = "aborted")]
+    ///
+    /// String representation: `"aborted"`.
+    #[deprecated(note = "use `SpanStatus::Error` instead")]
     Aborted,
     /// Operation was attempted past the valid range.
-    #[serde(rename = "out_of_range")]
+    ///
+    /// String representation: `"out_of_range"`.
+    #[deprecated(note = "use `SpanStatus::Error` instead")]
     OutOfRange,
-    /// Unrecoverable data loss or corruption
-    #[serde(rename = "data_loss")]
+    /// Unrecoverable data loss or corruption.
+    ///
+    /// String representation: `"data_loss"`.
+    #[deprecated(note = "use `SpanStatus::Error` instead")]
     DataLoss,
+}
+
+impl SpanStatus {
+    #[expect(
+        deprecated,
+        reason = "maps the deprecated variants to their string representation"
+    )]
+    fn as_str(&self) -> &'static str {
+        match self {
+            SpanStatus::Ok => "ok",
+            SpanStatus::Error => "error",
+            SpanStatus::DeadlineExceeded => "deadline_exceeded",
+            SpanStatus::Unauthenticated => "unauthenticated",
+            SpanStatus::PermissionDenied => "permission_denied",
+            SpanStatus::NotFound => "not_found",
+            SpanStatus::ResourceExhausted => "resource_exhausted",
+            SpanStatus::InvalidArgument => "invalid_argument",
+            SpanStatus::Unimplemented => "unimplemented",
+            SpanStatus::Unavailable => "unavailable",
+            SpanStatus::InternalError => "internal_error",
+            SpanStatus::UnknownError => "unknown_error",
+            SpanStatus::Cancelled => "cancelled",
+            SpanStatus::AlreadyExists => "already_exists",
+            SpanStatus::FailedPrecondition => "failed_precondition",
+            SpanStatus::Aborted => "aborted",
+            SpanStatus::OutOfRange => "out_of_range",
+            SpanStatus::DataLoss => "data_loss",
+        }
+    }
 }
 
 impl str::FromStr for SpanStatus {
     type Err = ParseStatusError;
 
+    #[expect(
+        deprecated,
+        reason = "parses the deprecated variants from their string representation"
+    )]
     fn from_str(s: &str) -> Result<SpanStatus, Self::Err> {
         Ok(match s {
             "ok" => SpanStatus::Ok,
+            "error" => SpanStatus::Error,
             "deadline_exceeded" => SpanStatus::DeadlineExceeded,
             "unauthenticated" => SpanStatus::Unauthenticated,
             "permission_denied" => SpanStatus::PermissionDenied,
@@ -2002,27 +2082,24 @@ impl str::FromStr for SpanStatus {
 
 impl fmt::Display for SpanStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl Serialize for SpanStatus {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
         match self {
-            SpanStatus::Ok => write!(f, "ok"),
-            SpanStatus::DeadlineExceeded => write!(f, "deadline_exceeded"),
-            SpanStatus::Unauthenticated => write!(f, "unauthenticated"),
-            SpanStatus::PermissionDenied => write!(f, "permission_denied"),
-            SpanStatus::NotFound => write!(f, "not_found"),
-            SpanStatus::ResourceExhausted => write!(f, "resource_exhausted"),
-            SpanStatus::InvalidArgument => write!(f, "invalid_argument"),
-            SpanStatus::Unimplemented => write!(f, "unimplemented"),
-            SpanStatus::Unavailable => write!(f, "unavailable"),
-            SpanStatus::InternalError => write!(f, "internal_error"),
-            SpanStatus::UnknownError => write!(f, "unknown_error"),
-            SpanStatus::Cancelled => write!(f, "cancelled"),
-            SpanStatus::AlreadyExists => write!(f, "already_exists"),
-            SpanStatus::FailedPrecondition => write!(f, "failed_precondition"),
-            SpanStatus::Aborted => write!(f, "aborted"),
-            SpanStatus::OutOfRange => write!(f, "out_of_range"),
-            SpanStatus::DataLoss => write!(f, "data_loss"),
+            // Relay rejects `"error"` in transaction payloads.
+            SpanStatus::Error => serializer.serialize_str("internal_error"),
+            status => serializer.serialize_str(status.as_str()),
         }
     }
 }
+
+impl_str_de!(SpanStatus);
 
 /// Represents a tracing transaction.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

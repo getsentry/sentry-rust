@@ -4,7 +4,8 @@
 
 ### Features
 
-- [`SpanLayer`](https://docs.rs/sentry-tracing/0.49.6/sentry_tracing/struct.SpanLayer.html) now sets the Sentry span status from a `sentry.status` span field, both on span creation and when recorded later. Following the [`sentry.status` convention](https://getsentry.github.io/sentry-conventions/attributes/sentry/#sentry-status), the value must be `"ok"` or `"error"` ([#1399](https://github.com/getsentry/sentry-rust/pull/1399)).
+- Added the [`SpanStatus::Error`](https://docs.rs/sentry-types/0.49.6/sentry_types/protocol/v7/enum.SpanStatus.html#variant.Error) variant for failed spans. Its string representation is `"error"`, and event payloads send it as `"internal_error"` ([#1399](https://github.com/getsentry/sentry-rust/pull/1399)).
+- [`SpanLayer`](https://docs.rs/sentry-tracing/0.49.6/sentry_tracing/struct.SpanLayer.html) now sets the Sentry span status from a `sentry.status` span field, both on span creation and when recorded later. The value must be the string representation of a [`SpanStatus`](https://docs.rs/sentry-types/0.49.6/sentry_types/protocol/v7/enum.SpanStatus.html), such as `"ok"` or `"error"` ([#1399](https://github.com/getsentry/sentry-rust/pull/1399)).
 
 ### Fixes
 
@@ -12,6 +13,7 @@
 
 ### Deprecations
 
+- Deprecated all [`SpanStatus`](https://docs.rs/sentry-types/0.49.6/sentry_types/protocol/v7/enum.SpanStatus.html) variants other than `Ok` and `Error`, in favor of `SpanStatus::Error`. The deprecated variants still serialize and parse as before ([#1399](https://github.com/getsentry/sentry-rust/pull/1399)).
 - Deprecated the `log` and `uuid` features of `sentry-core`. These features are now no-ops, and will be removed in the next breaking release. Previously, these features enabled the optional `log` and `uuid` dependencies, which `sentry-core` did not use ([#1388](https://github.com/getsentry/sentry-rust/pull/1388)).
 - Deprecated the `serde_json` feature of `sentry`. This feature is now a no-op, and will be removed in the next breaking release. Previously, this feature enabled the optional `serde_json` dependency, which `sentry` did not use ([#1389](https://github.com/getsentry/sentry-rust/pull/1389)).
 

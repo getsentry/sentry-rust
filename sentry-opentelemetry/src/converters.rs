@@ -8,6 +8,10 @@ pub(crate) fn convert_trace_id(trace_id: &opentelemetry::TraceId) -> TraceId {
     trace_id.to_bytes().into()
 }
 
+#[expect(
+    deprecated,
+    reason = "keeps the existing OpenTelemetry status mapping until it moves to `SpanStatus::Error`"
+)]
 pub(crate) fn convert_span_status(status: &opentelemetry::trace::Status) -> SpanStatus {
     match status {
         opentelemetry::trace::Status::Unset | opentelemetry::trace::Status::Ok => SpanStatus::Ok,
