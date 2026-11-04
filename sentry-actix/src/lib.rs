@@ -356,10 +356,6 @@ where
 
                     if let Some(transaction) = transaction {
                         if transaction.get_status().is_none() {
-                            #[expect(
-                                deprecated,
-                                reason = "keeps the existing status for failed requests"
-                            )]
                             let status = protocol::SpanStatus::UnknownError;
                             transaction.set_status(status);
                         }
@@ -399,10 +395,6 @@ where
     }
 }
 
-#[expect(
-    deprecated,
-    reason = "keeps the existing HTTP status mapping until integrations move to `SpanStatus::Error`"
-)]
 fn map_status(status: StatusCode) -> protocol::SpanStatus {
     match status {
         StatusCode::UNAUTHORIZED => protocol::SpanStatus::Unauthenticated,
@@ -916,7 +908,6 @@ mod tests {
     }
 
     #[test]
-    #[expect(deprecated, reason = "asserts the existing HTTP status mapping")]
     fn map_status_conflict_to_already_exists() {
         assert_eq!(
             map_status(StatusCode::CONFLICT),

@@ -12,7 +12,6 @@ use sentry_tower::{SentryHttpLayer, SentryLayer};
 use tower::{ServiceBuilder, ServiceExt};
 
 #[test]
-#[expect(deprecated, reason = "asserts the existing HTTP status mapping")]
 fn test_tower_http_records_response_status_code() {
     let options = ClientOptions::new().traces_sample_rate(1.0);
 

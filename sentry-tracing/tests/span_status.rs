@@ -15,7 +15,7 @@ fn status_recorded_later() {
     tracing::Span::current().record("sentry.status", "error");
 }
 
-#[tracing::instrument(fields(sentry.status = "not a status"))]
+#[tracing::instrument(fields(sentry.status = "internal_error"))]
 fn invalid_status() {}
 
 #[tracing::instrument]
@@ -56,7 +56,7 @@ fn sets_status_from_field() {
     for f in [status_on_creation, status_recorded_later] {
         let transaction = capture_transaction(f);
         let trace = trace_context(&transaction);
-        assert_eq!(trace.status, Some(SpanStatus::Error));
+        assert_eq!(trace.status, Some(SpanStatus::InternalError));
         assert!(!trace.data.contains_key("sentry.status"));
     }
 }

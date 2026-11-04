@@ -1607,34 +1607,3 @@ mod test_logs {
         }
     }
 }
-
-#[test]
-fn test_span_status_error() {
-    let status = v7::SpanStatus::Error;
-    assert_eq!(status.to_string(), "error");
-    assert_eq!("error".parse::<v7::SpanStatus>().unwrap(), status);
-    // Relay rejects `"error"` in transaction payloads.
-    assert_eq!(
-        serde_json::to_string(&status).unwrap(),
-        "\"internal_error\""
-    );
-    assert_eq!(
-        serde_json::from_str::<v7::SpanStatus>("\"error\"").unwrap(),
-        status
-    );
-}
-
-#[test]
-#[expect(
-    deprecated,
-    reason = "asserts that deprecated statuses still round-trip"
-)]
-fn test_span_status_deprecated_round_trip() {
-    let status = v7::SpanStatus::NotFound;
-    assert_eq!(status.to_string(), "not_found");
-    assert_eq!(serde_json::to_string(&status).unwrap(), "\"not_found\"");
-    assert_eq!(
-        serde_json::from_str::<v7::SpanStatus>("\"internal_error\"").unwrap(),
-        v7::SpanStatus::InternalError
-    );
-}

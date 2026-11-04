@@ -273,12 +273,14 @@ where
     }
 }
 
-/// Removes the `sentry.status` field and parses it as a [`SpanStatus`].
+/// Removes the `sentry.status` field and maps it to a [`SpanStatus`].
 ///
-/// Values that are not strings or not valid span statuses are dropped.
+/// Following the [`sentry.status` convention](https://getsentry.github.io/sentry-conventions/attributes/sentry/#sentry-status),
+/// only `"ok"` and `"error"` are accepted. Other values are dropped.
 fn take_status<K: Ord + Borrow<str>>(data: &mut BTreeMap<K, Value>) -> Option<SpanStatus> {
     let status = match data.remove(SENTRY_STATUS_FIELD)? {
-        Value::String(s) => s.parse().ok(),
+        Value::String(s) if s == "ok" => Some(SpanStatus::Ok),
+        Value::String(s) if s == "error" => Some(SpanStatus::InternalError),
         _ => None,
     };
     if status.is_none() {
