@@ -156,7 +156,7 @@ macro_rules! implement_metric_common_methods {
             /// attributes can be chained. We recommend using [Sentry semantic conventions] for key
             /// values, where applicable.
             ///
-            /// [Sentry semantic conventions]: https://getsentry.github.io/sentry-conventions/
+            /// [Sentry semantic conventions]: https://conventions.sentry.dev/
             pub fn attribute<K, V>(self, key: K, value: V) -> Self
             where
                 K: Into<Cow<'static, str>>,
