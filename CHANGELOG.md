@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Improvements
+
+- With the `debug` option enabled, the SDK now logs a message when it drops a span because the span finished after its transaction was already sent. The `sentry-tracing` docs now explain how this can happen when a library keeps a clone of a `tracing` span ([#1367](https://github.com/getsentry/sentry-rust/pull/1367)).
+
 ### Fixes
 
 - [`Transport::flush`](https://docs.rs/sentry-core/0.49.6/sentry_core/trait.Transport.html#method.flush) on an `Arc`-wrapped transport now flushes the inner transport, instead of returning `true` immediately ([#1390](https://github.com/getsentry/sentry-rust/pull/1390)).
