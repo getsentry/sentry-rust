@@ -205,11 +205,11 @@ impl Scope {
         if let Some(name) = transaction {
             let trx = match self.span.as_ref() {
                 Some(TransactionOrSpan::Span(span)) => &span.transaction,
-                Some(TransactionOrSpan::Transaction(trx)) => &trx.inner,
+                Some(TransactionOrSpan::Transaction(trx)) => trx,
                 _ => return,
             };
 
-            if let Some(trx) = trx.lock().unwrap().transaction.as_mut() {
+            if let Some(trx) = trx.inner.lock().unwrap().transaction.as_mut() {
                 trx.name = Some(name.into());
             }
         }
