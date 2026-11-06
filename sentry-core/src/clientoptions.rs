@@ -814,6 +814,14 @@ impl ClientOptions {
         self.integrations.push(Arc::new(integration));
         self
     }
+
+    /// Resolve the org id stored in these options.
+    ///
+    /// First, try the `self.org_id`, falling back to parsing `self.dsn`.
+    #[cfg(feature = "client")]
+    pub(crate) fn resolve_org_id(&self) -> Option<OrganizationId> {
+        self.org_id.or_else(|| self.dsn.as_ref()?.org_id())
+    }
 }
 impl fmt::Debug for ClientOptions {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
