@@ -18,6 +18,7 @@ reportOn = "medium"
 
 [[skills]]
 name = "docs-review"
+incremental = true
 # Review public Rust API docs drift: missed rustdoc/README updates and
 # inaccurate new documentation.
 paths = [
