@@ -7,16 +7,20 @@ use crate::protocol::EnvelopeItem;
 use crate::protocol::ItemContainer;
 use crate::Envelope;
 
+use self::timeout::RateLimitTimeout;
+
+mod timeout;
+
 /// A Utility that helps with rate limiting sentry requests.
 #[derive(Debug, Default)]
 pub struct RateLimiter {
-    global: Option<SystemTime>,
-    error: Option<SystemTime>,
-    session: Option<SystemTime>,
-    transaction: Option<SystemTime>,
-    attachment: Option<SystemTime>,
-    log_item: Option<SystemTime>,
-    trace_metric: Option<SystemTime>,
+    global: RateLimitTimeout,
+    error: RateLimitTimeout,
+    session: RateLimitTimeout,
+    transaction: RateLimitTimeout,
+    attachment: RateLimitTimeout,
+    log_item: RateLimitTimeout,
+    trace_metric: RateLimitTimeout,
 }
 
 impl RateLimiter {
@@ -35,7 +39,7 @@ impl RateLimiter {
             time_after_default_delay()
         };
 
-        self.global = Some(new_time);
+        self.global.update(new_time);
     }
 
     /// Updates the RateLimiter with information from a `X-Sentry-Rate-Limits` header.
@@ -49,20 +53,20 @@ impl RateLimiter {
             let categories = splits.next()?;
             let _scope = splits.next()?;
 
-            let new_time = Some(time_after(Duration::from_secs(seconds.ceil() as u64)));
+            let new_time = time_after(Duration::from_secs(seconds.ceil() as u64));
 
             if categories.is_empty() {
-                self.global = new_time;
+                self.global.update(new_time);
             }
 
             for category in categories.split(';') {
                 match category {
-                    "error" => self.error = new_time,
-                    "session" => self.session = new_time,
-                    "transaction" => self.transaction = new_time,
-                    "attachment" => self.attachment = new_time,
-                    "log_item" => self.log_item = new_time,
-                    "trace_metric" => self.trace_metric = new_time,
+                    "error" => self.error.update(new_time),
+                    "session" => self.session.update(new_time),
+                    "transaction" => self.transaction.update(new_time),
+                    "attachment" => self.attachment.update(new_time),
+                    "log_item" => self.log_item.update(new_time),
+                    "trace_metric" => self.trace_metric.update(new_time),
                     _ => {}
                 }
             }
@@ -76,7 +80,7 @@ impl RateLimiter {
 
     /// Updates the RateLimiter in response to a `429` status code.
     pub fn update_from_429(&mut self) {
-        self.global = Some(time_after_default_delay());
+        self.global.update(time_after_default_delay());
     }
 
     /// Query the RateLimiter if a certain category of event is currently rate limited.
@@ -84,22 +88,18 @@ impl RateLimiter {
     /// If the given category is rate limited, it will return the remaining
     /// [`Duration`] for which it is.
     pub fn is_disabled(&self, category: RateLimitingCategory) -> Option<Duration> {
-        if let Some(ts) = self.global {
-            let time_left = ts.duration_since(SystemTime::now()).ok();
-            if time_left.is_some() {
-                return time_left;
-            }
-        }
-        let time_left = match category {
-            RateLimitingCategory::Any => self.global,
-            RateLimitingCategory::Error => self.error,
-            RateLimitingCategory::Session => self.session,
-            RateLimitingCategory::Transaction => self.transaction,
-            RateLimitingCategory::Attachment => self.attachment,
-            RateLimitingCategory::LogItem => self.log_item,
-            RateLimitingCategory::TraceMetric => self.trace_metric,
-        }?;
-        time_left.duration_since(SystemTime::now()).ok()
+        let category_timeout = match category {
+            RateLimitingCategory::Any => &self.global,
+            RateLimitingCategory::Error => &self.error,
+            RateLimitingCategory::Session => &self.session,
+            RateLimitingCategory::Transaction => &self.transaction,
+            RateLimitingCategory::Attachment => &self.attachment,
+            RateLimitingCategory::LogItem => &self.log_item,
+            RateLimitingCategory::TraceMetric => &self.trace_metric,
+        };
+        self.global
+            .remaining()
+            .or_else(|| category_timeout.remaining())
     }
 
     /// Query the RateLimiter for a certain category of event.
