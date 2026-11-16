@@ -11,12 +11,12 @@ pub(super) struct RateLimitTimeout(Option<SystemTime>);
 
 impl RateLimitTimeout {
     /// Extends the timeout to `until`, unless the timeout already ends later.
-    pub(super) fn update(&mut self, until: SystemTime) {
+    pub fn update(&mut self, until: SystemTime) {
         self.0 = self.0.max(Some(until));
     }
 
     /// Returns the time left until the timeout ends, or [`None`] if it is not active.
-    pub(super) fn remaining(&self) -> Option<Duration> {
+    pub fn remaining(&self) -> Option<Duration> {
         self.0?.duration_since(SystemTime::now()).ok()
     }
 }
