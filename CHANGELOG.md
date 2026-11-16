@@ -5,6 +5,7 @@
 ### Fixes
 
 - [`Transport::flush`](https://docs.rs/sentry-core/0.49.6/sentry_core/trait.Transport.html#method.flush) on an `Arc`-wrapped transport now flushes the inner transport, instead of returning `true` immediately ([#1390](https://github.com/getsentry/sentry-rust/pull/1390)).
+- [`RateLimiter`](https://docs.rs/sentry/0.49.6/sentry/transports/struct.RateLimiter.html) no longer replaces an active rate limit with a shorter one from a later header or `429` response. Previously, a shorter limit, such as `0:error:project` after `3600:error:organization`, ended the longer limit early ([#1411](https://github.com/getsentry/sentry-rust/pull/1411)).
 
 ### Deprecations
 
