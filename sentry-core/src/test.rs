@@ -78,7 +78,7 @@ impl Transport for TestTransport {
 
 /// Runs some code with the default test hub and returns the captured events.
 ///
-/// See [`with_captured_envelopes_options`](fn.with_captured_envelopes_options.html)
+/// See [`with_captured_envelopes_options`]
 pub fn with_captured_events<F: FnOnce()>(f: F) -> Vec<Event<'static>> {
     with_captured_events_options(f, ClientOptions::default())
 }
@@ -86,7 +86,7 @@ pub fn with_captured_events<F: FnOnce()>(f: F) -> Vec<Event<'static>> {
 /// Runs some code with the default test hub with the given options and
 /// returns the captured events.
 ///
-/// See [`with_captured_envelopes_options`](fn.with_captured_envelopes_options.html)
+/// See [`with_captured_envelopes_options`]
 pub fn with_captured_events_options<F: FnOnce(), O: Into<ClientOptions>>(
     f: F,
     options: O,
@@ -99,7 +99,7 @@ pub fn with_captured_events_options<F: FnOnce(), O: Into<ClientOptions>>(
 
 /// Runs some code with the default test hub and returns the captured envelopes.
 ///
-/// See [`with_captured_envelopes_options`](fn.with_captured_envelopes_options.html)
+/// See [`with_captured_envelopes_options`]
 pub fn with_captured_envelopes<F: FnOnce()>(f: F) -> Vec<Envelope> {
     with_captured_envelopes_options(f, ClientOptions::default())
 }
