@@ -7,7 +7,7 @@ use crate::Hub;
 impl Hub {
     /// Capture any `std::error::Error`.
     ///
-    /// See the global [`capture_error`](fn.capture_error.html)
+    /// See the global [`capture_error`]
     /// for more documentation.
     pub fn capture_error<E: Error + ?Sized>(&self, error: &E) -> Uuid {
         #[cfg(not(feature = "client"))]
