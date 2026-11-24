@@ -45,7 +45,7 @@ pub fn capture_event(event: Event<'static>) -> Uuid {
 /// Captures an arbitrary message.
 ///
 /// This creates an event from the given message and sends it via
-/// [`capture_event`](fn.capture_event.html).
+/// [`capture_event`].
 ///
 /// # Examples
 ///
