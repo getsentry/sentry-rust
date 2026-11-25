@@ -1301,6 +1301,15 @@ impl Span {
                 } else if let Some(client) = inner.client.as_ref() {
                     client.record_lost_data(&*span, ClientReportReason::BufferOverflow);
                 }
+            } else if matches!(inner.tracing_state.finish_action(), FinishAction::Send { .. }) {
+                // The transaction was already sent, so there is nothing left to add this span to.
+                sentry_debug!(
+                    "[Span] dropping span {} (op: {:?}, description: {:?}) because it finished \
+                    after its transaction was already sent",
+                    span.span_id,
+                    span.op,
+                    span.description,
+                );
             }
         }}
     }

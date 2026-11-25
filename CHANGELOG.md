@@ -2,6 +2,10 @@
 
 ## 0.49.6
 
+### Improvements
+
+- With the `debug` option enabled, the SDK now logs a message when it drops a span because the span finished after its transaction was already sent. The `sentry-tracing` docs now explain how this can happen when a library keeps a clone of a `tracing` span ([#1367](https://github.com/getsentry/sentry-rust/pull/1367)).
+
 ### Fixes
 
 - Preserve longer active rate limits when subsequent headers or 429 responses specify shorter delays ([#1410](https://github.com/getsentry/sentry-rust/pull/1410)).
