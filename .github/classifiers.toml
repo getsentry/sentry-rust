@@ -46,7 +46,5 @@ paths = ["misc/docs/**", "README.tpl"]
 kind = "docs"
 
 [[kind]]
-paths = [
-  "clippy.toml", "rustfmt.toml", ".codecov.yml", "agents.toml",
-]
+paths = ["clippy.toml", "rustfmt.toml", ".codecov.yml"]
 kind = "dev-tooling"
