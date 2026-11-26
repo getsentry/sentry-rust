@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Fixes
+
+- The `sentry-minidump` crash reporter no longer exits when the app process stops for more than 5 seconds, for example with App Nap on macOS or a container pause. Before, crashes after such a stop sent no minidump. The crash reporter now exits when the app process exits. This updates `minidumper-child` to 0.7.1.
+
+### Deprecations
+
+- Deprecated [`MinidumpIntegration::server_stale_timeout`](https://docs.rs/sentry-minidump/0.49.6/sentry_minidump/struct.MinidumpIntegration.html#method.server_stale_timeout). This function is now a no-op, and will be removed in the next breaking release. The crash reporter no longer uses a timeout.
+
 ## 0.49.6
 
 ### Fixes
