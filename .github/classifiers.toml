@@ -1,0 +1,50 @@
+# getsentry/sentry-rust 504359b8eb84e105dfdae38dd97c16f0384564b1
+
+rubric = "sdk"
+
+# Every workspace member is published to crates.io. build.rs files run in customer builds.
+[[area]]
+paths = ["sentry*/**"]
+families = ["server"]
+
+# Crates every user compiles: the umbrella crate, core, protocol types, and the default-feature
+# integrations (backtrace, contexts, panic, debug-images).
+# Root Cargo.toml holds workspace.dependencies and rust-version inherited by every published crate;
+# Cargo.lock is the dependency set they are all built and tested with.
+[[area]]
+paths = [
+  "Cargo.toml", "Cargo.lock", "sentry/**", "sentry-core/**", "sentry-types/**", "sentry-backtrace/**", "sentry-contexts/**",
+  "sentry-panic/**", "sentry-debug-images/**",
+]
+families = ["server"]
+shared_core = true
+
+# Out-of-process native crash capture (minidumps written to disk, crash reporter process).
+[[area]]
+paths = ["sentry-minidump/**"]
+families = ["native"]
+
+# ESP-IDF (embedded) HTTP transport.
+[[area]]
+paths = ["sentry/src/transports/embedded_svc_http.rs"]
+families = ["native"]
+
+[[kind]]
+paths = ["*/examples/**"]
+kind = "samples"
+
+[[kind]]
+paths = ["*/tests/**", "*/benches/**"]
+kind = "tests"
+
+[[kind]]
+paths = ["scripts/**"]
+kind = "build-release"
+
+[[kind]]
+paths = ["misc/docs/**", "README.tpl"]
+kind = "docs"
+
+[[kind]]
+paths = ["clippy.toml", "rustfmt.toml", ".codecov.yml"]
+kind = "dev-tooling"
