@@ -2369,9 +2369,9 @@ dependencies = [
 
 [[package]]
 name = "minidumper-child"
-version = "0.7.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8d9c1eee90a552d5357f34eacf3e700372dd2760a0ba0cde68708c3972fb53d"
+checksum = "fa26601c99b4830c1afc5e701e0c84195db2a0caaffed0f248fbf6b8092de1aa"
 dependencies = [
  "crash-context",
  "crash-handler",
@@ -2380,6 +2380,7 @@ dependencies = [
  "minidumper",
  "thiserror 2.0.21",
  "uuid",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

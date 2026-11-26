@@ -101,7 +101,6 @@ pub struct MinidumpIntegration {
     before_capture: Option<Arc<BeforeCapture>>,
     flush_timeout: Duration,
     client_connect_timeout: Option<Duration>,
-    server_stale_timeout: Option<Duration>,
     handle: OnceLock<ClientHandle>,
 }
 
@@ -114,7 +113,6 @@ impl std::fmt::Debug for MinidumpIntegration {
             .field("process_name", &self.process_name)
             .field("flush_timeout", &self.flush_timeout)
             .field("client_connect_timeout", &self.client_connect_timeout)
-            .field("server_stale_timeout", &self.server_stale_timeout)
             .finish_non_exhaustive()
     }
 }
@@ -130,7 +128,6 @@ impl Default for MinidumpIntegration {
             before_capture: None,
             flush_timeout: DEFAULT_FLUSH_TIMEOUT,
             client_connect_timeout: None,
-            server_stale_timeout: None,
             handle: OnceLock::new(),
         }
     }
@@ -247,11 +244,11 @@ impl MinidumpIntegration {
         self
     }
 
-    /// Sets how long the crash reporter waits without a ping from the app
-    /// before it exits.
+    /// This function is a no-op. The crash reporter now exits when the app
+    /// process exits, so it needs no timeout.
+    #[deprecated = "this function is a no-op; the crash reporter exits when the app process exits"]
     #[must_use]
-    pub fn server_stale_timeout(mut self, timeout: Duration) -> Self {
-        self.server_stale_timeout = Some(timeout);
+    pub fn server_stale_timeout(self, _timeout: Duration) -> Self {
         self
     }
 
@@ -296,9 +293,6 @@ impl MinidumpIntegration {
         }
         if let Some(timeout) = self.client_connect_timeout {
             child = child.with_client_connect_timeout(timeout);
-        }
-        if let Some(timeout) = self.server_stale_timeout {
-            child = child.with_server_stale_timeout(timeout);
         }
 
         let inherit_args = self.inherit_args;
